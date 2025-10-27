@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "temp-app",
-    "slug": "temp-app",
+    "name": "Life Tracker",
+    "slug": "lifeapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
