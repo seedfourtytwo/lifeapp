@@ -7,7 +7,9 @@ import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, IconButton } from 'react-native-paper';
 import { useStats } from '../hooks/useStats';
+import { useActivityStore } from '../store/activityStore';
 import DayCard from '../components/DayCard';
+import EditDayDialog from '../components/EditDayDialog';
 import { DayAchievement } from '../types';
 
 export default function StatsScreen() {
@@ -22,7 +24,9 @@ export default function StatsScreen() {
     refreshData,
   } = useStats();
 
+  const { activities } = useActivityStore();
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
+  const [editDialogVisible, setEditDialogVisible] = useState(false);
 
   const selectedDay = selectedDayIndex !== null ? weekAchievements[selectedDayIndex] : null;
 
@@ -93,13 +97,20 @@ export default function StatsScreen() {
       {selectedDay && (
         <Card style={styles.detailsCard} elevation={2}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.detailsTitle}>
-              {new Date(selectedDay.date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
+            <View style={styles.detailsHeader}>
+              <Text variant="titleLarge" style={styles.detailsTitle}>
+                {new Date(selectedDay.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </Text>
+              <IconButton
+                icon="pencil"
+                size={20}
+                onPress={() => setEditDialogVisible(true)}
+              />
+            </View>
 
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -173,6 +184,20 @@ export default function StatsScreen() {
           </Text>
         </View>
       )}
+
+      {/* Edit Day Dialog */}
+      {selectedDay && (
+        <EditDayDialog
+          visible={editDialogVisible}
+          date={selectedDay.date}
+          activities={activities}
+          onDismiss={() => setEditDialogVisible(false)}
+          onSave={() => {
+            setEditDialogVisible(false);
+            refreshData();
+          }}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -217,9 +242,15 @@ const styles = StyleSheet.create({
     margin: 16,
     backgroundColor: '#FFFFFF',
   },
+  detailsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   detailsTitle: {
     fontWeight: 'bold',
-    marginBottom: 16,
+    flex: 1,
   },
   statsRow: {
     flexDirection: 'row',

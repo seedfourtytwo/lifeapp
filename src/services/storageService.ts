@@ -101,6 +101,21 @@ export const addTrackingSession = async (session: TrackingSession): Promise<void
   await saveTrackingSessions(sessions);
 };
 
+export const updateTrackingSession = async (sessionId: string, updates: Partial<TrackingSession>): Promise<void> => {
+  const sessions = await getTrackingSessions();
+  const index = sessions.findIndex((s) => s.id === sessionId);
+  if (index !== -1) {
+    sessions[index] = { ...sessions[index], ...updates };
+    await saveTrackingSessions(sessions);
+  }
+};
+
+export const deleteTrackingSession = async (sessionId: string): Promise<void> => {
+  const sessions = await getTrackingSessions();
+  const filtered = sessions.filter((s) => s.id !== sessionId);
+  await saveTrackingSessions(filtered);
+};
+
 export const getSessionsByDate = async (date: string): Promise<TrackingSession[]> => {
   const sessions = await getTrackingSessions();
   return sessions.filter((s) => s.date === date);
