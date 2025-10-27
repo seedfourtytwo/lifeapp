@@ -96,10 +96,13 @@ export const STORAGE_KEYS = {
  * Default activities to seed the app on first launch
  */
 export const DEFAULT_ACTIVITIES: Omit<Activity, 'id' | 'createdAt'>[] = [
-  { name: 'Meditation', color: '#4CAF50', icon: 'meditation', points: 10, order: 0 },
-  { name: 'Cooking', color: '#FF9800', icon: 'chef-hat', points: 5, order: 1 },
+  { name: 'Sleep', color: '#3F51B5', icon: 'sleep', points: 10, order: 0 },
+  { name: 'Read', color: '#2196F3', icon: 'book-open-variant', points: 10, order: 1 },
   { name: 'Workout', color: '#F44336', icon: 'dumbbell', points: 15, order: 2 },
-  { name: 'Reading', color: '#2196F3', icon: 'book-open-variant', points: 10, order: 3 },
+  { name: 'Study', color: '#00BCD4', icon: 'school', points: 10, order: 3 },
   { name: 'Work', color: '#9C27B0', icon: 'briefcase', points: 5, order: 4 },
-  { name: 'Learning', color: '#00BCD4', icon: 'school', points: 10, order: 5 },
+  { name: 'Meditate', color: '#4CAF50', icon: 'meditation', points: 10, order: 5 },
+  { name: 'Fasting', color: '#FF9800', icon: 'silverware-fork-knife', points: 5, order: 6 },
+  { name: 'House Chores', color: '#795548', icon: 'broom', points: 5, order: 7 },
+  { name: 'Other', color: '#607D8B', icon: 'dots-horizontal', points: 5, order: 8 },
 ];
