@@ -34,21 +34,9 @@ export default function HomeScreen() {
   const handleActivityPress = async (activity: Activity) => {
     try {
       if (isRunning) {
-        // Stop current timer
-        Alert.alert(
-          'Stop Current Timer?',
-          `Do you want to stop tracking "${activeSession?.activityName}" and start tracking "${activity.name}"?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Stop & Start New',
-              onPress: async () => {
-                await stopTimer();
-                await startTimer(activity.id);
-              },
-            },
-          ]
-        );
+        // Auto-save current session and start new one
+        await stopTimer();
+        await startTimer(activity.id);
       } else {
         // Start new timer
         await startTimer(activity.id);
@@ -61,7 +49,6 @@ export default function HomeScreen() {
   const handleStopTimer = async () => {
     try {
       await stopTimer();
-      Alert.alert('Success', 'Session saved!');
     } catch (error) {
       Alert.alert('Error', 'Failed to stop timer. Please try again.');
     }
@@ -85,20 +72,7 @@ export default function HomeScreen() {
 
   const handleCancelTimer = async () => {
     try {
-      Alert.alert(
-        'Discard Session?',
-        `Are you sure you want to discard this "${activeSession?.activityName}" session without saving?`,
-        [
-          { text: 'Keep Tracking', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: async () => {
-              await cancelTimer();
-            },
-          },
-        ]
-      );
+      await cancelTimer();
     } catch (error) {
       Alert.alert('Error', 'Failed to cancel timer. Please try again.');
     }
