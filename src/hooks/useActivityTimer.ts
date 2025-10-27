@@ -5,24 +5,50 @@
 
 import { useState, useEffect } from 'react';
 import { useActivityStore } from '../store/activityStore';
+import * as storage from '../services/storageService';
 
 export function useActivityTimer() {
-  const { activeSession, startTimer, stopTimer } = useActivityStore();
+  const {
+    activeSession,
+    startTimer,
+    stopTimer,
+    pauseTimer,
+    resumeTimer,
+    cancelTimer
+  } = useActivityStore();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Update elapsed time every second when there's an active session
+  // Update elapsed time every second when there's an active session and not paused
   useEffect(() => {
     if (!activeSession) {
       setElapsedSeconds(0);
       return;
     }
 
-    // Calculate initial elapsed time
+    // Initialize from stored elapsedSeconds
+    setElapsedSeconds(activeSession.elapsedSeconds);
+
+    // Don't run interval if paused
+    if (activeSession.isPaused) {
+      return;
+    }
+
+    // Calculate elapsed time, accounting for pause
     const startTime = new Date(activeSession.startTime);
-    const updateElapsed = () => {
+
+    const updateElapsed = async () => {
       const now = new Date();
-      const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
-      setElapsedSeconds(elapsed);
+      const totalElapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+
+      // Update local state
+      setElapsedSeconds(totalElapsed);
+
+      // Persist to storage every second so it survives app restart
+      const updatedSession = {
+        ...activeSession,
+        elapsedSeconds: totalElapsed,
+      };
+      await storage.saveActiveSession(updatedSession);
     };
 
     // Update immediately
@@ -33,14 +59,18 @@ export function useActivityTimer() {
 
     // Cleanup on unmount or when activeSession changes
     return () => clearInterval(interval);
-  }, [activeSession]);
+  }, [activeSession, activeSession?.isPaused]);
 
   return {
     activeSession,
     elapsedSeconds,
     isRunning: activeSession !== null,
+    isPaused: activeSession?.isPaused || false,
     startTimer,
     stopTimer,
+    pauseTimer,
+    resumeTimer,
+    cancelTimer,
   };
 }
 

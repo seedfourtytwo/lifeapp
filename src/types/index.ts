@@ -38,6 +38,8 @@ export interface ActiveSession {
   activityName: string;
   startTime: string; // ISO 8601 timestamp
   elapsedSeconds: number; // Updated periodically
+  isPaused: boolean; // Whether the timer is currently paused
+  pausedAt?: string; // ISO 8601 timestamp when paused
 }
 
 /**

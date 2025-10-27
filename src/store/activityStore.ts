@@ -23,6 +23,9 @@ interface ActivityState {
   // Timer actions
   startTimer: (activityId: string) => Promise<void>;
   stopTimer: () => Promise<void>;
+  pauseTimer: () => Promise<void>;
+  resumeTimer: () => Promise<void>;
+  cancelTimer: () => Promise<void>;
   loadActiveSession: () => Promise<void>;
 }
 
@@ -127,6 +130,7 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
         activityName: activity.name,
         startTime: new Date().toISOString(),
         elapsedSeconds: 0,
+        isPaused: false,
       };
 
       await storage.saveActiveSession(newSession);
@@ -146,18 +150,17 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
         return;
       }
 
-      const endTime = new Date();
-      const startTime = new Date(activeSession.startTime);
-      const durationSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+      // Use elapsedSeconds from the active session (handles paused time correctly)
+      const durationSeconds = activeSession.elapsedSeconds;
 
       // Save completed session
       const trackingSession = {
         id: generateId(),
         activityId: activeSession.activityId,
         startTime: activeSession.startTime,
-        endTime: endTime.toISOString(),
+        endTime: new Date().toISOString(),
         durationSeconds,
-        date: storage.formatDate(endTime),
+        date: storage.formatDate(new Date()),
         createdAt: new Date().toISOString(),
       };
 
@@ -167,6 +170,63 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       set({ activeSession: null });
     } catch (error) {
       console.error('Failed to stop timer:', error);
+      throw error;
+    }
+  },
+
+  // Pause timer
+  pauseTimer: async () => {
+    try {
+      const { activeSession } = get();
+
+      if (!activeSession || activeSession.isPaused) {
+        return;
+      }
+
+      const updatedSession: ActiveSession = {
+        ...activeSession,
+        isPaused: true,
+        pausedAt: new Date().toISOString(),
+      };
+
+      await storage.saveActiveSession(updatedSession);
+      set({ activeSession: updatedSession });
+    } catch (error) {
+      console.error('Failed to pause timer:', error);
+      throw error;
+    }
+  },
+
+  // Resume timer
+  resumeTimer: async () => {
+    try {
+      const { activeSession } = get();
+
+      if (!activeSession || !activeSession.isPaused) {
+        return;
+      }
+
+      const updatedSession: ActiveSession = {
+        ...activeSession,
+        isPaused: false,
+        pausedAt: undefined,
+      };
+
+      await storage.saveActiveSession(updatedSession);
+      set({ activeSession: updatedSession });
+    } catch (error) {
+      console.error('Failed to resume timer:', error);
+      throw error;
+    }
+  },
+
+  // Cancel timer without saving
+  cancelTimer: async () => {
+    try {
+      await storage.clearActiveSession();
+      set({ activeSession: null });
+    } catch (error) {
+      console.error('Failed to cancel timer:', error);
       throw error;
     }
   },

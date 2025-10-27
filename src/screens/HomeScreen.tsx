@@ -13,7 +13,17 @@ import { Activity } from '../types';
 
 export default function HomeScreen() {
   const { activities, loadActivities, isLoading } = useActivityStore();
-  const { activeSession, elapsedSeconds, isRunning, startTimer, stopTimer } = useActivityTimer();
+  const {
+    activeSession,
+    elapsedSeconds,
+    isRunning,
+    isPaused,
+    startTimer,
+    stopTimer,
+    pauseTimer,
+    resumeTimer,
+    cancelTimer
+  } = useActivityTimer();
 
   // Load activities and active session on mount
   useEffect(() => {
@@ -50,18 +60,47 @@ export default function HomeScreen() {
 
   const handleStopTimer = async () => {
     try {
-      Alert.alert('Stop Timer?', `Save this tracking session for "${activeSession?.activityName}"?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Stop & Save',
-          onPress: async () => {
-            await stopTimer();
-            Alert.alert('Success', 'Session saved!');
-          },
-        },
-      ]);
+      await stopTimer();
+      Alert.alert('Success', 'Session saved!');
     } catch (error) {
       Alert.alert('Error', 'Failed to stop timer. Please try again.');
+    }
+  };
+
+  const handlePauseTimer = async () => {
+    try {
+      await pauseTimer();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pause timer. Please try again.');
+    }
+  };
+
+  const handleResumeTimer = async () => {
+    try {
+      await resumeTimer();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to resume timer. Please try again.');
+    }
+  };
+
+  const handleCancelTimer = async () => {
+    try {
+      Alert.alert(
+        'Discard Session?',
+        `Are you sure you want to discard this "${activeSession?.activityName}" session without saving?`,
+        [
+          { text: 'Keep Tracking', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: async () => {
+              await cancelTimer();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to cancel timer. Please try again.');
     }
   };
 
@@ -87,12 +126,50 @@ export default function HomeScreen() {
             <Text variant="headlineLarge" style={styles.activityName}>
               {activeSession.activityName}
             </Text>
-            <Text variant="displayMedium" style={styles.timer}>
-              {formatTime(elapsedSeconds)}
+            <Text variant="displayMedium" style={[styles.timer, isPaused && styles.pausedTimer]}>
+              {formatTime(elapsedSeconds)} {isPaused && '(Paused)'}
             </Text>
-            <Button mode="contained" onPress={handleStopTimer} style={styles.stopButton} buttonColor="#F44336">
-              Stop & Save
-            </Button>
+            <View style={styles.buttonRow}>
+              {isPaused ? (
+                <Button
+                  mode="contained"
+                  onPress={handleResumeTimer}
+                  style={styles.actionButton}
+                  buttonColor="#4CAF50"
+                  icon="play"
+                >
+                  Resume
+                </Button>
+              ) : (
+                <Button
+                  mode="contained"
+                  onPress={handlePauseTimer}
+                  style={styles.actionButton}
+                  buttonColor="#FF9800"
+                  icon="pause"
+                >
+                  Pause
+                </Button>
+              )}
+              <Button
+                mode="contained"
+                onPress={handleStopTimer}
+                style={styles.actionButton}
+                buttonColor="#4CAF50"
+                icon="check"
+              >
+                Save
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={handleCancelTimer}
+                style={styles.actionButton}
+                textColor="#F44336"
+                icon="close"
+              >
+                Cancel
+              </Button>
+            </View>
           </Card.Content>
         </Card>
       )}
@@ -150,8 +227,17 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginBottom: 16,
   },
-  stopButton: {
+  pausedTimer: {
+    color: '#FF9800',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
     marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
   },
   gridContainer: {
     flex: 1,

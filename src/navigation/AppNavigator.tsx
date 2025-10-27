@@ -1,10 +1,10 @@
 /**
  * AppNavigator
- * Bottom tab navigation structure
+ * Top tab navigation structure
  */
 
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -17,31 +17,32 @@ export type RootTabParamList = {
   Settings: undefined;
 };
 
-const Tab = createBottomTabNavigator<RootTabParamList>();
+const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4CAF50',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: '#B3E5B3',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
-          elevation: 8,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        headerStyle: {
           backgroundColor: '#4CAF50',
           elevation: 4,
+          paddingTop: 40, // Space for status bar
         },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
+        tabBarLabelStyle: {
+          fontSize: 14,
           fontWeight: 'bold',
-          fontSize: 20,
+          textTransform: 'none',
+        },
+        tabBarIndicatorStyle: {
+          backgroundColor: '#FFFFFF',
+          height: 3,
+        },
+        tabBarShowIcon: true,
+        tabBarIconStyle: {
+          width: 24,
+          height: 24,
         },
       }}
     >
@@ -49,18 +50,16 @@ export default function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Life Tracker',
-          tabBarLabel: 'Track',
-          tabBarIcon: ({ color, size }) => <Icon name="home" size={size} color={color} />,
+          title: 'Track',
+          tabBarIcon: ({ color }) => <Icon name="play-circle" size={24} color={color} />,
         }}
       />
       <Tab.Screen
         name="Stats"
         component={StatsScreen}
         options={{
-          title: 'Statistics',
-          tabBarLabel: 'Stats',
-          tabBarIcon: ({ color, size }) => <Icon name="chart-bar" size={size} color={color} />,
+          title: 'Stats',
+          tabBarIcon: ({ color }) => <Icon name="chart-bar" size={24} color={color} />,
         }}
       />
       <Tab.Screen
@@ -68,8 +67,7 @@ export default function AppNavigator() {
         component={SettingsScreen}
         options={{
           title: 'Settings',
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color, size }) => <Icon name="cog" size={size} color={color} />,
+          tabBarIcon: ({ color }) => <Icon name="cog" size={24} color={color} />,
         }}
       />
     </Tab.Navigator>
