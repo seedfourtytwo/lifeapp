@@ -64,13 +64,37 @@ export interface ActivityStats {
 }
 
 /**
+ * ActivityGoal - goal requirement for a specific activity
+ */
+export interface ActivityGoal {
+  activityId: string;
+  activityName: string;
+  minimumMinutes: number;
+  enabled: boolean;
+}
+
+/**
+ * DayAchievement - calculated achievement status for a day
+ */
+export interface DayAchievement {
+  date: string; // YYYY-MM-DD
+  score: number; // 0-100 percentage
+  goalsCompleted: number;
+  totalGoals: number;
+  streak: number;
+  status: 'excellent' | 'good' | 'poor'; // Green/Yellow/Red
+  totalMinutesTracked: number;
+  activityBreakdown: ActivityStats[];
+}
+
+/**
  * UserSettings - app settings and preferences
  */
 export interface UserSettings {
   notificationsEnabled: boolean;
   reminderTimes: ReminderTime[];
   theme: 'light' | 'dark' | 'auto';
-  dailyGoalSeconds?: number; // Optional daily time goal
+  dailyGoals: ActivityGoal[]; // Daily activity goals
 }
 
 /**

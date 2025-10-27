@@ -150,6 +150,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   notificationsEnabled: true,
   reminderTimes: [],
   theme: 'auto',
+  dailyGoals: [],
 };
 
 export const getUserSettings = async (): Promise<UserSettings> => {
