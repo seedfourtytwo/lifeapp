@@ -2,6 +2,8 @@
 
 A simple, privacy-focused mobile app to track daily activities and build better habits. Track time spent on meditation, cooking, workouts, reading, and more - all stored locally on your device.
 
+[![CI](https://github.com/seedfourtytwo/lifeapp/workflows/CI/badge.svg)](https://github.com/seedfourtytwo/lifeapp/actions)
+
 ## Features
 
 - **Simple Activity Tracking**: Start/stop timers for different activities with one tap
