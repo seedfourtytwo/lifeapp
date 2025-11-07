@@ -5,7 +5,8 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type {
   Activity,
   TrackingSession,
   ActiveSession,
@@ -15,6 +16,9 @@ import {
   DailyPoints,
   WeeklyBonus,
   StreakData,
+} from '../types';
+/* eslint-enable @typescript-eslint/no-unused-vars */
+import {
   STORAGE_KEYS,
   DEFAULT_ACTIVITIES,
 } from '../types';

@@ -3,7 +3,7 @@
  * Handles all point calculation logic for the gamification system
  */
 
-import {
+import type {
   DailyPoints,
   PointBreakdown,
   WeeklyBonus,
@@ -11,7 +11,6 @@ import {
   Activity,
   Todo,
   ActivityGoal,
-  TrackingSession,
 } from '../types';
 import * as storage from './storageService';
 
@@ -291,25 +290,11 @@ function getYesterday(date: string): string {
 }
 
 /**
- * Helper: Get Monday of the week containing the given date
- */
-function getMondayOfWeek(date: string): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Get to Monday
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-/**
  * Check if a new week has started and reset bonus if needed
  */
 export async function checkAndResetWeeklyBonus(): Promise<void> {
-  const now = new Date();
-  const currentMonday = getMondayOfWeek(now.toISOString().split('T')[0]);
-  const currentWeeklyBonus = await storage.getCurrentWeeklyBonus();
-
-  // If current week start is different, we're in a new week
-  // getCurrentWeeklyBonus will automatically create new week entry
+  // Check if a new week has started
+  // getCurrentWeeklyBonus will automatically create new week entry if needed
   // No action needed - old week bonus is archived
+  await storage.getCurrentWeeklyBonus();
 }

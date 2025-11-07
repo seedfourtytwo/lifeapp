@@ -26,9 +26,10 @@ export default function IntervalTimer() {
   useEffect(() => {
     // Load sound on mount
     loadSound();
+    // Capture ref value at effect start for cleanup
+    const sound = soundRef.current;
     return () => {
-      // Cleanup - capture ref value
-      const sound = soundRef.current;
+      // Cleanup - use captured value
       if (sound) {
         sound.unloadAsync();
       }

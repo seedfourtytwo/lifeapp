@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Alert, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Button, Card, List, Dialog, Portal } from 'react-native-paper';
+import { Text, Button, List, Dialog, Portal } from 'react-native-paper';
 import { useActivityStore } from '../store/activityStore';
 import { useActivityTimers } from '../hooks/useActivityTimers';
 import ActivityButton from '../components/ActivityButton';
@@ -52,8 +52,9 @@ export default function HomeScreen() {
 
       // Start new timer
       await startTimer(activity.id);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to start timer. Please try again.');
+    } catch (error: unknown) {
+      const err = error as Error;
+      Alert.alert('Error', err.message || 'Failed to start timer. Please try again.');
     }
   };
 
