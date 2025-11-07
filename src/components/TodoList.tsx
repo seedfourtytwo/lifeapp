@@ -3,7 +3,7 @@
  * Main container for todo functionality with active/history views
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
 import { Text, Button, Divider } from 'react-native-paper';
 import { useTodoStore } from '../store/todoStore';
@@ -27,10 +27,14 @@ export default function TodoList() {
   } = useTodoStore();
 
   // Load todos on mount
-  useEffect(() => {
+  const loadTodos = useCallback(() => {
     loadActiveTodos();
     loadCompletedTodos();
-  }, []);
+  }, [loadActiveTodos, loadCompletedTodos]);
+
+  useEffect(() => {
+    loadTodos();
+  }, [loadTodos]);
 
   const handleAddTodo = async (title: string, deadline?: string, points?: number) => {
     try {

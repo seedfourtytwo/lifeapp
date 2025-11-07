@@ -55,7 +55,7 @@ function RunningActivityLane({
         {/* Activity Icon & Name */}
         <View style={styles.activityInfo}>
           <View style={[styles.iconContainer, { backgroundColor: activity.color }]}>
-            <Icon name={activity.icon as any} size={24} color="#FFFFFF" />
+            <Icon name={activity.icon as keyof typeof Icon.glyphMap} size={24} color="#FFFFFF" />
           </View>
           <Text variant="titleMedium" style={styles.activityName}>
             {activity.name}

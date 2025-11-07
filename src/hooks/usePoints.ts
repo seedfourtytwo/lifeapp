@@ -76,10 +76,11 @@ export function usePoints(date?: string) {
       const dateToApply = applyToDate || targetDate;
       await pointsService.applyBonusToDay(dateToApply, amount);
       await loadData();
-    } catch (err: any) {
-      console.error('Error applying bonus:', err);
-      setError(err.message || 'Failed to apply bonus');
-      throw err;
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error applying bonus:', error);
+      setError(error.message || 'Failed to apply bonus');
+      throw error;
     }
   }, [targetDate, loadData]);
 

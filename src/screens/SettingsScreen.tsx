@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Alert, ScrollView } from 'react-native';
 import { Text, List, IconButton, TextInput, Button, Dialog, Portal, Divider, Checkbox, Switch } from 'react-native-paper';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useActivityStore } from '../store/activityStore';
 import { Activity, ActivityGoal, Recipe, RecipeIngredient } from '../types';
 import * as storage from '../services/storageService';
@@ -352,8 +353,8 @@ export default function SettingsScreen() {
                   <List.Item
                     title={item.name}
                     description={item.isNegative ? 'Negative activity (reduces score)' : undefined}
-                    left={(props) => <List.Icon {...props} icon={item.icon as any} color={item.color} />}
-                    right={(props) => (
+                    left={(_props) => <List.Icon {..._props} icon={item.icon as keyof typeof Icon.glyphMap} color={item.color} />}
+                    right={(_props) => (
                       <View style={styles.actionsContainer}>
                         {!isEditing && (
                           <>
@@ -666,7 +667,7 @@ export default function SettingsScreen() {
         <List.Accordion
           title="Recipe Library"
           description={`${recipes.length} ${recipes.length === 1 ? 'recipe' : 'recipes'}`}
-          left={(props) => <List.Icon {...props} icon="silverware-fork-knife" />}
+                  left={(_props) => <List.Icon {..._props} icon="silverware-fork-knife" />}
           expanded={recipesExpanded}
           onPress={() => setRecipesExpanded(!recipesExpanded)}
           style={styles.accordion}
@@ -687,8 +688,8 @@ export default function SettingsScreen() {
                   key={recipe.id}
                   title={recipe.name}
                   description={`${recipe.servings} servings • ${recipe.ingredients.length} ingredients`}
-                  left={(props) => <List.Icon {...props} icon="chef-hat" />}
-                  right={(props) => (
+                  left={(_props) => <List.Icon {..._props} icon="chef-hat" />}
+                  right={(_props) => (
                     <View style={styles.actionsContainer}>
                       <IconButton icon="pencil" size={20} onPress={() => openEditRecipeDialog(recipe)} />
                       <IconButton icon="delete" size={20} onPress={() => handleDeleteRecipe(recipe)} />

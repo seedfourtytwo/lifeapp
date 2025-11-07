@@ -3,7 +3,7 @@
  * Manages multiple active timers and updates elapsed time for each
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useActivityStore } from '../store/activityStore';
 import * as storage from '../services/storageService';
 import { ActiveSession } from '../types';
@@ -56,7 +56,7 @@ export function useActivityTimers() {
 
     // Cleanup on unmount or when activeSessions changes
     return () => clearInterval(interval);
-  }, [activeSessions.length, activeSessions.map(s => `${s.activityId}-${s.isPaused}`).join(',')]);
+  }, [activeSessions]);
 
   // Helper to get session for a specific activity
   const getSessionForActivity = useCallback((activityId: string): ActiveSession | undefined => {

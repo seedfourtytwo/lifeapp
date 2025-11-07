@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
-import { Text, Card, IconButton, Button, Chip } from 'react-native-paper';
+import { Text, Card, IconButton, Button } from 'react-native-paper';
 import { useStats } from '../hooks/useStats';
 import { useActivityStore } from '../store/activityStore';
 import ViewModeSwitcher from '../components/ViewModeSwitcher';
@@ -22,7 +22,6 @@ export default function StatsScreen() {
     selectedMonthStart,
     currentDayAchievement,
     weekAchievements,
-    monthAchievements,
     currentStreak,
     weeklyBonus,
     previousDay,

@@ -69,7 +69,7 @@ export const deleteActivity = async (activityId: string): Promise<void> => {
 };
 
 const initializeDefaultActivities = async (): Promise<void> => {
-  const activities: Activity[] = DEFAULT_ACTIVITIES.map((activity, index) => ({
+  const activities: Activity[] = DEFAULT_ACTIVITIES.map((activity, _index) => ({
     ...activity,
     id: generateId(),
     createdAt: new Date().toISOString(),

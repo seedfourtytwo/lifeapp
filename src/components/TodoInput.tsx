@@ -37,7 +37,7 @@ export default function TodoInput({ onAdd }: TodoInputProps) {
     setVisible(false);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (event: unknown, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDeadline(selectedDate);

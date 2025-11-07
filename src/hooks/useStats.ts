@@ -7,7 +7,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { DayAchievement, ActivityGoal, StreakData, WeeklyBonus } from '../types';
 import * as storage from '../services/storageService';
 import * as statsService from '../services/statsService';
-import * as pointsService from '../services/pointsService';
 
 export type ViewMode = 'day' | 'week' | 'month';
 

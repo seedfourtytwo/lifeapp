@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, FlatList, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Button, Card, List, Dialog, Portal } from 'react-native-paper';
 import { useActivityStore } from '../store/activityStore';
 import { useActivityTimers } from '../hooks/useActivityTimers';
