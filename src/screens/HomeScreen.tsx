@@ -1,177 +1,287 @@
 /**
- * HomeScreen
- * Main screen showing activity grid and active timer
+ * HomeScreen (Life Page)
+ * Main screen with Activity Tracker, Timer, and Todo sections
+ * Now supports multiple concurrent activities!
  */
 
-import React, { useEffect } from 'react';
-import { StyleSheet, View, FlatList, Alert } from 'react-native';
-import { Text, Button, Card } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, FlatList, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, Button, Card, List, Dialog, Portal } from 'react-native-paper';
 import { useActivityStore } from '../store/activityStore';
-import { useActivityTimer, formatTime } from '../hooks/useActivityTimer';
+import { useActivityTimers } from '../hooks/useActivityTimers';
 import ActivityButton from '../components/ActivityButton';
+import ActivityCard from '../components/ActivityCard';
+import RunningActivityLane from '../components/RunningActivityLane';
+import ActivityDetailsPanel from '../components/ActivityDetailsPanel';
+import IntervalTimer from '../components/IntervalTimer';
+import TodoList from '../components/TodoList';
 import { Activity } from '../types';
 
 export default function HomeScreen() {
-  const { activities, loadActivities, isLoading } = useActivityStore();
+  const [activityExpanded, setActivityExpanded] = useState(true);
+  const [timerExpanded, setTimerExpanded] = useState(false);
+  const [todoExpanded, setTodoExpanded] = useState(false);
+  const [moreDialogVisible, setMoreDialogVisible] = useState(false);
+  const [expandedActivityId, setExpandedActivityId] = useState<string | null>(null);
+  const { activities, loadActivities } = useActivityStore();
   const {
-    activeSession,
-    elapsedSeconds,
-    isRunning,
-    isPaused,
+    activeSessions,
+    getSessionForActivity,
+    isActivityRunning,
     startTimer,
     stopTimer,
     pauseTimer,
     resumeTimer,
-    cancelTimer
-  } = useActivityTimer();
+    cancelTimer,
+    toggleExpand,
+  } = useActivityTimers();
 
-  // Load activities and active session on mount
+  // Load activities and active sessions on mount
   useEffect(() => {
     loadActivities();
-    useActivityStore.getState().loadActiveSession();
-  }, []);
+    useActivityStore.getState().loadActiveSessions();
+  }, [loadActivities]);
 
   const handleActivityPress = async (activity: Activity) => {
     try {
-      if (isRunning) {
-        // Auto-save current session and start new one
-        await stopTimer();
-        await startTimer(activity.id);
-      } else {
-        // Start new timer
-        await startTimer(activity.id);
+      // If activity is already running, toggle its expanded state
+      if (isActivityRunning(activity.id)) {
+        await toggleExpand(activity.id);
+        return;
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to start timer. Please try again.');
+
+      // Start new timer
+      await startTimer(activity.id);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to start timer. Please try again.');
     }
   };
 
-  const handleStopTimer = async () => {
+  const handleStopTimer = async (activityId: string) => {
     try {
-      await stopTimer();
+      // Show confirmation dialog
+      Alert.alert(
+        'Stop Activity',
+        'Save this session to your history?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: async () => {
+              await cancelTimer(activityId);
+            },
+          },
+          {
+            text: 'Save',
+            onPress: async () => {
+              await stopTimer(activityId);
+            },
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to stop timer. Please try again.');
     }
   };
 
-  const handlePauseTimer = async () => {
+  const handlePauseTimer = async (activityId: string) => {
     try {
-      await pauseTimer();
+      await pauseTimer(activityId);
     } catch (error) {
       Alert.alert('Error', 'Failed to pause timer. Please try again.');
     }
   };
 
-  const handleResumeTimer = async () => {
+  const handleResumeTimer = async (activityId: string) => {
     try {
-      await resumeTimer();
+      await resumeTimer(activityId);
     } catch (error) {
       Alert.alert('Error', 'Failed to resume timer. Please try again.');
     }
   };
 
-  const handleCancelTimer = async () => {
-    try {
-      await cancelTimer();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to cancel timer. Please try again.');
-    }
+  const handleToggleExpand = async (activityId: string) => {
+    // Toggle local expansion state (not persisted)
+    setExpandedActivityId(expandedActivityId === activityId ? null : activityId);
   };
 
-  const renderActivity = ({ item }: { item: Activity }) => (
-    <View style={styles.activityItem}>
-      <ActivityButton
-        activity={item}
-        onPress={() => handleActivityPress(item)}
-        isActive={activeSession?.activityId === item.id}
-      />
-    </View>
-  );
+  // Combine activities with their sessions for rendering
+  const getActivitiesForGrid = () => {
+    const sortedActivities = activities.sort((a, b) => a.order - b.order);
+
+    // Separate running and idle activities
+    const runningActivities = sortedActivities.filter(a => isActivityRunning(a.id));
+    const idleActivities = sortedActivities.filter(a => !isActivityRunning(a.id));
+
+    // 4x4 grid = 16 slots total
+    // If we have more than 15 idle activities, last slot shows "More"
+    const maxVisible = 15;
+    const hasMore = idleActivities.length > maxVisible;
+    const displayIdleActivities = hasMore ? idleActivities.slice(0, maxVisible) : idleActivities;
+
+    return {
+      runningActivities,
+      displayIdleActivities,
+      hasMore,
+      allActivities: sortedActivities,
+    };
+  };
+
+  const { runningActivities, displayIdleActivities, hasMore, allActivities } = getActivitiesForGrid();
 
   return (
-    <View style={styles.container}>
-      {/* Active Timer Display */}
-      {isRunning && activeSession && (
-        <Card style={styles.timerCard} elevation={4}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.timerLabel}>
-              Currently Tracking
+    <ScrollView style={styles.container}>
+      {/* Activity Tracker Section */}
+      <List.Accordion
+        title="Activity Tracker"
+        description={
+          activeSessions.length > 0
+            ? `Tracking ${activeSessions.length} ${activeSessions.length === 1 ? 'activity' : 'activities'}`
+            : 'Track your daily activities'
+        }
+        expanded={activityExpanded}
+        onPress={() => setActivityExpanded(!activityExpanded)}
+        left={(props) => <List.Icon {...props} icon="play-circle" />}
+        style={styles.accordion}
+      >
+        {activities.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text variant="bodyLarge">No activities yet</Text>
+            <Text variant="bodyMedium" style={styles.emptyText}>
+              Go to Settings to add activities
             </Text>
-            <Text variant="headlineLarge" style={styles.activityName}>
-              {activeSession.activityName}
-            </Text>
-            <Text variant="displayMedium" style={[styles.timer, isPaused && styles.pausedTimer]}>
-              {formatTime(elapsedSeconds)} {isPaused && '(Paused)'}
-            </Text>
-            <View style={styles.buttonRow}>
-              {isPaused ? (
-                <Button
-                  mode="contained"
-                  onPress={handleResumeTimer}
-                  style={styles.actionButton}
-                  buttonColor="#4CAF50"
-                  icon="play"
-                >
-                  Resume
-                </Button>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={handlePauseTimer}
-                  style={styles.actionButton}
-                  buttonColor="#FF9800"
-                  icon="pause"
-                >
-                  Pause
-                </Button>
-              )}
-              <Button
-                mode="contained"
-                onPress={handleStopTimer}
-                style={styles.actionButton}
-                buttonColor="#4CAF50"
-                icon="check"
-              >
-                Save
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={handleCancelTimer}
-                style={styles.actionButton}
-                textColor="#F44336"
-                icon="close"
-              >
-                Cancel
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-      )}
+          </View>
+        ) : (
+          <View style={styles.content}>
+            {/* Running Activities - Horizontal Lanes */}
+            {runningActivities.length > 0 && (
+              <View style={styles.runningSection}>
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                  Running Activities
+                </Text>
+                {runningActivities.map((activity) => {
+                  const session = getSessionForActivity(activity.id);
+                  if (!session) return null;
 
-      {/* Activity Grid */}
-      <View style={styles.gridContainer}>
-        <Text variant="titleLarge" style={styles.gridTitle}>
-          {isRunning ? 'Switch Activity' : 'Select Activity'}
-        </Text>
+                  const isExpanded = expandedActivityId === activity.id;
 
-        <FlatList
-          data={activities.sort((a, b) => a.order - b.order)}
-          renderItem={renderActivity}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          contentContainerStyle={styles.grid}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text variant="bodyLarge">No activities yet</Text>
-              <Text variant="bodyMedium" style={styles.emptyText}>
-                Go to Settings to add activities
-              </Text>
-            </View>
-          }
-        />
-      </View>
-    </View>
+                  return (
+                    <View key={activity.id}>
+                      <RunningActivityLane
+                        activity={activity}
+                        session={session}
+                        onPause={() => handlePauseTimer(activity.id)}
+                        onResume={() => handleResumeTimer(activity.id)}
+                        onStop={() => handleStopTimer(activity.id)}
+                        onToggleExpand={() => handleToggleExpand(activity.id)}
+                      />
+                      <ActivityDetailsPanel activity={activity} isExpanded={isExpanded} />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Idle Activities - 4x4 Grid */}
+            {displayIdleActivities.length > 0 && (
+              <View style={styles.idleSection}>
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                  Start Activity
+                </Text>
+                <View style={styles.grid}>
+                  {displayIdleActivities.map((activity) => (
+                    <View key={activity.id} style={styles.gridItem}>
+                      <ActivityCard activity={activity} onPress={() => handleActivityPress(activity)} />
+                    </View>
+                  ))}
+
+                  {/* More button */}
+                  {hasMore && (
+                    <View key="more" style={styles.gridItem}>
+                      <TouchableOpacity
+                        style={styles.moreButton}
+                        onPress={() => setMoreDialogVisible(true)}
+                        accessible={true}
+                        accessibilityLabel="View more activities"
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.moreButtonText}>•••</Text>
+                        <Text style={styles.moreButtonLabel}>More</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+      </List.Accordion>
+
+      {/* Timer Section */}
+      <List.Accordion
+        title="Interval Timer"
+        description="Workout & cooking timer with rounds"
+        expanded={timerExpanded}
+        onPress={() => setTimerExpanded(!timerExpanded)}
+        left={(props) => <List.Icon {...props} icon="timer" />}
+        style={styles.accordion}
+      >
+        <View style={styles.sectionContent}>
+          <IntervalTimer />
+        </View>
+      </List.Accordion>
+
+      {/* Todo Section */}
+      <List.Accordion
+        title="Todo List"
+        description="Track your daily tasks and goals"
+        expanded={todoExpanded}
+        onPress={() => setTodoExpanded(!todoExpanded)}
+        left={(props) => <List.Icon {...props} icon="checkbox-marked-circle" />}
+        style={styles.accordion}
+      >
+        <TodoList />
+      </List.Accordion>
+
+      {/* More Activities Dialog */}
+      <Portal>
+        <Dialog visible={moreDialogVisible} onDismiss={() => setMoreDialogVisible(false)}>
+          <Dialog.Title>All Activities</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={styles.moreDialog}>
+              <View style={styles.moreGrid}>
+                {allActivities.map((activity) => {
+                  const session = getSessionForActivity(activity.id);
+                  return (
+                    <View key={activity.id} style={styles.moreActivityItem}>
+                      <ActivityButton
+                        activity={activity}
+                        activeSession={session}
+                        onPress={() => {
+                          handleActivityPress(activity);
+                          setMoreDialogVisible(false);
+                        }}
+                        onPause={() => handlePauseTimer(activity.id)}
+                        onResume={() => handleResumeTimer(activity.id)}
+                        onStop={() => handleStopTimer(activity.id)}
+                        onToggleExpand={() => handleToggleExpand(activity.id)}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setMoreDialogVisible(false)}>Close</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+    </ScrollView>
   );
 }
 
@@ -180,57 +290,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  timerCard: {
-    margin: 16,
+  accordion: {
     backgroundColor: '#FFFFFF',
+    marginBottom: 2,
   },
-  timerLabel: {
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 8,
+  sectionContent: {
+    padding: 16,
+    backgroundColor: '#F5F5F5',
   },
-  activityName: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
+  content: {
+    paddingBottom: 16,
   },
-  timer: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 16,
-  },
-  pausedTimer: {
-    color: '#FF9800',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  runningSection: {
+    paddingTop: 16,
     gap: 8,
-    marginTop: 8,
   },
-  actionButton: {
-    flex: 1,
+  idleSection: {
+    paddingHorizontal: 8,
+    paddingTop: 16,
   },
-  gridContainer: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  gridTitle: {
-    marginTop: 8,
+  sectionTitle: {
     marginBottom: 12,
-    marginLeft: 6,
+    paddingHorizontal: 8,
     fontWeight: '600',
   },
   grid: {
-    paddingBottom: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
-  activityItem: {
-    width: '33.33%',
+  gridItem: {
+    width: '25%', // 4x4 grid
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
@@ -238,5 +329,43 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 8,
     color: '#666',
+  },
+  moreButton: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 16,
+    padding: 16,
+    margin: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#607D8B',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  moreButtonText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  moreButtonLabel: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  moreDialog: {
+    paddingHorizontal: 16,
+    maxHeight: 400,
+  },
+  moreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingBottom: 16,
+  },
+  moreActivityItem: {
+    width: '25%', // Match 4x4 grid in dialog
   },
 });

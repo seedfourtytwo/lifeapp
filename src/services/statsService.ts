@@ -3,7 +3,7 @@
  * Handles all statistics calculations and data aggregation
  */
 
-import { TrackingSession, ActivityGoal, DayAchievement, ActivityStats } from '../types';
+import { TrackingSession, ActivityGoal, DayAchievement, ActivityStats, DailyPoints } from '../types';
 
 /**
  * Group sessions by date for efficient lookups
@@ -33,12 +33,14 @@ function calculateActivityMinutes(sessions: TrackingSession[], activityId: strin
 
 /**
  * Calculate achievement for a single day
+ * Now integrates with point system
  */
 export function calculateDayAchievement(
   date: string,
   sessionsByDate: Map<string, TrackingSession[]>,
   goals: ActivityGoal[],
-  activities: Map<string, { name: string; color: string }>
+  activities: Map<string, { name: string; color: string; isNegative?: boolean }>,
+  dailyPointsMap?: Map<string, DailyPoints>
 ): DayAchievement {
   const sessions = sessionsByDate.get(date) || [];
   const enabledGoals = goals.filter((g) => g.enabled);
@@ -75,38 +77,37 @@ export function calculateDayAchievement(
     }
   );
 
-  // Calculate goal completion
+  // Calculate goal completion (for backward compatibility)
   let goalsCompleted = 0;
-  let totalGoalMinutes = 0;
-  let achievedGoalMinutes = 0;
-
   enabledGoals.forEach((goal) => {
     const actualMinutes = calculateActivityMinutes(sessions, goal.activityId);
-    totalGoalMinutes += goal.minimumMinutes;
-    achievedGoalMinutes += Math.min(actualMinutes, goal.minimumMinutes);
-
     if (actualMinutes >= goal.minimumMinutes) {
       goalsCompleted += 1;
     }
   });
 
-  // Calculate score (0-100)
-  const score =
-    totalGoalMinutes > 0 ? Math.round((achievedGoalMinutes / totalGoalMinutes) * 100) : 0;
+  // Get DailyPoints if available
+  const dailyPoints = dailyPointsMap?.get(date);
 
-  // Determine status
+  // Determine status based on points (or fallback to goal completion)
   let status: 'excellent' | 'good' | 'poor';
-  if (score >= 80) {
+  const totalPoints = dailyPoints?.totalPoints || 0;
+
+  if (totalPoints >= 100) {
     status = 'excellent';
-  } else if (score >= 50) {
+  } else if (totalPoints >= 80) {
     status = 'good';
   } else {
     status = 'poor';
   }
 
+  // Legacy score for backward compatibility (show points as score, capped at 100 for display)
+  const score = totalPoints > 100 ? 100 : totalPoints;
+
   return {
     date,
     score,
+    points: dailyPoints,
     goalsCompleted,
     totalGoals: enabledGoals.length,
     streak: 0, // Will be calculated separately
@@ -123,7 +124,8 @@ export function calculateWeekAchievements(
   startDate: Date,
   sessionsByDate: Map<string, TrackingSession[]>,
   goals: ActivityGoal[],
-  activities: Map<string, { name: string; color: string }>
+  activities: Map<string, { name: string; color: string; isNegative?: boolean }>,
+  dailyPointsMap?: Map<string, DailyPoints>
 ): DayAchievement[] {
   const achievements: DayAchievement[] = [];
 
@@ -132,7 +134,7 @@ export function calculateWeekAchievements(
     date.setDate(date.getDate() + i);
     const dateStr = formatDate(date);
 
-    const achievement = calculateDayAchievement(dateStr, sessionsByDate, goals, activities);
+    const achievement = calculateDayAchievement(dateStr, sessionsByDate, goals, activities, dailyPointsMap);
     achievements.push(achievement);
   }
 
@@ -171,7 +173,8 @@ function calculateStreaks(achievements: DayAchievement[]): void {
 export function calculateOverallStreak(
   sessionsByDate: Map<string, TrackingSession[]>,
   goals: ActivityGoal[],
-  activities: Map<string, { name: string; color: string }>
+  activities: Map<string, { name: string; color: string; isNegative?: boolean }>,
+  dailyPointsMap?: Map<string, DailyPoints>
 ): number {
   // Get last 90 days
   const today = new Date();
@@ -182,7 +185,7 @@ export function calculateOverallStreak(
     date.setDate(date.getDate() - i);
     const dateStr = formatDate(date);
 
-    const achievement = calculateDayAchievement(dateStr, sessionsByDate, goals, activities);
+    const achievement = calculateDayAchievement(dateStr, sessionsByDate, goals, activities, dailyPointsMap);
     achievements.unshift(achievement); // Add to beginning
   }
 

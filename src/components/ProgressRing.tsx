@@ -1,13 +1,13 @@
 /**
  * ProgressRing Component
- * Displays a circular progress indicator with percentage
+ * Displays a circular progress indicator with points
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface ProgressRingProps {
-  percentage: number; // 0-100
+  points: number; // 0-100+ (points earned)
   size?: number;
   status: 'excellent' | 'good' | 'poor';
 }
@@ -18,9 +18,9 @@ const STATUS_COLORS = {
   poor: '#F44336', // Red
 };
 
-export default function ProgressRing({ percentage, size = 60, status }: ProgressRingProps) {
+export default function ProgressRing({ points, size = 60, status }: ProgressRingProps) {
   const color = STATUS_COLORS[status];
-  const displayPercentage = Math.min(100, Math.max(0, Math.round(percentage)));
+  const displayPoints = Math.round(points);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -36,7 +36,7 @@ export default function ProgressRing({ percentage, size = 60, status }: Progress
           },
         ]}
       >
-        <Text style={[styles.percentage, { fontSize: size / 3 }]}>{displayPercentage}%</Text>
+        <Text style={[styles.points, { fontSize: size / 3.5 }]}>{displayPoints}</Text>
       </View>
     </View>
   );
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
   },
-  percentage: {
+  points: {
     fontWeight: 'bold',
     color: '#000',
   },

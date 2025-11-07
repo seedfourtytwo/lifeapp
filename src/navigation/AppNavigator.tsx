@@ -20,7 +20,7 @@ const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
-    // @ts-ignore - Tab.Navigator type issue with React Navigation
+    // @ts-expect-error - Tab.Navigator type issue with React Navigation
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: '#FFFFFF',

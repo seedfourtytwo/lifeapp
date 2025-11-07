@@ -1,22 +1,26 @@
 /**
  * useStats Hook
- * Manages stats data loading and calculations
+ * Manages stats data loading and calculations with day/week/month views
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { DayAchievement, ActivityGoal } from '../types';
+import { DayAchievement, ActivityGoal, StreakData, WeeklyBonus } from '../types';
 import * as storage from '../services/storageService';
 import * as statsService from '../services/statsService';
+import * as pointsService from '../services/pointsService';
+
+export type ViewMode = 'day' | 'week' | 'month';
 
 export function useStats() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionsByDate, setSessionsByDate] = useState(new Map());
   const [goals, setGoals] = useState<ActivityGoal[]>([]);
   const [activities, setActivities] = useState(new Map());
-  const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
-    const { start } = statsService.getCurrentWeekRange();
-    return start;
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [streak, setStreak] = useState<StreakData | null>(null);
+  const [weeklyBonus, setWeeklyBonus] = useState<WeeklyBonus | null>(null);
+  const [dailyPointsMap, setDailyPointsMap] = useState(new Map());
 
   // Load data on mount
   useEffect(() => {
@@ -28,10 +32,12 @@ export function useStats() {
       setIsLoading(true);
 
       // Load all required data
-      const [sessions, settings, activitiesList] = await Promise.all([
+      const [sessions, settings, activitiesList, streakData, bonusData] = await Promise.all([
         storage.getTrackingSessions(),
         storage.getUserSettings(),
         storage.getActivities(),
+        storage.getStreakData(),
+        storage.getCurrentWeeklyBonus(),
       ]);
 
       // Group sessions by date
@@ -41,15 +47,39 @@ export function useStats() {
       // Set goals
       setGoals(settings.dailyGoals || []);
 
+      // Set streak and bonus
+      setStreak(streakData);
+      setWeeklyBonus(bonusData);
+
       // Create activities map for quick lookup
       const activityMap = new Map();
       activitiesList.forEach((activity) => {
         activityMap.set(activity.id, {
           name: activity.name,
           color: activity.color,
+          isNegative: activity.isNegative || false,
         });
       });
       setActivities(activityMap);
+
+      // Load daily points for last 90 days
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 90);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 30); // Include future dates
+
+      const dailyPointsList = await storage.getDailyPointsRange(
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+
+      // Convert to Map for quick lookup
+      const pointsMap = new Map();
+      dailyPointsList.forEach((dp) => {
+        pointsMap.set(dp.date, dp);
+      });
+      setDailyPointsMap(pointsMap);
     } catch (error) {
       console.error('Failed to load stats data:', error);
     } finally {
@@ -57,60 +87,198 @@ export function useStats() {
     }
   };
 
-  // Calculate week achievements
+  // Helper: Format date to YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper: Get week start (Monday)
+  const getWeekStart = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  // Helper: Get month start
+  const getMonthStart = (date: Date): Date => {
+    const d = new Date(date);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  // Get current selected week start
+  const selectedWeekStart = useMemo(() => {
+    return viewMode === 'week' ? getWeekStart(selectedDate) : new Date();
+  }, [viewMode, selectedDate]);
+
+  // Get current selected month start
+  const selectedMonthStart = useMemo(() => {
+    return viewMode === 'month' ? getMonthStart(selectedDate) : new Date();
+  }, [viewMode, selectedDate]);
+
+  // Calculate current day achievement (for day view)
+  const currentDayAchievement = useMemo<DayAchievement | null>(() => {
+    if (viewMode !== 'day') return null;
+
+    const dateStr = formatDate(selectedDate);
+    return statsService.calculateDayAchievement(
+      dateStr,
+      sessionsByDate,
+      goals,
+      activities,
+      dailyPointsMap
+    );
+  }, [viewMode, selectedDate, sessionsByDate, goals, activities, dailyPointsMap]);
+
+  // Calculate week achievements (for week view)
   const weekAchievements = useMemo<DayAchievement[]>(() => {
-    if (sessionsByDate.size === 0) return [];
+    if (viewMode !== 'week' || sessionsByDate.size === 0) return [];
 
     return statsService.calculateWeekAchievements(
       selectedWeekStart,
       sessionsByDate,
       goals,
-      activities
+      activities,
+      dailyPointsMap
     );
-  }, [selectedWeekStart, sessionsByDate, goals, activities]);
+  }, [viewMode, selectedWeekStart, sessionsByDate, goals, activities, dailyPointsMap]);
 
-  // Calculate overall streak
-  const overallStreak = useMemo(() => {
-    if (sessionsByDate.size === 0) return 0;
+  // Calculate month achievements (for month view)
+  const monthAchievements = useMemo<DayAchievement[]>(() => {
+    if (viewMode !== 'month') return [];
 
-    return statsService.calculateOverallStreak(sessionsByDate, goals, activities);
-  }, [sessionsByDate, goals, activities]);
+    const year = selectedMonthStart.getFullYear();
+    const month = selectedMonthStart.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Navigate to previous week
+    const achievements: DayAchievement[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = formatDate(date);
+
+      achievements.push(
+        statsService.calculateDayAchievement(dateStr, sessionsByDate, goals, activities, dailyPointsMap)
+      );
+    }
+
+    return achievements;
+  }, [viewMode, selectedMonthStart, sessionsByDate, goals, activities, dailyPointsMap]);
+
+  // Navigation: Day view
+  const previousDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 1);
+    setSelectedDate(newDate);
+  };
+
+  const nextDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 1);
+    setSelectedDate(newDate);
+  };
+
+  // Navigation: Week view
   const previousWeek = () => {
-    const newStart = new Date(selectedWeekStart);
-    newStart.setDate(newStart.getDate() - 7);
-    setSelectedWeekStart(newStart);
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setSelectedDate(newDate);
   };
 
-  // Navigate to next week
   const nextWeek = () => {
-    const newStart = new Date(selectedWeekStart);
-    newStart.setDate(newStart.getDate() + 7);
-    setSelectedWeekStart(newStart);
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setSelectedDate(newDate);
   };
 
-  // Go to current week
-  const goToCurrentWeek = () => {
-    const { start } = statsService.getCurrentWeekRange();
-    setSelectedWeekStart(start);
+  // Navigation: Month view
+  const previousMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setSelectedDate(newDate);
   };
+
+  const nextMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setSelectedDate(newDate);
+  };
+
+  // Go to today
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  // Check if currently viewing today
+  const isToday = useMemo(() => {
+    const today = new Date();
+    return formatDate(selectedDate) === formatDate(today);
+  }, [selectedDate]);
 
   // Check if showing current week
   const isCurrentWeek = useMemo(() => {
-    const { start } = statsService.getCurrentWeekRange();
-    return statsService.formatDate(selectedWeekStart) === statsService.formatDate(start);
+    const today = new Date();
+    const currentWeekStart = getWeekStart(today);
+    return formatDate(selectedWeekStart) === formatDate(currentWeekStart);
   }, [selectedWeekStart]);
 
+  // Check if showing current month
+  const isCurrentMonth = useMemo(() => {
+    const today = new Date();
+    return (
+      selectedMonthStart.getMonth() === today.getMonth() &&
+      selectedMonthStart.getFullYear() === today.getFullYear()
+    );
+  }, [selectedMonthStart]);
+
+  // Get current streak (use stored streak data)
+  const currentStreak = useMemo(() => {
+    return streak?.currentStreak || 0;
+  }, [streak]);
+
   return {
+    // Loading state
     isLoading,
-    weekAchievements,
-    overallStreak,
+
+    // View mode
+    viewMode,
+    setViewMode,
+
+    // Selected date/period
+    selectedDate,
     selectedWeekStart,
+    selectedMonthStart,
+
+    // Achievement data by view
+    currentDayAchievement,
+    weekAchievements,
+    monthAchievements,
+
+    // Point system data
+    currentStreak,
+    weeklyBonus,
+
+    // Navigation functions
+    previousDay,
+    nextDay,
     previousWeek,
     nextWeek,
-    goToCurrentWeek,
+    previousMonth,
+    nextMonth,
+    goToToday,
+
+    // Current period checks
+    isToday,
     isCurrentWeek,
+    isCurrentMonth,
+
+    // Data refresh
     refreshData: loadData,
+
+    // Raw data access (for components that need it)
+    activities,
   };
 }

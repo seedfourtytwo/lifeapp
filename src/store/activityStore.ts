@@ -10,7 +10,7 @@ import * as storage from '../services/storageService';
 interface ActivityState {
   // State
   activities: Activity[];
-  activeSession: ActiveSession | null;
+  activeSessions: ActiveSession[]; // Changed from single session to array
   isLoading: boolean;
 
   // Actions
@@ -20,19 +20,27 @@ interface ActivityState {
   deleteActivity: (id: string) => Promise<void>;
   reorderActivities: (activities: Activity[]) => Promise<void>;
 
-  // Timer actions
+  // Timer actions - updated for multi-session
   startTimer: (activityId: string) => Promise<void>;
-  stopTimer: () => Promise<void>;
-  pauseTimer: () => Promise<void>;
-  resumeTimer: () => Promise<void>;
-  cancelTimer: () => Promise<void>;
+  stopTimer: (activityId: string) => Promise<void>;
+  pauseTimer: (activityId: string) => Promise<void>;
+  resumeTimer: (activityId: string) => Promise<void>;
+  cancelTimer: (activityId: string) => Promise<void>;
+  toggleExpand: (activityId: string) => Promise<void>;
+  loadActiveSessions: () => Promise<void>;
+
+  // Legacy single-session support (deprecated)
+  activeSession: ActiveSession | null;
   loadActiveSession: () => Promise<void>;
 }
+
+const MAX_CONCURRENT_SESSIONS = 3;
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
   // Initial state
   activities: [],
-  activeSession: null,
+  activeSessions: [],
+  activeSession: null, // Legacy - kept for backward compatibility
   isLoading: false,
 
   // Load activities from storage
@@ -118,11 +126,22 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   // Start timer for an activity
   startTimer: async (activityId) => {
     try {
-      const { activities } = get();
+      const { activities, activeSessions } = get();
       const activity = activities.find((a) => a.id === activityId);
 
       if (!activity) {
         throw new Error('Activity not found');
+      }
+
+      // Check if activity is already running
+      if (activeSessions.some((s) => s.activityId === activityId)) {
+        console.warn('Activity is already running');
+        return;
+      }
+
+      // Check max concurrent sessions limit
+      if (activeSessions.length >= MAX_CONCURRENT_SESSIONS) {
+        throw new Error(`Maximum ${MAX_CONCURRENT_SESSIONS} activities can run at the same time`);
       }
 
       const newSession: ActiveSession = {
@@ -131,10 +150,15 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
         startTime: new Date().toISOString(),
         elapsedSeconds: 0,
         isPaused: false,
+        isExpanded: false, // Start in compact state
       };
 
-      await storage.saveActiveSession(newSession);
-      set({ activeSession: newSession });
+      await storage.addActiveSession(newSession);
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
     } catch (error) {
       console.error('Failed to start timer:', error);
       throw error;
@@ -142,22 +166,25 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   // Stop timer and save session
-  stopTimer: async () => {
+  stopTimer: async (activityId) => {
     try {
-      const { activeSession } = get();
+      const { activeSessions } = get();
+      const session = activeSessions.find((s) => s.activityId === activityId);
 
-      if (!activeSession) {
+      if (!session) {
+        console.warn('Session not found for activity:', activityId);
         return;
       }
 
       // Use elapsedSeconds from the active session (handles paused time correctly)
-      const durationSeconds = activeSession.elapsedSeconds;
+      // Ensure minimum 1 minute (60 seconds) is recorded
+      const durationSeconds = Math.max(60, session.elapsedSeconds);
 
       // Save completed session
       const trackingSession = {
         id: generateId(),
-        activityId: activeSession.activityId,
-        startTime: activeSession.startTime,
+        activityId: session.activityId,
+        startTime: session.startTime,
         endTime: new Date().toISOString(),
         durationSeconds,
         date: storage.formatDate(new Date()),
@@ -165,9 +192,13 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       };
 
       await storage.addTrackingSession(trackingSession);
-      await storage.clearActiveSession();
+      await storage.removeActiveSession(activityId);
 
-      set({ activeSession: null });
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
     } catch (error) {
       console.error('Failed to stop timer:', error);
       throw error;
@@ -175,22 +206,25 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   // Pause timer
-  pauseTimer: async () => {
+  pauseTimer: async (activityId) => {
     try {
-      const { activeSession } = get();
+      const { activeSessions } = get();
+      const session = activeSessions.find((s) => s.activityId === activityId);
 
-      if (!activeSession || activeSession.isPaused) {
+      if (!session || session.isPaused) {
         return;
       }
 
-      const updatedSession: ActiveSession = {
-        ...activeSession,
+      await storage.updateActiveSession(activityId, {
         isPaused: true,
         pausedAt: new Date().toISOString(),
-      };
+      });
 
-      await storage.saveActiveSession(updatedSession);
-      set({ activeSession: updatedSession });
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
     } catch (error) {
       console.error('Failed to pause timer:', error);
       throw error;
@@ -198,22 +232,25 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   // Resume timer
-  resumeTimer: async () => {
+  resumeTimer: async (activityId) => {
     try {
-      const { activeSession } = get();
+      const { activeSessions } = get();
+      const session = activeSessions.find((s) => s.activityId === activityId);
 
-      if (!activeSession || !activeSession.isPaused) {
+      if (!session || !session.isPaused) {
         return;
       }
 
-      const updatedSession: ActiveSession = {
-        ...activeSession,
+      await storage.updateActiveSession(activityId, {
         isPaused: false,
         pausedAt: undefined,
-      };
+      });
 
-      await storage.saveActiveSession(updatedSession);
-      set({ activeSession: updatedSession });
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
     } catch (error) {
       console.error('Failed to resume timer:', error);
       throw error;
@@ -221,21 +258,68 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   // Cancel timer without saving
-  cancelTimer: async () => {
+  cancelTimer: async (activityId) => {
     try {
-      await storage.clearActiveSession();
-      set({ activeSession: null });
+      await storage.removeActiveSession(activityId);
+
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
     } catch (error) {
       console.error('Failed to cancel timer:', error);
       throw error;
     }
   },
 
-  // Load active session from storage (on app start)
+  // Toggle expanded state for an activity
+  toggleExpand: async (activityId) => {
+    try {
+      const { activeSessions } = get();
+      const session = activeSessions.find((s) => s.activityId === activityId);
+
+      if (!session) {
+        return;
+      }
+
+      await storage.updateActiveSession(activityId, {
+        isExpanded: !session.isExpanded,
+      });
+
+      const updatedSessions = await storage.getActiveSessions();
+      set({
+        activeSessions: updatedSessions,
+        activeSession: updatedSessions[0] || null, // Legacy compatibility
+      });
+    } catch (error) {
+      console.error('Failed to toggle expand:', error);
+      throw error;
+    }
+  },
+
+  // Load active sessions from storage (on app start)
+  loadActiveSessions: async () => {
+    try {
+      const activeSessions = await storage.getActiveSessions();
+      set({
+        activeSessions,
+        activeSession: activeSessions[0] || null, // Legacy compatibility
+      });
+    } catch (error) {
+      console.error('Failed to load active sessions:', error);
+    }
+  },
+
+  // Legacy single-session support (deprecated)
   loadActiveSession: async () => {
     try {
-      const activeSession = await storage.getActiveSession();
-      set({ activeSession });
+      // Redirect to new multi-session loader
+      const activeSessions = await storage.getActiveSessions();
+      set({
+        activeSessions,
+        activeSession: activeSessions[0] || null,
+      });
     } catch (error) {
       console.error('Failed to load active session:', error);
     }

@@ -75,7 +75,22 @@ export function useActivityTimer() {
 }
 
 /**
- * Format seconds into HH:MM (hours and minutes only)
+ * Format seconds into HH:MM:SS (for active timer with seconds)
+ */
+export function formatTimeWithSeconds(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Format seconds into HH:MM (hours and minutes only, for stats/history)
  */
 export function formatTime(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);

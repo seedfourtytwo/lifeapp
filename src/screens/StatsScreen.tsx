@@ -1,13 +1,14 @@
 /**
  * StatsScreen
- * Display statistics with horizontal week view and goal tracking
+ * Display statistics with day/week/month views and point system integration
  */
 
 import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
-import { Text, Card, IconButton } from 'react-native-paper';
+import { Text, Card, IconButton, Button, Chip } from 'react-native-paper';
 import { useStats } from '../hooks/useStats';
 import { useActivityStore } from '../store/activityStore';
+import ViewModeSwitcher from '../components/ViewModeSwitcher';
 import DayCard from '../components/DayCard';
 import EditDayDialog from '../components/EditDayDialog';
 import { DayAchievement } from '../types';
@@ -15,26 +16,38 @@ import { DayAchievement } from '../types';
 export default function StatsScreen() {
   const {
     isLoading,
+    viewMode,
+    setViewMode,
+    selectedDate,
+    selectedMonthStart,
+    currentDayAchievement,
     weekAchievements,
-    overallStreak,
-    selectedWeekStart,
+    monthAchievements,
+    currentStreak,
+    weeklyBonus,
+    previousDay,
+    nextDay,
     previousWeek,
     nextWeek,
+    previousMonth,
+    nextMonth,
+    goToToday,
+    isToday,
     isCurrentWeek,
+    isCurrentMonth,
     refreshData,
   } = useStats();
 
   const { activities } = useActivityStore();
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
+  const [selectedDayForEdit, setSelectedDayForEdit] = useState<DayAchievement | null>(null);
   const [editDialogVisible, setEditDialogVisible] = useState(false);
 
   const selectedDay = selectedDayIndex !== null ? weekAchievements[selectedDayIndex] : null;
 
-  const formatWeekRange = () => {
-    if (weekAchievements.length === 0) return '';
-    const firstDay = new Date(weekAchievements[0].date);
-    const lastDay = new Date(weekAchievements[6].date);
-    return `${firstDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const handleEditDay = (day: DayAchievement) => {
+    setSelectedDayForEdit(day);
+    setEditDialogVisible(true);
   };
 
   const formatTime = (minutes: number): string => {
@@ -46,154 +59,244 @@ export default function StatsScreen() {
     return `${mins}m`;
   };
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatWeekRange = () => {
+    if (weekAchievements.length === 0) return '';
+    const firstDay = new Date(weekAchievements[0].date);
+    const lastDay = new Date(weekAchievements[6].date);
+    return `${firstDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${lastDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  };
+
+  const formatMonth = () => {
+    return selectedMonthStart.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  // Navigation handlers based on view mode
+  const handlePrevious = () => {
+    if (viewMode === 'day') previousDay();
+    else if (viewMode === 'week') previousWeek();
+    else previousMonth();
+  };
+
+  const handleNext = () => {
+    if (viewMode === 'day') nextDay();
+    else if (viewMode === 'week') nextWeek();
+    else nextMonth();
+  };
+
+  const isCurrentPeriod = () => {
+    if (viewMode === 'day') return isToday;
+    if (viewMode === 'week') return isCurrentWeek;
+    return isCurrentMonth;
+  };
+
+  const getCurrentLabel = () => {
+    if (viewMode === 'day') return formatDate(selectedDate);
+    if (viewMode === 'week') return formatWeekRange();
+    return formatMonth();
+  };
+
   return (
     <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshData} />}
     >
-      {/* Header with streak */}
+      {/* Header with streak and bonus */}
       <View style={styles.header}>
-        <View style={styles.streakBadge}>
-          <Text variant="headlineSmall" style={styles.streakNumber}>
-            🔥 {overallStreak}
-          </Text>
-          <Text variant="bodySmall" style={styles.streakLabel}>
-            day streak
-          </Text>
+        <View style={styles.headerStats}>
+          <View style={styles.streakBadge}>
+            <Text variant="headlineMedium" style={styles.streakNumber}>
+              🔥 {currentStreak}
+            </Text>
+            <Text variant="bodySmall" style={styles.streakLabel}>
+              day streak
+            </Text>
+          </View>
+          <View style={styles.bonusBadge}>
+            <Text variant="headlineMedium" style={styles.bonusNumber}>
+              ⭐ {weeklyBonus?.availableBonus || 0}
+            </Text>
+            <Text variant="bodySmall" style={styles.bonusLabel}>
+              bonus points
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Week navigation */}
-      <View style={styles.weekNavigation}>
-        <IconButton icon="chevron-left" size={24} onPress={previousWeek} />
-        <Text variant="titleMedium" style={styles.weekRange}>
-          {formatWeekRange()}
-        </Text>
-        <IconButton icon="chevron-right" size={24} onPress={nextWeek} disabled={isCurrentWeek} />
+      {/* View Mode Switcher */}
+      <ViewModeSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
+
+      {/* Navigation bar with Jump to Today button */}
+      <View style={styles.navigationBar}>
+        <IconButton icon="chevron-left" size={24} onPress={handlePrevious} />
+        <View style={styles.navigationCenter}>
+          <Text variant="titleMedium" style={styles.periodLabel}>
+            {getCurrentLabel()}
+          </Text>
+          {!isCurrentPeriod() && (
+            <Button mode="text" compact onPress={goToToday} style={styles.todayButton}>
+              Today
+            </Button>
+          )}
+        </View>
+        <IconButton icon="chevron-right" size={24} onPress={handleNext} disabled={isCurrentPeriod()} />
       </View>
 
-      {/* Horizontal week view */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScroll}>
-        <View style={styles.weekContainer}>
-          {weekAchievements.map((achievement, index) => {
-            const date = new Date(achievement.date);
-            return (
-              <DayCard
-                key={achievement.date}
-                date={date}
-                score={achievement.score}
-                status={achievement.status}
-                isSelected={selectedDayIndex === index}
-                onPress={() =>
-                  setSelectedDayIndex(selectedDayIndex === index ? null : index)
-                }
-              />
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      {/* Day details (when day is selected) */}
-      {selectedDay && (
+      {/* DAY VIEW */}
+      {viewMode === 'day' && currentDayAchievement && (
         <Card style={styles.detailsCard} elevation={2}>
           <Card.Content>
             <View style={styles.detailsHeader}>
-              <Text variant="titleLarge" style={styles.detailsTitle}>
-                {new Date(selectedDay.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-              <IconButton
-                icon="pencil"
-                size={20}
-                onPress={() => setEditDialogVisible(true)}
-              />
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text variant="headlineMedium" style={styles.statValue}>
-                  {formatTime(selectedDay.totalMinutesTracked)}
+              <View>
+                <Text variant="headlineLarge" style={styles.dayPoints}>
+                  {currentDayAchievement.points?.totalPoints || 0} pts
                 </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>
-                  Total Time
+                <Text variant="bodySmall" style={styles.dayPointsBreakdown}>
+                  {currentDayAchievement.points?.earnedPoints || 0} earned
+                  {(currentDayAchievement.points?.bonusApplied || 0) > 0 &&
+                    ` + ${currentDayAchievement.points?.bonusApplied} bonus`}
                 </Text>
               </View>
-              <View style={styles.statItem}>
-                <Text variant="headlineMedium" style={styles.statValue}>
-                  {selectedDay.goalsCompleted}/{selectedDay.totalGoals}
-                </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>
-                  Goals Met
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text variant="headlineMedium" style={styles.statValue}>
-                  {selectedDay.score}%
-                </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>
-                  Score
-                </Text>
-              </View>
+              <IconButton icon="pencil" size={20} onPress={() => handleEditDay(currentDayAchievement)} />
             </View>
 
             {/* Activity breakdown */}
-            {selectedDay.activityBreakdown.length > 0 && (
+            {currentDayAchievement.activityBreakdown.length > 0 && (
               <>
                 <Text variant="titleMedium" style={styles.breakdownTitle}>
                   Activity Breakdown
                 </Text>
-                {selectedDay.activityBreakdown.map((activity) => (
+                {currentDayAchievement.activityBreakdown.map((activity) => (
                   <View key={activity.activityId} style={styles.activityRow}>
-                    <View
-                      style={[styles.activityColor, { backgroundColor: activity.activityColor }]}
-                    />
+                    <View style={[styles.activityColor, { backgroundColor: activity.activityColor }]} />
                     <Text variant="bodyMedium" style={styles.activityName}>
                       {activity.activityName}
                     </Text>
                     <Text variant="bodyMedium" style={styles.activityTime}>
-                      {formatTime(activity.totalSeconds / 60)}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.activityPercentage}>
-                      ({Math.round(activity.percentage)}%)
+                      {formatTime(Math.round(activity.totalSeconds / 60))}
                     </Text>
                   </View>
                 ))}
               </>
             )}
 
-            {selectedDay.activityBreakdown.length === 0 && (
+            {currentDayAchievement.activityBreakdown.length === 0 && (
               <Text variant="bodyMedium" style={styles.noData}>
-                No activities tracked this day
+                No activities tracked today
               </Text>
             )}
           </Card.Content>
         </Card>
       )}
 
-      {/* Empty state */}
-      {!isLoading && weekAchievements.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text variant="headlineSmall" style={styles.emptyTitle}>
-            No Stats Yet
+      {/* WEEK VIEW */}
+      {viewMode === 'week' && (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScroll}>
+            <View style={styles.weekContainer}>
+              {weekAchievements.map((achievement, index) => {
+                const date = new Date(achievement.date);
+                const points = achievement.points?.totalPoints || 0;
+                return (
+                  <DayCard
+                    key={achievement.date}
+                    date={date}
+                    points={points}
+                    status={achievement.status}
+                    isSelected={selectedDayIndex === index}
+                    onPress={() => setSelectedDayIndex(selectedDayIndex === index ? null : index)}
+                  />
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          {/* Day details (when day is selected in week view) */}
+          {selectedDay && (
+            <Card style={styles.detailsCard} elevation={2}>
+              <Card.Content>
+                <View style={styles.detailsHeader}>
+                  <View>
+                    <Text variant="titleLarge" style={styles.detailsTitle}>
+                      {new Date(selectedDay.date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Text>
+                    <Text variant="headlineMedium" style={styles.dayPoints}>
+                      {selectedDay.points?.totalPoints || 0} points
+                    </Text>
+                  </View>
+                  <IconButton icon="pencil" size={20} onPress={() => handleEditDay(selectedDay)} />
+                </View>
+
+                {/* Activity breakdown */}
+                {selectedDay.activityBreakdown.length > 0 && (
+                  <>
+                    <Text variant="titleMedium" style={styles.breakdownTitle}>
+                      Activity Breakdown
+                    </Text>
+                    {selectedDay.activityBreakdown.map((activity) => (
+                      <View key={activity.activityId} style={styles.activityRow}>
+                        <View style={[styles.activityColor, { backgroundColor: activity.activityColor }]} />
+                        <Text variant="bodyMedium" style={styles.activityName}>
+                          {activity.activityName}
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.activityTime}>
+                          {formatTime(Math.round(activity.totalSeconds / 60))}
+                        </Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {selectedDay.activityBreakdown.length === 0 && (
+                  <Text variant="bodyMedium" style={styles.noData}>
+                    No activities tracked this day
+                  </Text>
+                )}
+              </Card.Content>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* MONTH VIEW - Simple grid placeholder */}
+      {viewMode === 'month' && (
+        <View style={styles.monthPlaceholder}>
+          <Text variant="headlineSmall" style={styles.placeholderText}>
+            Month Calendar View
           </Text>
-          <Text variant="bodyMedium" style={styles.emptyText}>
-            Start tracking activities to see your stats!
+          <Text variant="bodyMedium" style={styles.placeholderSubtext}>
+            Coming soon - will show calendar grid with daily points
           </Text>
         </View>
       )}
 
       {/* Edit Day Dialog */}
-      {selectedDay && (
+      {selectedDayForEdit && (
         <EditDayDialog
           visible={editDialogVisible}
-          date={selectedDay.date}
+          date={selectedDayForEdit.date}
           activities={activities}
-          onDismiss={() => setEditDialogVisible(false)}
+          onDismiss={() => {
+            setEditDialogVisible(false);
+            setSelectedDayForEdit(null);
+          }}
           onSave={() => {
             setEditDialogVisible(false);
+            setSelectedDayForEdit(null);
             refreshData();
           }}
         />
@@ -209,7 +312,11 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
   streakBadge: {
     alignItems: 'center',
@@ -220,19 +327,39 @@ const styles = StyleSheet.create({
   },
   streakLabel: {
     color: '#666',
+    marginTop: 4,
   },
-  weekNavigation: {
+  bonusBadge: {
+    alignItems: 'center',
+  },
+  bonusNumber: {
+    fontWeight: 'bold',
+    color: '#FFC107',
+  },
+  bonusLabel: {
+    color: '#666',
+    marginTop: 4,
+  },
+  navigationBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 8,
-    marginBottom: 8,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
   },
-  weekRange: {
+  navigationCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  periodLabel: {
     fontWeight: '600',
   },
+  todayButton: {
+    marginTop: 4,
+  },
   weekScroll: {
-    marginBottom: 16,
+    marginVertical: 16,
   },
   weekContainer: {
     flexDirection: 'row',
@@ -245,32 +372,24 @@ const styles = StyleSheet.create({
   detailsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
   detailsTitle: {
     fontWeight: 'bold',
-    flex: 1,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
+  dayPoints: {
     fontWeight: 'bold',
     color: '#4CAF50',
   },
-  statLabel: {
+  dayPointsBreakdown: {
     color: '#666',
     marginTop: 4,
   },
   breakdownTitle: {
     fontWeight: '600',
     marginBottom: 12,
+    marginTop: 8,
   },
   activityRow: {
     flexDirection: 'row',
@@ -290,29 +409,24 @@ const styles = StyleSheet.create({
   },
   activityTime: {
     fontWeight: '600',
-    marginRight: 8,
-  },
-  activityPercentage: {
-    color: '#666',
   },
   noData: {
     textAlign: 'center',
     color: '#999',
     marginTop: 16,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  monthPlaceholder: {
     padding: 32,
-    marginTop: 64,
+    alignItems: 'center',
+    marginTop: 32,
   },
-  emptyTitle: {
+  placeholderText: {
     fontWeight: 'bold',
     marginBottom: 8,
-  },
-  emptyText: {
     color: '#666',
+  },
+  placeholderSubtext: {
+    color: '#999',
     textAlign: 'center',
   },
 });

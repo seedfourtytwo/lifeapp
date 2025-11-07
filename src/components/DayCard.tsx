@@ -10,7 +10,7 @@ import ProgressRing from './ProgressRing';
 
 interface DayCardProps {
   date: Date;
-  score: number;
+  points: number;
   status: 'excellent' | 'good' | 'poor';
   isSelected: boolean;
   onPress: () => void;
@@ -18,7 +18,7 @@ interface DayCardProps {
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function DayCard({ date, score, status, isSelected, onPress }: DayCardProps) {
+export default function DayCard({ date, points, status, isSelected, onPress }: DayCardProps) {
   const dayName = DAYS[date.getDay()];
   const dayNumber = date.getDate();
 
@@ -35,7 +35,7 @@ export default function DayCard({ date, score, status, isSelected, onPress }: Da
         {dayNumber}
       </Text>
       <View style={styles.ringContainer}>
-        <ProgressRing percentage={score} size={50} status={status} />
+        <ProgressRing points={points} size={50} status={status} />
       </View>
     </TouchableOpacity>
   );

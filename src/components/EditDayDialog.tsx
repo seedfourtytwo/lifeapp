@@ -3,9 +3,9 @@
  * Dialog for manually editing a day's tracking sessions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Alert } from 'react-native';
-import { Dialog, Portal, Text, Button, IconButton, Menu, TextInput, Divider } from 'react-native-paper';
+import { Dialog, Portal, Text, Button, IconButton, Menu, TextInput } from 'react-native-paper';
 import { Activity, TrackingSession } from '../types';
 import * as storage from '../services/storageService';
 
@@ -30,31 +30,40 @@ export default function EditDayDialog({ visible, date, activities, onDismiss, on
   const [sessions, setSessions] = useState<SessionEdit[]>([]);
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (visible) {
-      loadSessions();
-    }
-  }, [visible, date]);
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     const daySessions = await storage.getSessionsByDate(date);
-    const edits: SessionEdit[] = daySessions.map((session) => {
+    console.log('Loading sessions for date:', date);
+    console.log('Found sessions:', daySessions.length);
+
+    // Double-check filtering (in case storage has issues)
+    const filteredSessions = daySessions.filter(s => s.date === date);
+    console.log('Filtered sessions:', filteredSessions.length);
+
+    const edits: SessionEdit[] = filteredSessions.map((session) => {
       const activity = activities.find((a) => a.id === session.activityId);
       const totalMinutes = Math.round(session.durationSeconds / 60);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
 
+      console.log(`Session ${session.id}: ${session.durationSeconds}s = ${totalMinutes}min = ${hours}h ${minutes}m`);
+
       return {
         id: session.id,
         activityId: session.activityId,
         activityName: activity?.name || 'Unknown',
-        hours: hours.toString(),
-        minutes: minutes.toString(),
+        hours: hours > 0 ? hours.toString() : '0',
+        minutes: minutes > 0 ? minutes.toString() : '0',
       };
     });
 
     setSessions(edits);
-  };
+  }, [date, activities]);
+
+  useEffect(() => {
+    if (visible) {
+      loadSessions();
+    }
+  }, [visible, date, loadSessions]);
 
   const handleAddSession = () => {
     if (activities.length === 0) {
@@ -143,8 +152,11 @@ export default function EditDayDialog({ visible, date, activities, onDismiss, on
           };
           await storage.addTrackingSession(newSession);
         } else {
-          // Update existing session
-          await storage.updateTrackingSession(session.id, { durationSeconds });
+          // Update existing session - include activityId in case it changed
+          await storage.updateTrackingSession(session.id, {
+            activityId: session.activityId,
+            durationSeconds,
+          });
         }
       }
 
@@ -176,6 +188,7 @@ export default function EditDayDialog({ visible, date, activities, onDismiss, on
                       onPress={() => setMenuVisible(session.id)}
                       style={styles.activityButton}
                       compact
+                      icon="chevron-down"
                     >
                       {session.activityName}
                     </Button>
