@@ -4,9 +4,9 @@
  * Includes sound and vibration alerts
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Vibration } from 'react-native';
-import { Text, Button, Card, TextInput, IconButton } from 'react-native-paper';
+import { Text, Button, Card, TextInput } from 'react-native-paper';
 import { Audio } from 'expo-av';
 
 export default function IntervalTimer() {
@@ -27,26 +27,13 @@ export default function IntervalTimer() {
     // Load sound on mount
     loadSound();
     return () => {
-      // Cleanup
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
+      // Cleanup - capture ref value
+      const sound = soundRef.current;
+      if (sound) {
+        sound.unloadAsync();
       }
     };
   }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isRunning && remainingTime > 0) {
-      interval = setInterval(() => {
-        setRemainingTime((prev) => prev - 1);
-      }, 1000);
-    } else if (isRunning && remainingTime === 0) {
-      handleTimerComplete();
-    }
-
-    return () => clearInterval(interval);
-  }, [isRunning, remainingTime]);
 
   const loadSound = async () => {
     try {
@@ -62,7 +49,7 @@ export default function IntervalTimer() {
     }
   };
 
-  const playAlert = async () => {
+  const playAlert = useCallback(async () => {
     try {
       // Vibrate
       Vibration.vibrate([0, 500, 200, 500]);
@@ -74,9 +61,16 @@ export default function IntervalTimer() {
     } catch (error) {
       console.log('Error playing alert:', error);
     }
-  };
+  }, []);
 
-  const handleTimerComplete = async () => {
+  const handleStop = useCallback(() => {
+    setIsRunning(false);
+    setCurrentRound(1);
+    setIsResting(false);
+    setRemainingTime(0);
+  }, []);
+
+  const handleTimerComplete = useCallback(async () => {
     await playAlert();
 
     if (isResting) {
@@ -104,7 +98,21 @@ export default function IntervalTimer() {
         handleStop();
       }
     }
-  };
+  }, [isResting, currentRound, rounds, minutes, seconds, restMinutes, restSeconds, playAlert, handleStop]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isRunning && remainingTime > 0) {
+      interval = setInterval(() => {
+        setRemainingTime((prev) => prev - 1);
+      }, 1000);
+    } else if (isRunning && remainingTime === 0) {
+      handleTimerComplete();
+    }
+
+    return () => clearInterval(interval);
+  }, [isRunning, remainingTime, handleTimerComplete]);
 
   const handleStart = () => {
     const totalSeconds = parseInt(minutes) * 60 + parseInt(seconds);
@@ -114,13 +122,6 @@ export default function IntervalTimer() {
       setIsResting(false);
       setIsRunning(true);
     }
-  };
-
-  const handleStop = () => {
-    setIsRunning(false);
-    setCurrentRound(1);
-    setIsResting(false);
-    setRemainingTime(0);
   };
 
   const handlePause = () => {
@@ -136,8 +137,6 @@ export default function IntervalTimer() {
     const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const hasRest = parseInt(restMinutes) > 0 || parseInt(restSeconds) > 0;
 
   return (
     <Card style={styles.card}>

@@ -6,13 +6,13 @@
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 interface MeditationPanelProps {
   activityId: string;
 }
 
-export default function MeditationPanel({ activityId }: MeditationPanelProps) {
+export default function MeditationPanel({ activityId: _activityId }: MeditationPanelProps) {
   return (
     <View style={styles.container}>
       <Text variant="titleSmall" style={styles.title}>

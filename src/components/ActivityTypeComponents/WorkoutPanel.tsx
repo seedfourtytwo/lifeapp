@@ -12,7 +12,7 @@ interface WorkoutPanelProps {
   activityId: string;
 }
 
-export default function WorkoutPanel({ activityId }: WorkoutPanelProps) {
+export default function WorkoutPanel({ activityId: _activityId }: WorkoutPanelProps) {
   return (
     <View style={styles.container}>
       <Text variant="titleSmall" style={styles.title}>

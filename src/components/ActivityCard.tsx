@@ -25,7 +25,7 @@ function ActivityCard({ activity, onPress }: ActivityCardProps) {
       activeOpacity={0.7}
     >
       <View style={styles.content}>
-        <Icon name={activity.icon as any} size={28} color="#FFFFFF" />
+        <Icon name={activity.icon as keyof typeof Icon.glyphMap} size={28} color="#FFFFFF" />
         <Text variant="bodySmall" style={styles.name} numberOfLines={2}>
           {activity.name}
         </Text>

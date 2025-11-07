@@ -12,7 +12,7 @@ interface CookingPanelProps {
   activityId: string;
 }
 
-export default function CookingPanel({ activityId }: CookingPanelProps) {
+export default function CookingPanel({ activityId: _activityId }: CookingPanelProps) {
   return (
     <View style={styles.container}>
       <Text variant="titleSmall" style={styles.title}>

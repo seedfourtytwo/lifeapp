@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View, Animated } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Activity, ActiveSession } from '../types';
