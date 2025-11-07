@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
 import StatsScreen from '../screens/StatsScreen';
@@ -21,6 +20,7 @@ const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
+    // @ts-ignore - Tab.Navigator type issue with React Navigation
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: '#FFFFFF',
@@ -39,19 +39,13 @@ export default function AppNavigator() {
           backgroundColor: '#FFFFFF',
           height: 3,
         },
-        tabBarShowIcon: true,
-        tabBarIconStyle: {
-          width: 24,
-          height: 24,
-        },
       }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Track',
-          tabBarIcon: ({ color }) => <Icon name="play-circle" size={24} color={color} />,
+          title: 'Life',
         }}
       />
       <Tab.Screen
@@ -59,7 +53,6 @@ export default function AppNavigator() {
         component={StatsScreen}
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color }) => <Icon name="chart-bar" size={24} color={color} />,
         }}
       />
       <Tab.Screen
@@ -67,7 +60,6 @@ export default function AppNavigator() {
         component={SettingsScreen}
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <Icon name="cog" size={24} color={color} />,
         }}
       />
     </Tab.Navigator>
