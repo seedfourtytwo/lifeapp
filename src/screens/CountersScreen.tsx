@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Text } from 'react-native-paper';
+import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CounterConfigSchema, type ElementDefinition } from '../protocol';
@@ -8,7 +8,6 @@ import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import { colors } from '../theme';
 
 function sortCounters(
   counters: ElementDefinition[],
@@ -25,6 +24,7 @@ function sortCounters(
 }
 
 export default function CountersScreen() {
+  const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dashboard = useElementStore((s) => s.dashboard);
   const elements = useElementStore((s) => s.elements);
@@ -80,7 +80,7 @@ export default function CountersScreen() {
     >
       {error ? (
         <View style={styles.errorBox}>
-          <Text style={styles.error}>{error}</Text>
+          <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
           <Button mode="outlined" onPress={() => void onRefresh()}>
             Retry
           </Button>
@@ -140,7 +140,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   error: {
-    color: colors.error,
     marginBottom: 8,
   },
 });

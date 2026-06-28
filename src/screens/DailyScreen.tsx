@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Checkbox, List, Text } from 'react-native-paper';
+import { ActivityIndicator, Checkbox, List, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   HABIT_TIME_SLOT_LABELS,
@@ -10,11 +10,11 @@ import {
   shouldShowHabitOnHabitsPage,
   type HabitTimeSlot,
 } from '../protocol';
-import { colors } from '../theme';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 
 export default function DailyScreen() {
+  const theme = useTheme();
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
   const load = useElementStore((s) => s.load);
@@ -114,7 +114,14 @@ export default function DailyScreen() {
                       />
                     )}
                     onPress={() => void toggleHabit(habit.id)}
-                    style={[styles.habitRow, done && styles.habitRowDone]}
+                    style={[
+                      styles.habitRow,
+                      {
+                        backgroundColor: theme.colors.surfaceVariant,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                      done && styles.habitRowDone,
+                    ]}
                   />
                 );
               })}
@@ -156,11 +163,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   habitRow: {
-    backgroundColor: colors.surface,
     borderRadius: 8,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
   },
   habitRowDone: {
     opacity: 0.65,

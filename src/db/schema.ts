@@ -40,4 +40,9 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_element_date ON events(element_id, date);
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL
+);
 `;

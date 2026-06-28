@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Card, Dialog, Icon, Portal, Text, TextInput } from 'react-native-paper';
+import { Button, Card, Dialog, Icon, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import type { CounterConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
-import { colors } from '../../theme';
 
 export function CounterWidget({
   element,
@@ -14,6 +13,7 @@ export function CounterWidget({
   onSetDailyTotal,
   onOpenDetails,
 }: WidgetProps<CounterConfig>) {
+  const theme = useTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
 
@@ -63,7 +63,7 @@ export function CounterWidget({
               {element.name}
             </Text>
             {onOpenDetails ? (
-              <Icon source="chart-bar" size={22} color={colors.primary} />
+              <Icon source="chart-bar" size={22} color={theme.colors.primary} />
             ) : null}
           </Pressable>
           <Text variant="bodySmall" style={styles.tapHint}>

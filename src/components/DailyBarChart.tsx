@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 
 export interface DailyBarChartDatum {
   label: string;
@@ -15,6 +15,7 @@ interface DailyBarChartProps {
 const CHART_HEIGHT = 160;
 
 export function DailyBarChart({ data, unit }: DailyBarChartProps) {
+  const theme = useTheme();
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
@@ -28,7 +29,7 @@ export function DailyBarChart({ data, unit }: DailyBarChartProps) {
                 {datum.value > 0 ? datum.value : ''}
               </Text>
               <View style={styles.barTrack}>
-                <View style={[styles.bar, { height }]} />
+                <View style={[styles.bar, { height, backgroundColor: theme.colors.primary }]} />
               </View>
               <Text variant="labelSmall" style={styles.dayLabel} numberOfLines={1}>
                 {datum.label}
@@ -74,7 +75,6 @@ const styles = StyleSheet.create({
   bar: {
     width: '70%',
     minHeight: 2,
-    backgroundColor: '#2E7D32',
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
   },
