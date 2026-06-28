@@ -1,20 +1,22 @@
 import { create } from 'zustand';
 import { newId } from '../utils/id';
 import { PROTOCOL_VERSION, toDateString } from '../protocol';
+import { dateDaysAgo } from '../utils/dates';
 import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 
 interface EventState {
   dailyTotals: Record<string, number>;
+  yesterdayTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
   loadDailyTotals: (elementIds: string[], date?: string) => Promise<void>;
+  loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadHabitCompletions: (elementIds: string[], date?: string) => Promise<void>;
   logEvent: (
     elementId: string,
     value: number,
     meta?: Record<string, unknown>,
   ) => Promise<void>;
-  undoLastEvent: (elementId: string, date?: string) => Promise<void>;
   setDailyTotal: (elementId: string, total: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, date?: string) => Promise<void>;
 }
@@ -36,6 +38,7 @@ async function refreshTotal(
 
 export const useEventStore = create<EventState>((set, get) => ({
   dailyTotals: {},
+  yesterdayTotals: {},
   habitDoneToday: {},
 
   loadDailyTotals: async (elementIds, date = todayDate()) => {
@@ -49,6 +52,32 @@ export const useEventStore = create<EventState>((set, get) => ({
     );
 
     set({ dailyTotals: { ...get().dailyTotals, ...totals } });
+  },
+
+  loadCounterTotals: async (elementIds) => {
+    if (elementIds.length === 0) return;
+
+    const db = await getDatabase();
+    const today = todayDate();
+    const yesterday = dateDaysAgo(1);
+    const todayTotals: Record<string, number> = {};
+    const yesterdayTotals: Record<string, number> = {};
+
+    await Promise.all(
+      elementIds.flatMap((id) => [
+        eventRepo.getDailyTotal(db, id, today).then((total) => {
+          todayTotals[id] = total;
+        }),
+        eventRepo.getDailyTotal(db, id, yesterday).then((total) => {
+          yesterdayTotals[id] = total;
+        }),
+      ]),
+    );
+
+    set({
+      dailyTotals: { ...get().dailyTotals, ...todayTotals },
+      yesterdayTotals: { ...get().yesterdayTotals, ...yesterdayTotals },
+    });
   },
 
   loadHabitCompletions: async (elementIds, date = todayDate()) => {
@@ -76,15 +105,6 @@ export const useEventStore = create<EventState>((set, get) => ({
       protocolVersion: PROTOCOL_VERSION,
     });
 
-    await refreshTotal(elementId, date, set, get);
-  },
-
-  undoLastEvent: async (elementId, date = todayDate()) => {
-    const db = await getDatabase();
-    const last = await eventRepo.getLastEventForElementOnDate(db, elementId, date);
-    if (!last) return;
-
-    await eventRepo.deleteEventById(db, last.id);
     await refreshTotal(elementId, date, set, get);
   },
 

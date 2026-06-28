@@ -5,8 +5,8 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   element: ElementDefinition;
   config: TConfig;
   todayTotal: number;
+  yesterdayTotal?: number;
   onLog: (value: number, meta?: Record<string, unknown>) => Promise<void>;
-  onUndo?: () => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
   onOpenDetails?: () => void;
 }

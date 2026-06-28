@@ -5,6 +5,7 @@ import { PROTOCOL_VERSION } from '../protocol';
 import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
+import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
 
@@ -14,8 +15,8 @@ interface ElementState {
   isLoading: boolean;
   error: string | null;
   load: () => Promise<void>;
-  createCounter: (name: string, quickIncrements?: number[]) => Promise<void>;
-  updateCounter: (id: string, name: string, quickIncrements: number[]) => Promise<void>;
+  createCounter: (input: CounterInput) => Promise<void>;
+  updateCounter: (id: string, input: CounterInput) => Promise<void>;
   createHabit: (input: HabitInput) => Promise<void>;
   updateHabit: (id: string, input: HabitInput) => Promise<void>;
   pinToDashboard: (elementId: string) => Promise<void>;
@@ -45,17 +46,16 @@ export const useElementStore = create<ElementState>((set, get) => ({
     }
   },
 
-  createCounter: async (name, quickIncrements) => {
+  createCounter: async (input) => {
     const db = await getDatabase();
+    const config = buildCounterConfig(counterHandler.defaultConfig, input);
+
     const element: ElementDefinition = {
       id: newId(),
       kind: 'counter' as ElementKind,
-      name: name.trim(),
+      name: input.name.trim(),
       category: 'exercise' as ElementCategory,
-      config: {
-        ...counterHandler.defaultConfig,
-        quickIncrements: quickIncrements ?? counterHandler.defaultConfig.quickIncrements,
-      },
+      config,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: new Date().toISOString(),
     };
@@ -64,19 +64,21 @@ export const useElementStore = create<ElementState>((set, get) => ({
     await get().load();
   },
 
-  updateCounter: async (id, name, quickIncrements) => {
+  updateCounter: async (id, input) => {
     const db = await getDatabase();
     const existing = get().elements.find((e) => e.id === id);
     if (!existing || existing.kind !== 'counter') {
       throw new Error('Counter element not found');
     }
 
+    const config = buildCounterConfig(existing.config as Partial<CounterConfig>, input);
+
     await elementRepo.updateElement(
       db,
       id,
       {
-        name: name.trim(),
-        config: { ...existing.config, quickIncrements },
+        name: input.name.trim(),
+        config,
       },
       'counter',
     );

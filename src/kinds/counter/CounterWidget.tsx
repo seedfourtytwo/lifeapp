@@ -1,21 +1,52 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Card, Dialog, Icon, Portal, Text, TextInput, useTheme } from 'react-native-paper';
-import type { CounterConfig } from '../../protocol';
+import {
+  Button,
+  Card,
+  Dialog,
+  IconButton,
+  Portal,
+  ProgressBar,
+  Text,
+  TextInput,
+  useTheme,
+} from 'react-native-paper';
+import { formatCounterUnit, type CounterConfig } from '../../protocol';
+import { counterProgressBar, counterProgressColors, lerpHex } from '../../utils/color';
 import type { WidgetProps } from '../types';
 
 export function CounterWidget({
   element,
   config,
   todayTotal,
+  yesterdayTotal = 0,
   onLog,
-  onUndo,
   onSetDailyTotal,
   onOpenDetails,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
+
+  const dailyTarget = config.dailyTarget;
+  const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
+  const progress = hasTarget ? Math.min(1, todayTotal / dailyTarget) : 0;
+  const isComplete = hasTarget && todayTotal >= dailyTarget;
+  const remaining = hasTarget ? Math.max(0, dailyTarget - todayTotal) : 0;
+  const unitLabel = formatCounterUnit(todayTotal, config.unit);
+
+  const progressPalette = theme.dark
+    ? counterProgressColors.dark
+    : counterProgressColors.light;
+  const cardBackground = hasTarget
+    ? lerpHex(progressPalette.start, progressPalette.end, progress)
+    : undefined;
+
+  const statsText = hasTarget
+    ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)} · ${
+        isComplete ? 'Goal reached!' : `${remaining} to go`
+      }`
+    : `${todayTotal} ${unitLabel}`;
 
   const openEdit = () => {
     setEditValue(String(todayTotal));
@@ -39,72 +70,76 @@ export function CounterWidget({
     }
   };
 
-  const handleUndo = async () => {
-    try {
-      await onUndo?.();
-    } catch (error) {
-      Alert.alert(
-        'Could not undo',
-        error instanceof Error ? error.message : 'Try again',
-      );
-    }
-  };
-
   return (
     <>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Pressable
-            onPress={onOpenDetails}
-            disabled={!onOpenDetails}
-            style={styles.titleRow}
-          >
-            <Text variant="titleMedium" style={styles.titleFlex}>
-              {element.name}
+      <Card style={[styles.card, cardBackground ? { backgroundColor: cardBackground } : null]}>
+        <Card.Content style={styles.cardContent}>
+          <View style={styles.topRow}>
+            <Pressable
+              onPress={onOpenDetails}
+              disabled={!onOpenDetails}
+              style={({ pressed }) => [
+                styles.namePress,
+                pressed && onOpenDetails && styles.namePressed,
+              ]}
+            >
+              <Text variant="titleMedium" numberOfLines={1} style={styles.name}>
+                {element.name}
+              </Text>
+            </Pressable>
+            <View style={styles.incrementRow}>
+              {config.quickIncrements.map((increment) => (
+                <Button
+                  key={increment}
+                  mode="contained"
+                  compact
+                  onPress={() => void onLog(increment, { source: 'quick_button', increment })}
+                  style={styles.incButton}
+                  labelStyle={styles.incLabel}
+                  contentStyle={styles.incContent}
+                >
+                  +{increment}
+                </Button>
+              ))}
+            </View>
+          </View>
+
+          {yesterdayTotal > 0 ? (
+            <Text
+              variant="labelSmall"
+              numberOfLines={1}
+              style={[styles.yesterday, { color: theme.colors.onSurfaceVariant }]}
+            >
+              Yesterday · {yesterdayTotal} {formatCounterUnit(yesterdayTotal, config.unit)}
             </Text>
-            {onOpenDetails ? (
-              <Icon source="chart-bar" size={22} color={theme.colors.primary} />
+          ) : null}
+
+          <View style={styles.statsRow}>
+            <Text
+              variant="bodyMedium"
+              numberOfLines={1}
+              style={[styles.statsText, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {statsText}
+            </Text>
+            {onSetDailyTotal ? (
+              <IconButton
+                icon="pencil-outline"
+                size={16}
+                onPress={openEdit}
+                accessibilityLabel="Edit today's total"
+                style={styles.editButton}
+              />
             ) : null}
-          </Pressable>
-          <Text variant="bodySmall" style={styles.tapHint}>
-            {onOpenDetails ? 'Tap name for history' : null}
-          </Text>
-          <Text variant="displaySmall" style={styles.total}>
-            {todayTotal} {config.unit}
-          </Text>
-          <Text variant="bodySmall" style={styles.subtitle}>
-            Today
-          </Text>
-          <View style={styles.buttons}>
-            {config.quickIncrements.map((increment) => (
-              <Button
-                key={increment}
-                mode="contained"
-                onPress={() => void onLog(increment, { source: 'quick_button', increment })}
-                style={styles.button}
-              >
-                +{increment}
-              </Button>
-            ))}
           </View>
-          <View style={styles.adjustRow}>
-            <Button
-              mode="outlined"
-              onPress={() => void handleUndo()}
-              disabled={todayTotal === 0 || !onUndo}
-              style={styles.adjustButton}
-            >
-              Undo last
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={openEdit}
-              disabled={!onSetDailyTotal}
-              style={styles.adjustButton}
-            >
-              Edit total
-            </Button>
-          </View>
+
+          {hasTarget ? (
+            <ProgressBar
+              progress={progress}
+              color={isComplete ? counterProgressBar.complete : counterProgressBar.active}
+              style={styles.progressBar}
+            />
+          ) : null}
         </Card.Content>
       </Card>
 
@@ -131,44 +166,64 @@ export function CounterWidget({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  titleRow: {
+  cardContent: {
+    paddingVertical: 10,
+    gap: 6,
+  },
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
   },
-  titleFlex: {
+  name: {
+    fontWeight: '700',
+  },
+  namePress: {
     flex: 1,
+    minWidth: 0,
   },
-  tapHint: {
-    opacity: 0.45,
+  namePressed: {
+    opacity: 0.7,
+  },
+  incrementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  incButton: {
+    minWidth: 0,
+    margin: 0,
+  },
+  incContent: {
+    paddingHorizontal: 2,
+  },
+  incLabel: {
+    fontSize: 12,
+    marginVertical: 2,
+    marginHorizontal: 6,
+  },
+  yesterday: {
+    opacity: 0.8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
+  statsText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  editButton: {
+    margin: 0,
+    marginRight: -8,
+  },
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
     marginTop: 2,
-    marginBottom: 4,
-    minHeight: 16,
-  },
-  total: {
-    marginTop: 8,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    opacity: 0.6,
-    marginBottom: 12,
-  },
-  buttons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  button: {
-    flexGrow: 1,
-  },
-  adjustRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  adjustButton: {
-    flex: 1,
   },
 });

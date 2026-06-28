@@ -19,6 +19,7 @@ export type ElementEditorSession = {
   editingId: string | null;
   name: string;
   increments: string;
+  dailyTarget: string;
   targetLabel: string;
   timeSlot: HabitTimeSlot;
   useTimeRange: boolean;
@@ -32,6 +33,7 @@ export type ElementEditorSaveData =
       mode: 'counter';
       name: string;
       increments: string;
+      dailyTarget: string;
     }
   | {
       mode: 'habit';
@@ -58,6 +60,7 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
 
   const [name, setName] = useState('');
   const [increments, setIncrements] = useState('5, 10');
+  const [dailyTarget, setDailyTarget] = useState('');
   const [targetLabel, setTargetLabel] = useState('');
   const [timeSlot, setTimeSlot] = useState<HabitTimeSlot>('morning');
   const [useTimeRange, setUseTimeRange] = useState(false);
@@ -71,6 +74,7 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
     if (!session) return;
     setName(session.name);
     setIncrements(session.increments);
+    setDailyTarget(session.dailyTarget);
     setTargetLabel(session.targetLabel);
     setTimeSlot(session.timeSlot);
     setUseTimeRange(session.useTimeRange);
@@ -81,7 +85,7 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
 
   const handleSave = () => {
     if (mode === 'counter') {
-      onSave({ mode: 'counter', name, increments });
+      onSave({ mode: 'counter', name, increments, dailyTarget });
       return;
     }
     onSave({
@@ -114,13 +118,23 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
               autoCorrect={false}
             />
             {mode === 'counter' ? (
-              <TextInput
-                label="Quick increments (comma-separated)"
-                value={increments}
-                onChangeText={setIncrements}
-                keyboardType="numbers-and-punctuation"
-                style={styles.input}
-              />
+              <>
+                <TextInput
+                  label="Quick increments (comma-separated)"
+                  value={increments}
+                  onChangeText={setIncrements}
+                  keyboardType="numbers-and-punctuation"
+                  style={styles.input}
+                />
+                <TextInput
+                  label="Daily target (optional)"
+                  placeholder="e.g. 50"
+                  value={dailyTarget}
+                  onChangeText={setDailyTarget}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+              </>
             ) : (
               <>
                 <TextInput

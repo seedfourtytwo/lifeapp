@@ -24,8 +24,10 @@ export {
   CounterConfigSchema,
   CounterEventMetaSchema,
   DEFAULT_COUNTER_CONFIG,
+  buildCounterConfig,
+  formatCounterUnit,
 } from './kinds/counter';
-export type { CounterConfig, CounterEventMeta } from './kinds/counter';
+export type { CounterConfig, CounterEventMeta, CounterInput } from './kinds/counter';
 
 export {
   HabitConfigSchema,

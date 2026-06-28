@@ -31,7 +31,7 @@ export default function CountersScreen() {
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const load = useElementStore((s) => s.load);
-  const { dailyTotals, loadDailyTotals, logEvent, undoLastEvent, setDailyTotal } = useEventStore();
+  const { dailyTotals, yesterdayTotals, loadCounterTotals, logEvent, setDailyTotal } = useEventStore();
   const [refreshing, setRefreshing] = useState(false);
 
   const counters = useMemo(() => {
@@ -46,9 +46,9 @@ export default function CountersScreen() {
       .filter((e) => e.kind === 'counter')
       .map((e) => e.id);
     if (counterIds.length > 0) {
-      await loadDailyTotals(counterIds);
+      await loadCounterTotals(counterIds);
     }
-  }, [load, loadDailyTotals]);
+  }, [load, loadCounterTotals]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,8 +105,8 @@ export default function CountersScreen() {
               element={element}
               config={config}
               todayTotal={dailyTotals[element.id] ?? 0}
+              yesterdayTotal={yesterdayTotals[element.id] ?? 0}
               onLog={(value, meta) => logEvent(element.id, value, meta)}
-              onUndo={() => undoLastEvent(element.id)}
               onSetDailyTotal={(total) => setDailyTotal(element.id, total)}
               onOpenDetails={() =>
                 navigation.navigate('ElementHistory', { elementId: element.id })

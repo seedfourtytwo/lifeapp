@@ -24,24 +24,6 @@ function rowToEvent(row: EventRow): LifeEvent {
   };
 }
 
-export async function deleteEventById(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync('DELETE FROM events WHERE id = ?', id);
-}
-
-export async function getLastEventForElementOnDate(
-  db: SQLiteDatabase,
-  elementId: string,
-  date: string,
-): Promise<LifeEvent | null> {
-  const row = await db.getFirstAsync<EventRow>(
-    `SELECT * FROM events WHERE element_id = ? AND date = ?
-     ORDER BY timestamp DESC LIMIT 1`,
-    elementId,
-    date,
-  );
-  return row ? rowToEvent(row) : null;
-}
-
 export async function deleteEventsForElementOnDate(
   db: SQLiteDatabase,
   elementId: string,
@@ -113,19 +95,6 @@ export async function getDailyTotal(
     date,
   );
   return row?.total ?? 0;
-}
-
-export async function getEventsForElementOnDate(
-  db: SQLiteDatabase,
-  elementId: string,
-  date: string,
-): Promise<LifeEvent[]> {
-  const rows = await db.getAllAsync<EventRow>(
-    'SELECT * FROM events WHERE element_id = ? AND date = ? ORDER BY timestamp ASC',
-    elementId,
-    date,
-  );
-  return rows.map(rowToEvent);
 }
 
 export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {

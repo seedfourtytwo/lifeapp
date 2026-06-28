@@ -1,6 +1,7 @@
 import {
   CounterConfigSchema,
   DEFAULT_COUNTER_CONFIG,
+  buildCounterConfig,
   HabitConfigSchema,
   parseElementDefinition,
   parseProtocolBundle,
@@ -12,6 +13,23 @@ describe('CounterConfigSchema', () => {
     const result = CounterConfigSchema.parse(DEFAULT_COUNTER_CONFIG);
     expect(result.unit).toBe('reps');
     expect(result.quickIncrements).toEqual([5, 10]);
+  });
+
+  it('accepts optional daily target', () => {
+    const result = CounterConfigSchema.parse({
+      unit: 'reps',
+      quickIncrements: [5, 10],
+      dailyTarget: 50,
+    });
+    expect(result.dailyTarget).toBe(50);
+  });
+
+  it('builds counter config with optional daily target', () => {
+    const result = buildCounterConfig(DEFAULT_COUNTER_CONFIG, {
+      quickIncrements: [5, 10],
+      dailyTarget: 40,
+    });
+    expect(result.dailyTarget).toBe(40);
   });
 
   it('rejects empty quickIncrements', () => {

@@ -42,13 +42,3 @@ export const appDarkTheme: MD3Theme = {
     outlineVariant: '#334155',
   },
 };
-
-/** @deprecated Use useTheme() from react-native-paper instead. */
-export const colors = {
-  primary: brand.primary,
-  primaryLight: brand.primaryLight,
-  surface: appLightTheme.colors.surface,
-  background: appLightTheme.colors.background,
-  textMuted: 'rgba(0,0,0,0.6)',
-  error: brand.error,
-} as const;

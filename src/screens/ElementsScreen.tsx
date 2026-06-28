@@ -16,6 +16,7 @@ import {
   HABIT_TIME_SLOT_LABELS,
   HabitConfigSchema,
   formatHabitDescription,
+  type CounterConfig,
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
@@ -30,6 +31,7 @@ function newEditorSession(
     editingId: null,
     name: '',
     increments: '5, 10',
+    dailyTarget: '',
     targetLabel: '',
     timeSlot: 'morning',
     useTimeRange: false,
@@ -71,12 +73,13 @@ export default function ElementsScreen() {
     setEditorSession(newEditorSession({ mode: 'habit' }));
   };
 
-  const openEditCounter = (id: string, currentName: string, quickIncrements: number[]) => {
+  const openEditCounter = (id: string, currentName: string, config: CounterConfig) => {
     setEditorSession(newEditorSession({
       mode: 'counter',
       editingId: id,
       name: currentName,
-      increments: quickIncrements.join(', '),
+      increments: config.quickIncrements.join(', '),
+      dailyTarget: config.dailyTarget ? String(config.dailyTarget) : '',
     }));
   };
 
@@ -105,16 +108,32 @@ export default function ElementsScreen() {
     return values;
   };
 
+  const parseDailyTarget = (raw: string): number | undefined => {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const value = parseInt(trimmed, 10);
+    if (Number.isNaN(value) || value <= 0) {
+      throw new Error('Daily target must be a positive whole number');
+    }
+    return value;
+  };
+
   const handleSave = async (data: ElementEditorSaveData) => {
     const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {
       if (data.mode === 'counter') {
         const quickIncrements = parseIncrements(data.increments);
+        const dailyTarget = parseDailyTarget(data.dailyTarget);
+        const counterInput = {
+          name: data.name,
+          quickIncrements,
+          dailyTarget,
+        };
         if (editingId) {
-          await updateCounter(editingId, data.name, quickIncrements);
+          await updateCounter(editingId, counterInput);
         } else {
-          await createCounter(data.name, quickIncrements);
+          await createCounter(counterInput);
         }
       } else {
         let timeRange: { start: string; end: string } | undefined;
@@ -190,10 +209,11 @@ export default function ElementsScreen() {
                 </View>
                 <Text variant="bodySmall" style={styles.meta}>
                   Buttons: {config.quickIncrements.map((n) => `+${n}`).join(', ')}
+                  {config.dailyTarget ? ` · Goal: ${config.dailyTarget}/day` : ''}
                 </Text>
               </Card.Content>
               <Card.Actions>
-                <Button onPress={() => openEditCounter(element.id, element.name, config.quickIncrements)}>
+                <Button onPress={() => openEditCounter(element.id, element.name, config)}>
                   Edit
                 </Button>
                 {isPinned && dashboardItemId ? (
