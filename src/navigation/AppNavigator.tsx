@@ -1,65 +1,43 @@
-/**
- * AppNavigator
- * Top tab navigation structure
- */
-
 import React from 'react';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-
-import HomeScreen from '../screens/HomeScreen';
-import StatsScreen from '../screens/StatsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DashboardScreen from '../screens/DashboardScreen';
+import ElementsScreen from '../screens/ElementsScreen';
 
 export type RootTabParamList = {
-  Home: undefined;
-  Stats: undefined;
-  Settings: undefined;
+  Dashboard: undefined;
+  Elements: undefined;
 };
 
-const Tab = createMaterialTopTabNavigator<RootTabParamList>();
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
-    // @ts-expect-error - Tab.Navigator type issue with React Navigation
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#B3E5B3',
-        tabBarStyle: {
-          backgroundColor: '#4CAF50',
-          elevation: 4,
-          paddingTop: 40, // Space for status bar
-        },
-        tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: 'bold',
-          textTransform: 'none',
-        },
-        tabBarIndicatorStyle: {
-          backgroundColor: '#FFFFFF',
-          height: 3,
-        },
+        tabBarActiveTintColor: '#2E7D32',
+        tabBarInactiveTintColor: '#81C784',
+        headerStyle: { backgroundColor: '#2E7D32' },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="Dashboard"
+        component={DashboardScreen}
         options={{
-          title: 'Life',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
-        name="Stats"
-        component={StatsScreen}
+        name="Elements"
+        component={ElementsScreen}
         options={{
-          title: 'Stats',
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="shape-plus" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

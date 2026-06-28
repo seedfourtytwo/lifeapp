@@ -1,0 +1,20 @@
+---
+description: TypeScript and React Native patterns
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript & React
+
+```typescript
+// ✅ Repository returns typed domain objects
+const elements = await elementRepo.getAllElements(db);
+
+// ❌ UI calling SQL
+await db.runAsync('INSERT INTO elements ...');
+```
+
+- Parse external/JSON data with Zod (`parseElementDefinition`, `parseProtocolBundle`).
+- Use `unknown` + narrow; never `any`.
+- Async errors: catch, set store error state or rethrow with context.
+- Prefer `void action()` in JSX handlers for floating promises.

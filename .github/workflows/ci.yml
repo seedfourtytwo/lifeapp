@@ -10,7 +10,7 @@ jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,18 +26,17 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
-        continue-on-error: true
 
       - name: Run TypeScript type check
         run: npm run type-check
 
       - name: Validate Expo configuration
-        run: npx expo-doctor || echo "expo-doctor not available, skipping"
+        run: npx expo-doctor
 
   test:
-    name: Test (if tests exist)
+    name: Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,5 +51,4 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test -- --passWithNoTests || echo "No tests found, skipping"
-
+        run: npm test

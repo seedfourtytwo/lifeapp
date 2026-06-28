@@ -1,0 +1,13 @@
+---
+description: Life Protocol and SQLite conventions
+globs: "src/{protocol,db}/**/*"
+alwaysApply: false
+---
+
+# Protocol & Database
+
+- Every persisted entity carries `protocolVersion: 1`.
+- Config JSON in SQLite must pass kind-specific Zod schema before insert.
+- Use parameterized queries (`runAsync('... WHERE id = ?', id)`). Never interpolate user input.
+- Schema changes: add migration step in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
+- Export/import uses `ProtocolBundle` — same shape for backup and future sync.

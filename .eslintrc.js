@@ -6,15 +6,23 @@ module.exports = {
   ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
+  settings: {
+    'import/resolver': {
+      node: {
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+      },
+    },
+  },
   rules: {
-    '@typescript-eslint/no-unused-vars': ['warn', { 
+    'import/namespace': 'off',
+    'import/no-unresolved': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', {
       argsIgnorePattern: '^_',
-      varsIgnorePattern: '^(Activity|Todo|WeeklyBonus|StreakData|ActivityGoal|TrackingSession)$',
+      varsIgnorePattern: '^_',
     }],
     '@typescript-eslint/explicit-module-boundary-types': 'off',
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-explicit-any': 'error',
     'react-hooks/exhaustive-deps': 'warn',
   },
   ignorePatterns: ['node_modules/', '.expo/', 'dist/'],
 };
-

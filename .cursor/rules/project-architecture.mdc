@@ -1,0 +1,44 @@
+---
+description: Core architecture and conventions for Life Dashboard
+alwaysApply: true
+---
+
+# Life Dashboard — Project Conventions
+
+Local-first personal dashboard. Data lives in SQLite on device. All trackable things follow **Life Protocol v1**.
+
+## Architecture layers (never skip)
+
+1. **protocol/** — Zod schemas, types, validation. No React, no SQLite.
+2. **db/repositories/** — SQL only. UI and stores never write raw queries.
+3. **kinds/** — One handler per element kind (counter, boolean, duration…). Register in `kinds/registry.ts`.
+4. **store/** — Zustand for UI state. Reload from DB after mutations.
+5. **screens/** — Thin; compose widgets from kind handlers.
+
+## Adding a new element kind
+
+1. Add Zod config schema in `src/protocol/kinds/<kind>.ts`
+2. Add kind to `ElementKindSchema` in `src/protocol/element.ts`
+3. Create `src/kinds/<kind>/handler.ts` + `Widget.tsx`
+4. Register in `src/kinds/registry.ts`
+
+## Data rules
+
+- **Events** are append-only facts (`value` + `timestamp`). Never mutate past events.
+- **Elements** are definitions; **dashboard_items** are pinned instances.
+- Validate all config on write with Zod, not just TypeScript.
+- Bump `PROTOCOL_VERSION` only on breaking schema changes; add DB migrations.
+
+## Code style
+
+- TypeScript strict. No `any`.
+- Functional React components + hooks.
+- Keep diffs small. One kind per PR when possible.
+
+## Product direction (do not over-build early)
+
+- **Home screen = Dashboard.** No splash, no extra tabs beyond essentials.
+- **One kind at a time.** Ship counter first; add protocol + handler + widget per new kind.
+- **Do not add Zod schemas or DB tables for future features** until that feature is being built.
+- **README roadmap = intent only** — examples like "daily reading tick" are product ideas, not code to scaffold early.
+- **Events are facts; points are computed later** from events when gamification ships.
