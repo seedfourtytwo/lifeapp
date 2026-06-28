@@ -1,49 +1,31 @@
 # Life Dashboard
 
-**v1.0 = a simple push-up counter.** Open the app, tap +5 or +10, see today's total. That's it.
-
-The architecture (protocol, SQLite, kind registry) is ready to grow later — but v1 ships only counters, starting with push-ups seeded on first launch.
+Local-first daily tracker for habits and counters. Open the app → check off habits → log reps. That's it.
 
 > Previous activity-timer codebase is preserved at git tag `legacy-v1`.
 
-## v1.0 scope
+## What ships today
 
-| In v1 | Not in v1 |
-|-------|-----------|
-| Dashboard with push-up widget (+5 / +10) | Charts / graphs |
-| Today's rep total | Tick / checkbox habits |
-| Edit push-up quick buttons (Elements tab) | Time-of-day templates |
-| Create additional counters (optional) | Gamification / points |
-| Offline SQLite storage | Export UI |
-| | Multiple element kinds |
+| Feature | Description |
+|---------|-------------|
+| **Daily** | Habit checklist grouped by time of day, with optional scheduled visibility windows |
+| **Counter** | Log reps with quick +buttons, undo, edit total, and 14-day history |
+| **Elements** | Create and edit habits and counters (gear icon → Elements) |
+| **Offline SQLite** | All data stays on device |
+| **Life Protocol v1** | Zod-validated elements and append-only events |
 
-## Product vision (after v1)
+## App structure
 
-**Today:** Open the app → land on your **dashboard** → tap +5 push-ups → done.
+```
+Home (default)
+├── Daily tab      — habits for today
+├── Counter tab    — all counters (pinned sort to top)
+└── ⚙ Settings
+    ├── Elements   — manage habits & counters
+    └── App settings
+```
 
-**Where this is going** (documented intent — not implemented until each phase ships):
-
-| Phase | What |
-|-------|------|
-| Now | Counter elements (push-ups), pin to dashboard |
-| Next | Tick habits — e.g. mark "daily reading" done for the day |
-| Soon | Charts — daily/weekly graphs per element |
-| Later | Time-aware dashboard — morning vs evening widgets |
-| Later | Daily templates — reusable layouts (weekday vs weekend) |
-| Later | Gamification — points computed from events |
-| Later | Timed habits, food quantity, sub-elements (routines) |
-
-Add protocol schemas, DB tables, and UI **only when you build that phase** — not ahead of time.
-
-## Features (v1.0)
-
-- **Dashboard** (home screen) — pinned widgets; tap +5 / +10 to log reps
-- **Elements** — create and edit counter elements; pin/unpin from dashboard
-- **Life Protocol v1** — Zod-validated element definitions and events
-- **SQLite storage** — offline, on-device, indexed for future charts
-- **JSON export/import** — backup API ready (`src/db/export.ts`), UI coming later
-
-## Tech Stack
+## Tech stack
 
 - Expo 54 + React Native + TypeScript (strict)
 - expo-sqlite — local database
@@ -52,19 +34,20 @@ Add protocol schemas, DB tables, and UI **only when you build that phase** — n
 - React Native Paper — Material UI
 - Jest — unit tests
 
-## Project Structure
+## Project structure
 
 ```
 src/
-├── protocol/       # Life Protocol v1 schemas (no UI, no SQL)
+├── protocol/       # Life Protocol v1 schemas
 ├── db/             # SQLite client, migrations, repositories
-├── kinds/          # Element kind handlers + widgets
+├── kinds/          # Counter widget + kind registry
 ├── store/          # Zustand stores
-├── screens/        # Dashboard, Elements
-└── navigation/
+├── screens/        # Home, Daily, Counters, Elements, Settings
+├── components/     # Shared UI (editor dialog, charts)
+└── navigation/     # Root stack navigator
 ```
 
-## Getting Started
+## Getting started
 
 ```bash
 npm install
@@ -77,39 +60,22 @@ npm test
 
 ### GrapheneOS / no Expo Go
 
-Build an installable APK:
-
 ```bash
-eas build --platform android --profile preview
-```
-
-Or a development client for hot reload:
-
-```bash
-eas build --platform android --profile development
+eas build --platform android --profile preview      # standalone APK
+eas build --platform android --profile development  # dev client + hot reload
 ```
 
 ## Life Protocol
 
-Three concepts:
-
 | Concept | Purpose |
 |---------|---------|
 | **ElementDefinition** | What you track (name, kind, config) |
-| **DashboardItem** | Pinned widget on home screen |
+| **DashboardItem** | Pin order for counters on the Counter tab |
 | **Event** | Atomic log entry (value + timestamp) |
 
-Kinds are extensible via `src/kinds/registry.ts`. **Only `counter` exists in code today.**
+Kinds: `counter`, `habit`. Extend via `src/kinds/registry.ts` and `src/protocol/kinds/`.
 
-## Roadmap
-
-- [ ] Tick habits (new kind + widget when ready)
-- [ ] Charts
-- [ ] Dashboard reorder
-- [ ] Time-of-day visibility on dashboard items
-- [ ] Daily / weekly templates
-- [ ] Gamification over events
-- [ ] Export/import UI
+JSON export/import API: `src/db/export.ts` (UI coming later).
 
 ## License
 

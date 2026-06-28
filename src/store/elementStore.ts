@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { newId } from '../utils/id';
 import type { DashboardItem, ElementDefinition, ElementKind, ElementCategory } from '../protocol';
 import { PROTOCOL_VERSION } from '../protocol';
 import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
+import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
 
 interface ElementState {
@@ -15,6 +16,8 @@ interface ElementState {
   load: () => Promise<void>;
   createCounter: (name: string, quickIncrements?: number[]) => Promise<void>;
   updateCounter: (id: string, name: string, quickIncrements: number[]) => Promise<void>;
+  createHabit: (input: HabitInput) => Promise<void>;
+  updateHabit: (id: string, input: HabitInput) => Promise<void>;
   pinToDashboard: (elementId: string) => Promise<void>;
   unpinFromDashboard: (dashboardItemId: string) => Promise<void>;
 }
@@ -45,7 +48,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
   createCounter: async (name, quickIncrements) => {
     const db = await getDatabase();
     const element: ElementDefinition = {
-      id: uuidv4(),
+      id: newId(),
       kind: 'counter' as ElementKind,
       name: name.trim(),
       category: 'exercise' as ElementCategory,
@@ -80,6 +83,42 @@ export const useElementStore = create<ElementState>((set, get) => ({
     await get().load();
   },
 
+  createHabit: async (input) => {
+    const db = await getDatabase();
+    const config = buildHabitConfig(input);
+
+    const element: ElementDefinition = {
+      id: newId(),
+      kind: 'habit' as ElementKind,
+      name: input.name.trim(),
+      category: 'habit' as ElementCategory,
+      config,
+      protocolVersion: PROTOCOL_VERSION,
+      createdAt: new Date().toISOString(),
+    };
+
+    await elementRepo.insertElement(db, element);
+    await get().load();
+  },
+
+  updateHabit: async (id, input) => {
+    const db = await getDatabase();
+    const existing = get().elements.find((e) => e.id === id);
+    if (!existing || existing.kind !== 'habit') {
+      throw new Error('Habit not found');
+    }
+
+    const config = buildHabitConfig(input);
+
+    await elementRepo.updateElement(
+      db,
+      id,
+      { name: input.name.trim(), config },
+      'habit',
+    );
+    await get().load();
+  },
+
   pinToDashboard: async (elementId) => {
     const db = await getDatabase();
     const alreadyPinned = await dashboardRepo.isElementOnDashboard(db, elementId);
@@ -87,7 +126,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
 
     const sortOrder = await dashboardRepo.getNextSortOrder(db);
     await dashboardRepo.insertDashboardItem(db, {
-      id: uuidv4(),
+      id: newId(),
       elementId,
       sortOrder,
     });

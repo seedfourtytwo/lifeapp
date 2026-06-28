@@ -1,45 +1,49 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import DashboardScreen from '../screens/DashboardScreen';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { RootStackParamList } from './types';
+import { colors } from '../theme';
+import HomeScreen from '../screens/HomeScreen';
+import SettingsMenuScreen from '../screens/SettingsMenuScreen';
 import ElementsScreen from '../screens/ElementsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import ElementHistoryScreen from '../screens/ElementHistoryScreen';
 
-export type RootTabParamList = {
-  Dashboard: undefined;
-  Elements: undefined;
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const headerOptions = {
+  headerStyle: { backgroundColor: colors.primary },
+  headerTintColor: '#FFFFFF',
+  headerTitleStyle: { fontWeight: 'bold' as const },
 };
-
-const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export default function AppNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#2E7D32',
-        tabBarInactiveTintColor: '#81C784',
-        headerStyle: { backgroundColor: '#2E7D32' },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: 'bold' },
-      }}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
-          ),
-        }}
+    <Stack.Navigator screenOptions={headerOptions}>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
       />
-      <Tab.Screen
+      <Stack.Screen
+        name="SettingsMenu"
+        component={SettingsMenuScreen}
+        options={{ title: 'Settings' }}
+      />
+      <Stack.Screen
         name="Elements"
         component={ElementsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="shape-plus" size={size} color={color} />
-          ),
-        }}
+        options={{ title: 'Elements' }}
       />
-    </Tab.Navigator>
+      <Stack.Screen
+        name="AppSettings"
+        component={SettingsScreen}
+        options={{ title: 'App settings' }}
+      />
+      <Stack.Screen
+        name="ElementHistory"
+        component={ElementHistoryScreen}
+        options={{ title: 'History' }}
+      />
+    </Stack.Navigator>
   );
 }

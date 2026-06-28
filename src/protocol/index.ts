@@ -26,3 +26,16 @@ export {
   DEFAULT_COUNTER_CONFIG,
 } from './kinds/counter';
 export type { CounterConfig, CounterEventMeta } from './kinds/counter';
+
+export {
+  HabitConfigSchema,
+  HabitTimeSlotSchema,
+  HabitTimeRangeSchema,
+  DEFAULT_HABIT_CONFIG,
+  HABIT_TIME_SLOT_LABELS,
+  HABIT_TIME_SLOT_ORDER,
+  buildHabitConfig,
+  shouldShowHabitOnHabitsPage,
+  formatHabitDescription,
+} from './kinds/habit';
+export type { HabitConfig, HabitTimeSlot, HabitTimeRange, HabitInput } from './kinds/habit';

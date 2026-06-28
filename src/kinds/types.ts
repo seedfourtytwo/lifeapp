@@ -6,6 +6,9 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   config: TConfig;
   todayTotal: number;
   onLog: (value: number, meta?: Record<string, unknown>) => Promise<void>;
+  onUndo?: () => Promise<void>;
+  onSetDailyTotal?: (total: number) => Promise<void>;
+  onOpenDetails?: () => void;
 }
 
 export interface KindHandler<TConfig = Record<string, unknown>> {

@@ -1,6 +1,7 @@
 import {
   CounterConfigSchema,
   DEFAULT_COUNTER_CONFIG,
+  HabitConfigSchema,
   parseElementDefinition,
   parseProtocolBundle,
   PROTOCOL_VERSION,
@@ -17,6 +18,27 @@ describe('CounterConfigSchema', () => {
     expect(() =>
       CounterConfigSchema.parse({ unit: 'reps', quickIncrements: [] }),
     ).toThrow();
+  });
+});
+
+describe('HabitConfigSchema', () => {
+  it('accepts habit with target label and time slot', () => {
+    const result = HabitConfigSchema.parse({
+      timeSlot: 'morning',
+      targetLabel: '15 min',
+    });
+    expect(result.timeSlot).toBe('morning');
+    expect(result.targetLabel).toBe('15 min');
+  });
+
+  it('accepts habit with scheduled time range', () => {
+    const result = HabitConfigSchema.parse({
+      timeSlot: 'morning',
+      timeRange: { start: '06:00', end: '09:00' },
+      visibleOnlyInTimeRange: true,
+    });
+    expect(result.timeRange).toEqual({ start: '06:00', end: '09:00' });
+    expect(result.visibleOnlyInTimeRange).toBe(true);
   });
 });
 

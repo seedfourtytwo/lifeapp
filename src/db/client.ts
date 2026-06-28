@@ -12,15 +12,20 @@ export async function getDatabase(): Promise<SQLiteDatabase> {
   }
 
   if (!initPromise) {
-    initPromise = (async () => {
-      const db = await SQLite.openDatabaseAsync(DB_NAME);
-      await runMigrations(db);
-      dbInstance = db;
-      return db;
-    })();
+    initPromise = openAndMigrate().catch((error) => {
+      initPromise = null;
+      throw error;
+    });
   }
 
   return initPromise;
+}
+
+async function openAndMigrate(): Promise<SQLiteDatabase> {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await runMigrations(db);
+  dbInstance = db;
+  return db;
 }
 
 /** Reset singleton — for tests only. */

@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { PROTOCOL_VERSION } from './envelope';
 import { CounterConfigSchema } from './kinds/counter';
+import { HabitConfigSchema } from './kinds/habit';
 
 /** Only implemented kinds belong here. Add new kinds when you ship them. */
-export const ElementKindSchema = z.enum(['counter']);
+export const ElementKindSchema = z.enum(['counter', 'habit']);
 
 export type ElementKind = z.infer<typeof ElementKindSchema>;
 
@@ -32,6 +33,7 @@ export type ElementDefinition = z.infer<typeof ElementDefinitionSchema>;
 
 const configSchemas: Record<ElementKind, z.ZodType> = {
   counter: CounterConfigSchema,
+  habit: HabitConfigSchema,
 };
 
 export function validateElementConfig(

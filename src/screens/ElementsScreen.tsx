@@ -1,34 +1,58 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import {
   ActivityIndicator,
   Button,
   Card,
   Chip,
-  Dialog,
-  Portal,
   Text,
-  TextInput,
 } from 'react-native-paper';
-import { CounterConfigSchema } from '../protocol';
+import ElementEditorDialog, {
+  type ElementEditorSaveData,
+  type ElementEditorSession,
+} from '../components/ElementEditorDialog';
+import {
+  CounterConfigSchema,
+  HABIT_TIME_SLOT_LABELS,
+  HabitConfigSchema,
+  formatHabitDescription,
+  type HabitConfig,
+} from '../protocol';
 import { useElementStore } from '../store/elementStore';
+import { newId } from '../utils/id';
+import { parseTimeHHmm } from '../utils/time';
+
+function newEditorSession(
+  overrides: Partial<ElementEditorSession> & Pick<ElementEditorSession, 'mode'>,
+): ElementEditorSession {
+  return {
+    sessionId: newId(),
+    editingId: null,
+    name: '',
+    increments: '5, 10',
+    targetLabel: '',
+    timeSlot: 'morning',
+    useTimeRange: false,
+    timeRangeStart: '',
+    timeRangeEnd: '',
+    visibleOnlyInTimeRange: false,
+    ...overrides,
+  };
+}
 
 export default function ElementsScreen() {
-  const {
-    elements,
-    dashboard,
-    isLoading,
-    load,
-    createCounter,
-    updateCounter,
-    pinToDashboard,
-    unpinFromDashboard,
-  } = useElementStore();
+  const elements = useElementStore((s) => s.elements);
+  const dashboard = useElementStore((s) => s.dashboard);
+  const isLoading = useElementStore((s) => s.isLoading);
+  const load = useElementStore((s) => s.load);
+  const createCounter = useElementStore((s) => s.createCounter);
+  const updateCounter = useElementStore((s) => s.updateCounter);
+  const createHabit = useElementStore((s) => s.createHabit);
+  const updateHabit = useElementStore((s) => s.updateHabit);
+  const pinToDashboard = useElementStore((s) => s.pinToDashboard);
+  const unpinFromDashboard = useElementStore((s) => s.unpinFromDashboard);
 
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [increments, setIncrements] = useState('5, 10');
+  const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,19 +60,38 @@ export default function ElementsScreen() {
   }, [load]);
 
   const pinnedElementIds = new Set(dashboard.map((d) => d.elementId));
+  const counters = elements.filter((e) => e.kind === 'counter');
+  const habits = elements.filter((e) => e.kind === 'habit');
 
-  const openCreate = () => {
-    setEditingId(null);
-    setName('');
-    setIncrements('5, 10');
-    setDialogVisible(true);
+  const openCreateCounter = () => {
+    setEditorSession(newEditorSession({ mode: 'counter' }));
   };
 
-  const openEdit = (id: string, currentName: string, quickIncrements: number[]) => {
-    setEditingId(id);
-    setName(currentName);
-    setIncrements(quickIncrements.join(', '));
-    setDialogVisible(true);
+  const openCreateHabit = () => {
+    setEditorSession(newEditorSession({ mode: 'habit' }));
+  };
+
+  const openEditCounter = (id: string, currentName: string, quickIncrements: number[]) => {
+    setEditorSession(newEditorSession({
+      mode: 'counter',
+      editingId: id,
+      name: currentName,
+      increments: quickIncrements.join(', '),
+    }));
+  };
+
+  const openEditHabit = (id: string, currentName: string, config: HabitConfig) => {
+    setEditorSession(newEditorSession({
+      mode: 'habit',
+      editingId: id,
+      name: currentName,
+      targetLabel: config.targetLabel ?? '',
+      timeSlot: config.timeSlot,
+      useTimeRange: Boolean(config.timeRange),
+      timeRangeStart: config.timeRange?.start ?? '',
+      timeRangeEnd: config.timeRange?.end ?? '',
+      visibleOnlyInTimeRange: config.visibleOnlyInTimeRange ?? false,
+    }));
   };
 
   const parseIncrements = (raw: string): number[] => {
@@ -62,18 +105,49 @@ export default function ElementsScreen() {
     return values;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (data: ElementEditorSaveData) => {
+    const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {
-      const quickIncrements = parseIncrements(increments);
-      if (editingId) {
-        await updateCounter(editingId, name, quickIncrements);
+      if (data.mode === 'counter') {
+        const quickIncrements = parseIncrements(data.increments);
+        if (editingId) {
+          await updateCounter(editingId, data.name, quickIncrements);
+        } else {
+          await createCounter(data.name, quickIncrements);
+        }
       } else {
-        await createCounter(name, quickIncrements);
+        let timeRange: { start: string; end: string } | undefined;
+        if (data.useTimeRange) {
+          const start = parseTimeHHmm(data.timeRangeStart);
+          const end = parseTimeHHmm(data.timeRangeEnd);
+          if (!start || !end) {
+            throw new Error('Enter valid times in HH:mm format, e.g. 06:00');
+          }
+          timeRange = { start, end };
+        }
+        if (data.visibleOnlyInTimeRange && !timeRange) {
+          throw new Error('Set a time range before limiting visibility');
+        }
+
+        const habitInput = {
+          name: data.name,
+          timeSlot: data.timeSlot,
+          targetLabel: data.targetLabel || undefined,
+          timeRange,
+          visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
+        };
+
+        if (editingId) {
+          await updateHabit(editingId, habitInput);
+        } else {
+          await createHabit(habitInput);
+        }
       }
-      setDialogVisible(false);
+      setEditorSession(null);
     } catch (error) {
-      console.error(error);
+      const message = error instanceof Error ? error.message : 'Failed to save';
+      Alert.alert('Could not save', message);
     } finally {
       setSaving(false);
     }
@@ -95,8 +169,13 @@ export default function ElementsScreen() {
   return (
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
-        {elements.map((element) => {
-          if (element.kind !== 'counter') return null;
+        <Text variant="titleSmall" style={styles.sectionHeader}>
+          Counters
+        </Text>
+        {counters.length === 0 ? (
+          <Text variant="bodySmall" style={styles.sectionEmpty}>No counters yet.</Text>
+        ) : null}
+        {counters.map((element) => {
           const config = CounterConfigSchema.parse(element.config);
           const isPinned = pinnedElementIds.has(element.id);
           const dashboardItemId = getDashboardItemId(element.id);
@@ -107,71 +186,96 @@ export default function ElementsScreen() {
                 <Text variant="titleMedium">{element.name}</Text>
                 <View style={styles.chips}>
                   <Chip compact>{element.kind}</Chip>
-                  <Chip compact>{element.category}</Chip>
-                  {isPinned ? <Chip compact icon="pin">Dashboard</Chip> : null}
+                  {isPinned ? <Chip compact icon="pin">Pinned</Chip> : null}
                 </View>
                 <Text variant="bodySmall" style={styles.meta}>
                   Buttons: {config.quickIncrements.map((n) => `+${n}`).join(', ')}
                 </Text>
               </Card.Content>
               <Card.Actions>
-                <Button onPress={() => openEdit(element.id, element.name, config.quickIncrements)}>
+                <Button onPress={() => openEditCounter(element.id, element.name, config.quickIncrements)}>
                   Edit
                 </Button>
                 {isPinned && dashboardItemId ? (
-                  <Button onPress={() => void unpinFromDashboard(dashboardItemId)}>
-                    Unpin
-                  </Button>
+                  <Button onPress={() => void unpinFromDashboard(dashboardItemId)}>Unpin</Button>
                 ) : (
-                  <Button onPress={() => void pinToDashboard(element.id)}>Pin</Button>
+                  <Button onPress={() => void pinToDashboard(element.id)}>Pin to top</Button>
                 )}
+              </Card.Actions>
+            </Card>
+          );
+        })}
+
+        <Text variant="titleSmall" style={styles.sectionHeader}>
+          Habits
+        </Text>
+        {habits.length === 0 ? (
+          <Text variant="bodySmall" style={styles.sectionEmpty}>No habits yet.</Text>
+        ) : null}
+        {habits.map((element) => {
+          const config = HabitConfigSchema.parse(element.config);
+          return (
+            <Card key={element.id} style={styles.card}>
+              <Card.Content>
+                <Text variant="titleMedium">{element.name}</Text>
+                <View style={styles.chips}>
+                  <Chip compact>{element.kind}</Chip>
+                  <Chip compact>{HABIT_TIME_SLOT_LABELS[config.timeSlot]}</Chip>
+                </View>
+                {formatHabitDescription(config) ? (
+                  <Text variant="bodySmall" style={styles.meta}>
+                    {formatHabitDescription(config)}
+                  </Text>
+                ) : null}
+              </Card.Content>
+              <Card.Actions>
+                <Button onPress={() => openEditHabit(element.id, element.name, config)}>
+                  Edit
+                </Button>
               </Card.Actions>
             </Card>
           );
         })}
       </ScrollView>
 
-      <Button mode="contained" onPress={openCreate} style={styles.fab}>
-        New counter
-      </Button>
+      <View style={styles.fabRow}>
+        <Button mode="contained" onPress={openCreateCounter} style={styles.fab}>
+          New counter
+        </Button>
+        <Button mode="contained" onPress={openCreateHabit} style={styles.fab}>
+          New habit
+        </Button>
+      </View>
 
-      <Portal>
-        <Dialog visible={dialogVisible} onDismiss={() => setDialogVisible(false)}>
-          <Dialog.Title>{editingId ? 'Edit counter' : 'New counter'}</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Name"
-              value={name}
-              onChangeText={setName}
-              style={styles.input}
-            />
-            <TextInput
-              label="Quick increments (comma-separated)"
-              value={increments}
-              onChangeText={setIncrements}
-              keyboardType="numbers-and-punctuation"
-              style={styles.input}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogVisible(false)}>Cancel</Button>
-            <Button loading={saving} onPress={() => void handleSave()} disabled={!name.trim()}>
-              Save
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <ElementEditorDialog
+        session={editorSession}
+        saving={saving}
+        onDismiss={() => setEditorSession(null)}
+        onSave={(data) => void handleSave(data)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 80 },
+  container: { padding: 16, paddingBottom: 100 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  sectionHeader: {
+    marginTop: 8,
+    marginBottom: 8,
+    opacity: 0.7,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  sectionEmpty: { marginBottom: 12, opacity: 0.5 },
   card: { marginBottom: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   meta: { marginTop: 8, opacity: 0.6 },
-  fab: { margin: 16 },
-  input: { marginBottom: 8 },
+  fabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    margin: 16,
+  },
+  fab: { flex: 1 },
 });

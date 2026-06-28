@@ -24,6 +24,70 @@ function rowToEvent(row: EventRow): LifeEvent {
   };
 }
 
+export async function deleteEventById(db: SQLiteDatabase, id: string): Promise<void> {
+  await db.runAsync('DELETE FROM events WHERE id = ?', id);
+}
+
+export async function getLastEventForElementOnDate(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<LifeEvent | null> {
+  const row = await db.getFirstAsync<EventRow>(
+    `SELECT * FROM events WHERE element_id = ? AND date = ?
+     ORDER BY timestamp DESC LIMIT 1`,
+    elementId,
+    date,
+  );
+  return row ? rowToEvent(row) : null;
+}
+
+export async function deleteEventsForElementOnDate(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<void> {
+  await db.runAsync(
+    'DELETE FROM events WHERE element_id = ? AND date = ?',
+    elementId,
+    date,
+  );
+}
+
+export async function getDailyTotalsByElement(
+  db: SQLiteDatabase,
+  elementId: string,
+  sinceDate: string,
+): Promise<{ date: string; total: number }[]> {
+  const rows = await db.getAllAsync<{ date: string; total: number }>(
+    `SELECT date, COALESCE(SUM(value), 0) as total
+     FROM events
+     WHERE element_id = ? AND date >= ?
+     GROUP BY date
+     ORDER BY date ASC`,
+    elementId,
+    sinceDate,
+  );
+  return rows;
+}
+
+export async function getCompletedElementIdsOnDate(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  date: string,
+): Promise<Set<string>> {
+  if (elementIds.length === 0) return new Set();
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ element_id: string }>(
+    `SELECT DISTINCT element_id FROM events
+     WHERE date = ? AND element_id IN (${placeholders}) AND value >= 1`,
+    date,
+    ...elementIds,
+  );
+  return new Set(rows.map((r) => r.element_id));
+}
+
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
   await db.runAsync(
     `INSERT INTO events (id, element_id, timestamp, date, value, meta_json, protocol_version)
