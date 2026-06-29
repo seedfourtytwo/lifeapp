@@ -1,54 +1,112 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Checkbox, List, Text, useTheme } from 'react-native-paper';
-import { useFocusEffect } from '@react-navigation/native';
+import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { playLoopingHabitSound, stopLoopingHabitSound } from '../audio/habitTimerSound';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { getKindHandler } from '../kinds/registry';
+import type { RootStackParamList } from '../navigation/types';
 import {
   HABIT_TIME_SLOT_LABELS,
   HABIT_TIME_SLOT_ORDER,
   HabitConfigSchema,
-  formatHabitDescription,
   shouldShowHabitOnHabitsPage,
+  type HabitConfig,
   type HabitTimeSlot,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
+import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
+import { useSoundLibraryStore } from '../store/soundLibraryStore';
 
 export default function DailyScreen() {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { isCartoon } = useAppTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
   const load = useElementStore((s) => s.load);
-  const { habitDoneToday, loadHabitCompletions, toggleHabit } = useEventStore();
+  const {
+    dailyTotals,
+    habitDoneToday,
+    habitStreaks,
+    activeTimerSessions,
+    loadHabitDayState,
+    loadHabitStreaks,
+    toggleHabit,
+    startHabitTimer,
+    stopHabitTimer,
+  } = useEventStore();
+  const loadSounds = useSoundLibraryStore((s) => s.load);
+  const getSoundById = useSoundLibraryStore((s) => s.getById);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  const allHabits = elements.filter((e) => e.kind === 'habit');
-  const habits = allHabits.filter((habit) => {
-    const config = HabitConfigSchema.parse(habit.config);
-    return shouldShowHabitOnHabitsPage(config, now);
-  });
+  const allHabits = useMemo(
+    () => elements.filter((e) => e.kind === 'habit'),
+    [elements],
+  );
+
+  const habits = useMemo(
+    () =>
+      allHabits.filter((habit) => {
+        const config = HabitConfigSchema.parse(habit.config);
+        return shouldShowHabitOnHabitsPage(config, now);
+      }),
+    [allHabits, now],
+  );
+
+  const habitHandler = getKindHandler('habit');
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      void stopLoopingHabitSound();
+    };
+  }, []);
+
   const refresh = useCallback(async () => {
     await load();
-    const habitIds = useElementStore.getState().elements
-      .filter((e) => e.kind === 'habit')
-      .map((e) => e.id);
-    if (habitIds.length > 0) {
-      await loadHabitCompletions(habitIds);
+    await loadSounds();
+    const habitElements = useElementStore.getState().elements.filter((e) => e.kind === 'habit');
+    const inputs = habitStreakInputsFromElements(habitElements);
+    if (inputs.length > 0) {
+      await loadHabitDayState(inputs);
+      await loadHabitStreaks(inputs);
     }
-  }, [load, loadHabitCompletions]);
+  }, [load, loadHabitDayState, loadHabitStreaks, loadSounds]);
 
   useFocusEffect(
     useCallback(() => {
       void refresh();
     }, [refresh]),
+  );
+
+  const handleStartTimer = useCallback(
+    async (elementId: string, config: HabitConfig) => {
+      startHabitTimer(elementId);
+      const sound = config.soundId ? getSoundById(config.soundId) : undefined;
+      if (sound?.source === 'file') {
+        try {
+          await playLoopingHabitSound(sound.uri);
+        } catch {
+          // Playback can fail if the file was removed.
+        }
+      }
+    },
+    [getSoundById, startHabitTimer],
+  );
+
+  const handleStopTimer = useCallback(
+    async (elementId: string, config: HabitConfig) => {
+      await stopLoopingHabitSound();
+      await stopHabitTimer(elementId, config);
+    },
+    [stopHabitTimer],
   );
 
   const onRefresh = async () => {
@@ -91,7 +149,7 @@ export default function DailyScreen() {
         <Text variant="bodyLarge" style={styles.empty}>
           No habits in their time window right now.
         </Text>
-      ) : (
+      ) : !habitHandler ? null : (
         <>
           <Text
             variant="bodyMedium"
@@ -115,32 +173,24 @@ export default function DailyScreen() {
               </Text>
               {items.map((habit) => {
                 const config = HabitConfigSchema.parse(habit.config);
-                const done = habitDoneToday[habit.id] ?? false;
+                const Widget = habitHandler.DashboardWidget;
+
                 return (
-                  <List.Item
+                  <Widget
                     key={habit.id}
-                    title={habit.name}
-                    titleStyle={isCartoon ? styles.cartoonTitle : undefined}
-                    description={formatHabitDescription(config)}
-                    left={() => (
-                      <Checkbox
-                        status={done ? 'checked' : 'unchecked'}
-                        onPress={() => void toggleHabit(habit.id)}
-                      />
-                    )}
-                    onPress={() => void toggleHabit(habit.id)}
-                    style={[
-                      styles.habitRow,
-                      {
-                        backgroundColor: isCartoon
-                          ? theme.colors.surface
-                          : theme.colors.surfaceVariant,
-                        borderColor: theme.colors.outlineVariant,
-                        borderRadius: deco.radius.sm,
-                        borderWidth: isCartoon ? deco.cardBorderWidth : deco.borderWidth,
-                      },
-                      done && styles.habitRowDone,
-                    ]}
+                    element={habit}
+                    config={config}
+                    todayTotal={dailyTotals[habit.id] ?? 0}
+                    isDone={habitDoneToday[habit.id] ?? false}
+                    streak={habitStreaks[habit.id] ?? 0}
+                    activeTimerSession={activeTimerSessions[habit.id] ?? null}
+                    onLog={async () => {}}
+                    onToggle={() => toggleHabit(habit.id, config)}
+                    onStartTimer={() => handleStartTimer(habit.id, config)}
+                    onStopTimer={() => handleStopTimer(habit.id, config)}
+                    onOpenDetails={() =>
+                      navigation.navigate('ElementHistory', { elementId: habit.id })
+                    }
                   />
                 );
               })}
@@ -176,18 +226,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    marginBottom: 4,
+    marginBottom: 8,
     opacity: 0.7,
     textTransform: 'uppercase',
     letterSpacing: 1,
-  },
-  cartoonTitle: {
-    fontWeight: '700',
-  },
-  habitRow: {
-    marginBottom: 6,
-  },
-  habitRowDone: {
-    opacity: 0.65,
   },
 });

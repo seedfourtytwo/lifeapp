@@ -11,7 +11,7 @@ export const CounterConfigSchema = z.object({
 export type CounterConfig = z.infer<typeof CounterConfigSchema>;
 
 export const CounterEventMetaSchema = z.object({
-  source: z.enum(['quick_button', 'manual']).optional(),
+  source: z.enum(['quick_button', 'manual', 'manual_set']).optional(),
   increment: z.number().optional(),
 });
 

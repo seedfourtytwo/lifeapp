@@ -9,6 +9,12 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   onLog: (value: number, meta?: Record<string, unknown>) => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
   onOpenDetails?: () => void;
+  isDone?: boolean;
+  onToggle?: () => Promise<void>;
+  streak?: number;
+  activeTimerSession?: { startedAt: string } | null;
+  onStartTimer?: () => void | Promise<void>;
+  onStopTimer?: () => void | Promise<void>;
 }
 
 export interface KindHandler<TConfig = Record<string, unknown>> {

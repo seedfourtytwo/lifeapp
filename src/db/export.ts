@@ -1,26 +1,26 @@
+import { createProtocolBundle, parseProtocolBundle } from '../protocol';
 import type { ProtocolBundle } from '../protocol';
-import { PROTOCOL_VERSION } from '../protocol';
 import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
-import { parseProtocolBundle } from '../protocol';
+import * as soundLibraryRepo from '../db/repositories/soundLibraryRepository';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
   const db = await getDatabase();
-  const [elements, dashboard, events] = await Promise.all([
+  const [elements, dashboard, events, soundLibrary] = await Promise.all([
     elementRepo.getAllElements(db),
     dashboardRepo.getDashboardItems(db),
     eventRepo.getAllEvents(db),
+    soundLibraryRepo.getSoundLibrary(db),
   ]);
 
-  return {
-    protocolVersion: PROTOCOL_VERSION,
-    exportedAt: new Date().toISOString(),
+  return createProtocolBundle({
     elements,
     dashboard,
     events,
-  };
+    soundLibrary,
+  });
 }
 
 export async function importProtocolBundle(raw: unknown): Promise<void> {
@@ -40,6 +40,10 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
     }
     for (const event of bundle.events) {
       await eventRepo.insertEvent(db, event);
+    }
+
+    if (bundle.soundLibrary) {
+      await soundLibraryRepo.setSoundLibrary(db, bundle.soundLibrary);
     }
   });
 }

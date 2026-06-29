@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { isWithinTimeRange, formatTimeRange } from '../../utils/time';
 
+export const HabitTrackingModeSchema = z.enum(['boolean', 'timer']);
+
+export type HabitTrackingMode = z.infer<typeof HabitTrackingModeSchema>;
+
 export const HabitTimeSlotSchema = z.enum([
   'morning',
   'afternoon',
@@ -19,20 +23,45 @@ export const HabitTimeRangeSchema = z.object({
 
 export type HabitTimeRange = z.infer<typeof HabitTimeRangeSchema>;
 
+export const HabitScheduleSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('daily') }),
+]);
+
+export type HabitSchedule = z.infer<typeof HabitScheduleSchema>;
+
 export const HabitConfigSchema = z.object({
+  trackingMode: HabitTrackingModeSchema.default('boolean'),
   timeSlot: HabitTimeSlotSchema,
-  /** Display-only target, e.g. "15 min", "1 cup" */
+  schedule: HabitScheduleSchema.default({ type: 'daily' }),
   targetLabel: z.string().optional(),
-  /** Optional daily window, e.g. 06:00–09:00 */
   timeRange: HabitTimeRangeSchema.optional(),
-  /** When true, habit is hidden on the Habits tab outside timeRange */
   visibleOnlyInTimeRange: z.boolean().optional(),
+  /** Timer goal in seconds — drives progress bar and streak completion */
+  dailyTargetSeconds: z.number().int().positive().optional(),
+  /** Reference into the user's sound library */
+  soundId: z.string().uuid().optional(),
+  /** Reserved for local notification reminders */
+  remindMinutesBefore: z.number().int().nonnegative().optional(),
 });
 
 export type HabitConfig = z.infer<typeof HabitConfigSchema>;
 
+export const HabitEventMetaSchema = z.discriminatedUnion('source', [
+  z.object({ source: z.literal('habit_tick') }),
+  z.object({
+    source: z.literal('timer_session'),
+    startedAt: z.string().datetime(),
+    endedAt: z.string().datetime(),
+    durationSeconds: z.number().nonnegative(),
+  }),
+]);
+
+export type HabitEventMeta = z.infer<typeof HabitEventMetaSchema>;
+
 export const DEFAULT_HABIT_CONFIG: HabitConfig = {
+  trackingMode: 'boolean',
   timeSlot: 'anytime',
+  schedule: { type: 'daily' },
 };
 
 export const HABIT_TIME_SLOT_LABELS: Record<HabitTimeSlot, string> = {
@@ -51,24 +80,49 @@ export const HABIT_TIME_SLOT_ORDER: HabitTimeSlot[] = [
 
 export type HabitInput = {
   name: string;
+  trackingMode?: HabitTrackingMode;
   timeSlot: HabitTimeSlot;
   targetLabel?: string;
   timeRange?: HabitTimeRange;
   visibleOnlyInTimeRange?: boolean;
+  dailyTargetSeconds?: number;
+  soundId?: string;
 };
 
 export function buildHabitConfig(input: {
+  trackingMode?: HabitTrackingMode;
   timeSlot: HabitTimeSlot;
   targetLabel?: string;
   timeRange?: HabitTimeRange;
   visibleOnlyInTimeRange?: boolean;
+  dailyTargetSeconds?: number;
+  soundId?: string;
+  schedule?: HabitSchedule;
 }): HabitConfig {
   return {
+    trackingMode: input.trackingMode ?? 'boolean',
     timeSlot: input.timeSlot,
+    schedule: input.schedule ?? { type: 'daily' },
     ...(input.targetLabel?.trim() ? { targetLabel: input.targetLabel.trim() } : {}),
     ...(input.timeRange ? { timeRange: input.timeRange } : {}),
     ...(input.visibleOnlyInTimeRange ? { visibleOnlyInTimeRange: true } : {}),
+    ...(input.trackingMode === 'timer' &&
+    input.dailyTargetSeconds &&
+    input.dailyTargetSeconds > 0
+      ? { dailyTargetSeconds: input.dailyTargetSeconds }
+      : {}),
+    ...(input.soundId ? { soundId: input.soundId } : {}),
   };
+}
+
+export function isHabitDayComplete(total: number, config: HabitConfig): boolean {
+  if (config.trackingMode === 'timer') {
+    if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
+      return total >= config.dailyTargetSeconds;
+    }
+    return total > 0;
+  }
+  return total >= 1;
 }
 
 export function shouldShowHabitOnHabitsPage(config: HabitConfig, now = new Date()): boolean {
@@ -88,4 +142,53 @@ export function formatHabitDescription(config: HabitConfig): string | undefined 
     parts.push(config.visibleOnlyInTimeRange ? `${range} (scheduled)` : range);
   }
   return parts.length > 0 ? parts.join(' · ') : undefined;
+}
+
+/** Whether a habit is due on a calendar date (daily-only for now). */
+export function isHabitScheduledOnDate(_config: HabitConfig, _date: string): boolean {
+  return true;
+}
+
+export function formatHabitTimerDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${remainder.toString().padStart(2, '0')}`;
+}
+
+export function timerSessionDurationSeconds(startedAt: Date, endedAt: Date): number {
+  return Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 1000));
+}
+
+export function buildTimerSessionPayload(
+  startedAt: Date,
+  endedAt: Date,
+): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
+  const durationSeconds = timerSessionDurationSeconds(startedAt, endedAt);
+  return {
+    value: durationSeconds,
+    meta: {
+      source: 'timer_session',
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      durationSeconds,
+    },
+  };
+}
+
+export function liveTimerTotalSeconds(
+  loggedTotalSeconds: number,
+  activeSession: { startedAt: string } | null | undefined,
+  nowMs = Date.now(),
+): number {
+  if (!activeSession) {
+    return loggedTotalSeconds;
+  }
+  const elapsed = Math.floor((nowMs - new Date(activeSession.startedAt).getTime()) / 1000);
+  return loggedTotalSeconds + Math.max(0, elapsed);
 }

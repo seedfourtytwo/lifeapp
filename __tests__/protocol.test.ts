@@ -1,8 +1,12 @@
 import {
   CounterConfigSchema,
   DEFAULT_COUNTER_CONFIG,
-  buildCounterConfig,
+  DEFAULT_HABIT_CONFIG,
   HabitConfigSchema,
+  HabitEventMetaSchema,
+  buildCounterConfig,
+  buildHabitConfig,
+  isHabitDayComplete,
   parseElementDefinition,
   parseProtocolBundle,
   PROTOCOL_VERSION,
@@ -47,6 +51,29 @@ describe('HabitConfigSchema', () => {
     });
     expect(result.timeSlot).toBe('morning');
     expect(result.targetLabel).toBe('15 min');
+    expect(result.trackingMode).toBe('boolean');
+    expect(result.schedule).toEqual({ type: 'daily' });
+  });
+
+  it('accepts timer habit with daily target seconds', () => {
+    const result = HabitConfigSchema.parse({
+      timeSlot: 'anytime',
+      trackingMode: 'timer',
+      dailyTargetSeconds: 900,
+      soundId: '550e8400-e29b-41d4-a716-446655440000',
+    });
+    expect(result.trackingMode).toBe('timer');
+    expect(result.dailyTargetSeconds).toBe(900);
+  });
+
+  it('builds habit config with tracking mode', () => {
+    const result = buildHabitConfig({
+      timeSlot: 'evening',
+      trackingMode: 'timer',
+      dailyTargetSeconds: 600,
+    });
+    expect(result.trackingMode).toBe('timer');
+    expect(result.dailyTargetSeconds).toBe(600);
   });
 
   it('accepts habit with scheduled time range', () => {
@@ -60,7 +87,60 @@ describe('HabitConfigSchema', () => {
   });
 });
 
+describe('HabitEventMetaSchema', () => {
+  it('accepts habit tick meta', () => {
+    expect(HabitEventMetaSchema.parse({ source: 'habit_tick' })).toEqual({
+      source: 'habit_tick',
+    });
+  });
+
+  it('accepts timer session meta', () => {
+    const meta = HabitEventMetaSchema.parse({
+      source: 'timer_session',
+      startedAt: '2025-01-01T10:00:00.000Z',
+      endedAt: '2025-01-01T10:15:00.000Z',
+      durationSeconds: 900,
+    });
+    expect(meta.source).toBe('timer_session');
+    if (meta.source === 'timer_session') {
+      expect(meta.durationSeconds).toBe(900);
+    }
+  });
+});
+
+describe('isHabitDayComplete', () => {
+  it('marks boolean habit complete at one or more', () => {
+    const config = HabitConfigSchema.parse({ timeSlot: 'anytime' });
+    expect(isHabitDayComplete(1, config)).toBe(true);
+    expect(isHabitDayComplete(0, config)).toBe(false);
+  });
+
+  it('marks timer habit complete against daily target', () => {
+    const config = HabitConfigSchema.parse({
+      timeSlot: 'anytime',
+      trackingMode: 'timer',
+      dailyTargetSeconds: 900,
+    });
+    expect(isHabitDayComplete(900, config)).toBe(true);
+    expect(isHabitDayComplete(899, config)).toBe(false);
+  });
+});
+
 describe('parseElementDefinition', () => {
+  it('validates habit element', () => {
+    const element = parseElementDefinition({
+      id: '550e8400-e29b-41d4-a716-446655440001',
+      kind: 'habit',
+      name: 'Meditate',
+      category: 'habit',
+      config: DEFAULT_HABIT_CONFIG,
+      protocolVersion: PROTOCOL_VERSION,
+      createdAt: '2025-01-01T00:00:00.000Z',
+    });
+
+    expect(element.kind).toBe('habit');
+  });
+
   it('validates counter element', () => {
     const element = parseElementDefinition({
       id: '550e8400-e29b-41d4-a716-446655440000',

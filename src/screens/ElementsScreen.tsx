@@ -21,6 +21,7 @@ import {
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
+import { useSoundLibraryStore } from '../store/soundLibraryStore';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { newId } from '../utils/id';
 import { parseTimeHHmm } from '../utils/time';
@@ -35,6 +36,9 @@ function newEditorSession(
     increments: '5, 10',
     dailyTarget: '',
     targetLabel: '',
+    habitTrackingMode: 'boolean',
+    habitDailyGoalMinutes: '',
+    habitSoundId: '',
     timeSlot: 'morning',
     useTimeRange: false,
     timeRangeStart: '',
@@ -57,13 +61,16 @@ export default function ElementsScreen() {
   const updateHabit = useElementStore((s) => s.updateHabit);
   const pinToDashboard = useElementStore((s) => s.pinToDashboard);
   const unpinFromDashboard = useElementStore((s) => s.unpinFromDashboard);
+  const sounds = useSoundLibraryStore((s) => s.sounds);
+  const loadSounds = useSoundLibraryStore((s) => s.load);
 
   const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadSounds();
+  }, [load, loadSounds]);
 
   const pinnedElementIds = new Set(dashboard.map((d) => d.elementId));
   const counters = elements.filter((e) => e.kind === 'counter');
@@ -93,6 +100,11 @@ export default function ElementsScreen() {
       editingId: id,
       name: currentName,
       targetLabel: config.targetLabel ?? '',
+      habitTrackingMode: config.trackingMode,
+      habitDailyGoalMinutes: config.dailyTargetSeconds
+        ? String(Math.round(config.dailyTargetSeconds / 60))
+        : '',
+      habitSoundId: config.soundId ?? '',
       timeSlot: config.timeSlot,
       useTimeRange: Boolean(config.timeRange),
       timeRangeStart: config.timeRange?.start ?? '',
@@ -120,6 +132,16 @@ export default function ElementsScreen() {
       throw new Error('Daily target must be a positive whole number');
     }
     return value;
+  };
+
+  const parseDailyGoalMinutes = (raw: string): number | undefined => {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const minutes = parseInt(trimmed, 10);
+    if (Number.isNaN(minutes) || minutes <= 0) {
+      throw new Error('Daily goal must be a positive number of minutes');
+    }
+    return minutes * 60;
   };
 
   const handleSave = async (data: ElementEditorSaveData) => {
@@ -155,8 +177,17 @@ export default function ElementsScreen() {
 
         const habitInput = {
           name: data.name,
+          trackingMode: data.habitTrackingMode,
           timeSlot: data.timeSlot,
-          targetLabel: data.targetLabel || undefined,
+          targetLabel: data.habitTrackingMode === 'boolean' ? data.targetLabel || undefined : undefined,
+          dailyTargetSeconds:
+            data.habitTrackingMode === 'timer'
+              ? parseDailyGoalMinutes(data.habitDailyGoalMinutes)
+              : undefined,
+          soundId:
+            data.habitTrackingMode === 'timer' && data.habitSoundId
+              ? data.habitSoundId
+              : undefined,
           timeRange,
           visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
         };
@@ -263,12 +294,22 @@ export default function ElementsScreen() {
               <Card.Content>
                 <Text variant="titleMedium">{element.name}</Text>
                 <View style={styles.chips}>
-                  <Chip compact>{element.kind}</Chip>
+                  <Chip compact>{config.trackingMode === 'timer' ? 'Timer' : 'Check off'}</Chip>
                   <Chip compact>{HABIT_TIME_SLOT_LABELS[config.timeSlot]}</Chip>
                 </View>
                 {formatHabitDescription(config) ? (
                   <Text variant="bodySmall" style={styles.meta}>
                     {formatHabitDescription(config)}
+                  </Text>
+                ) : null}
+                {config.trackingMode === 'timer' && config.dailyTargetSeconds ? (
+                  <Text variant="bodySmall" style={styles.meta}>
+                    Goal: {Math.round(config.dailyTargetSeconds / 60)} min/day
+                  </Text>
+                ) : null}
+                {config.trackingMode === 'timer' && config.soundId ? (
+                  <Text variant="bodySmall" style={styles.meta}>
+                    Sound: {sounds.find((s) => s.id === config.soundId)?.label ?? 'Missing track'}
                   </Text>
                 ) : null}
               </Card.Content>
@@ -294,6 +335,7 @@ export default function ElementsScreen() {
       <ElementEditorDialog
         session={editorSession}
         saving={saving}
+        soundOptions={sounds}
         onDismiss={() => setEditorSession(null)}
         onSave={(data) => void handleSave(data)}
       />

@@ -9,7 +9,7 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
-import type { HabitTimeSlot } from '../protocol';
+import type { HabitTimeSlot, HabitTrackingMode, SoundAsset } from '../protocol';
 
 export type ElementEditorMode = 'counter' | 'habit';
 
@@ -21,6 +21,9 @@ export type ElementEditorSession = {
   increments: string;
   dailyTarget: string;
   targetLabel: string;
+  habitTrackingMode: HabitTrackingMode;
+  habitDailyGoalMinutes: string;
+  habitSoundId: string;
   timeSlot: HabitTimeSlot;
   useTimeRange: boolean;
   timeRangeStart: string;
@@ -39,6 +42,9 @@ export type ElementEditorSaveData =
       mode: 'habit';
       name: string;
       targetLabel: string;
+      habitTrackingMode: HabitTrackingMode;
+      habitDailyGoalMinutes: string;
+      habitSoundId: string;
       timeSlot: HabitTimeSlot;
       useTimeRange: boolean;
       timeRangeStart: string;
@@ -49,11 +55,18 @@ export type ElementEditorSaveData =
 type Props = {
   session: ElementEditorSession | null;
   saving: boolean;
+  soundOptions: SoundAsset[];
   onDismiss: () => void;
   onSave: (data: ElementEditorSaveData) => void;
 };
 
-export default function ElementEditorDialog({ session, saving, onDismiss, onSave }: Props) {
+export default function ElementEditorDialog({
+  session,
+  saving,
+  soundOptions,
+  onDismiss,
+  onSave,
+}: Props) {
   const visible = session !== null;
   const mode = session?.mode ?? 'counter';
   const editingId = session?.editingId ?? null;
@@ -62,6 +75,9 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
   const [increments, setIncrements] = useState('5, 10');
   const [dailyTarget, setDailyTarget] = useState('');
   const [targetLabel, setTargetLabel] = useState('');
+  const [habitTrackingMode, setHabitTrackingMode] = useState<HabitTrackingMode>('boolean');
+  const [habitDailyGoalMinutes, setHabitDailyGoalMinutes] = useState('');
+  const [habitSoundId, setHabitSoundId] = useState('');
   const [timeSlot, setTimeSlot] = useState<HabitTimeSlot>('morning');
   const [useTimeRange, setUseTimeRange] = useState(false);
   const [timeRangeStart, setTimeRangeStart] = useState('');
@@ -76,6 +92,9 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
     setIncrements(session.increments);
     setDailyTarget(session.dailyTarget);
     setTargetLabel(session.targetLabel);
+    setHabitTrackingMode(session.habitTrackingMode);
+    setHabitDailyGoalMinutes(session.habitDailyGoalMinutes);
+    setHabitSoundId(session.habitSoundId);
     setTimeSlot(session.timeSlot);
     setUseTimeRange(session.useTimeRange);
     setTimeRangeStart(session.timeRangeStart);
@@ -92,6 +111,9 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
       mode: 'habit',
       name,
       targetLabel,
+      habitTrackingMode,
+      habitDailyGoalMinutes,
+      habitSoundId,
       timeSlot,
       useTimeRange,
       timeRangeStart,
@@ -137,13 +159,70 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
               </>
             ) : (
               <>
-                <TextInput
-                  label="Target (optional)"
-                  placeholder="e.g. 15 min, 1 cup"
-                  value={targetLabel}
-                  onChangeText={setTargetLabel}
-                  style={styles.input}
+                <Text variant="labelMedium" style={styles.slotLabel}>
+                  Type
+                </Text>
+                <SegmentedButtons
+                  value={habitTrackingMode}
+                  onValueChange={(value) => {
+                    if (value) setHabitTrackingMode(value as HabitTrackingMode);
+                  }}
+                  buttons={[
+                    { value: 'boolean', label: 'Check off' },
+                    { value: 'timer', label: 'Timer' },
+                  ]}
                 />
+                {habitTrackingMode === 'timer' ? (
+                  <>
+                    <TextInput
+                      label="Daily goal (minutes, optional)"
+                      placeholder="e.g. 15"
+                      value={habitDailyGoalMinutes}
+                      onChangeText={setHabitDailyGoalMinutes}
+                      keyboardType="number-pad"
+                      style={styles.input}
+                    />
+                    <Text variant="labelMedium" style={styles.slotLabel}>
+                      Sound while running
+                    </Text>
+                    {soundOptions.length === 0 ? (
+                      <Text variant="bodySmall" style={styles.soundHint}>
+                        Add tracks in App settings → Sound tracks.
+                      </Text>
+                    ) : (
+                      <View style={styles.soundList}>
+                        <Button
+                          mode={habitSoundId === '' ? 'contained-tonal' : 'outlined'}
+                          onPress={() => setHabitSoundId('')}
+                          style={styles.soundOption}
+                          compact
+                        >
+                          None
+                        </Button>
+                        {soundOptions.map((sound) => (
+                          <Button
+                            key={sound.id}
+                            mode={habitSoundId === sound.id ? 'contained-tonal' : 'outlined'}
+                            onPress={() => setHabitSoundId(sound.id)}
+                            style={styles.soundOption}
+                            compact
+                            icon="music-note"
+                          >
+                            {sound.label}
+                          </Button>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <TextInput
+                    label="Note (optional)"
+                    placeholder="e.g. 1 cup, stretch"
+                    value={targetLabel}
+                    onChangeText={setTargetLabel}
+                    style={styles.input}
+                  />
+                )}
                 <Text variant="labelMedium" style={styles.slotLabel}>
                   Time of day
                 </Text>
@@ -185,7 +264,7 @@ export default function ElementEditorDialog({ session, saving, onDismiss, onSave
                       <View style={styles.switchLabel}>
                         <Text variant="bodyMedium">Only show during this time</Text>
                         <Text variant="bodySmall" style={styles.switchHint}>
-                          Hidden on the Habits tab outside this window
+                          Hidden on the Daily tab outside this window
                         </Text>
                       </View>
                       <Switch
@@ -234,5 +313,18 @@ const styles = StyleSheet.create({
   switchHint: {
     marginTop: 2,
     opacity: 0.6,
+  },
+  soundHint: {
+    opacity: 0.6,
+    marginBottom: 8,
+  },
+  soundList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  soundOption: {
+    marginBottom: 0,
   },
 });

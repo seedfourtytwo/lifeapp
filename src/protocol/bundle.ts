@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { PROTOCOL_VERSION } from './envelope';
 import { ElementDefinitionSchema } from './element';
 import { EventSchema } from './event';
+import { SoundAssetSchema } from './sound';
+import { validateBundleEventLinks } from './eventMeta';
+import type { ElementDefinition } from './element';
+import type { LifeEvent } from './event';
 
 export const DashboardItemSchema = z.object({
   id: z.string().uuid(),
@@ -18,10 +22,34 @@ export const ProtocolBundleSchema = z.object({
   elements: z.array(ElementDefinitionSchema),
   dashboard: z.array(DashboardItemSchema),
   events: z.array(EventSchema),
+  /** Optional sound tracks referenced by habit configs (`soundId`). */
+  soundLibrary: z.array(SoundAssetSchema).optional(),
 });
 
 export type ProtocolBundle = z.infer<typeof ProtocolBundleSchema>;
 
 export function parseProtocolBundle(raw: unknown): ProtocolBundle {
-  return ProtocolBundleSchema.parse(raw);
+  const bundle = ProtocolBundleSchema.parse(raw);
+  validateBundleEventLinks(bundle.elements, bundle.events);
+  return bundle;
+}
+
+export function createProtocolBundle(input: {
+  elements: ElementDefinition[];
+  dashboard: z.infer<typeof DashboardItemSchema>[];
+  events: LifeEvent[];
+  soundLibrary?: z.infer<typeof SoundAssetSchema>[];
+}): ProtocolBundle {
+  const bundle: ProtocolBundle = {
+    protocolVersion: PROTOCOL_VERSION,
+    exportedAt: new Date().toISOString(),
+    elements: input.elements,
+    dashboard: input.dashboard,
+    events: input.events,
+    ...(input.soundLibrary && input.soundLibrary.length > 0
+      ? { soundLibrary: input.soundLibrary }
+      : {}),
+  };
+  validateBundleEventLinks(bundle.elements, bundle.events);
+  return bundle;
 }

@@ -9,8 +9,17 @@ import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
 import type { RootStackParamList } from '../navigation/types';
-import { CounterConfigSchema } from '../protocol';
+import {
+  CounterConfigSchema,
+  HabitConfigSchema,
+  formatHabitTimerDuration,
+  isHabitDayComplete,
+  isHabitScheduledOnDate,
+  toDateString,
+  type ElementDefinition,
+} from '../protocol';
 import { formatChartLabel, formatFullDate, lastNDates } from '../utils/dates';
+import { completedDatesFromDailyTotals, computeStreak } from '../utils/streak';
 
 const CHART_DAYS = 14;
 
@@ -22,30 +31,46 @@ interface DayRow {
   label: string;
 }
 
+function formatDayValue(
+  element: ElementDefinition | null,
+  total: number,
+): string {
+  if (!element) return String(total);
+
+  if (element.kind === 'habit') {
+    const config = HabitConfigSchema.parse(element.config);
+    if (config.trackingMode === 'timer') {
+      return total > 0 ? formatHabitTimerDuration(total) : '—';
+    }
+    return isHabitDayComplete(total, config) ? 'Done' : '—';
+  }
+
+  const unit = CounterConfigSchema.parse(element.config).unit;
+  return `${total} ${unit}`;
+}
+
 export default function ElementHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
   const { elementId } = route.params;
-  const [name, setName] = useState('');
-  const [unit, setUnit] = useState('reps');
+  const [element, setElement] = useState<ElementDefinition | null>(null);
   const [days, setDays] = useState<DayRow[]>([]);
+  const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const db = await getDatabase();
-      const element = await elementRepo.getElementById(db, elementId);
-      if (!element) {
-        setName('Unknown');
+      const loaded = await elementRepo.getElementById(db, elementId);
+      if (!loaded) {
+        setElement(null);
         setDays([]);
+        setStreak(0);
         return;
       }
 
-      setName(element.name);
-      if (element.kind === 'counter') {
-        setUnit(CounterConfigSchema.parse(element.config).unit);
-      }
+      setElement(loaded);
 
       const range = lastNDates(CHART_DAYS);
       const since = range[0];
@@ -59,6 +84,23 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
           label: formatChartLabel(date),
         })),
       );
+
+      if (loaded.kind === 'habit') {
+        const config = HabitConfigSchema.parse(loaded.config);
+        const yearRows = await eventRepo.getDailyTotalsByElement(db, elementId, lastNDates(365)[0]);
+        const completed = completedDatesFromDailyTotals(yearRows, (total) =>
+          isHabitDayComplete(total, config),
+        );
+        setStreak(
+          computeStreak(
+            completed,
+            toDateString(new Date()),
+            (date) => isHabitScheduledOnDate(config, date),
+          ),
+        );
+      } else {
+        setStreak(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -71,10 +113,10 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
   );
 
   useLayoutEffect(() => {
-    if (name) {
-      navigation.setOptions({ title: name });
+    if (element?.name) {
+      navigation.setOptions({ title: element.name });
     }
-  }, [name, navigation]);
+  }, [element?.name, navigation]);
 
   if (loading) {
     return (
@@ -84,11 +126,46 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
     );
   }
 
-  const chartData = days.map((d) => ({ label: d.label, value: d.total }));
-  const best = days.reduce((max, d) => (d.total > max.total ? d : max), days[0]);
+  if (!element) {
+    return (
+      <View style={styles.centered}>
+        <Text variant="bodyLarge">Habit not found.</Text>
+      </View>
+    );
+  }
+
+  const isHabit = element.kind === 'habit';
+  const habitConfig = isHabit ? HabitConfigSchema.parse(element.config) : null;
+  const isTimerHabit = habitConfig?.trackingMode === 'timer';
+  const chartUnit = isHabit
+    ? isTimerHabit
+      ? 'min'
+      : 'done'
+    : CounterConfigSchema.parse(element.config).unit;
+
+  const chartData = days.map((d) => ({
+    label: d.label,
+    value: isTimerHabit ? Math.round(d.total / 60) : d.total,
+  }));
+
+  const completedDays = days.filter((d) =>
+    isHabit && habitConfig
+      ? isHabitDayComplete(d.total, habitConfig)
+      : d.total > 0,
+  );
+  const best = completedDays.reduce<DayRow | null>(
+    (max, d) => (!max || d.total > max.total ? d : max),
+    null,
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {isHabit && streak > 0 ? (
+        <Text variant="bodyMedium" style={styles.streak}>
+          Current streak: {streak} day{streak === 1 ? '' : 's'}
+        </Text>
+      ) : null}
+
       <Card
         style={[
           styles.card,
@@ -102,14 +179,18 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
       >
         <Card.Content>
           <Text variant="titleMedium">Last {CHART_DAYS} days</Text>
-          <DailyBarChart data={chartData} unit={unit} />
-          {best && best.total > 0 ? (
+          <DailyBarChart data={chartData} unit={chartUnit} />
+          {best && (isHabit ? isHabitDayComplete(best.total, habitConfig!) : best.total > 0) ? (
             <Text variant="bodySmall" style={styles.hint}>
-              Best day: {best.total} {unit} on {formatFullDate(best.date)}
+              {isHabit && !isTimerHabit
+                ? `Last completed: ${formatFullDate(best.date)}`
+                : isTimerHabit
+                  ? `Best day: ${formatHabitTimerDuration(best.total)} on ${formatFullDate(best.date)}`
+                  : `Best day: ${formatDayValue(element, best.total)} on ${formatFullDate(best.date)}`}
             </Text>
           ) : (
             <Text variant="bodySmall" style={styles.hint}>
-              No data yet — log reps from the dashboard.
+              {isHabit ? 'No completions yet — check in from the Daily tab.' : 'No data yet — log from the Counter tab.'}
             </Text>
           )}
         </Card.Content>
@@ -134,7 +215,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
           >
             <Text variant="bodyMedium">{formatFullDate(day.date)}</Text>
             <Text variant="bodyMedium" style={styles.rowTotal}>
-              {day.total} {unit}
+              {formatDayValue(element, day.total)}
             </Text>
           </View>
         ))}
@@ -151,6 +232,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  streak: {
+    marginBottom: 12,
+    opacity: 0.8,
+    fontWeight: '600',
   },
   card: {
     marginBottom: 16,
