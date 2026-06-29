@@ -1,0 +1,33 @@
+---
+description: Figma file and design-to-code mapping for Life Dashboard
+alwaysApply: false
+---
+
+# Life Dashboard — Figma
+
+## File
+
+- **URL:** https://www.figma.com/design/BX65MdglvzvwAiiy2dVUxL/Life-Dashboard
+- **File key:** `BX65MdglvzvwAiiy2dVUxL`
+- **Page:** `Screens`
+
+## Screen → code mapping
+
+| Figma frame | Source |
+|-------------|--------|
+| `Home / Daily` | `src/screens/HomeScreen.tsx` + `src/screens/DailyScreen.tsx` |
+| `Home / Counter` | `src/screens/HomeScreen.tsx` + `src/screens/CountersScreen.tsx` |
+| Counter card | `src/kinds/counter/CounterWidget.tsx` |
+| Elements / Settings | `src/screens/ElementsScreen.tsx`, `SettingsMenuScreen.tsx` |
+
+## Design tokens
+
+Tokens live in Figma variable collections `Life / Colors` and `Life / Spacing`. Source of truth in code is `src/theme.ts` (`brand.primary` = `#0D9488`).
+
+When implementing from Figma or pushing code to Figma, keep teal brand, MD3 light surfaces, and 16px content padding consistent with the app.
+
+## Workflow
+
+- **Design → code:** paste a Figma frame URL; use `get_design_context` then implement in React Native Paper.
+- **Code → Figma:** use `figma-generate-design` + `use_figma` against this file key.
+- **New screens:** add frames on the `Screens` page; do not scaffold unused kinds or future features.

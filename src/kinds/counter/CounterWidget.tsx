@@ -11,7 +11,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
-import { formatCounterUnit, type CounterConfig } from '../../protocol';
+import { type CounterConfig } from '../../protocol';
 import { counterProgressBar, counterProgressColors, lerpHex } from '../../utils/color';
 import type { WidgetProps } from '../types';
 
@@ -19,7 +19,7 @@ export function CounterWidget({
   element,
   config,
   todayTotal,
-  yesterdayTotal = 0,
+  yesterdayTotal: _yesterdayTotal = 0,
   onLog,
   onSetDailyTotal,
   onOpenDetails,
@@ -32,8 +32,6 @@ export function CounterWidget({
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
   const progress = hasTarget ? Math.min(1, todayTotal / dailyTarget) : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
-  const remaining = hasTarget ? Math.max(0, dailyTarget - todayTotal) : 0;
-  const unitLabel = formatCounterUnit(todayTotal, config.unit);
 
   const progressPalette = theme.dark
     ? counterProgressColors.dark
@@ -42,11 +40,7 @@ export function CounterWidget({
     ? lerpHex(progressPalette.start, progressPalette.end, progress)
     : undefined;
 
-  const statsText = hasTarget
-    ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)} · ${
-        isComplete ? 'Goal reached!' : `${remaining} to go`
-      }`
-    : `${todayTotal} ${unitLabel}`;
+  const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : String(todayTotal);
 
   const openEdit = () => {
     setEditValue(String(todayTotal));
@@ -74,7 +68,7 @@ export function CounterWidget({
     <>
       <Card style={[styles.card, cardBackground ? { backgroundColor: cardBackground } : null]}>
         <Card.Content style={styles.cardContent}>
-          <View style={styles.topRow}>
+          <View style={styles.headerRow}>
             <Pressable
               onPress={onOpenDetails}
               disabled={!onOpenDetails}
@@ -83,54 +77,44 @@ export function CounterWidget({
                 pressed && onOpenDetails && styles.namePressed,
               ]}
             >
-              <Text variant="titleMedium" numberOfLines={1} style={styles.name}>
+              <Text variant="titleSmall" numberOfLines={1} style={styles.name}>
                 {element.name}
               </Text>
             </Pressable>
-            <View style={styles.incrementRow}>
-              {config.quickIncrements.map((increment) => (
-                <Button
-                  key={increment}
-                  mode="contained"
-                  compact
-                  onPress={() => void onLog(increment, { source: 'quick_button', increment })}
-                  style={styles.incButton}
-                  labelStyle={styles.incLabel}
-                  contentStyle={styles.incContent}
-                >
-                  +{increment}
-                </Button>
-              ))}
+            <View style={styles.countCluster}>
+              <Text
+                variant="bodyMedium"
+                numberOfLines={1}
+                style={[styles.countText, { color: theme.colors.onSurfaceVariant }]}
+              >
+                {countText}
+              </Text>
+              {onSetDailyTotal ? (
+                <IconButton
+                  icon="pencil-outline"
+                  size={16}
+                  onPress={openEdit}
+                  accessibilityLabel="Edit today's total"
+                  style={styles.editButton}
+                  hitSlop={8}
+                />
+              ) : null}
             </View>
           </View>
 
-          {yesterdayTotal > 0 ? (
-            <Text
-              variant="labelSmall"
-              numberOfLines={1}
-              style={[styles.yesterday, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Yesterday · {yesterdayTotal} {formatCounterUnit(yesterdayTotal, config.unit)}
-            </Text>
-          ) : null}
-
-          <View style={styles.statsRow}>
-            <Text
-              variant="bodyMedium"
-              numberOfLines={1}
-              style={[styles.statsText, { color: theme.colors.onSurfaceVariant }]}
-            >
-              {statsText}
-            </Text>
-            {onSetDailyTotal ? (
-              <IconButton
-                icon="pencil-outline"
-                size={16}
-                onPress={openEdit}
-                accessibilityLabel="Edit today's total"
-                style={styles.editButton}
-              />
-            ) : null}
+          <View style={styles.incrementRow}>
+            {config.quickIncrements.map((increment) => (
+              <Button
+                key={increment}
+                mode="contained"
+                onPress={() => void onLog(increment, { source: 'quick_button', increment })}
+                style={styles.incButton}
+                labelStyle={styles.incLabel}
+                contentStyle={styles.incContent}
+              >
+                +{increment}
+              </Button>
+            ))}
           </View>
 
           {hasTarget ? (
@@ -166,15 +150,17 @@ export function CounterWidget({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 10,
+    marginBottom: 6,
   },
   cardContent: {
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 6,
   },
-  topRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
   name: {
@@ -187,43 +173,44 @@ const styles = StyleSheet.create({
   namePressed: {
     opacity: 0.7,
   },
-  incrementRow: {
+  countCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     flexShrink: 0,
   },
-  incButton: {
-    minWidth: 0,
-    margin: 0,
-  },
-  incContent: {
-    paddingHorizontal: 2,
-  },
-  incLabel: {
-    fontSize: 12,
-    marginVertical: 2,
-    marginHorizontal: 6,
-  },
-  yesterday: {
-    opacity: 0.8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 0,
-  },
-  statsText: {
-    flex: 1,
-    minWidth: 0,
+  countText: {
+    fontVariant: ['tabular-nums'],
+    fontWeight: '600',
   },
   editButton: {
     margin: 0,
     marginRight: -8,
+    width: 32,
+    height: 32,
+  },
+  incrementRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 6,
+  },
+  incButton: {
+    flex: 1,
+    margin: 0,
+    borderRadius: 8,
+  },
+  incContent: {
+    minHeight: 40,
+    paddingHorizontal: 4,
+  },
+  incLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginVertical: 0,
+    marginHorizontal: 0,
   },
   progressBar: {
-    height: 6,
-    borderRadius: 3,
+    height: 3,
+    borderRadius: 2,
     marginTop: 2,
   },
 });
