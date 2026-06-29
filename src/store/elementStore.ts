@@ -1,13 +1,26 @@
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
+import { getDatabase } from '../db/client';
 import { newId } from '../utils/id';
 import type { DashboardItem, ElementDefinition, ElementKind, ElementCategory } from '../protocol';
 import { PROTOCOL_VERSION } from '../protocol';
-import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
+
+async function insertElementPinnedToDashboard(
+  db: SQLiteDatabase,
+  element: ElementDefinition,
+): Promise<void> {
+  await elementRepo.insertElement(db, element);
+  await dashboardRepo.insertDashboardItem(db, {
+    id: newId(),
+    elementId: element.id,
+    sortOrder: await dashboardRepo.getNextSortOrder(db),
+  });
+}
 
 interface ElementState {
   elements: ElementDefinition[];
@@ -21,6 +34,7 @@ interface ElementState {
   updateHabit: (id: string, input: HabitInput) => Promise<void>;
   pinToDashboard: (elementId: string) => Promise<void>;
   unpinFromDashboard: (dashboardItemId: string) => Promise<void>;
+  deleteElement: (id: string) => Promise<void>;
 }
 
 export const useElementStore = create<ElementState>((set, get) => ({
@@ -60,7 +74,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       createdAt: new Date().toISOString(),
     };
 
-    await elementRepo.insertElement(db, element);
+    await insertElementPinnedToDashboard(db, element);
     await get().load();
   },
 
@@ -99,7 +113,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       createdAt: new Date().toISOString(),
     };
 
-    await elementRepo.insertElement(db, element);
+    await insertElementPinnedToDashboard(db, element);
     await get().load();
   },
 
@@ -138,6 +152,16 @@ export const useElementStore = create<ElementState>((set, get) => ({
   unpinFromDashboard: async (dashboardItemId) => {
     const db = await getDatabase();
     await dashboardRepo.deleteDashboardItem(db, dashboardItemId);
+    await get().load();
+  },
+
+  deleteElement: async (id) => {
+    const db = await getDatabase();
+    const existing = get().elements.find((e) => e.id === id);
+    if (!existing) {
+      throw new Error('Element not found');
+    }
+    await elementRepo.deleteElement(db, id);
     await get().load();
   },
 }));

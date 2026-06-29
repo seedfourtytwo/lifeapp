@@ -1,7 +1,10 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { newId } from '../utils/id';
+import * as dashboardRepo from './repositories/dashboardRepository';
+import * as elementRepo from './repositories/elementRepository';
 import { SCHEMA_SQL } from './schema';
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   2: async (db) => {
@@ -11,6 +14,23 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
         value TEXT NOT NULL
       );
     `);
+  },
+  3: async (db) => {
+    const [elements, dashboard] = await Promise.all([
+      elementRepo.getAllElements(db),
+      dashboardRepo.getDashboardItems(db),
+    ]);
+    const pinnedIds = new Set(dashboard.map((item) => item.elementId));
+    let sortOrder = await dashboardRepo.getNextSortOrder(db);
+    for (const element of elements) {
+      if (pinnedIds.has(element.id)) continue;
+      await dashboardRepo.insertDashboardItem(db, {
+        id: newId(),
+        elementId: element.id,
+        sortOrder,
+      });
+      sortOrder += 1;
+    }
   },
 };
 

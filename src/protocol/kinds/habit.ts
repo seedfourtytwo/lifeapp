@@ -1,5 +1,14 @@
 import { z } from 'zod';
 import { isWithinTimeRange, formatTimeRange } from '../../utils/time';
+import {
+  formatScheduleDescription,
+  HabitScheduleSchema,
+  isScheduleActiveOnDate,
+  isTimeRangeStartingSoon,
+  type HabitSchedule,
+} from '../schedule';
+
+export { HabitScheduleSchema, type HabitSchedule, formatScheduleDescription };
 
 export const HabitTrackingModeSchema = z.enum(['boolean', 'timer']);
 
@@ -23,12 +32,6 @@ export const HabitTimeRangeSchema = z.object({
 
 export type HabitTimeRange = z.infer<typeof HabitTimeRangeSchema>;
 
-export const HabitScheduleSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('daily') }),
-]);
-
-export type HabitSchedule = z.infer<typeof HabitScheduleSchema>;
-
 export const HabitConfigSchema = z.object({
   trackingMode: HabitTrackingModeSchema.default('boolean'),
   timeSlot: HabitTimeSlotSchema,
@@ -40,7 +43,7 @@ export const HabitConfigSchema = z.object({
   dailyTargetSeconds: z.number().int().positive().optional(),
   /** Reference into the user's sound library */
   soundId: z.string().uuid().optional(),
-  /** Reserved for local notification reminders */
+  /** Minutes before timeRange.start to fire a local reminder */
   remindMinutesBefore: z.number().int().nonnegative().optional(),
 });
 
@@ -87,6 +90,8 @@ export type HabitInput = {
   visibleOnlyInTimeRange?: boolean;
   dailyTargetSeconds?: number;
   soundId?: string;
+  schedule?: HabitSchedule;
+  remindMinutesBefore?: number;
 };
 
 export function buildHabitConfig(input: {
@@ -98,6 +103,7 @@ export function buildHabitConfig(input: {
   dailyTargetSeconds?: number;
   soundId?: string;
   schedule?: HabitSchedule;
+  remindMinutesBefore?: number;
 }): HabitConfig {
   return {
     trackingMode: input.trackingMode ?? 'boolean',
@@ -112,6 +118,9 @@ export function buildHabitConfig(input: {
       ? { dailyTargetSeconds: input.dailyTargetSeconds }
       : {}),
     ...(input.soundId ? { soundId: input.soundId } : {}),
+    ...(input.remindMinutesBefore !== undefined && input.remindMinutesBefore >= 0
+      ? { remindMinutesBefore: input.remindMinutesBefore }
+      : {}),
   };
 }
 
@@ -144,9 +153,16 @@ export function formatHabitDescription(config: HabitConfig): string | undefined 
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
-/** Whether a habit is due on a calendar date (daily-only for now). */
-export function isHabitScheduledOnDate(_config: HabitConfig, _date: string): boolean {
-  return true;
+export function isHabitScheduledOnDate(config: HabitConfig, dateStr: string): boolean {
+  return isScheduleActiveOnDate(config.schedule, dateStr);
+}
+
+export function isHabitStartingSoon(
+  config: HabitConfig,
+  now = new Date(),
+  withinHours = 2,
+): boolean {
+  return isTimeRangeStartingSoon(config.timeRange, now, withinHours);
 }
 
 export function formatHabitTimerDuration(totalSeconds: number): string {

@@ -61,7 +61,18 @@ export {
   buildTimerSessionPayload,
   liveTimerTotalSeconds,
   isHabitScheduledOnDate,
+  isHabitStartingSoon,
+  formatScheduleDescription,
 } from './kinds/habit';
+export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
+export {
+  DAILY_VIEW_FILTERS,
+  DAILY_VIEW_FILTER_LABELS,
+  isDailyViewFilter,
+  filterHabitsForDailyView,
+  isHabitDueToday,
+} from './dailyView';
+export type { DailyViewFilter } from './dailyView';
 export type {
   HabitConfig,
   HabitEventMeta,

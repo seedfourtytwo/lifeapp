@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, IconButton, List, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, List, Switch, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { requestNotificationPermissions, isNotificationsNativeAvailable } from '../notifications/habitReminders';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSoundLibraryStore } from '../store/soundLibraryStore';
 import { THEME_MODE_OPTIONS } from '../theme';
@@ -12,6 +13,8 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
+  const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
+  const setHabitRemindersEnabled = useSettingsStore((s) => s.setHabitRemindersEnabled);
   const sounds = useSoundLibraryStore((s) => s.sounds);
   const loadSounds = useSoundLibraryStore((s) => s.load);
   const addFromFile = useSoundLibraryStore((s) => s.addFromFile);
@@ -38,6 +41,27 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const handleRemindersToggle = async (enabled: boolean) => {
+    if (enabled && !isNotificationsNativeAvailable()) {
+      Alert.alert(
+        'Rebuild required',
+        'Habit reminders need a fresh dev build. Run: npx expo run:android',
+      );
+      return;
+    }
+    if (enabled) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(
+          'Notifications blocked',
+          'Enable notifications in system settings to get habit reminders.',
+        );
+        return;
+      }
+    }
+    await setHabitRemindersEnabled(enabled);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <List.Section>
@@ -56,6 +80,21 @@ export default function SettingsScreen() {
             }
           />
         ))}
+      </List.Section>
+
+      <List.Section>
+        <List.Subheader>Notifications</List.Subheader>
+        <List.Item
+          title="Habit reminders"
+          description="Remind before scheduled habits and at 8 PM if habits remain"
+          left={(props) => <List.Icon {...props} icon="bell-outline" />}
+          right={() => (
+            <Switch
+              value={habitRemindersEnabled}
+              onValueChange={(value) => void handleRemindersToggle(value)}
+            />
+          )}
+        />
       </List.Section>
 
       <List.Section>

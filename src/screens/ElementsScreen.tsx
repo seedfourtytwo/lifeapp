@@ -1,56 +1,60 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import {
   ActivityIndicator,
-  Button,
-  Card,
   Chip,
+  FAB,
   Text,
-  useTheme,
 } from 'react-native-paper';
-import ElementEditorDialog, {
+import ElementEditorDialog from '../components/ElementEditorDialog';
+import ElementLibraryCard from '../components/ElementLibraryCard';
+import {
+  editorSessionFromCounter,
+  editorSessionFromHabit,
+  newEditorSession,
   type ElementEditorSaveData,
   type ElementEditorSession,
-} from '../components/ElementEditorDialog';
+} from '../components/elementEditor';
 import {
   CounterConfigSchema,
   HABIT_TIME_SLOT_LABELS,
   HabitConfigSchema,
   formatHabitDescription,
-  type CounterConfig,
-  type HabitConfig,
+  formatScheduleDescription,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useSoundLibraryStore } from '../store/soundLibraryStore';
-import { useAppTheme } from '../hooks/useAppTheme';
-import { newId } from '../utils/id';
-import { parseTimeHHmm } from '../utils/time';
+import { parseElementEditorSave } from '../utils/parseElementEditorSave';
 
-function newEditorSession(
-  overrides: Partial<ElementEditorSession> & Pick<ElementEditorSession, 'mode'>,
-): ElementEditorSession {
-  return {
-    sessionId: newId(),
-    editingId: null,
-    name: '',
-    increments: '5, 10',
-    dailyTarget: '',
-    targetLabel: '',
-    habitTrackingMode: 'boolean',
-    habitDailyGoalMinutes: '',
-    habitSoundId: '',
-    timeSlot: 'morning',
-    useTimeRange: false,
-    timeRangeStart: '',
-    timeRangeEnd: '',
-    visibleOnlyInTimeRange: false,
-    ...overrides,
-  };
+function counterMetaLines(config: ReturnType<typeof CounterConfigSchema.parse>): string[] {
+  const buttons = config.quickIncrements.map((n) => `+${n}`).join(', ');
+  const goal = config.dailyTarget ? ` · Goal: ${config.dailyTarget}/day` : '';
+  return [`Buttons: ${buttons}${goal}`];
+}
+
+function habitMetaLines(
+  config: ReturnType<typeof HabitConfigSchema.parse>,
+  soundLabel?: string,
+): string[] {
+  const lines: string[] = [];
+  const description = formatHabitDescription(config);
+  if (description) lines.push(description);
+  lines.push(formatScheduleDescription(config.schedule));
+  if (config.trackingMode === 'timer' && config.dailyTargetSeconds) {
+    lines.push(`Goal: ${Math.round(config.dailyTargetSeconds / 60)} min/day`);
+  }
+  if (config.remindMinutesBefore !== undefined && config.timeRange) {
+    lines.push(
+      `Reminder: ${config.remindMinutesBefore} min before ${config.timeRange.start}`,
+    );
+  }
+  if (config.trackingMode === 'timer' && config.soundId) {
+    lines.push(`Sound: ${soundLabel ?? 'Missing track'}`);
+  }
+  return lines;
 }
 
 export default function ElementsScreen() {
-  const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
@@ -59,6 +63,7 @@ export default function ElementsScreen() {
   const updateCounter = useElementStore((s) => s.updateCounter);
   const createHabit = useElementStore((s) => s.createHabit);
   const updateHabit = useElementStore((s) => s.updateHabit);
+  const deleteElement = useElementStore((s) => s.deleteElement);
   const pinToDashboard = useElementStore((s) => s.pinToDashboard);
   const unpinFromDashboard = useElementStore((s) => s.unpinFromDashboard);
   const sounds = useSoundLibraryStore((s) => s.sounds);
@@ -66,137 +71,47 @@ export default function ElementsScreen() {
 
   const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     void load();
     void loadSounds();
   }, [load, loadSounds]);
 
-  const pinnedElementIds = new Set(dashboard.map((d) => d.elementId));
-  const counters = elements.filter((e) => e.kind === 'counter');
-  const habits = elements.filter((e) => e.kind === 'habit');
+  const pinnedElementIds = useMemo(
+    () => new Set(dashboard.map((d) => d.elementId)),
+    [dashboard],
+  );
+  const counters = useMemo(
+    () => elements.filter((e) => e.kind === 'counter'),
+    [elements],
+  );
+  const habits = useMemo(
+    () => elements.filter((e) => e.kind === 'habit'),
+    [elements],
+  );
 
-  const openCreateCounter = () => {
-    setEditorSession(newEditorSession({ mode: 'counter' }));
-  };
-
-  const openCreateHabit = () => {
-    setEditorSession(newEditorSession({ mode: 'habit' }));
-  };
-
-  const openEditCounter = (id: string, currentName: string, config: CounterConfig) => {
-    setEditorSession(newEditorSession({
-      mode: 'counter',
-      editingId: id,
-      name: currentName,
-      increments: config.quickIncrements.join(', '),
-      dailyTarget: config.dailyTarget ? String(config.dailyTarget) : '',
-    }));
-  };
-
-  const openEditHabit = (id: string, currentName: string, config: HabitConfig) => {
-    setEditorSession(newEditorSession({
-      mode: 'habit',
-      editingId: id,
-      name: currentName,
-      targetLabel: config.targetLabel ?? '',
-      habitTrackingMode: config.trackingMode,
-      habitDailyGoalMinutes: config.dailyTargetSeconds
-        ? String(Math.round(config.dailyTargetSeconds / 60))
-        : '',
-      habitSoundId: config.soundId ?? '',
-      timeSlot: config.timeSlot,
-      useTimeRange: Boolean(config.timeRange),
-      timeRangeStart: config.timeRange?.start ?? '',
-      timeRangeEnd: config.timeRange?.end ?? '',
-      visibleOnlyInTimeRange: config.visibleOnlyInTimeRange ?? false,
-    }));
-  };
-
-  const parseIncrements = (raw: string): number[] => {
-    const values = raw
-      .split(',')
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !Number.isNaN(n) && n > 0);
-    if (values.length === 0) {
-      throw new Error('Enter at least one positive number (e.g. 5, 10)');
-    }
-    return values;
-  };
-
-  const parseDailyTarget = (raw: string): number | undefined => {
-    const trimmed = raw.trim();
-    if (!trimmed) return undefined;
-    const value = parseInt(trimmed, 10);
-    if (Number.isNaN(value) || value <= 0) {
-      throw new Error('Daily target must be a positive whole number');
-    }
-    return value;
-  };
-
-  const parseDailyGoalMinutes = (raw: string): number | undefined => {
-    const trimmed = raw.trim();
-    if (!trimmed) return undefined;
-    const minutes = parseInt(trimmed, 10);
-    if (Number.isNaN(minutes) || minutes <= 0) {
-      throw new Error('Daily goal must be a positive number of minutes');
-    }
-    return minutes * 60;
-  };
+  const getDashboardItemId = useCallback(
+    (elementId: string) => dashboard.find((d) => d.elementId === elementId)?.id,
+    [dashboard],
+  );
 
   const handleSave = async (data: ElementEditorSaveData) => {
     const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {
-      if (data.mode === 'counter') {
-        const quickIncrements = parseIncrements(data.increments);
-        const dailyTarget = parseDailyTarget(data.dailyTarget);
-        const counterInput = {
-          name: data.name,
-          quickIncrements,
-          dailyTarget,
-        };
+      const parsed = parseElementEditorSave(data);
+      if (parsed.kind === 'counter') {
         if (editingId) {
-          await updateCounter(editingId, counterInput);
+          await updateCounter(editingId, parsed.input);
         } else {
-          await createCounter(counterInput);
+          await createCounter(parsed.input);
         }
+      } else if (editingId) {
+        await updateHabit(editingId, parsed.input);
       } else {
-        let timeRange: { start: string; end: string } | undefined;
-        if (data.useTimeRange) {
-          const start = parseTimeHHmm(data.timeRangeStart);
-          const end = parseTimeHHmm(data.timeRangeEnd);
-          if (!start || !end) {
-            throw new Error('Enter valid times in HH:mm format, e.g. 06:00');
-          }
-          timeRange = { start, end };
-        }
-        if (data.visibleOnlyInTimeRange && !timeRange) {
-          throw new Error('Set a time range before limiting visibility');
-        }
-
-        const habitInput = {
-          name: data.name,
-          trackingMode: data.habitTrackingMode,
-          timeSlot: data.timeSlot,
-          targetLabel: data.habitTrackingMode === 'boolean' ? data.targetLabel || undefined : undefined,
-          dailyTargetSeconds:
-            data.habitTrackingMode === 'timer'
-              ? parseDailyGoalMinutes(data.habitDailyGoalMinutes)
-              : undefined,
-          soundId:
-            data.habitTrackingMode === 'timer' && data.habitSoundId
-              ? data.habitSoundId
-              : undefined,
-          timeRange,
-          visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
-        };
-
-        if (editingId) {
-          await updateHabit(editingId, habitInput);
-        } else {
-          await createHabit(habitInput);
-        }
+        await createHabit(parsed.input);
       }
       setEditorSession(null);
     } catch (error) {
@@ -207,10 +122,40 @@ export default function ElementsScreen() {
     }
   };
 
-  const getDashboardItemId = useCallback(
-    (elementId: string) => dashboard.find((d) => d.elementId === elementId)?.id,
-    [dashboard],
+  const confirmDelete = useCallback(
+    (elementId: string, elementName: string, kindLabel: string) => {
+      Alert.alert(
+        `Delete ${kindLabel}?`,
+        `"${elementName}" and all its history will be removed permanently.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              void (async () => {
+                setDeleting(true);
+                try {
+                  await deleteElement(elementId);
+                  setEditorSession(null);
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : 'Failed to delete';
+                  Alert.alert('Could not delete', message);
+                } finally {
+                  setDeleting(false);
+                }
+              })();
+            },
+          },
+        ],
+      );
+    },
+    [deleteElement],
   );
+
+  const editingElement = editorSession?.editingId
+    ? elements.find((element) => element.id === editorSession.editingId)
+    : undefined;
 
   if (isLoading && elements.length === 0) {
     return (
@@ -223,11 +168,17 @@ export default function ElementsScreen() {
   return (
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
+        <Text variant="bodyMedium" style={styles.intro}>
+          Create counters and habits here. Pin items to show them on Home.
+        </Text>
+
         <Text variant="titleSmall" style={styles.sectionHeader}>
           Counters
         </Text>
         {counters.length === 0 ? (
-          <Text variant="bodySmall" style={styles.sectionEmpty}>No counters yet.</Text>
+          <Text variant="bodySmall" style={styles.sectionEmpty}>
+            No counters yet. Tap + to add one.
+          </Text>
         ) : null}
         {counters.map((element) => {
           const config = CounterConfigSchema.parse(element.config);
@@ -235,39 +186,21 @@ export default function ElementsScreen() {
           const dashboardItemId = getDashboardItemId(element.id);
 
           return (
-            <Card
+            <ElementLibraryCard
               key={element.id}
-              style={[
-                styles.card,
-                isCartoon && {
-                  borderWidth: deco.cardBorderWidth,
-                  borderColor: theme.colors.outline,
-                  borderRadius: deco.radius.md,
-                },
-              ]}
-            >
-              <Card.Content>
-                <Text variant="titleMedium">{element.name}</Text>
-                <View style={styles.chips}>
-                  <Chip compact>{element.kind}</Chip>
-                  {isPinned ? <Chip compact icon="pin">Pinned</Chip> : null}
-                </View>
-                <Text variant="bodySmall" style={styles.meta}>
-                  Buttons: {config.quickIncrements.map((n) => `+${n}`).join(', ')}
-                  {config.dailyTarget ? ` · Goal: ${config.dailyTarget}/day` : ''}
-                </Text>
-              </Card.Content>
-              <Card.Actions>
-                <Button onPress={() => openEditCounter(element.id, element.name, config)}>
-                  Edit
-                </Button>
-                {isPinned && dashboardItemId ? (
-                  <Button onPress={() => void unpinFromDashboard(dashboardItemId)}>Unpin</Button>
-                ) : (
-                  <Button onPress={() => void pinToDashboard(element.id)}>Pin to top</Button>
-                )}
-              </Card.Actions>
-            </Card>
+              name={element.name}
+              chips={<Chip compact>Counter</Chip>}
+              metaLines={counterMetaLines(config)}
+              isPinned={isPinned}
+              deleteLabel="Delete"
+              dashboardItemId={dashboardItemId}
+              onEdit={() =>
+                setEditorSession(editorSessionFromCounter(element.id, element.name, config))
+              }
+              onDelete={() => confirmDelete(element.id, element.name, 'counter')}
+              onPin={() => void pinToDashboard(element.id)}
+              onUnpin={() => dashboardItemId && void unpinFromDashboard(dashboardItemId)}
+            />
           );
         })}
 
@@ -275,69 +208,86 @@ export default function ElementsScreen() {
           Habits
         </Text>
         {habits.length === 0 ? (
-          <Text variant="bodySmall" style={styles.sectionEmpty}>No habits yet.</Text>
+          <Text variant="bodySmall" style={styles.sectionEmpty}>
+            No habits yet. Tap + to add one.
+          </Text>
         ) : null}
         {habits.map((element) => {
           const config = HabitConfigSchema.parse(element.config);
+          const isPinned = pinnedElementIds.has(element.id);
+          const dashboardItemId = getDashboardItemId(element.id);
+          const soundLabel = config.soundId
+            ? sounds.find((s) => s.id === config.soundId)?.label
+            : undefined;
+
           return (
-            <Card
+            <ElementLibraryCard
               key={element.id}
-              style={[
-                styles.card,
-                isCartoon && {
-                  borderWidth: deco.cardBorderWidth,
-                  borderColor: theme.colors.outline,
-                  borderRadius: deco.radius.md,
-                },
-              ]}
-            >
-              <Card.Content>
-                <Text variant="titleMedium">{element.name}</Text>
-                <View style={styles.chips}>
+              name={element.name}
+              chips={
+                <>
                   <Chip compact>{config.trackingMode === 'timer' ? 'Timer' : 'Check off'}</Chip>
                   <Chip compact>{HABIT_TIME_SLOT_LABELS[config.timeSlot]}</Chip>
-                </View>
-                {formatHabitDescription(config) ? (
-                  <Text variant="bodySmall" style={styles.meta}>
-                    {formatHabitDescription(config)}
-                  </Text>
-                ) : null}
-                {config.trackingMode === 'timer' && config.dailyTargetSeconds ? (
-                  <Text variant="bodySmall" style={styles.meta}>
-                    Goal: {Math.round(config.dailyTargetSeconds / 60)} min/day
-                  </Text>
-                ) : null}
-                {config.trackingMode === 'timer' && config.soundId ? (
-                  <Text variant="bodySmall" style={styles.meta}>
-                    Sound: {sounds.find((s) => s.id === config.soundId)?.label ?? 'Missing track'}
-                  </Text>
-                ) : null}
-              </Card.Content>
-              <Card.Actions>
-                <Button onPress={() => openEditHabit(element.id, element.name, config)}>
-                  Edit
-                </Button>
-              </Card.Actions>
-            </Card>
+                </>
+              }
+              metaLines={habitMetaLines(config, soundLabel)}
+              isPinned={isPinned}
+              deleteLabel="Delete"
+              dashboardItemId={dashboardItemId}
+              onEdit={() =>
+                setEditorSession(editorSessionFromHabit(element.id, element.name, config))
+              }
+              onDelete={() => confirmDelete(element.id, element.name, 'habit')}
+              onPin={() => void pinToDashboard(element.id)}
+              onUnpin={() => dashboardItemId && void unpinFromDashboard(dashboardItemId)}
+            />
           );
         })}
       </ScrollView>
 
-      <View style={styles.fabRow}>
-        <Button mode="contained" onPress={openCreateCounter} style={styles.fab}>
-          New counter
-        </Button>
-        <Button mode="contained" onPress={openCreateHabit} style={styles.fab}>
-          New habit
-        </Button>
-      </View>
+      <FAB.Group
+        open={fabOpen}
+        visible
+        icon={fabOpen ? 'close' : 'plus'}
+        actions={[
+          {
+            icon: 'counter',
+            label: 'New counter',
+            onPress: () => {
+              setFabOpen(false);
+              setEditorSession(newEditorSession({ mode: 'counter' }));
+            },
+          },
+          {
+            icon: 'checkbox-marked-circle-outline',
+            label: 'New habit',
+            onPress: () => {
+              setFabOpen(false);
+              setEditorSession(newEditorSession({ mode: 'habit' }));
+            },
+          },
+        ]}
+        onStateChange={({ open }) => setFabOpen(open)}
+        style={styles.fab}
+      />
 
       <ElementEditorDialog
         session={editorSession}
         saving={saving}
+        deleting={deleting}
         soundOptions={sounds}
         onDismiss={() => setEditorSession(null)}
         onSave={(data) => void handleSave(data)}
+        onDelete={
+          editingElement
+            ? () =>
+                confirmDelete(
+                  editingElement.id,
+                  editingElement.name,
+                  editingElement.kind === 'counter' ? 'counter' : 'habit',
+                )
+            : undefined
+        }
       />
     </View>
   );
@@ -345,23 +295,24 @@ export default function ElementsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 100 },
+  container: { padding: 16, paddingBottom: 96 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  intro: {
+    opacity: 0.7,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
   sectionHeader: {
-    marginTop: 8,
+    marginTop: 16,
     marginBottom: 8,
     opacity: 0.7,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   sectionEmpty: { marginBottom: 12, opacity: 0.5 },
-  card: { marginBottom: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  meta: { marginTop: 8, opacity: 0.6 },
-  fabRow: {
-    flexDirection: 'row',
-    gap: 8,
-    margin: 16,
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
   },
-  fab: { flex: 1 },
 });

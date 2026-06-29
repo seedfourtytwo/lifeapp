@@ -3,25 +3,12 @@ import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CounterConfigSchema, type ElementDefinition } from '../protocol';
+import { CounterConfigSchema } from '../protocol';
 import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-
-function sortCounters(
-  counters: ElementDefinition[],
-  dashboardOrder: Map<string, number>,
-): ElementDefinition[] {
-  return [...counters].sort((a, b) => {
-    const aOrder = dashboardOrder.get(a.id);
-    const bOrder = dashboardOrder.get(b.id);
-    if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
-    if (aOrder !== undefined) return -1;
-    if (bOrder !== undefined) return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
+import { getPinnedElements } from '../utils/dashboardElements';
 
 export default function CountersScreen() {
   const theme = useTheme();
@@ -36,15 +23,16 @@ export default function CountersScreen() {
 
   const counters = useMemo(() => {
     const all = elements.filter((e) => e.kind === 'counter');
-    const order = new Map(dashboard.map((d, index) => [d.elementId, index]));
-    return sortCounters(all, order);
+    return getPinnedElements(all, dashboard);
   }, [elements, dashboard]);
 
   const refresh = useCallback(async () => {
     await load();
-    const counterIds = useElementStore.getState().elements
-      .filter((e) => e.kind === 'counter')
-      .map((e) => e.id);
+    const counterIds = useElementStore.getState().dashboard
+      .map((item) => item.elementId)
+      .filter((id) =>
+        useElementStore.getState().elements.some((e) => e.id === id && e.kind === 'counter'),
+      );
     if (counterIds.length > 0) {
       await loadCounterTotals(counterIds);
     }
@@ -89,7 +77,9 @@ export default function CountersScreen() {
 
       {counters.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
-          No counters yet. Tap the gear icon to add one.
+          {elements.some((e) => e.kind === 'counter')
+            ? 'No counters pinned. Open Settings and pin counters to show them here.'
+            : 'No counters yet. Open Settings to add one.'}
         </Text>
       ) : (
         counters.map((element) => {

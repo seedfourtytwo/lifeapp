@@ -1,12 +1,8 @@
 import { create } from 'zustand';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import type { SoundAsset } from '../protocol/sound';
 import { getDatabase } from '../db/client';
 import * as soundLibraryRepo from '../db/repositories/soundLibraryRepository';
 import { newId } from '../utils/id';
-
-const SOUNDS_DIR = `${FileSystem.documentDirectory ?? ''}sounds/`;
 
 function fileExtension(name: string): string {
   const parts = name.split('.');
@@ -16,6 +12,11 @@ function fileExtension(name: string): string {
 function labelFromFilename(name: string): string {
   const base = name.replace(/\.[^.]+$/, '');
   return base.replace(/[-_]+/g, ' ').trim() || 'Sound track';
+}
+
+async function getSoundsDirectory(): Promise<string> {
+  const FileSystem = await import('expo-file-system/legacy');
+  return `${FileSystem.documentDirectory ?? ''}sounds/`;
 }
 
 interface SoundLibraryState {
@@ -38,6 +39,9 @@ export const useSoundLibraryStore = create<SoundLibraryState>((set, get) => ({
   },
 
   addFromFile: async () => {
+    const DocumentPicker = await import('expo-document-picker');
+    const FileSystem = await import('expo-file-system/legacy');
+
     const result = await DocumentPicker.getDocumentAsync({
       type: 'audio/*',
       copyToCacheDirectory: true,
@@ -52,8 +56,10 @@ export const useSoundLibraryStore = create<SoundLibraryState>((set, get) => ({
     if (!FileSystem.documentDirectory) {
       throw new Error('Local storage is not available on this device');
     }
-    await FileSystem.makeDirectoryAsync(SOUNDS_DIR, { intermediates: true });
-    const destUri = `${SOUNDS_DIR}${id}.${ext}`;
+
+    const soundsDir = await getSoundsDirectory();
+    await FileSystem.makeDirectoryAsync(soundsDir, { intermediates: true });
+    const destUri = `${soundsDir}${id}.${ext}`;
     await FileSystem.copyAsync({ from: file.uri, to: destUri });
 
     const asset: SoundAsset = {
@@ -74,9 +80,13 @@ export const useSoundLibraryStore = create<SoundLibraryState>((set, get) => ({
     const sounds = await soundLibraryRepo.removeSoundAsset(db, id);
     set({ sounds });
 
-    if (existing?.source === 'file' && existing.uri.startsWith(SOUNDS_DIR)) {
+    if (existing?.source === 'file') {
       try {
-        await FileSystem.deleteAsync(existing.uri, { idempotent: true });
+        const FileSystem = await import('expo-file-system/legacy');
+        const soundsDir = await getSoundsDirectory();
+        if (existing.uri.startsWith(soundsDir)) {
+          await FileSystem.deleteAsync(existing.uri, { idempotent: true });
+        }
       } catch {
         // File may already be gone.
       }

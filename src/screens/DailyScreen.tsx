@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Chip, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { playLoopingHabitSound, stopLoopingHabitSound } from '../audio/habitTimerSound';
@@ -8,22 +8,28 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import {
+  DAILY_VIEW_FILTER_LABELS,
+  DAILY_VIEW_FILTERS,
+  filterHabitsForDailyView,
   HABIT_TIME_SLOT_LABELS,
   HABIT_TIME_SLOT_ORDER,
   HabitConfigSchema,
-  shouldShowHabitOnHabitsPage,
   type HabitConfig,
   type HabitTimeSlot,
+  toDateString,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { useSoundLibraryStore } from '../store/soundLibraryStore';
+import { getPinnedElements } from '../utils/dashboardElements';
 
 export default function DailyScreen() {
   const theme = useTheme();
   const { isCartoon } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const elements = useElementStore((s) => s.elements);
+  const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
   const load = useElementStore((s) => s.load);
   const {
@@ -39,21 +45,41 @@ export default function DailyScreen() {
   } = useEventStore();
   const loadSounds = useSoundLibraryStore((s) => s.load);
   const getSoundById = useSoundLibraryStore((s) => s.getById);
+  const dailyViewFilter = useSettingsStore((s) => s.dailyViewFilter);
+  const setDailyViewFilter = useSettingsStore((s) => s.setDailyViewFilter);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const allHabits = useMemo(
-    () => elements.filter((e) => e.kind === 'habit'),
+    () => getPinnedElements(
+      elements.filter((e) => e.kind === 'habit'),
+      dashboard,
+    ),
+    [elements, dashboard],
+  );
+
+  const totalHabitCount = useMemo(
+    () => elements.filter((e) => e.kind === 'habit').length,
     [elements],
   );
 
+  const filterContext = useMemo(
+    () => ({
+      now,
+      today: toDateString(now),
+      habitDoneToday,
+    }),
+    [now, habitDoneToday],
+  );
+
   const habits = useMemo(
-    () =>
-      allHabits.filter((habit) => {
-        const config = HabitConfigSchema.parse(habit.config);
-        return shouldShowHabitOnHabitsPage(config, now);
-      }),
-    [allHabits, now],
+    () => filterHabitsForDailyView(allHabits, dailyViewFilter, filterContext),
+    [allHabits, dailyViewFilter, filterContext],
+  );
+
+  const dueTodayHabits = useMemo(
+    () => filterHabitsForDailyView(allHabits, 'all_due', filterContext),
+    [allHabits, filterContext],
   );
 
   const habitHandler = getKindHandler('habit');
@@ -72,7 +98,11 @@ export default function DailyScreen() {
   const refresh = useCallback(async () => {
     await load();
     await loadSounds();
-    const habitElements = useElementStore.getState().elements.filter((e) => e.kind === 'habit');
+    const { elements, dashboard } = useElementStore.getState();
+    const habitElements = getPinnedElements(
+      elements.filter((e) => e.kind === 'habit'),
+      dashboard,
+    );
     const inputs = habitStreakInputsFromElements(habitElements);
     if (inputs.length > 0) {
       await loadHabitDayState(inputs);
@@ -134,32 +164,56 @@ export default function DailyScreen() {
     }),
   })).filter((group) => group.items.length > 0);
 
-  const doneCount = habits.filter((h) => habitDoneToday[h.id]).length;
+  const doneCount = dueTodayHabits.filter((h) => habitDoneToday[h.id]).length;
+
+  const filterChips = allHabits.length > 0 ? (
+    <View style={styles.filterRow}>
+      {DAILY_VIEW_FILTERS.map((filter) => (
+        <Chip
+          key={filter}
+          selected={dailyViewFilter === filter}
+          onPress={() => void setDailyViewFilter(filter)}
+          compact
+        >
+          {DAILY_VIEW_FILTER_LABELS[filter]}
+        </Chip>
+      ))}
+    </View>
+  ) : null;
 
   return (
     <ScrollView
       contentContainerStyle={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
     >
-      {allHabits.length === 0 ? (
+      {filterChips}
+      {totalHabitCount === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
-          No habits yet. Tap the gear icon to add one.
+          No habits yet. Open Settings to add one.
+        </Text>
+      ) : allHabits.length === 0 ? (
+        <Text variant="bodyLarge" style={styles.empty}>
+          No habits pinned. Open Settings and pin habits to show them here.
         </Text>
       ) : habits.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
-          No habits in their time window right now.
+          {dailyViewFilter === 'all'
+            ? 'No habits match this filter.'
+            : 'Nothing due right now for this filter.'}
         </Text>
       ) : !habitHandler ? null : (
         <>
-          <Text
-            variant="bodyMedium"
-            style={[
-              styles.summary,
-              isCartoon && { color: theme.colors.onSecondaryContainer, fontWeight: '600' },
-            ]}
-          >
-            {doneCount} of {habits.length} done today
-          </Text>
+          {dueTodayHabits.length > 0 ? (
+            <Text
+              variant="bodyMedium"
+              style={[
+                styles.summary,
+                isCartoon && { color: theme.colors.onSecondaryContainer, fontWeight: '600' },
+              ]}
+            >
+              {doneCount} of {dueTodayHabits.length} done today
+            </Text>
+          ) : null}
           {habitsBySlot.map(({ slot, items }) => (
             <View key={slot} style={styles.section}>
               <Text
@@ -221,6 +275,12 @@ const styles = StyleSheet.create({
   summary: {
     marginBottom: 16,
     opacity: 0.8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
   },
   section: {
     marginBottom: 20,

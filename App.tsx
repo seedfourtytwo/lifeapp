@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
@@ -9,6 +9,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
+import { useAppBootstrap } from './src/hooks/useAppBootstrap';
+import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
 
@@ -20,11 +22,9 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 function ThemedApp() {
   const themeMode = useSettingsStore((s) => s.themeMode);
   const isLoaded = useSettingsStore((s) => s.isLoaded);
-  const load = useSettingsStore((s) => s.load);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useAppBootstrap();
+  useHabitReminderSync();
 
   if (!isLoaded) {
     return (

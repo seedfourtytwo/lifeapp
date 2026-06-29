@@ -85,6 +85,17 @@ describe('HabitConfigSchema', () => {
     expect(result.timeRange).toEqual({ start: '06:00', end: '09:00' });
     expect(result.visibleOnlyInTimeRange).toBe(true);
   });
+
+  it('builds habit config with schedule and reminder', () => {
+    const result = buildHabitConfig({
+      timeSlot: 'morning',
+      schedule: { type: 'weekdays', days: [1, 3, 5] },
+      timeRange: { start: '07:00', end: '08:00' },
+      remindMinutesBefore: 10,
+    });
+    expect(result.schedule).toEqual({ type: 'weekdays', days: [1, 3, 5] });
+    expect(result.remindMinutesBefore).toBe(10);
+  });
 });
 
 describe('HabitEventMetaSchema', () => {
