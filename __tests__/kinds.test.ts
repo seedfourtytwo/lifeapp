@@ -1,3 +1,19 @@
+jest.mock('../src/hooks/useAppTheme', () => ({
+  useAppTheme: () => ({
+    themeMode: 'light',
+    decorations: {
+      borderWidth: 1,
+      cardBorderWidth: 1,
+      radius: { sm: 8, md: 12, lg: 16 },
+      tabRadius: 12,
+      progressHeight: 3,
+      buttonRadius: 8,
+      headerBorderWidth: 1,
+    },
+    isCartoon: false,
+  }),
+}));
+
 import { counterHandler } from '../src/kinds/registry';
 
 describe('counterHandler', () => {

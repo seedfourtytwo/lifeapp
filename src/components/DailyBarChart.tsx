@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
+import { useAppTheme } from '../hooks/useAppTheme';
 
 export interface DailyBarChartDatum {
   label: string;
@@ -16,6 +17,8 @@ const CHART_HEIGHT = 160;
 
 export function DailyBarChart({ data, unit }: DailyBarChartProps) {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
+  const barColor = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
@@ -29,7 +32,20 @@ export function DailyBarChart({ data, unit }: DailyBarChartProps) {
                 {datum.value > 0 ? datum.value : ''}
               </Text>
               <View style={styles.barTrack}>
-                <View style={[styles.bar, { height, backgroundColor: theme.colors.primary }]} />
+                <View
+                  style={[
+                    styles.bar,
+                    {
+                      height,
+                      backgroundColor: barColor,
+                      borderTopLeftRadius: isCartoon ? deco.radius.sm : 4,
+                      borderTopRightRadius: isCartoon ? deco.radius.sm : 4,
+                      borderWidth: isCartoon ? deco.borderWidth : 0,
+                      borderColor: theme.colors.outline,
+                      borderBottomWidth: 0,
+                    },
+                  ]}
+                />
               </View>
               <Text variant="labelSmall" style={styles.dayLabel} numberOfLines={1}>
                 {datum.label}
@@ -75,8 +91,6 @@ const styles = StyleSheet.create({
   bar: {
     width: '70%',
     minHeight: 2,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
   },
   dayLabel: {
     marginTop: 4,

@@ -1,3 +1,5 @@
+import type { ThemeMode } from '../theme/types';
+
 export function parseHex(hex: string): [number, number, number] {
   const normalized = hex.replace('#', '');
   return [
@@ -19,13 +21,28 @@ export function lerpHex(from: string, to: string, amount: number): string {
   return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
-export const counterProgressBar = {
-  active: '#F97316',
-  complete: '#10B981',
-  completeText: '#059669',
-} as const;
+export interface CounterProgressBarColors {
+  active: string;
+  complete: string;
+  completeText: string;
+}
 
-export const counterProgressColors = {
+const COUNTER_PROGRESS_BAR: Record<ThemeMode, CounterProgressBarColors> = {
+  light: { active: '#F97316', complete: '#10B981', completeText: '#059669' },
+  dark: { active: '#F97316', complete: '#10B981', completeText: '#059669' },
+  cartoon: { active: '#E8A317', complete: '#4A9E3F', completeText: '#2D5A24' },
+};
+
+export function getCounterProgressBarColors(mode: ThemeMode): CounterProgressBarColors {
+  return COUNTER_PROGRESS_BAR[mode];
+}
+
+const COUNTER_PROGRESS_PALETTE = {
   light: { start: '#FFF7ED', end: '#ECFDF5' },
   dark: { start: '#3D2A1F', end: '#1A2E26' },
+  cartoon: { start: '#FFF9E6', end: '#D4F5C4' },
 } as const;
+
+export function getCounterProgressPalette(mode: ThemeMode) {
+  return COUNTER_PROGRESS_PALETTE[mode];
+}

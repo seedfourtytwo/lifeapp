@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
+import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import SettingsMenuScreen from '../screens/SettingsMenuScreen';
@@ -12,13 +13,25 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
 
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.surface },
+        headerStyle: {
+          backgroundColor: theme.colors.surface,
+          ...(isCartoon
+            ? {
+                borderBottomWidth: deco.headerBorderWidth,
+                borderBottomColor: theme.colors.outline,
+              }
+            : {}),
+        },
         headerTintColor: theme.colors.primary,
-        headerTitleStyle: { fontWeight: 'bold', color: theme.colors.onSurface },
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          color: theme.colors.onSurface,
+        },
         contentStyle: { backgroundColor: theme.colors.background },
       }}
     >

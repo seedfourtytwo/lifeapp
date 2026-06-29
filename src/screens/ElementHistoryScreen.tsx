@@ -1,9 +1,10 @@
 import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Text } from 'react-native-paper';
+import { ActivityIndicator, Card, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { DailyBarChart } from '../components/DailyBarChart';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
@@ -22,6 +23,8 @@ interface DayRow {
 }
 
 export default function ElementHistoryScreen({ route, navigation }: Props) {
+  const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
   const { elementId } = route.params;
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('reps');
@@ -86,7 +89,17 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Card style={styles.card}>
+      <Card
+        style={[
+          styles.card,
+          isCartoon && {
+            borderWidth: deco.cardBorderWidth,
+            borderColor: theme.colors.outline,
+            borderRadius: deco.radius.md,
+            backgroundColor: theme.colors.surface,
+          },
+        ]}
+      >
         <Card.Content>
           <Text variant="titleMedium">Last {CHART_DAYS} days</Text>
           <DailyBarChart data={chartData} unit={unit} />
@@ -109,7 +122,16 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
         .slice()
         .reverse()
         .map((day) => (
-          <View key={day.date} style={styles.row}>
+          <View
+            key={day.date}
+            style={[
+              styles.row,
+              {
+                borderBottomColor: theme.colors.outlineVariant,
+                borderBottomWidth: isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth,
+              },
+            ]}
+          >
             <Text variant="bodyMedium">{formatFullDate(day.date)}</Text>
             <Text variant="bodyMedium" style={styles.rowTotal}>
               {day.total} {unit}
@@ -145,8 +167,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
   },
   rowTotal: {
     fontWeight: '600',

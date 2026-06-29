@@ -1,8 +1,3 @@
-/**
- * Life Dashboard
- * Main entry point
- */
-
 import React, { useEffect } from 'react';
 import {
   DarkTheme as NavigationDarkTheme,
@@ -15,7 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useSettingsStore } from './src/store/settingsStore';
-import { appDarkTheme, appLightTheme } from './src/theme';
+import { getAppTheme } from './src/theme';
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavigationDefaultTheme,
@@ -23,7 +18,7 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 });
 
 function ThemedApp() {
-  const darkMode = useSettingsStore((s) => s.darkMode);
+  const themeMode = useSettingsStore((s) => s.themeMode);
   const isLoaded = useSettingsStore((s) => s.isLoaded);
   const load = useSettingsStore((s) => s.load);
 
@@ -39,14 +34,14 @@ function ThemedApp() {
     );
   }
 
-  const paperTheme = darkMode ? appDarkTheme : appLightTheme;
-  const navigationTheme = darkMode ? DarkTheme : LightTheme;
+  const paperTheme = getAppTheme(themeMode);
+  const navigationTheme = themeMode === 'dark' ? DarkTheme : LightTheme;
 
   return (
     <PaperProvider theme={paperTheme}>
       <NavigationContainer theme={navigationTheme}>
         <AppNavigator />
-        <StatusBar style={darkMode ? 'light' : 'dark'} />
+        <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       </NavigationContainer>
     </PaperProvider>
   );

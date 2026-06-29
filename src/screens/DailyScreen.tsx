@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Checkbox, List, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useAppTheme } from '../hooks/useAppTheme';
 import {
   HABIT_TIME_SLOT_LABELS,
   HABIT_TIME_SLOT_ORDER,
@@ -15,6 +16,7 @@ import { useEventStore } from '../store/eventStore';
 
 export default function DailyScreen() {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
   const load = useElementStore((s) => s.load);
@@ -91,12 +93,24 @@ export default function DailyScreen() {
         </Text>
       ) : (
         <>
-          <Text variant="bodyMedium" style={styles.summary}>
+          <Text
+            variant="bodyMedium"
+            style={[
+              styles.summary,
+              isCartoon && { color: theme.colors.onSecondaryContainer, fontWeight: '600' },
+            ]}
+          >
             {doneCount} of {habits.length} done today
           </Text>
           {habitsBySlot.map(({ slot, items }) => (
             <View key={slot} style={styles.section}>
-              <Text variant="titleSmall" style={styles.sectionTitle}>
+              <Text
+                variant="titleSmall"
+                style={[
+                  styles.sectionTitle,
+                  isCartoon && { color: theme.colors.outline, fontWeight: '700' },
+                ]}
+              >
                 {HABIT_TIME_SLOT_LABELS[slot as HabitTimeSlot]}
               </Text>
               {items.map((habit) => {
@@ -106,6 +120,7 @@ export default function DailyScreen() {
                   <List.Item
                     key={habit.id}
                     title={habit.name}
+                    titleStyle={isCartoon ? styles.cartoonTitle : undefined}
                     description={formatHabitDescription(config)}
                     left={() => (
                       <Checkbox
@@ -117,8 +132,12 @@ export default function DailyScreen() {
                     style={[
                       styles.habitRow,
                       {
-                        backgroundColor: theme.colors.surfaceVariant,
+                        backgroundColor: isCartoon
+                          ? theme.colors.surface
+                          : theme.colors.surfaceVariant,
                         borderColor: theme.colors.outlineVariant,
+                        borderRadius: deco.radius.sm,
+                        borderWidth: isCartoon ? deco.cardBorderWidth : deco.borderWidth,
                       },
                       done && styles.habitRowDone,
                     ]}
@@ -162,10 +181,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  cartoonTitle: {
+    fontWeight: '700',
+  },
   habitRow: {
-    borderRadius: 8,
     marginBottom: 6,
-    borderWidth: 1,
   },
   habitRowDone: {
     opacity: 0.65,

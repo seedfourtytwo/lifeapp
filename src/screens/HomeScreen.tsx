@@ -4,6 +4,7 @@ import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from '../navigation/types';
 import CountersScreen from './CountersScreen';
 import DailyScreen from './DailyScreen';
@@ -17,6 +18,7 @@ const TABS: { value: HomeTab; label: string }[] = [
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('daily');
 
@@ -24,16 +26,24 @@ export default function HomeScreen() {
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <SafeAreaView
         edges={['top']}
-        style={[
-          styles.headerSafe,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.outlineVariant,
-          },
-        ]}
+        style={{
+          backgroundColor: theme.colors.surface,
+          borderBottomColor: theme.colors.outlineVariant,
+          borderBottomWidth: deco.headerBorderWidth,
+        }}
       >
         <View style={styles.header}>
-          <View style={[styles.tabs, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <View
+            style={[
+              styles.tabs,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderRadius: deco.tabRadius,
+                borderWidth: isCartoon ? deco.borderWidth : 0,
+                borderColor: theme.colors.outline,
+              },
+            ]}
+          >
             {TABS.map(({ value, label }) => {
               const active = tab === value;
               return (
@@ -42,9 +52,16 @@ export default function HomeScreen() {
                   onPress={() => setTab(value)}
                   style={[
                     styles.tab,
+                    { borderRadius: deco.radius.sm },
                     active && [
                       styles.tabActive,
-                      { backgroundColor: theme.colors.surface },
+                      {
+                        backgroundColor: isCartoon
+                          ? theme.colors.secondaryContainer
+                          : theme.colors.surface,
+                        borderWidth: isCartoon ? deco.borderWidth : 0,
+                        borderColor: theme.colors.outline,
+                      },
                     ],
                   ]}
                   accessibilityRole="tab"
@@ -53,8 +70,12 @@ export default function HomeScreen() {
                   <Text
                     variant="labelLarge"
                     style={{
-                      color: active ? theme.colors.primary : theme.colors.onSurfaceVariant,
-                      fontWeight: active ? '600' : '500',
+                      color: active
+                        ? isCartoon
+                          ? theme.colors.onSecondaryContainer
+                          : theme.colors.primary
+                        : theme.colors.onSurfaceVariant,
+                      fontWeight: active ? '700' : '500',
                     }}
                   >
                     {label}
@@ -85,9 +106,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  headerSafe: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -100,7 +118,6 @@ const styles = StyleSheet.create({
   tabs: {
     flex: 1,
     flexDirection: 'row',
-    borderRadius: 12,
     padding: 4,
     gap: 4,
   },
@@ -109,7 +126,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 8,
   },
   tabActive: {
     shadowColor: '#000',

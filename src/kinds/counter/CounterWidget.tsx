@@ -11,8 +11,13 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { type CounterConfig } from '../../protocol';
-import { counterProgressBar, counterProgressColors, lerpHex } from '../../utils/color';
+import {
+  getCounterProgressBarColors,
+  getCounterProgressPalette,
+  lerpHex,
+} from '../../utils/color';
 import type { WidgetProps } from '../types';
 
 export function CounterWidget({
@@ -25,6 +30,7 @@ export function CounterWidget({
   onOpenDetails,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
+  const { themeMode, decorations: deco, isCartoon } = useAppTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
 
@@ -33,12 +39,13 @@ export function CounterWidget({
   const progress = hasTarget ? Math.min(1, todayTotal / dailyTarget) : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
 
-  const progressPalette = theme.dark
-    ? counterProgressColors.dark
-    : counterProgressColors.light;
+  const progressPalette = getCounterProgressPalette(themeMode);
+  const progressBarColors = getCounterProgressBarColors(themeMode);
   const cardBackground = hasTarget
     ? lerpHex(progressPalette.start, progressPalette.end, progress)
-    : undefined;
+    : isCartoon
+      ? theme.colors.surface
+      : undefined;
 
   const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : String(todayTotal);
 
@@ -66,7 +73,17 @@ export function CounterWidget({
 
   return (
     <>
-      <Card style={[styles.card, cardBackground ? { backgroundColor: cardBackground } : null]}>
+      <Card
+        style={[
+          styles.card,
+          {
+            borderRadius: deco.radius.md,
+            borderWidth: isCartoon ? deco.cardBorderWidth : 0,
+            borderColor: theme.colors.outline,
+            backgroundColor: cardBackground ?? theme.colors.surface,
+          },
+        ]}
+      >
         <Card.Content style={styles.cardContent}>
           <View style={styles.headerRow}>
             <Pressable
@@ -77,7 +94,11 @@ export function CounterWidget({
                 pressed && onOpenDetails && styles.namePressed,
               ]}
             >
-              <Text variant="titleSmall" numberOfLines={1} style={styles.name}>
+              <Text
+                variant="titleSmall"
+                numberOfLines={1}
+                style={[styles.name, isCartoon && { color: theme.colors.onSurface }]}
+              >
                 {element.name}
               </Text>
             </Pressable>
@@ -85,7 +106,14 @@ export function CounterWidget({
               <Text
                 variant="bodyMedium"
                 numberOfLines={1}
-                style={[styles.countText, { color: theme.colors.onSurfaceVariant }]}
+                style={[
+                  styles.countText,
+                  {
+                    color: isCartoon
+                      ? theme.colors.onSecondaryContainer
+                      : theme.colors.onSurfaceVariant,
+                  },
+                ]}
               >
                 {countText}
               </Text>
@@ -108,9 +136,10 @@ export function CounterWidget({
                 key={increment}
                 mode="contained"
                 onPress={() => void onLog(increment, { source: 'quick_button', increment })}
-                style={styles.incButton}
+                style={[styles.incButton, { borderRadius: deco.buttonRadius }]}
                 labelStyle={styles.incLabel}
                 contentStyle={styles.incContent}
+                buttonColor={isCartoon ? theme.colors.primary : undefined}
               >
                 +{increment}
               </Button>
@@ -120,8 +149,14 @@ export function CounterWidget({
           {hasTarget ? (
             <ProgressBar
               progress={progress}
-              color={isComplete ? counterProgressBar.complete : counterProgressBar.active}
-              style={styles.progressBar}
+              color={isComplete ? progressBarColors.complete : progressBarColors.active}
+              style={[
+                styles.progressBar,
+                {
+                  height: deco.progressHeight,
+                  borderRadius: deco.progressHeight / 2,
+                },
+              ]}
             />
           ) : null}
         </Card.Content>
@@ -196,7 +231,6 @@ const styles = StyleSheet.create({
   incButton: {
     flex: 1,
     margin: 0,
-    borderRadius: 8,
   },
   incContent: {
     minHeight: 40,
@@ -204,13 +238,11 @@ const styles = StyleSheet.create({
   },
   incLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginVertical: 0,
     marginHorizontal: 0,
   },
   progressBar: {
-    height: 3,
-    borderRadius: 2,
     marginTop: 2,
   },
 });

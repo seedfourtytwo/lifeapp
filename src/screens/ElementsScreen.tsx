@@ -6,6 +6,7 @@ import {
   Card,
   Chip,
   Text,
+  useTheme,
 } from 'react-native-paper';
 import ElementEditorDialog, {
   type ElementEditorSaveData,
@@ -20,6 +21,7 @@ import {
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { newId } from '../utils/id';
 import { parseTimeHHmm } from '../utils/time';
 
@@ -43,6 +45,8 @@ function newEditorSession(
 }
 
 export default function ElementsScreen() {
+  const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
@@ -200,7 +204,17 @@ export default function ElementsScreen() {
           const dashboardItemId = getDashboardItemId(element.id);
 
           return (
-            <Card key={element.id} style={styles.card}>
+            <Card
+              key={element.id}
+              style={[
+                styles.card,
+                isCartoon && {
+                  borderWidth: deco.cardBorderWidth,
+                  borderColor: theme.colors.outline,
+                  borderRadius: deco.radius.md,
+                },
+              ]}
+            >
               <Card.Content>
                 <Text variant="titleMedium">{element.name}</Text>
                 <View style={styles.chips}>
@@ -235,7 +249,17 @@ export default function ElementsScreen() {
         {habits.map((element) => {
           const config = HabitConfigSchema.parse(element.config);
           return (
-            <Card key={element.id} style={styles.card}>
+            <Card
+              key={element.id}
+              style={[
+                styles.card,
+                isCartoon && {
+                  borderWidth: deco.cardBorderWidth,
+                  borderColor: theme.colors.outline,
+                  borderRadius: deco.radius.md,
+                },
+              ]}
+            >
               <Card.Content>
                 <Text variant="titleMedium">{element.name}</Text>
                 <View style={styles.chips}>
