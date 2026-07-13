@@ -1,35 +1,34 @@
 import { create } from 'zustand';
 import { newId } from '../utils/id';
 import {
-  buildTimerSessionPayload,
-  HabitConfigSchema,
+  buildTimerSessionPayloadFromSession,
+  createActiveTimerSession,
   isHabitDayComplete,
-  isHabitScheduledOnDate,
+  parseHabitConfig,
   PROTOCOL_VERSION,
   toDateString,
+  type ActiveTimerSession,
   type HabitConfig,
 } from '../protocol';
-import { dateDaysAgo } from '../utils/dates';
-import { completedDatesFromDailyTotals, computeStreak } from '../utils/streak';
+import { playHabitCompleteChime } from '../audio/habitCompleteSound';
+import { sumEventValues } from '../utils/events';
+import { shouldPlayHabitCompletionChime } from '../utils/habitCompletionChime';
 import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
+import {
+  loadHabitStreakForElement,
+  loadHabitStreakMaps,
+  type HabitStreakInput,
+} from './habitStreakFetch';
 
-export interface HabitStreakInput {
-  id: string;
-  config: HabitConfig;
-}
-
-interface ActiveTimerSession {
-  startedAt: string;
-}
+export type { HabitStreakInput };
 
 interface EventState {
   dailyTotals: Record<string, number>;
-  yesterdayTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
   habitStreaks: Record<string, number>;
+  habitFailureStreaks: Record<string, number>;
   activeTimerSessions: Record<string, ActiveTimerSession>;
-  loadDailyTotals: (elementIds: string[], date?: string) => Promise<void>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;
@@ -41,7 +40,15 @@ interface EventState {
   setDailyTotal: (elementId: string, total: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
   startHabitTimer: (elementId: string) => void;
-  stopHabitTimer: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
+  pauseHabitTimer: (elementId: string) => void;
+  resumeHabitTimer: (elementId: string) => void;
+  stopHabitTimer: (
+    elementId: string,
+    config: HabitConfig,
+    date?: string,
+    options?: { trackCompleted?: boolean },
+  ) => Promise<void>;
+  resetHabitToday: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
 }
 
 function todayDate(): string {
@@ -59,84 +66,28 @@ async function refreshTotal(
   set({ dailyTotals: { ...get().dailyTotals, [elementId]: total } });
 }
 
-async function computeHabitStreak(
-  elementId: string,
-  config: HabitConfig,
-): Promise<number> {
-  const db = await getDatabase();
-  const since = dateDaysAgo(365);
-  const rows = await eventRepo.getDailyTotalsByElement(db, elementId, since);
-  const completed = completedDatesFromDailyTotals(rows, (total) =>
-    isHabitDayComplete(total, config),
-  );
-  return computeStreak(
-    completed,
-    todayDate(),
-    (date) => isHabitScheduledOnDate(config, date),
-  );
-}
-
-async function refreshHabitStatus(
-  elementId: string,
-  config: HabitConfig,
-  date: string,
-  set: (partial: Partial<EventState>) => void,
-  get: () => EventState,
-): Promise<void> {
-  const db = await getDatabase();
-  const total = await eventRepo.getDailyTotal(db, elementId, date);
-  set({
-    dailyTotals: { ...get().dailyTotals, [elementId]: total },
-    habitDoneToday: {
-      ...get().habitDoneToday,
-      [elementId]: isHabitDayComplete(total, config),
-    },
-  });
-}
-
 export const useEventStore = create<EventState>((set, get) => ({
   dailyTotals: {},
-  yesterdayTotals: {},
   habitDoneToday: {},
   habitStreaks: {},
+  habitFailureStreaks: {},
   activeTimerSessions: {},
-
-  loadDailyTotals: async (elementIds, date = todayDate()) => {
-    const db = await getDatabase();
-    const totals: Record<string, number> = {};
-
-    await Promise.all(
-      elementIds.map(async (id) => {
-        totals[id] = await eventRepo.getDailyTotal(db, id, date);
-      }),
-    );
-
-    set({ dailyTotals: { ...get().dailyTotals, ...totals } });
-  },
 
   loadCounterTotals: async (elementIds) => {
     if (elementIds.length === 0) return;
 
     const db = await getDatabase();
     const today = todayDate();
-    const yesterday = dateDaysAgo(1);
     const todayTotals: Record<string, number> = {};
-    const yesterdayTotals: Record<string, number> = {};
 
     await Promise.all(
-      elementIds.flatMap((id) => [
-        eventRepo.getDailyTotal(db, id, today).then((total) => {
-          todayTotals[id] = total;
-        }),
-        eventRepo.getDailyTotal(db, id, yesterday).then((total) => {
-          yesterdayTotals[id] = total;
-        }),
-      ]),
+      elementIds.map(async (id) => {
+        todayTotals[id] = await eventRepo.getDailyTotal(db, id, today);
+      }),
     );
 
     set({
       dailyTotals: { ...get().dailyTotals, ...todayTotals },
-      yesterdayTotals: { ...get().yesterdayTotals, ...yesterdayTotals },
     });
   },
 
@@ -144,16 +95,17 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (habits.length === 0) return;
 
     const db = await getDatabase();
+    const ids = habits.map((habit) => habit.id);
+    const eventsByElement = await eventRepo.getEventsForElementsOnDate(db, ids, date);
     const totals: Record<string, number> = {};
     const status: Record<string, boolean> = {};
 
-    await Promise.all(
-      habits.map(async ({ id, config }) => {
-        const total = await eventRepo.getDailyTotal(db, id, date);
-        totals[id] = total;
-        status[id] = isHabitDayComplete(total, config);
-      }),
-    );
+    for (const { id, config } of habits) {
+      const events = eventsByElement.get(id) ?? [];
+      const total = sumEventValues(events);
+      totals[id] = total;
+      status[id] = isHabitDayComplete(total, config, events);
+    }
 
     set({
       dailyTotals: { ...get().dailyTotals, ...totals },
@@ -164,14 +116,11 @@ export const useEventStore = create<EventState>((set, get) => ({
   loadHabitStreaks: async (habits) => {
     if (habits.length === 0) return;
 
-    const streaks: Record<string, number> = {};
-    await Promise.all(
-      habits.map(async ({ id, config }) => {
-        streaks[id] = await computeHabitStreak(id, config);
-      }),
-    );
-
-    set({ habitStreaks: { ...get().habitStreaks, ...streaks } });
+    const { streaks, failureStreaks } = await loadHabitStreakMaps(habits);
+    set({
+      habitStreaks: { ...get().habitStreaks, ...streaks },
+      habitFailureStreaks: { ...get().habitFailureStreaks, ...failureStreaks },
+    });
   },
 
   logEvent: async (elementId, value, meta) => {
@@ -235,11 +184,12 @@ export const useEventStore = create<EventState>((set, get) => ({
       });
     }
 
-    const streak = await computeHabitStreak(elementId, config);
+    const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
 
     set({
       habitDoneToday: { ...get().habitDoneToday, [elementId]: !done },
       habitStreaks: { ...get().habitStreaks, [elementId]: streak },
+      habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
       dailyTotals: {
         ...get().dailyTotals,
         [elementId]: done ? 0 : 1,
@@ -251,20 +201,85 @@ export const useEventStore = create<EventState>((set, get) => ({
     set({
       activeTimerSessions: {
         ...get().activeTimerSessions,
-        [elementId]: { startedAt: new Date().toISOString() },
+        [elementId]: createActiveTimerSession(),
       },
     });
   },
 
-  stopHabitTimer: async (elementId, config, date = todayDate()) => {
+  pauseHabitTimer: (elementId) => {
+    const session = get().activeTimerSessions[elementId];
+    if (!session || session.pausedAt) return;
+
+    set({
+      activeTimerSessions: {
+        ...get().activeTimerSessions,
+        [elementId]: {
+          ...session,
+          pausedAt: new Date().toISOString(),
+        },
+      },
+    });
+  },
+
+  resumeHabitTimer: (elementId) => {
+    const session = get().activeTimerSessions[elementId];
+    if (!session?.pausedAt) return;
+
+    const pausedMs = Date.now() - new Date(session.pausedAt).getTime();
+    set({
+      activeTimerSessions: {
+        ...get().activeTimerSessions,
+        [elementId]: {
+          ...session,
+          pausedAt: null,
+          pauseOffsetMs: session.pauseOffsetMs + pausedMs,
+        },
+      },
+    });
+  },
+
+  stopHabitTimer: async (elementId, config, date = todayDate(), options) => {
     const session = get().activeTimerSessions[elementId];
     if (!session) return;
 
-    const startedAt = new Date(session.startedAt);
     const endedAt = new Date();
-    const { value, meta } = buildTimerSessionPayload(startedAt, endedAt);
+    const { value, meta } = buildTimerSessionPayloadFromSession(session, endedAt, options);
+
+    const nextSessions = { ...get().activeTimerSessions };
+    delete nextSessions[elementId];
+
+    const previousTotal = get().dailyTotals[elementId] ?? 0;
+    const optimisticTotal = previousTotal + value;
 
     const db = await getDatabase();
+    const existingEvents = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+    const optimisticEvents = [...existingEvents, { value, meta }];
+
+    if (
+      shouldPlayHabitCompletionChime(
+        config,
+        previousTotal,
+        optimisticTotal,
+        existingEvents,
+        optimisticEvents,
+        options,
+      )
+    ) {
+      void playHabitCompleteChime();
+    }
+
+    set({
+      activeTimerSessions: nextSessions,
+      dailyTotals: {
+        ...get().dailyTotals,
+        [elementId]: optimisticTotal,
+      },
+      habitDoneToday: {
+        ...get().habitDoneToday,
+        [elementId]: isHabitDayComplete(optimisticTotal, config, optimisticEvents),
+      },
+    });
+
     await eventRepo.insertEvent(db, {
       id: newId(),
       elementId,
@@ -275,15 +290,28 @@ export const useEventStore = create<EventState>((set, get) => ({
       protocolVersion: PROTOCOL_VERSION,
     });
 
-    const streak = await computeHabitStreak(elementId, config);
+    const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+
+    set({
+      habitStreaks: { ...get().habitStreaks, [elementId]: streak },
+      habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
+    });
+  },
+
+  resetHabitToday: async (elementId, config, date = todayDate()) => {
+    const db = await getDatabase();
+    await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+
+    const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
     const nextSessions = { ...get().activeTimerSessions };
     delete nextSessions[elementId];
 
-    await refreshHabitStatus(elementId, config, date, set, get);
-
     set({
       activeTimerSessions: nextSessions,
+      dailyTotals: { ...get().dailyTotals, [elementId]: 0 },
+      habitDoneToday: { ...get().habitDoneToday, [elementId]: false },
       habitStreaks: { ...get().habitStreaks, [elementId]: streak },
+      habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
     });
   },
 }));
@@ -295,6 +323,6 @@ export function habitStreakInputsFromElements(
     .filter((e) => e.kind === 'habit')
     .map((e) => ({
       id: e.id,
-      config: HabitConfigSchema.parse(e.config),
+      config: parseHabitConfig(e.config),
     }));
 }

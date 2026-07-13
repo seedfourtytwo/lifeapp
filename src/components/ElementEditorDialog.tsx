@@ -17,8 +17,9 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
-import type { SoundAsset } from '../protocol';
+import { stopHabitSound } from '../audio/habitTimerSound';
 import CounterEditorFields from './elementEditor/CounterEditorFields';
+import { newEditorSession } from './elementEditor/elementEditorSession';
 import FormSection from './elementEditor/FormSection';
 import HabitEditorFields from './elementEditor/HabitEditorFields';
 import type {
@@ -27,18 +28,10 @@ import type {
   HabitEditorFieldState,
 } from './elementEditor/types';
 
-export type {
-  ElementEditorMode,
-  ElementEditorSaveData,
-  ElementEditorSession,
-  HabitScheduleType,
-} from './elementEditor/types';
-
 type Props = {
   session: ElementEditorSession | null;
   saving: boolean;
   deleting?: boolean;
-  soundOptions: SoundAsset[];
   onDismiss: () => void;
   onSave: (data: ElementEditorSaveData) => void;
   onDelete?: () => void;
@@ -49,7 +42,8 @@ function habitFieldStateFromSession(session: ElementEditorSession): HabitEditorF
     targetLabel: session.targetLabel,
     habitTrackingMode: session.habitTrackingMode,
     habitDailyGoalMinutes: session.habitDailyGoalMinutes,
-    habitSoundId: session.habitSoundId,
+    habitSoundTrackId: session.habitSoundTrackId,
+    habitSoundPlaybackMode: session.habitSoundPlaybackMode,
     timeSlot: session.timeSlot,
     useTimeRange: session.useTimeRange,
     timeRangeStart: session.timeRangeStart,
@@ -61,14 +55,17 @@ function habitFieldStateFromSession(session: ElementEditorSession): HabitEditorF
     scheduleAnchorDate: session.scheduleAnchorDate,
     useReminder: session.useReminder,
     remindMinutesBefore: session.remindMinutesBefore,
+    showStreakOnCard: session.showStreakOnCard,
   };
 }
+
+const emptyHabitFields = (): HabitEditorFieldState =>
+  habitFieldStateFromSession(newEditorSession({ mode: 'habit' }));
 
 export default function ElementEditorDialog({
   session,
   saving,
   deleting = false,
-  soundOptions,
   onDismiss,
   onSave,
   onDelete,
@@ -86,31 +83,7 @@ export default function ElementEditorDialog({
   const [name, setName] = useState('');
   const [increments, setIncrements] = useState('5, 10');
   const [dailyTarget, setDailyTarget] = useState('');
-  const [habitFields, setHabitFields] = useState<HabitEditorFieldState>(() =>
-    habitFieldStateFromSession({
-      sessionId: '',
-      mode: 'habit',
-      editingId: null,
-      name: '',
-      increments: '',
-      dailyTarget: '',
-      targetLabel: '',
-      habitTrackingMode: 'boolean',
-      habitDailyGoalMinutes: '',
-      habitSoundId: '',
-      timeSlot: 'morning',
-      useTimeRange: false,
-      timeRangeStart: '',
-      timeRangeEnd: '',
-      visibleOnlyInTimeRange: false,
-      scheduleType: 'daily',
-      scheduleWeekdays: [1, 2, 3, 4, 5],
-      scheduleInterval: '2',
-      scheduleAnchorDate: '',
-      useReminder: false,
-      remindMinutesBefore: '15',
-    }),
-  );
+  const [habitFields, setHabitFields] = useState<HabitEditorFieldState>(emptyHabitFields);
 
   useEffect(() => {
     if (!session) return;
@@ -120,7 +93,13 @@ export default function ElementEditorDialog({
     setHabitFields(habitFieldStateFromSession(session));
   }, [session, sessionId]);
 
+  const closeEditor = () => {
+    void stopHabitSound();
+    onDismiss();
+  };
+
   const handleSave = () => {
+    void stopHabitSound();
     if (mode === 'counter') {
       onSave({ mode: 'counter', name, increments, dailyTarget });
       return;
@@ -143,7 +122,7 @@ export default function ElementEditorDialog({
     <Portal>
       <Modal
         visible={visible}
-        onDismiss={onDismiss}
+        onDismiss={closeEditor}
         contentContainerStyle={[
           styles.modalContainer,
           { width: sheetWidth, maxHeight: sheetMaxHeight },
@@ -158,7 +137,7 @@ export default function ElementEditorDialog({
               <Text variant="titleLarge" style={styles.headerTitle}>
                 {title}
               </Text>
-              <IconButton icon="close" onPress={onDismiss} accessibilityLabel="Close" />
+              <IconButton icon="close" onPress={closeEditor} accessibilityLabel="Close" />
             </View>
 
             <ScrollView
@@ -184,13 +163,12 @@ export default function ElementEditorDialog({
                   onIncrementsChange={setIncrements}
                   onDailyTargetChange={setDailyTarget}
                 />
-              ) : (
+              ) : session && mode === 'habit' ? (
                 <HabitEditorFields
                   state={habitFields}
-                  soundOptions={soundOptions}
                   onChange={(patch) => setHabitFields((current) => ({ ...current, ...patch }))}
                 />
-              )}
+              ) : null}
             </ScrollView>
 
             <Divider />
@@ -209,7 +187,7 @@ export default function ElementEditorDialog({
                 <View />
               )}
               <View style={styles.footerActions}>
-                <Button onPress={onDismiss} disabled={saving || deleting}>
+                <Button onPress={closeEditor} disabled={saving || deleting}>
                   Cancel
                 </Button>
                 <Button

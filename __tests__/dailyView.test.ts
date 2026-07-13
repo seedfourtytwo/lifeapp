@@ -12,7 +12,6 @@ const habit = (
   id,
   kind: 'habit',
   name: `Habit ${id}`,
-  category: 'habit',
   config: {
     timeSlot: 'anytime',
     schedule: { type: 'daily' },

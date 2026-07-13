@@ -55,15 +55,22 @@ describe('HabitConfigSchema', () => {
     expect(result.schedule).toEqual({ type: 'daily' });
   });
 
-  it('accepts timer habit with daily target seconds', () => {
+  it('accepts timer habit with daily target seconds and bundled timer sound', () => {
     const result = HabitConfigSchema.parse({
       timeSlot: 'anytime',
       trackingMode: 'timer',
       dailyTargetSeconds: 900,
-      soundId: '550e8400-e29b-41d4-a716-446655440000',
+      timerSound: {
+        trackId: 'meditation15min',
+        playbackMode: 'play_once',
+      },
     });
     expect(result.trackingMode).toBe('timer');
     expect(result.dailyTargetSeconds).toBe(900);
+    expect(result.timerSound).toEqual({
+      trackId: 'meditation15min',
+      playbackMode: 'play_once',
+    });
   });
 
   it('builds habit config with tracking mode', () => {
@@ -95,6 +102,14 @@ describe('HabitConfigSchema', () => {
     });
     expect(result.schedule).toEqual({ type: 'weekdays', days: [1, 3, 5] });
     expect(result.remindMinutesBefore).toBe(10);
+  });
+
+  it('builds habit config with streak display enabled', () => {
+    const result = buildHabitConfig({
+      timeSlot: 'anytime',
+      showStreakOnCard: true,
+    });
+    expect(result.showStreakOnCard).toBe(true);
   });
 });
 
@@ -135,6 +150,41 @@ describe('isHabitDayComplete', () => {
     expect(isHabitDayComplete(900, config)).toBe(true);
     expect(isHabitDayComplete(899, config)).toBe(false);
   });
+
+  it('marks play_once timer complete only when track finished', () => {
+    const config = HabitConfigSchema.parse({
+      timeSlot: 'anytime',
+      trackingMode: 'timer',
+      timerSound: { trackId: 'meditation15min', playbackMode: 'play_once' },
+    });
+    expect(
+      isHabitDayComplete(120, config, [
+        {
+          value: 120,
+          meta: {
+            source: 'timer_session',
+            startedAt: '2025-01-01T10:00:00.000Z',
+            endedAt: '2025-01-01T10:02:00.000Z',
+            durationSeconds: 120,
+          },
+        },
+      ]),
+    ).toBe(false);
+    expect(
+      isHabitDayComplete(900, config, [
+        {
+          value: 900,
+          meta: {
+            source: 'timer_session',
+            startedAt: '2025-01-01T10:00:00.000Z',
+            endedAt: '2025-01-01T10:15:00.000Z',
+            durationSeconds: 900,
+            trackCompleted: true,
+          },
+        },
+      ]),
+    ).toBe(true);
+  });
 });
 
 describe('parseElementDefinition', () => {
@@ -143,7 +193,6 @@ describe('parseElementDefinition', () => {
       id: '550e8400-e29b-41d4-a716-446655440001',
       kind: 'habit',
       name: 'Meditate',
-      category: 'habit',
       config: DEFAULT_HABIT_CONFIG,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: '2025-01-01T00:00:00.000Z',
@@ -157,7 +206,6 @@ describe('parseElementDefinition', () => {
       id: '550e8400-e29b-41d4-a716-446655440000',
       kind: 'counter',
       name: 'Push-ups',
-      category: 'exercise',
       config: DEFAULT_COUNTER_CONFIG,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: '2025-01-01T00:00:00.000Z',

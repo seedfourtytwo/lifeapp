@@ -1,5 +1,6 @@
 import {
   buildTimerSessionPayload,
+  buildTimerSessionPayloadFromDuration,
   formatHabitTimerDuration,
   liveTimerTotalSeconds,
   timerSessionDurationSeconds,
@@ -39,9 +40,43 @@ describe('liveTimerTotalSeconds', () => {
   it('adds active session elapsed time to logged total', () => {
     const total = liveTimerTotalSeconds(
       60,
-      { startedAt: '2025-01-01T10:00:00.000Z' },
+      { startedAt: '2025-01-01T10:00:00.000Z', pausedAt: null, pauseOffsetMs: 0 },
       new Date('2025-01-01T10:01:30.000Z').getTime(),
     );
     expect(total).toBe(150);
+  });
+
+  it('excludes paused time from the live total', () => {
+    const total = liveTimerTotalSeconds(
+      0,
+      {
+        startedAt: '2025-01-01T10:00:00.000Z',
+        pausedAt: '2025-01-01T10:01:00.000Z',
+        pauseOffsetMs: 0,
+      },
+      new Date('2025-01-01T10:02:00.000Z').getTime(),
+    );
+    expect(total).toBe(60);
+  });
+
+  it('matches timerSessionDurationSeconds for the same window', () => {
+    const startedAt = new Date('2025-01-01T10:00:00.000Z');
+    const endedAt = new Date('2025-01-01T10:01:30.500Z');
+    const liveTotal = liveTimerTotalSeconds(
+      0,
+      { startedAt: startedAt.toISOString(), pausedAt: null, pauseOffsetMs: 0 },
+      endedAt.getTime(),
+    );
+    const sessionSeconds = timerSessionDurationSeconds(startedAt, endedAt);
+    expect(liveTotal).toBe(sessionSeconds);
+  });
+
+  it('buildTimerSessionPayloadFromDuration records track completion', () => {
+    const start = new Date('2025-01-01T10:00:00.000Z');
+    const end = new Date('2025-01-01T10:15:00.000Z');
+    const payload = buildTimerSessionPayloadFromDuration(start, end, 900, {
+      trackCompleted: true,
+    });
+    expect(payload.meta.trackCompleted).toBe(true);
   });
 });

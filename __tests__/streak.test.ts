@@ -1,4 +1,4 @@
-import { computeStreak, completedDatesFromDailyTotals } from '../src/utils/streak';
+import { computeStreak, computeFailureStreak } from '../src/utils/streak';
 
 describe('computeStreak', () => {
   it('counts consecutive completed days ending today', () => {
@@ -35,15 +35,28 @@ describe('computeStreak', () => {
   });
 });
 
-describe('completedDatesFromDailyTotals', () => {
-  it('filters by completion predicate', () => {
-    const dates = completedDatesFromDailyTotals(
-      [
-        { date: '2025-01-01', total: 1 },
-        { date: '2025-01-02', total: 0 },
-      ],
-      (total) => total >= 1,
+describe('computeFailureStreak', () => {
+  it('returns 0 when today is complete', () => {
+    const failureStreak = computeFailureStreak(
+      ['2025-01-01', '2025-01-02', '2025-01-03'],
+      '2025-01-03',
     );
-    expect(dates).toEqual(['2025-01-01']);
+    expect(failureStreak).toBe(0);
+  });
+
+  it('counts consecutive missed days ending yesterday', () => {
+    const failureStreak = computeFailureStreak(
+      ['2025-01-01'],
+      '2025-01-04',
+    );
+    expect(failureStreak).toBe(2);
+  });
+
+  it('stops at the first completed day', () => {
+    const failureStreak = computeFailureStreak(
+      ['2025-01-01', '2025-01-03'],
+      '2025-01-05',
+    );
+    expect(failureStreak).toBe(1);
   });
 });

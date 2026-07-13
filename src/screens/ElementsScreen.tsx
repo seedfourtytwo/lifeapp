@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import {
   ActivityIndicator,
@@ -19,46 +19,15 @@ import {
   CounterConfigSchema,
   HABIT_TIME_SLOT_LABELS,
   HabitConfigSchema,
-  formatHabitDescription,
-  formatScheduleDescription,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { useSoundLibraryStore } from '../store/soundLibraryStore';
+import { counterMetaLines, habitMetaLines } from '../utils/elementMetaLines';
 import { parseElementEditorSave } from '../utils/parseElementEditorSave';
-
-function counterMetaLines(config: ReturnType<typeof CounterConfigSchema.parse>): string[] {
-  const buttons = config.quickIncrements.map((n) => `+${n}`).join(', ');
-  const goal = config.dailyTarget ? ` · Goal: ${config.dailyTarget}/day` : '';
-  return [`Buttons: ${buttons}${goal}`];
-}
-
-function habitMetaLines(
-  config: ReturnType<typeof HabitConfigSchema.parse>,
-  soundLabel?: string,
-): string[] {
-  const lines: string[] = [];
-  const description = formatHabitDescription(config);
-  if (description) lines.push(description);
-  lines.push(formatScheduleDescription(config.schedule));
-  if (config.trackingMode === 'timer' && config.dailyTargetSeconds) {
-    lines.push(`Goal: ${Math.round(config.dailyTargetSeconds / 60)} min/day`);
-  }
-  if (config.remindMinutesBefore !== undefined && config.timeRange) {
-    lines.push(
-      `Reminder: ${config.remindMinutesBefore} min before ${config.timeRange.start}`,
-    );
-  }
-  if (config.trackingMode === 'timer' && config.soundId) {
-    lines.push(`Sound: ${soundLabel ?? 'Missing track'}`);
-  }
-  return lines;
-}
 
 export default function ElementsScreen() {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
-  const load = useElementStore((s) => s.load);
   const createCounter = useElementStore((s) => s.createCounter);
   const updateCounter = useElementStore((s) => s.updateCounter);
   const createHabit = useElementStore((s) => s.createHabit);
@@ -66,18 +35,11 @@ export default function ElementsScreen() {
   const deleteElement = useElementStore((s) => s.deleteElement);
   const pinToDashboard = useElementStore((s) => s.pinToDashboard);
   const unpinFromDashboard = useElementStore((s) => s.unpinFromDashboard);
-  const sounds = useSoundLibraryStore((s) => s.sounds);
-  const loadSounds = useSoundLibraryStore((s) => s.load);
 
   const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-
-  useEffect(() => {
-    void load();
-    void loadSounds();
-  }, [load, loadSounds]);
 
   const pinnedElementIds = useMemo(
     () => new Set(dashboard.map((d) => d.elementId)),
@@ -216,9 +178,6 @@ export default function ElementsScreen() {
           const config = HabitConfigSchema.parse(element.config);
           const isPinned = pinnedElementIds.has(element.id);
           const dashboardItemId = getDashboardItemId(element.id);
-          const soundLabel = config.soundId
-            ? sounds.find((s) => s.id === config.soundId)?.label
-            : undefined;
 
           return (
             <ElementLibraryCard
@@ -230,7 +189,7 @@ export default function ElementsScreen() {
                   <Chip compact>{HABIT_TIME_SLOT_LABELS[config.timeSlot]}</Chip>
                 </>
               }
-              metaLines={habitMetaLines(config, soundLabel)}
+              metaLines={habitMetaLines(config)}
               isPinned={isPinned}
               deleteLabel="Delete"
               dashboardItemId={dashboardItemId}
@@ -275,7 +234,6 @@ export default function ElementsScreen() {
         session={editorSession}
         saving={saving}
         deleting={deleting}
-        soundOptions={sounds}
         onDismiss={() => setEditorSession(null)}
         onSave={(data) => void handleSave(data)}
         onDelete={

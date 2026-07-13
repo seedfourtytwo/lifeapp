@@ -2,6 +2,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { LifeEvent } from '../../protocol';
 import { PROTOCOL_VERSION } from '../../protocol';
 
+/** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
+
 interface EventRow {
   id: string;
   element_id: string;
@@ -36,6 +38,87 @@ export async function deleteEventsForElementOnDate(
   );
 }
 
+export async function getEventsForElementOnDate(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<LifeEvent[]> {
+  const rows = await db.getAllAsync<EventRow>(
+    'SELECT * FROM events WHERE element_id = ? AND date = ? ORDER BY timestamp ASC',
+    elementId,
+    date,
+  );
+  return rows.map(rowToEvent);
+}
+
+export async function getEventsForElementSince(
+  db: SQLiteDatabase,
+  elementId: string,
+  sinceDate: string,
+): Promise<LifeEvent[]> {
+  const rows = await db.getAllAsync<EventRow>(
+    'SELECT * FROM events WHERE element_id = ? AND date >= ? ORDER BY date ASC, timestamp ASC',
+    elementId,
+    sinceDate,
+  );
+  return rows.map(rowToEvent);
+}
+
+function groupEventsByElement(rows: EventRow[]): Map<string, LifeEvent[]> {
+  const byElement = new Map<string, LifeEvent[]>();
+  for (const row of rows) {
+    const event = rowToEvent(row);
+    const list = byElement.get(event.elementId) ?? [];
+    list.push(event);
+    byElement.set(event.elementId, list);
+  }
+  return byElement;
+}
+
+export async function getEventsForElementsOnDate(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  date: string,
+): Promise<Map<string, LifeEvent[]>> {
+  if (elementIds.length === 0) return new Map();
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<EventRow>(
+    `SELECT * FROM events WHERE date = ? AND element_id IN (${placeholders}) ORDER BY timestamp ASC`,
+    date,
+    ...elementIds,
+  );
+  const byElement = groupEventsByElement(rows);
+  for (const id of elementIds) {
+    if (!byElement.has(id)) {
+      byElement.set(id, []);
+    }
+  }
+  return byElement;
+}
+
+export async function getEventsForElementsSince(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  sinceDate: string,
+): Promise<Map<string, LifeEvent[]>> {
+  if (elementIds.length === 0) return new Map();
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<EventRow>(
+    `SELECT * FROM events WHERE date >= ? AND element_id IN (${placeholders}) ORDER BY date ASC, timestamp ASC`,
+    sinceDate,
+    ...elementIds,
+  );
+  const byElement = groupEventsByElement(rows);
+  for (const id of elementIds) {
+    if (!byElement.has(id)) {
+      byElement.set(id, []);
+    }
+  }
+  return byElement;
+}
+
 export async function getDailyTotalsByElement(
   db: SQLiteDatabase,
   elementId: string,
@@ -51,23 +134,6 @@ export async function getDailyTotalsByElement(
     sinceDate,
   );
   return rows;
-}
-
-export async function getCompletedElementIdsOnDate(
-  db: SQLiteDatabase,
-  elementIds: string[],
-  date: string,
-): Promise<Set<string>> {
-  if (elementIds.length === 0) return new Set();
-
-  const placeholders = elementIds.map(() => '?').join(', ');
-  const rows = await db.getAllAsync<{ element_id: string }>(
-    `SELECT DISTINCT element_id FROM events
-     WHERE date = ? AND element_id IN (${placeholders}) AND value >= 1`,
-    date,
-    ...elementIds,
-  );
-  return new Set(rows.map((r) => r.element_id));
 }
 
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
@@ -102,8 +168,4 @@ export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {
     'SELECT * FROM events ORDER BY timestamp ASC',
   );
   return rows.map(rowToEvent);
-}
-
-export async function deleteAllEvents(db: SQLiteDatabase): Promise<void> {
-  await db.runAsync('DELETE FROM events');
 }

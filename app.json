@@ -22,7 +22,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.lifeapp.dashboard"
+      "package": "com.lifeapp.dashboard",
+      "versionCode": 4
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,7 +35,8 @@
         {
           "color": "#2E7D32"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

@@ -14,7 +14,6 @@ describe('Life Protocol bundle', () => {
     id: '550e8400-e29b-41d4-a716-446655440010',
     kind: 'habit' as const,
     name: 'Meditate',
-    category: 'habit' as const,
     config: HabitConfigSchema.parse({
       timeSlot: 'anytime',
       trackingMode: 'timer',
@@ -101,7 +100,6 @@ describe('daily value semantics', () => {
       id: '550e8400-e29b-41d4-a716-446655440020',
       kind: 'habit',
       name: 'Meditate',
-      category: 'habit',
       config: HabitConfigSchema.parse({ timeSlot: 'anytime', trackingMode: 'timer' }),
       protocolVersion: PROTOCOL_VERSION,
       createdAt: '2025-01-01T00:00:00.000Z',
@@ -114,7 +112,6 @@ describe('daily value semantics', () => {
       id: '550e8400-e29b-41d4-a716-446655440021',
       kind: 'habit' as const,
       name: 'Meditate',
-      category: 'habit' as const,
       config: HabitConfigSchema.parse({
         timeSlot: 'anytime',
         trackingMode: 'timer',
@@ -134,7 +131,6 @@ describe('validateBundleEventLinks', () => {
       id: '550e8400-e29b-41d4-a716-446655440030',
       kind: 'habit' as const,
       name: 'Read',
-      category: 'habit' as const,
       config: HabitConfigSchema.parse({ timeSlot: 'evening', trackingMode: 'boolean' }),
       protocolVersion: PROTOCOL_VERSION,
       createdAt: '2025-01-01T00:00:00.000Z',

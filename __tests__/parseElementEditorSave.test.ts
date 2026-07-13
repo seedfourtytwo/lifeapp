@@ -9,7 +9,8 @@ const habitSaveData = (
   targetLabel: '',
   habitTrackingMode: 'boolean',
   habitDailyGoalMinutes: '',
-  habitSoundId: '',
+  habitSoundTrackId: '',
+  habitSoundPlaybackMode: 'play_once' as const,
   timeSlot: 'morning',
   useTimeRange: false,
   timeRangeStart: '',
@@ -21,6 +22,7 @@ const habitSaveData = (
   scheduleAnchorDate: '2025-06-30',
   useReminder: false,
   remindMinutesBefore: '15',
+  showStreakOnCard: false,
   ...overrides,
 });
 
@@ -43,21 +45,48 @@ describe('parseElementEditorSave', () => {
     });
   });
 
-  it('parses habit input with optional time range and reminder', () => {
+  it('parses timer sound from bundled track', () => {
     const result = parseElementEditorSave(
       habitSaveData({
-        useTimeRange: true,
-        timeRangeStart: '06:00',
-        timeRangeEnd: '07:00',
-        useReminder: true,
-        remindMinutesBefore: '10',
+        habitTrackingMode: 'timer',
+        habitSoundTrackId: 'meditation15min',
+        habitSoundPlaybackMode: 'play_once',
       }),
     );
 
     expect(result.kind).toBe('habit');
     if (result.kind !== 'habit') return;
-    expect(result.input.timeRange).toEqual({ start: '06:00', end: '07:00' });
-    expect(result.input.remindMinutesBefore).toBe(10);
+    expect(result.input.timerSound).toEqual({
+      trackId: 'meditation15min',
+      playbackMode: 'play_once',
+    });
+  });
+
+  it('parses boolean streak display option', () => {
+    const result = parseElementEditorSave(
+      habitSaveData({
+        showStreakOnCard: true,
+      }),
+    );
+
+    expect(result.kind).toBe('habit');
+    if (result.kind !== 'habit') return;
+    expect(result.input.showStreakOnCard).toBe(true);
+  });
+
+  it('parses timer streak display option', () => {
+    const result = parseElementEditorSave(
+      habitSaveData({
+        habitTrackingMode: 'timer',
+        habitDailyGoalMinutes: '15',
+        habitSoundTrackId: 'meditation15min',
+        showStreakOnCard: true,
+      }),
+    );
+
+    expect(result.kind).toBe('habit');
+    if (result.kind !== 'habit') return;
+    expect(result.input.showStreakOnCard).toBe(true);
   });
 
   it('rejects invalid increments', () => {

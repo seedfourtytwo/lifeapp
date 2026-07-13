@@ -11,15 +11,13 @@ import * as eventRepo from '../db/repositories/eventRepository';
 import type { RootStackParamList } from '../navigation/types';
 import {
   CounterConfigSchema,
-  HabitConfigSchema,
   formatHabitTimerDuration,
   isHabitDayComplete,
-  isHabitScheduledOnDate,
-  toDateString,
+  parseHabitConfig,
   type ElementDefinition,
 } from '../protocol';
-import { formatChartLabel, formatFullDate, lastNDates } from '../utils/dates';
-import { completedDatesFromDailyTotals, computeStreak } from '../utils/streak';
+import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } from '../utils/dates';
+import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
 
 const CHART_DAYS = 14;
 
@@ -38,7 +36,7 @@ function formatDayValue(
   if (!element) return String(total);
 
   if (element.kind === 'habit') {
-    const config = HabitConfigSchema.parse(element.config);
+    const config = parseHabitConfig(element.config);
     if (config.trackingMode === 'timer') {
       return total > 0 ? formatHabitTimerDuration(total) : '—';
     }
@@ -56,6 +54,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
   const [element, setElement] = useState<ElementDefinition | null>(null);
   const [days, setDays] = useState<DayRow[]>([]);
   const [streak, setStreak] = useState(0);
+  const [failureStreak, setFailureStreak] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -67,6 +66,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
         setElement(null);
         setDays([]);
         setStreak(0);
+        setFailureStreak(0);
         return;
       }
 
@@ -86,20 +86,19 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
       );
 
       if (loaded.kind === 'habit') {
-        const config = HabitConfigSchema.parse(loaded.config);
-        const yearRows = await eventRepo.getDailyTotalsByElement(db, elementId, lastNDates(365)[0]);
-        const completed = completedDatesFromDailyTotals(yearRows, (total) =>
-          isHabitDayComplete(total, config),
+        const config = parseHabitConfig(loaded.config);
+        const yearRows = await eventRepo.getEventsForElementSince(
+          db,
+          elementId,
+          streakHistorySinceDate(),
         );
-        setStreak(
-          computeStreak(
-            completed,
-            toDateString(new Date()),
-            (date) => isHabitScheduledOnDate(config, date),
-          ),
-        );
+        const { streak: currentStreak, failureStreak: currentFailureStreak } =
+          computeHabitStreaksFromEvents(yearRows, config);
+        setStreak(currentStreak);
+        setFailureStreak(currentFailureStreak);
       } else {
         setStreak(0);
+        setFailureStreak(0);
       }
     } finally {
       setLoading(false);
@@ -135,7 +134,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
   }
 
   const isHabit = element.kind === 'habit';
-  const habitConfig = isHabit ? HabitConfigSchema.parse(element.config) : null;
+  const habitConfig = isHabit ? parseHabitConfig(element.config) : null;
   const isTimerHabit = habitConfig?.trackingMode === 'timer';
   const chartUnit = isHabit
     ? isTimerHabit
@@ -163,6 +162,11 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
       {isHabit && streak > 0 ? (
         <Text variant="bodyMedium" style={styles.streak}>
           Current streak: {streak} day{streak === 1 ? '' : 's'}
+        </Text>
+      ) : null}
+      {isHabit && failureStreak > 0 ? (
+        <Text variant="bodyMedium" style={styles.failureStreak}>
+          Missed streak: {failureStreak} day{failureStreak === 1 ? '' : 's'}
         </Text>
       ) : null}
 
@@ -237,6 +241,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     opacity: 0.8,
     fontWeight: '600',
+  },
+  failureStreak: {
+    marginBottom: 12,
+    opacity: 0.85,
+    fontWeight: '600',
+    color: '#B3261E',
   },
   card: {
     marginBottom: 16,

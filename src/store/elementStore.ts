@@ -2,23 +2,36 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import { newId } from '../utils/id';
-import type { DashboardItem, ElementDefinition, ElementKind, ElementCategory } from '../protocol';
+import type { DashboardItem, ElementDefinition, ElementKind } from '../protocol';
 import { PROTOCOL_VERSION } from '../protocol';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
+import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 
 async function insertElementPinnedToDashboard(
   db: SQLiteDatabase,
   element: ElementDefinition,
-): Promise<void> {
-  await elementRepo.insertElement(db, element);
-  await dashboardRepo.insertDashboardItem(db, {
+): Promise<DashboardItem> {
+  const dashboardItem: DashboardItem = {
     id: newId(),
     elementId: element.id,
     sortOrder: await dashboardRepo.getNextSortOrder(db),
+  };
+  await elementRepo.insertElement(db, element);
+  await dashboardRepo.insertDashboardItem(db, dashboardItem);
+  return dashboardItem;
+}
+
+function applyElementMutation(
+  set: (partial: Partial<ElementState>) => void,
+  mutation: { elements: ElementDefinition[]; dashboard?: DashboardItem[] },
+): void {
+  set({
+    elements: mutation.elements,
+    ...(mutation.dashboard ? { dashboard: mutation.dashboard } : {}),
   });
 }
 
@@ -68,14 +81,16 @@ export const useElementStore = create<ElementState>((set, get) => ({
       id: newId(),
       kind: 'counter' as ElementKind,
       name: input.name.trim(),
-      category: 'exercise' as ElementCategory,
       config,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: new Date().toISOString(),
     };
 
-    await insertElementPinnedToDashboard(db, element);
-    await get().load();
+    const dashboardItem = await insertElementPinnedToDashboard(db, element);
+    applyElementMutation(set, {
+      elements: [...get().elements, element],
+      dashboard: [...get().dashboard, dashboardItem],
+    });
   },
 
   updateCounter: async (id, input) => {
@@ -96,25 +111,35 @@ export const useElementStore = create<ElementState>((set, get) => ({
       },
       'counter',
     );
-    await get().load();
+    applyElementMutation(set, {
+      elements: get().elements.map((element) =>
+        element.id === id
+          ? { ...element, name: input.name.trim(), config }
+          : element,
+      ),
+    });
   },
 
   createHabit: async (input) => {
     const db = await getDatabase();
-    const config = buildHabitConfig(input);
+    const id = newId();
+    const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
+    const config = buildHabitConfig({ ...input, timerSound });
 
     const element: ElementDefinition = {
-      id: newId(),
+      id,
       kind: 'habit' as ElementKind,
       name: input.name.trim(),
-      category: 'habit' as ElementCategory,
       config,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: new Date().toISOString(),
     };
 
-    await insertElementPinnedToDashboard(db, element);
-    await get().load();
+    const dashboardItem = await insertElementPinnedToDashboard(db, element);
+    applyElementMutation(set, {
+      elements: [...get().elements, element],
+      dashboard: [...get().dashboard, dashboardItem],
+    });
   },
 
   updateHabit: async (id, input) => {
@@ -124,7 +149,8 @@ export const useElementStore = create<ElementState>((set, get) => ({
       throw new Error('Habit not found');
     }
 
-    const config = buildHabitConfig(input);
+    const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
+    const config = buildHabitConfig({ ...input, timerSound });
 
     await elementRepo.updateElement(
       db,
@@ -132,7 +158,13 @@ export const useElementStore = create<ElementState>((set, get) => ({
       { name: input.name.trim(), config },
       'habit',
     );
-    await get().load();
+    applyElementMutation(set, {
+      elements: get().elements.map((element) =>
+        element.id === id
+          ? { ...element, name: input.name.trim(), config }
+          : element,
+      ),
+    });
   },
 
   pinToDashboard: async (elementId) => {
@@ -140,19 +172,21 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const alreadyPinned = await dashboardRepo.isElementOnDashboard(db, elementId);
     if (alreadyPinned) return;
 
-    const sortOrder = await dashboardRepo.getNextSortOrder(db);
-    await dashboardRepo.insertDashboardItem(db, {
+    const dashboardItem: DashboardItem = {
       id: newId(),
       elementId,
-      sortOrder,
-    });
-    await get().load();
+      sortOrder: await dashboardRepo.getNextSortOrder(db),
+    };
+    await dashboardRepo.insertDashboardItem(db, dashboardItem);
+    set({ dashboard: [...get().dashboard, dashboardItem] });
   },
 
   unpinFromDashboard: async (dashboardItemId) => {
     const db = await getDatabase();
     await dashboardRepo.deleteDashboardItem(db, dashboardItemId);
-    await get().load();
+    set({
+      dashboard: get().dashboard.filter((item) => item.id !== dashboardItemId),
+    });
   },
 
   deleteElement: async (id) => {
@@ -162,6 +196,9 @@ export const useElementStore = create<ElementState>((set, get) => ({
       throw new Error('Element not found');
     }
     await elementRepo.deleteElement(db, id);
-    await get().load();
+    set({
+      elements: get().elements.filter((element) => element.id !== id),
+      dashboard: get().dashboard.filter((item) => item.elementId !== id),
+    });
   },
 }));

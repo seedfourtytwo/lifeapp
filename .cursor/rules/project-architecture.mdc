@@ -37,6 +37,8 @@ Local-first personal dashboard. Data lives in SQLite on device. All trackable th
 
 ## Product direction (do not over-build early)
 
+- **Phone-first.** Android dev client is the primary target; web is for occasional dev only.
+- **Two element kinds:** `counter` (quantity today) and `habit` (daily contract — check-off or timer). Do not add more kinds until UX genuinely diverges.
 - **Home screen = Dashboard.** No splash, no extra tabs beyond essentials.
 - **One kind at a time.** Ship counter first; add protocol + handler + widget per new kind.
 - **Do not add Zod schemas or DB tables for future features** until that feature is being built.

@@ -1,5 +1,6 @@
 import type { ElementEditorSaveData } from '../components/elementEditor/types';
 import {
+  buildHabitTimerSound,
   isScheduleSupportedForReminders,
   type CounterInput,
   type HabitInput,
@@ -104,6 +105,14 @@ export function parseElementEditorSave(
 
   const schedule = parseSchedule(data);
 
+  const timerSound =
+    data.habitTrackingMode === 'timer'
+      ? buildHabitTimerSound({
+          trackId: data.habitSoundTrackId,
+          playbackMode: data.habitSoundPlaybackMode,
+        })
+      : undefined;
+
   return {
     kind: 'habit',
     input: {
@@ -116,12 +125,12 @@ export function parseElementEditorSave(
         data.habitTrackingMode === 'timer'
           ? parseDailyGoalSeconds(data.habitDailyGoalMinutes)
           : undefined,
-      soundId:
-        data.habitTrackingMode === 'timer' && data.habitSoundId ? data.habitSoundId : undefined,
+      timerSound,
       timeRange,
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,
       remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
+      showStreakOnCard: data.showStreakOnCard ? true : undefined,
     },
   };
 }

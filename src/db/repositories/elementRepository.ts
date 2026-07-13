@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { ElementDefinition, ElementKind, ElementCategory } from '../../protocol';
+import type { ElementDefinition, ElementKind } from '../../protocol';
 import { PROTOCOL_VERSION, validateElementConfig } from '../../protocol';
 
 interface ElementRow {
@@ -21,8 +21,6 @@ function rowToElement(row: ElementRow): ElementDefinition {
     id: row.id,
     kind: row.kind as ElementKind,
     name: row.name,
-    category: row.category as ElementCategory,
-    parentId: row.parent_id ?? undefined,
     config,
     protocolVersion: PROTOCOL_VERSION,
     createdAt: row.created_at,
@@ -59,8 +57,8 @@ export async function insertElement(
     element.id,
     element.kind,
     element.name,
-    element.category,
-    element.parentId ?? null,
+    '',
+    null,
     JSON.stringify(element.config),
     element.protocolVersion,
     element.createdAt,

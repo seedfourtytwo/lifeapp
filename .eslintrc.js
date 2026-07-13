@@ -25,4 +25,12 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'warn',
   },
   ignorePatterns: ['node_modules/', '.expo/', 'dist/'],
+  overrides: [
+    {
+      files: ['**/*Assets.native.ts'],
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+  ],
 };

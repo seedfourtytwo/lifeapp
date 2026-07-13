@@ -12,19 +12,17 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { type CounterConfig } from '../../protocol';
+import { type CounterConfig, formatCounterUnit } from '../../protocol';
 import {
   getCounterProgressBarColors,
-  getCounterProgressPalette,
-  lerpHex,
 } from '../../utils/color';
+import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
 import type { WidgetProps } from '../types';
 
 export function CounterWidget({
   element,
   config,
   todayTotal,
-  yesterdayTotal: _yesterdayTotal = 0,
   onLog,
   onSetDailyTotal,
   onOpenDetails,
@@ -39,15 +37,18 @@ export function CounterWidget({
   const progress = hasTarget ? Math.min(1, todayTotal / dailyTarget) : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
 
-  const progressPalette = getCounterProgressPalette(themeMode);
   const progressBarColors = getCounterProgressBarColors(themeMode);
-  const cardBackground = hasTarget
-    ? lerpHex(progressPalette.start, progressPalette.end, progress)
-    : isCartoon
-      ? theme.colors.surface
-      : undefined;
+  const cardBackground = getTargetProgressCardBackground({
+    themeMode,
+    progress,
+    hasTarget,
+    isCartoon,
+    fallbackColor: theme.colors.surface,
+  });
 
-  const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : String(todayTotal);
+  const countText = hasTarget
+    ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)}`
+    : `${todayTotal} ${formatCounterUnit(todayTotal, config.unit)}`;
 
   const openEdit = () => {
     setEditValue(String(todayTotal));
@@ -135,7 +136,7 @@ export function CounterWidget({
               <Button
                 key={increment}
                 mode="contained"
-                onPress={() => void onLog(increment, { source: 'quick_button', increment })}
+                onPress={() => onLog?.(increment, { source: 'quick_button', increment })}
                 style={[styles.incButton, { borderRadius: deco.buttonRadius }]}
                 labelStyle={styles.incLabel}
                 contentStyle={styles.incContent}

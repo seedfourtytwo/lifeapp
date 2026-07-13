@@ -8,22 +8,10 @@ export const ElementKindSchema = z.enum(['counter', 'habit']);
 
 export type ElementKind = z.infer<typeof ElementKindSchema>;
 
-export const ElementCategorySchema = z.enum([
-  'exercise',
-  'food',
-  'habit',
-  'task',
-  'custom',
-]);
-
-export type ElementCategory = z.infer<typeof ElementCategorySchema>;
-
 export const ElementDefinitionSchema = z.object({
   id: z.string().uuid(),
   kind: ElementKindSchema,
   name: z.string().min(1),
-  category: ElementCategorySchema,
-  parentId: z.string().uuid().nullable().optional(),
   config: z.record(z.unknown()),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   createdAt: z.string().datetime(),

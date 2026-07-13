@@ -1,25 +1,57 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
   title: string;
   description?: string;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
   children: React.ReactNode;
 };
 
-export default function FormSection({ title, description, children }: Props) {
+export default function FormSection({
+  title,
+  description,
+  collapsible = false,
+  defaultCollapsed = false,
+  children,
+}: Props) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  const header = (
+    <Pressable
+      onPress={collapsible ? () => setCollapsed((value) => !value) : undefined}
+      disabled={!collapsible}
+      style={formSectionStyles.header}
+      accessibilityRole={collapsible ? 'button' : undefined}
+      accessibilityState={collapsible ? { expanded: !collapsed } : undefined}
+    >
+      <View style={formSectionStyles.headerText}>
+        <Text variant="titleSmall" style={formSectionStyles.sectionTitle}>
+          {title}
+        </Text>
+        {description && (!collapsible || !collapsed) ? (
+          <Text variant="bodySmall" style={formSectionStyles.sectionDescription}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      {collapsible ? (
+        <MaterialCommunityIcons
+          name={collapsed ? 'chevron-down' : 'chevron-up'}
+          size={22}
+          style={formSectionStyles.chevron}
+        />
+      ) : null}
+    </Pressable>
+  );
+
   return (
     <View style={formSectionStyles.section}>
-      <Text variant="titleSmall" style={formSectionStyles.sectionTitle}>
-        {title}
-      </Text>
-      {description ? (
-        <Text variant="bodySmall" style={formSectionStyles.sectionDescription}>
-          {description}
-        </Text>
-      ) : null}
-      {children}
+      {header}
+      {!collapsed ? children : null}
     </View>
   );
 }
@@ -28,6 +60,15 @@ export const formSectionStyles = StyleSheet.create({
   section: {
     marginTop: 16,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  headerText: {
+    flex: 1,
+  },
   sectionTitle: {
     marginBottom: 4,
   },
@@ -35,6 +76,10 @@ export const formSectionStyles = StyleSheet.create({
     opacity: 0.65,
     marginBottom: 12,
     lineHeight: 18,
+  },
+  chevron: {
+    opacity: 0.55,
+    marginTop: 2,
   },
   sectionBody: {
     marginTop: 12,

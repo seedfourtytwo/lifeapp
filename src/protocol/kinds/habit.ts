@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { isWithinTimeRange, formatTimeRange } from '../../utils/time';
+import { sumEventValues } from '../../utils/events';
+import {
+  getHabitTimerPlaybackMode,
+  hasHabitTimerSound,
+} from '../habitSound';
 import {
   formatScheduleDescription,
   HabitScheduleSchema,
@@ -7,6 +12,12 @@ import {
   isTimeRangeStartingSoon,
   type HabitSchedule,
 } from '../schedule';
+import { HabitTimerSoundSchema, type HabitTimerSound } from '../habitSound';
+import type { LifeEvent } from '../event';
+import {
+  type ActiveTimerSession,
+  activeTimerElapsedSeconds,
+} from '../activeTimerSession';
 
 export { HabitScheduleSchema, type HabitSchedule, formatScheduleDescription };
 
@@ -41,10 +52,12 @@ export const HabitConfigSchema = z.object({
   visibleOnlyInTimeRange: z.boolean().optional(),
   /** Timer goal in seconds — drives progress bar and streak completion */
   dailyTargetSeconds: z.number().int().positive().optional(),
-  /** Reference into the user's sound library */
-  soundId: z.string().uuid().optional(),
+  /** Bundled audio track while the timer runs. */
+  timerSound: HabitTimerSoundSchema.optional(),
   /** Minutes before timeRange.start to fire a local reminder */
   remindMinutesBefore: z.number().int().nonnegative().optional(),
+  /** Show current success or failure streak on the Daily habit card */
+  showStreakOnCard: z.boolean().optional(),
 });
 
 export type HabitConfig = z.infer<typeof HabitConfigSchema>;
@@ -56,6 +69,8 @@ export const HabitEventMetaSchema = z.discriminatedUnion('source', [
     startedAt: z.string().datetime(),
     endedAt: z.string().datetime(),
     durationSeconds: z.number().nonnegative(),
+    /** Set when a play_once track finished naturally (not manual Done). */
+    trackCompleted: z.boolean().optional(),
   }),
 ]);
 
@@ -81,6 +96,10 @@ export const HABIT_TIME_SLOT_ORDER: HabitTimeSlot[] = [
   'anytime',
 ];
 
+export function parseHabitConfig(config: unknown): HabitConfig {
+  return HabitConfigSchema.parse(config);
+}
+
 export type HabitInput = {
   name: string;
   trackingMode?: HabitTrackingMode;
@@ -89,22 +108,19 @@ export type HabitInput = {
   timeRange?: HabitTimeRange;
   visibleOnlyInTimeRange?: boolean;
   dailyTargetSeconds?: number;
-  soundId?: string;
+  timerSound?: HabitTimerSound;
   schedule?: HabitSchedule;
   remindMinutesBefore?: number;
+  showStreakOnCard?: boolean;
 };
 
-export function buildHabitConfig(input: {
-  trackingMode?: HabitTrackingMode;
-  timeSlot: HabitTimeSlot;
-  targetLabel?: string;
-  timeRange?: HabitTimeRange;
-  visibleOnlyInTimeRange?: boolean;
-  dailyTargetSeconds?: number;
-  soundId?: string;
-  schedule?: HabitSchedule;
-  remindMinutesBefore?: number;
-}): HabitConfig {
+export function shouldShowHabitStreakOnCard(config: HabitConfig): boolean {
+  return config.showStreakOnCard === true;
+}
+
+export function buildHabitConfig(
+  input: Omit<HabitInput, 'name'>,
+): HabitConfig {
   return {
     trackingMode: input.trackingMode ?? 'boolean',
     timeSlot: input.timeSlot,
@@ -117,21 +133,63 @@ export function buildHabitConfig(input: {
     input.dailyTargetSeconds > 0
       ? { dailyTargetSeconds: input.dailyTargetSeconds }
       : {}),
-    ...(input.soundId ? { soundId: input.soundId } : {}),
+    ...(input.timerSound ? { timerSound: input.timerSound } : {}),
     ...(input.remindMinutesBefore !== undefined && input.remindMinutesBefore >= 0
       ? { remindMinutesBefore: input.remindMinutesBefore }
       : {}),
+    ...(input.showStreakOnCard ? { showStreakOnCard: true } : {}),
   };
 }
 
-export function isHabitDayComplete(total: number, config: HabitConfig): boolean {
+export function isHabitDayComplete(
+  total: number,
+  config: HabitConfig,
+  dayEvents?: readonly Pick<LifeEvent, 'value' | 'meta'>[],
+): boolean {
   if (config.trackingMode === 'timer') {
     if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
       return total >= config.dailyTargetSeconds;
     }
+    if (
+      dayEvents &&
+      hasHabitTimerSound(config.timerSound) &&
+      getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
+    ) {
+      return dayEvents.some((event) => isTimerSessionTrackCompleted(event));
+    }
     return total > 0;
   }
   return total >= 1;
+}
+
+function isTimerSessionTrackCompleted(
+  event: Pick<LifeEvent, 'meta'>,
+): boolean {
+  return (
+    event.meta?.source === 'timer_session' &&
+    event.meta.trackCompleted === true
+  );
+}
+
+export function completedDatesFromHabitEvents(
+  events: readonly LifeEvent[],
+  config: HabitConfig,
+): string[] {
+  const byDate = new Map<string, LifeEvent[]>();
+  for (const event of events) {
+    const dayEvents = byDate.get(event.date) ?? [];
+    dayEvents.push(event);
+    byDate.set(event.date, dayEvents);
+  }
+
+  const completedDates: string[] = [];
+  for (const [date, dayEvents] of byDate) {
+    const total = sumEventValues(dayEvents);
+    if (isHabitDayComplete(total, config, dayEvents)) {
+      completedDates.push(date);
+    }
+  }
+  return completedDates;
 }
 
 export function shouldShowHabitOnHabitsPage(config: HabitConfig, now = new Date()): boolean {
@@ -178,7 +236,7 @@ export function formatHabitTimerDuration(totalSeconds: number): string {
 }
 
 export function timerSessionDurationSeconds(startedAt: Date, endedAt: Date): number {
-  return Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 1000));
+  return Math.max(1, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000));
 }
 
 export function buildTimerSessionPayload(
@@ -186,25 +244,54 @@ export function buildTimerSessionPayload(
   endedAt: Date,
 ): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
   const durationSeconds = timerSessionDurationSeconds(startedAt, endedAt);
+  return buildTimerSessionPayloadFromDuration(startedAt, endedAt, durationSeconds);
+}
+
+export function buildTimerSessionPayloadFromDuration(
+  startedAt: Date,
+  endedAt: Date,
+  durationSeconds: number,
+  options?: { trackCompleted?: boolean },
+): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
+  const seconds = Math.max(1, durationSeconds);
   return {
-    value: durationSeconds,
+    value: seconds,
     meta: {
       source: 'timer_session',
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
-      durationSeconds,
+      durationSeconds: seconds,
+      ...(options?.trackCompleted ? { trackCompleted: true } : {}),
     },
   };
 }
 
+export function buildTimerSessionPayloadFromSession(
+  session: ActiveTimerSession,
+  endedAt = new Date(),
+  options?: { trackCompleted?: boolean },
+): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
+  const startedAt = new Date(session.startedAt);
+  const durationSeconds = Math.max(1, activeTimerElapsedSeconds(session, endedAt.getTime()));
+  return buildTimerSessionPayloadFromDuration(startedAt, endedAt, durationSeconds, options);
+}
+
 export function liveTimerTotalSeconds(
   loggedTotalSeconds: number,
-  activeSession: { startedAt: string } | null | undefined,
+  activeSession: ActiveTimerSession | null | undefined,
   nowMs = Date.now(),
 ): number {
   if (!activeSession) {
     return loggedTotalSeconds;
   }
-  const elapsed = Math.floor((nowMs - new Date(activeSession.startedAt).getTime()) / 1000);
-  return loggedTotalSeconds + Math.max(0, elapsed);
+  return loggedTotalSeconds + activeTimerElapsedSeconds(activeSession, nowMs);
 }
+
+export type { ActiveTimerSession } from '../activeTimerSession';
+export {
+  ActiveTimerSessionSchema,
+  activeTimerElapsedMs,
+  activeTimerElapsedSeconds,
+  createActiveTimerSession,
+  isActiveTimerPaused,
+} from '../activeTimerSession';

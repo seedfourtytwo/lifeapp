@@ -1,4 +1,4 @@
-import { toDateString, type CounterConfig, type HabitConfig } from '../../protocol';
+import { toDateString, type CounterConfig, type HabitConfig, getHabitTimerPlaybackMode } from '../../protocol';
 import { newId } from '../../utils/id';
 import type { ElementEditorSession } from './types';
 
@@ -14,8 +14,9 @@ export function newEditorSession(
     targetLabel: '',
     habitTrackingMode: 'boolean',
     habitDailyGoalMinutes: '',
-    habitSoundId: '',
-    timeSlot: 'morning',
+    habitSoundTrackId: '',
+    habitSoundPlaybackMode: 'play_once',
+    timeSlot: 'anytime',
     useTimeRange: false,
     timeRangeStart: '',
     timeRangeEnd: '',
@@ -26,6 +27,7 @@ export function newEditorSession(
     scheduleAnchorDate: toDateString(new Date()),
     useReminder: false,
     remindMinutesBefore: '15',
+    showStreakOnCard: false,
     ...overrides,
   };
 }
@@ -50,6 +52,7 @@ export function editorSessionFromHabit(
   config: HabitConfig,
 ): ElementEditorSession {
   const schedule = config.schedule;
+  const timerSound = config.timerSound;
   return newEditorSession({
     mode: 'habit',
     editingId: id,
@@ -59,7 +62,10 @@ export function editorSessionFromHabit(
     habitDailyGoalMinutes: config.dailyTargetSeconds
       ? String(Math.round(config.dailyTargetSeconds / 60))
       : '',
-    habitSoundId: config.soundId ?? '',
+    habitSoundTrackId: timerSound?.trackId ?? '',
+    habitSoundPlaybackMode: timerSound
+      ? getHabitTimerPlaybackMode(timerSound)
+      : 'play_once',
     timeSlot: config.timeSlot,
     useTimeRange: Boolean(config.timeRange),
     timeRangeStart: config.timeRange?.start ?? '',
@@ -73,5 +79,6 @@ export function editorSessionFromHabit(
     useReminder: config.remindMinutesBefore !== undefined,
     remindMinutesBefore:
       config.remindMinutesBefore !== undefined ? String(config.remindMinutesBefore) : '15',
+    showStreakOnCard: config.showStreakOnCard ?? false,
   });
 }

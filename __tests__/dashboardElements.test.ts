@@ -1,12 +1,11 @@
 import type { DashboardItem, ElementDefinition } from '../src/protocol';
 import { PROTOCOL_VERSION } from '../src/protocol';
-import { getPinnedElements } from '../src/utils/dashboardElements';
+import { getPinnedElements, getPinnedHabits, pinnedHabitIdsKey } from '../src/utils/dashboardElements';
 
 const element = (id: string, kind: 'counter' | 'habit' = 'counter'): ElementDefinition => ({
   id,
   kind,
   name: id,
-  category: kind === 'counter' ? 'exercise' : 'habit',
   config: {},
   protocolVersion: PROTOCOL_VERSION,
   createdAt: '2025-01-01T00:00:00.000Z',
@@ -29,5 +28,23 @@ describe('getPinnedElements', () => {
   it('returns empty when nothing is pinned', () => {
     const elements = [element('a'), element('b', 'habit')];
     expect(getPinnedElements(elements, [])).toEqual([]);
+  });
+});
+
+describe('getPinnedHabits', () => {
+  it('filters to pinned habits only', () => {
+    const elements = [element('a'), element('b', 'habit'), element('c', 'habit')];
+    const dashboard = [dashboardItem('b', 0), dashboardItem('a', 1)];
+
+    expect(getPinnedHabits(elements, dashboard).map((item) => item.id)).toEqual(['b']);
+  });
+});
+
+describe('pinnedHabitIdsKey', () => {
+  it('is stable regardless of habit order in elements list', () => {
+    const elements = [element('b', 'habit'), element('a', 'habit')];
+    const dashboard = [dashboardItem('a', 0), dashboardItem('b', 1)];
+
+    expect(pinnedHabitIdsKey(elements, dashboard)).toBe('a|b');
   });
 });

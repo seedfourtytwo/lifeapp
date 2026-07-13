@@ -1,20 +1,21 @@
 import type { ComponentType } from 'react';
-import type { ElementDefinition, ElementKind, LifeEvent } from '../protocol';
+import type { ActiveTimerSession, ElementDefinition, ElementKind, LifeEvent } from '../protocol';
 
 export interface WidgetProps<TConfig = Record<string, unknown>> {
   element: ElementDefinition;
   config: TConfig;
   todayTotal: number;
-  yesterdayTotal?: number;
-  onLog: (value: number, meta?: Record<string, unknown>) => Promise<void>;
+  onLog?: (value: number, meta?: Record<string, unknown>) => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
   onOpenDetails?: () => void;
   isDone?: boolean;
   onToggle?: () => Promise<void>;
   streak?: number;
-  activeTimerSession?: { startedAt: string } | null;
-  onStartTimer?: () => void | Promise<void>;
-  onStopTimer?: () => void | Promise<void>;
+  failureStreak?: number;
+  activeTimerSession?: ActiveTimerSession | null;
+  onTimerPress?: () => void | Promise<void>;
+  onTimerFinish?: () => void | Promise<void>;
+  onResetToday?: () => void | Promise<void>;
 }
 
 export interface KindHandler<TConfig = Record<string, unknown>> {

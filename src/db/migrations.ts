@@ -1,10 +1,21 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { deleteLegacyHabitSoundFile } from '../audio/legacyHabitSoundCleanup';
+import { isBundledHabitSoundId } from '../protocol/habitSoundCatalog';
 import { newId } from '../utils/id';
+import { buildLegacyHabitTimerSoundFromLibrary } from './migrations/habitSoundLegacy';
+import { parseLegacySoundLibrary } from './migrations/legacySoundLibrary';
 import * as dashboardRepo from './repositories/dashboardRepository';
 import * as elementRepo from './repositories/elementRepository';
+import * as settingsRepo from './repositories/settingsRepository';
 import { SCHEMA_SQL } from './schema';
 
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 5;
+
+interface HabitElementRow {
+  id: string;
+  name: string;
+  config_json: string;
+}
 
 const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   2: async (db) => {
@@ -31,6 +42,75 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
       });
       sortOrder += 1;
     }
+  },
+  4: async (db) => {
+    const rawLibrary = await settingsRepo.getSetting(db, 'sound_library');
+    const soundLibrary = rawLibrary ? parseLegacySoundLibrary(JSON.parse(rawLibrary)) : [];
+    const soundsById = new Map(soundLibrary.map((sound) => [sound.id, sound]));
+
+    const rows = await db.getAllAsync<HabitElementRow>(
+      "SELECT id, name, config_json FROM elements WHERE kind = 'habit'",
+    );
+
+    for (const row of rows) {
+      const config = JSON.parse(row.config_json) as {
+        soundId?: string;
+        timerSound?: unknown;
+        [key: string]: unknown;
+      };
+      if (config.timerSound || !config.soundId) continue;
+
+      const legacy = soundsById.get(config.soundId);
+      const timerSound = legacy
+        ? buildLegacyHabitTimerSoundFromLibrary({
+            source: legacy.source,
+            uri: legacy.uri,
+            label: legacy.label,
+          })
+        : undefined;
+      if (!timerSound) continue;
+
+      const { soundId: _removed, ...rest } = config;
+      await elementRepo.updateElement(
+        db,
+        row.id,
+        { name: row.name, config: { ...rest, timerSound } },
+        'habit',
+      );
+    }
+  },
+  5: async (db) => {
+    const rows = await db.getAllAsync<HabitElementRow>(
+      "SELECT id, name, config_json FROM elements WHERE kind = 'habit'",
+    );
+
+    for (const row of rows) {
+      const config = JSON.parse(row.config_json) as {
+        soundId?: string;
+        timerSound?: { trackId?: string; localUri?: string };
+        [key: string]: unknown;
+      };
+      const trackId = config.timerSound?.trackId?.trim();
+      const hasPlayableSound = Boolean(trackId && isBundledHabitSoundId(trackId));
+      const hasLegacySound = Boolean(config.timerSound && !hasPlayableSound);
+      const hasDeprecatedSoundId = Boolean(config.soundId);
+
+      if (!hasLegacySound && !hasDeprecatedSoundId) continue;
+
+      if (config.timerSound?.localUri) {
+        await deleteLegacyHabitSoundFile(config.timerSound.localUri);
+      }
+
+      const { timerSound: _timerSound, soundId: _soundId, ...rest } = config;
+      await elementRepo.updateElement(
+        db,
+        row.id,
+        { name: row.name, config: rest },
+        'habit',
+      );
+    }
+
+    await db.runAsync("DELETE FROM app_settings WHERE key = 'sound_library'");
   },
 };
 

@@ -1,4 +1,4 @@
-import type { HabitSchedule, HabitTimeSlot, HabitTrackingMode } from '../../protocol';
+import type { HabitSchedule, HabitTimeSlot, HabitTrackingMode, HabitTimerPlaybackMode } from '../../protocol';
 
 export type HabitScheduleType = HabitSchedule['type'];
 
@@ -14,7 +14,8 @@ export type ElementEditorSession = {
   targetLabel: string;
   habitTrackingMode: HabitTrackingMode;
   habitDailyGoalMinutes: string;
-  habitSoundId: string;
+  habitSoundTrackId: string;
+  habitSoundPlaybackMode: HabitTimerPlaybackMode;
   timeSlot: HabitTimeSlot;
   useTimeRange: boolean;
   timeRangeStart: string;
@@ -26,6 +27,7 @@ export type ElementEditorSession = {
   scheduleAnchorDate: string;
   useReminder: boolean;
   remindMinutesBefore: string;
+  showStreakOnCard: boolean;
 };
 
 export type ElementEditorSaveData =
@@ -41,7 +43,8 @@ export type ElementEditorSaveData =
       targetLabel: string;
       habitTrackingMode: HabitTrackingMode;
       habitDailyGoalMinutes: string;
-      habitSoundId: string;
+      habitSoundTrackId: string;
+      habitSoundPlaybackMode: HabitTimerPlaybackMode;
       timeSlot: HabitTimeSlot;
       useTimeRange: boolean;
       timeRangeStart: string;
@@ -53,6 +56,7 @@ export type ElementEditorSaveData =
       scheduleAnchorDate: string;
       useReminder: boolean;
       remindMinutesBefore: string;
+      showStreakOnCard: boolean;
     };
 
 export type HabitEditorFieldState = Pick<
@@ -60,7 +64,8 @@ export type HabitEditorFieldState = Pick<
   | 'targetLabel'
   | 'habitTrackingMode'
   | 'habitDailyGoalMinutes'
-  | 'habitSoundId'
+  | 'habitSoundTrackId'
+  | 'habitSoundPlaybackMode'
   | 'timeSlot'
   | 'useTimeRange'
   | 'timeRangeStart'
@@ -72,4 +77,5 @@ export type HabitEditorFieldState = Pick<
   | 'scheduleAnchorDate'
   | 'useReminder'
   | 'remindMinutesBefore'
+  | 'showStreakOnCard'
 >;

@@ -1,15 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
+import { Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
 import {
-  Chip,
-  Divider,
-  SegmentedButtons,
-  Switch,
-  Text,
-  TextInput,
-} from 'react-native-paper';
-import type { HabitTimeSlot, HabitTrackingMode, SoundAsset } from '../../protocol';
+  type HabitTimeSlot,
+  type HabitTrackingMode,
+} from '../../protocol';
 import FormSection, { formSectionStyles as styles } from './FormSection';
+import HabitSoundEditorFields from './HabitSoundEditorFields';
 import type { HabitEditorFieldState, HabitScheduleType } from './types';
 
 const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
@@ -24,11 +21,10 @@ const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
 
 type Props = {
   state: HabitEditorFieldState;
-  soundOptions: SoundAsset[];
   onChange: (patch: Partial<HabitEditorFieldState>) => void;
 };
 
-export default function HabitEditorFields({ state, soundOptions, onChange }: Props) {
+export default function HabitEditorFields({ state, onChange }: Props) {
   const toggleWeekday = (day: number) => {
     const next = state.scheduleWeekdays.includes(day)
       ? state.scheduleWeekdays.filter((d) => d !== day)
@@ -57,46 +53,17 @@ export default function HabitEditorFields({ state, soundOptions, onChange }: Pro
           ]}
         />
         {state.habitTrackingMode === 'timer' ? (
-          <View style={styles.sectionBody}>
-            <TextInput
-              label="Daily goal (minutes)"
-              placeholder="e.g. 15"
-              value={state.habitDailyGoalMinutes}
-              onChangeText={(habitDailyGoalMinutes) => onChange({ habitDailyGoalMinutes })}
-              keyboardType="number-pad"
-              mode="outlined"
-              style={styles.field}
-            />
-            <Text variant="labelMedium" style={styles.inlineLabel}>
-              Sound while running
-            </Text>
-            {soundOptions.length === 0 ? (
-              <Text variant="bodySmall" style={styles.hint}>
-                Add tracks in Settings → Sound tracks.
-              </Text>
-            ) : (
-              <View style={styles.chipRow}>
-                <Chip
-                  selected={state.habitSoundId === ''}
-                  onPress={() => onChange({ habitSoundId: '' })}
-                  compact
-                >
-                  None
-                </Chip>
-                {soundOptions.map((sound) => (
-                  <Chip
-                    key={sound.id}
-                    selected={state.habitSoundId === sound.id}
-                    onPress={() => onChange({ habitSoundId: sound.id })}
-                    icon="music-note"
-                    compact
-                  >
-                    {sound.label}
-                  </Chip>
-                ))}
-              </View>
-            )}
-          </View>
+          <HabitSoundEditorFields
+            dailyGoalMinutes={state.habitDailyGoalMinutes}
+            sound={{
+              habitSoundTrackId: state.habitSoundTrackId,
+              habitSoundPlaybackMode: state.habitSoundPlaybackMode,
+            }}
+            onDailyGoalMinutesChange={(habitDailyGoalMinutes) =>
+              onChange({ habitDailyGoalMinutes })
+            }
+            onSoundChange={(patch) => onChange(patch)}
+          />
         ) : (
           <TextInput
             label="Note (optional)"
@@ -112,8 +79,32 @@ export default function HabitEditorFields({ state, soundOptions, onChange }: Pro
       <Divider style={styles.divider} />
 
       <FormSection
+        title="Streak"
+        description="Optional streak badge on the Daily habit card."
+        collapsible
+        defaultCollapsed={!state.showStreakOnCard}
+      >
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabel}>
+            <Text variant="bodyMedium">Show streak on card</Text>
+            <Text variant="bodySmall" style={styles.hint}>
+              Success or missed-day streak for check-off and timer habits
+            </Text>
+          </View>
+          <Switch
+            value={state.showStreakOnCard}
+            onValueChange={(showStreakOnCard) => onChange({ showStreakOnCard })}
+          />
+        </View>
+      </FormSection>
+
+      <Divider style={styles.divider} />
+
+      <FormSection
         title="Daily tab grouping"
         description="Which section this habit appears under on the Daily tab."
+        collapsible
+        defaultCollapsed={state.timeSlot === 'anytime'}
       >
         <SegmentedButtons
           value={state.timeSlot}
@@ -140,7 +131,11 @@ export default function HabitEditorFields({ state, soundOptions, onChange }: Pro
 
       <Divider style={styles.divider} />
 
-      <FormSection title="Repeat">
+      <FormSection
+        title="Repeat"
+        collapsible
+        defaultCollapsed={state.scheduleType === 'daily'}
+      >
         <SegmentedButtons
           value={state.scheduleType}
           onValueChange={(value) => {
@@ -203,6 +198,8 @@ export default function HabitEditorFields({ state, soundOptions, onChange }: Pro
       <FormSection
         title="Time window"
         description="Optional. Limit when the habit shows on the Daily tab."
+        collapsible
+        defaultCollapsed={!state.useTimeRange}
       >
         <View style={styles.switchRow}>
           <Text variant="bodyMedium">Use a daily time range</Text>

@@ -1,16 +1,15 @@
-export { PROTOCOL_VERSION, wrapPayload } from './envelope';
-export type { ProtocolEnvelope, ProtocolVersion } from './envelope';
+export { PROTOCOL_VERSION } from './envelope';
+export type { ProtocolVersion } from './envelope';
 
 export {
   ElementKindSchema,
-  ElementCategorySchema,
   ElementDefinitionSchema,
   validateElementConfig,
   parseElementDefinition,
 } from './element';
-export type { ElementKind, ElementCategory, ElementDefinition } from './element';
+export type { ElementKind, ElementDefinition } from './element';
 
-export { EventSchema, parseEvent, toDateString } from './event';
+export { EventSchema, toDateString } from './event';
 export type { LifeEvent } from './event';
 
 export {
@@ -21,8 +20,22 @@ export {
 } from './bundle';
 export type { DashboardItem, ProtocolBundle } from './bundle';
 
-export { SoundAssetSchema, SoundLibrarySchema, parseSoundLibrary } from './sound';
-export type { SoundAsset } from './sound';
+export {
+  HabitTimerPlaybackModeSchema,
+  HabitTimerSoundSchema,
+  type HabitTimerPlaybackMode,
+  type HabitTimerSound,
+} from './habitSound';
+export {
+  buildHabitTimerSound,
+  formatHabitTimerSoundSummary,
+  getHabitTimerPlaybackMode,
+  hasHabitTimerSound,
+} from './habitSound';
+export {
+  BUNDLED_HABIT_SOUND_CATALOG,
+  type BundledHabitSound,
+} from './habitSoundCatalog';
 
 export {
   parseEventMeta,
@@ -54,16 +67,29 @@ export {
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
   isHabitDayComplete,
+  completedDatesFromHabitEvents,
+  parseHabitConfig,
   shouldShowHabitOnHabitsPage,
+  shouldShowHabitStreakOnCard,
   formatHabitDescription,
   formatHabitTimerDuration,
   timerSessionDurationSeconds,
   buildTimerSessionPayload,
+  buildTimerSessionPayloadFromDuration,
+  buildTimerSessionPayloadFromSession,
   liveTimerTotalSeconds,
   isHabitScheduledOnDate,
   isHabitStartingSoon,
   formatScheduleDescription,
 } from './kinds/habit';
+export type { ActiveTimerSession } from './activeTimerSession';
+export {
+  ActiveTimerSessionSchema,
+  activeTimerElapsedMs,
+  activeTimerElapsedSeconds,
+  createActiveTimerSession,
+  isActiveTimerPaused,
+} from './activeTimerSession';
 export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
 export {
   DAILY_VIEW_FILTERS,
