@@ -41,7 +41,7 @@ async function loadChime(): Promise<AvSound | null> {
   }
 }
 
-/** Short bell when a timer habit reaches its goal or finishes a track. */
+/** Soft meditation-bowl chime when a habit reaches its goal or finishes a track. */
 export async function playHabitCompleteChime(): Promise<void> {
   try {
     const sound = await loadChime();

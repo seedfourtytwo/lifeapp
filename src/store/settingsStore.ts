@@ -3,12 +3,13 @@ import { getDatabase } from '../db/client';
 import * as settingsRepo from '../db/repositories/settingsRepository';
 import { APP_SETTING_KEYS } from '../protocol/appSettings';
 import {
-  isDailyViewFilter,
+  migrateDailyViewFilter,
   type DailyViewFilter,
 } from '../protocol';
 import { isThemeMode, type ThemeMode } from '../theme/types';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
+const DEFAULT_DAILY_VIEW_FILTER: DailyViewFilter = 'remaining';
 
 interface SettingsState {
   themeMode: ThemeMode;
@@ -23,7 +24,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
-  dailyViewFilter: 'all_due',
+  dailyViewFilter: DEFAULT_DAILY_VIEW_FILTER,
   habitRemindersEnabled: false,
   isLoaded: false,
 
@@ -45,10 +46,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         themeMode = legacyDark === 'true' ? 'dark' : 'light';
       }
 
+      const dailyViewFilter =
+        migrateDailyViewFilter(storedFilter) ?? DEFAULT_DAILY_VIEW_FILTER;
+
       set({
         themeMode,
-        dailyViewFilter:
-          storedFilter && isDailyViewFilter(storedFilter) ? storedFilter : 'all_due',
+        dailyViewFilter,
         habitRemindersEnabled: storedReminders === 'true',
         isLoaded: true,
       });

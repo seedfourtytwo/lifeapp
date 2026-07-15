@@ -10,7 +10,10 @@ function getContext(): AudioContext | null {
   return audioContext;
 }
 
-/** Soft two-tone chime via Web Audio (no asset decode on web). */
+/**
+ * Soft singing-bowl chime via Web Audio (matches native habitComplete.wav feel).
+ * Long decay; not a short UI “ding”.
+ */
 export async function playHabitCompleteChime(): Promise<void> {
   const ctx = getContext();
   if (!ctx) return;
@@ -20,23 +23,31 @@ export async function playHabitCompleteChime(): Promise<void> {
   }
 
   const now = ctx.currentTime;
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-  gain.connect(ctx.destination);
+  const duration = 2.4;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, now);
+  master.gain.exponentialRampToValueAtTime(0.28, now + 0.04);
+  master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  master.connect(ctx.destination);
 
-  for (const [index, frequency] of [784, 1175].entries()) {
+  // G4 fundamental with quiet inharmonic overtones (bowl-like).
+  const partials: { frequency: number; gain: number }[] = [
+    { frequency: 392, gain: 0.7 },
+    { frequency: 392 * 2.01, gain: 0.28 },
+    { frequency: 392 * 2.76, gain: 0.14 },
+    { frequency: 392 * 4.05, gain: 0.06 },
+  ];
+
+  for (const partial of partials) {
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.value = frequency;
+    osc.frequency.value = partial.frequency;
     const toneGain = ctx.createGain();
-    toneGain.gain.value = index === 0 ? 0.7 : 0.45;
+    toneGain.gain.value = partial.gain;
     osc.connect(toneGain);
-    toneGain.connect(gain);
-    const start = now + index * 0.08;
-    osc.start(start);
-    osc.stop(start + 0.22);
+    toneGain.connect(master);
+    osc.start(now);
+    osc.stop(now + duration);
   }
 }
 

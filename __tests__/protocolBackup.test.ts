@@ -67,7 +67,7 @@ describe('protocol backup settings', () => {
       events: [],
       settings: {
         themeMode: 'cartoon',
-        dailyViewFilter: 'undone',
+        dailyViewFilter: 'remaining',
         habitRemindersEnabled: true,
       },
     });
@@ -75,7 +75,7 @@ describe('protocol backup settings', () => {
     expect(parseProtocolBundle(bundle)).toEqual(bundle);
     expect(JSON.parse(serializeBundle(bundle)).settings).toEqual({
       themeMode: 'cartoon',
-      dailyViewFilter: 'undone',
+      dailyViewFilter: 'remaining',
       habitRemindersEnabled: true,
     });
   });
@@ -104,7 +104,7 @@ describe('protocol backup settings', () => {
 
     await expect(readAppSettings(db as never)).resolves.toEqual({
       themeMode: 'dark',
-      dailyViewFilter: 'starting_soon',
+      dailyViewFilter: 'remaining',
       habitRemindersEnabled: true,
     });
   });

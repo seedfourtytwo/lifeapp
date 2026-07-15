@@ -64,3 +64,17 @@ export async function getNextSortOrder(db: SQLiteDatabase): Promise<number> {
   );
   return (row?.maxOrder ?? -1) + 1;
 }
+
+/** Persist a new absolute sort_order for each dashboard item id. */
+export async function setDashboardSortOrders(
+  db: SQLiteDatabase,
+  orders: { id: string; sortOrder: number }[],
+): Promise<void> {
+  for (const item of orders) {
+    await db.runAsync(
+      'UPDATE dashboard_items SET sort_order = ? WHERE id = ?',
+      item.sortOrder,
+      item.id,
+    );
+  }
+}

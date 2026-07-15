@@ -1,6 +1,10 @@
 import {
+  dailyViewUsesSlotSections,
   filterHabitsForDailyView,
+  groupHabitsForDailyView,
   isHabitDueToday,
+  migrateDailyViewFilter,
+  parseHabitConfig,
   PROTOCOL_VERSION,
   type ElementDefinition,
 } from '../src/protocol';
@@ -36,6 +40,15 @@ describe('isHabitDueToday', () => {
   });
 });
 
+describe('migrateDailyViewFilter', () => {
+  it('maps legacy filter ids', () => {
+    expect(migrateDailyViewFilter('all_due')).toBe('all');
+    expect(migrateDailyViewFilter('undone')).toBe('remaining');
+    expect(migrateDailyViewFilter('starting_soon')).toBe('remaining');
+    expect(migrateDailyViewFilter('remaining')).toBe('remaining');
+  });
+});
+
 describe('filterHabitsForDailyView', () => {
   const now = new Date('2025-06-30T08:00:00');
   const context = {
@@ -44,31 +57,31 @@ describe('filterHabitsForDailyView', () => {
     habitDoneToday: { a: true, b: false },
   };
 
-  it('all_due returns scheduled habits for today', () => {
+  it('all returns scheduled habits for today', () => {
     const habits = [
       habit('a'),
       habit('c', { schedule: { type: 'weekdays', days: [2] } }),
     ];
-    const result = filterHabitsForDailyView(habits, 'all_due', context);
+    const result = filterHabitsForDailyView(habits, 'all', context);
     expect(result.map((item) => item.id)).toEqual(['a']);
   });
 
-  it('undone filters completed habits', () => {
+  it('remaining filters completed habits', () => {
     const habits = [habit('a'), habit('b')];
-    const result = filterHabitsForDailyView(habits, 'undone', context);
+    const result = filterHabitsForDailyView(habits, 'remaining', context);
     expect(result.map((item) => item.id)).toEqual(['b']);
   });
 
-  it('starting_soon requires a time range starting within the window', () => {
+  it('morning returns due habits in that slot', () => {
     const habits = [
-      habit('soon', { timeRange: { start: '08:30', end: '09:00' } }),
-      habit('later', { timeRange: { start: '14:00', end: '15:00' } }),
+      habit('m', { timeSlot: 'morning' }),
+      habit('e', { timeSlot: 'evening' }),
     ];
-    const result = filterHabitsForDailyView(habits, 'starting_soon', context);
-    expect(result.map((item) => item.id)).toEqual(['soon']);
+    const result = filterHabitsForDailyView(habits, 'morning', context);
+    expect(result.map((item) => item.id)).toEqual(['m']);
   });
 
-  it('all shows habits regardless of schedule but respects visibility window', () => {
+  it('everything shows habits regardless of schedule but respects visibility window', () => {
     const habits = [
       habit('hidden', {
         timeRange: { start: '14:00', end: '15:00' },
@@ -76,7 +89,26 @@ describe('filterHabitsForDailyView', () => {
       }),
       habit('visible'),
     ];
-    const result = filterHabitsForDailyView(habits, 'all', context);
+    const result = filterHabitsForDailyView(habits, 'everything', context);
     expect(result.map((item) => item.id)).toEqual(['visible']);
+  });
+
+  it('reports which views use slot sections', () => {
+    expect(dailyViewUsesSlotSections('all')).toBe(true);
+    expect(dailyViewUsesSlotSections('morning')).toBe(false);
+  });
+
+  it('groups multi-slot views and flattens single-slot views', () => {
+    const habits = [
+      habit('m', { timeSlot: 'morning' }),
+      habit('e', { timeSlot: 'evening' }),
+    ];
+    const configs = new Map(habits.map((item) => [item.id, parseHabitConfig(item.config)]));
+
+    const grouped = groupHabitsForDailyView(habits, 'all', configs);
+    expect(grouped.map((section) => section.slot)).toEqual(['morning', 'evening']);
+
+    const flat = groupHabitsForDailyView(habits, 'morning', configs);
+    expect(flat).toEqual([{ slot: null, items: habits }]);
   });
 });

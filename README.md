@@ -8,7 +8,7 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 | Feature | Description |
 |---------|-------------|
-| **Daily** | Active habits grouped by time of day, filters, optional streak badges |
+| **Daily** | Active habits for today — view menu (all / remaining / by time) + optional sort |
 | **Habits** | Check-off or timer mode, bundled meditation audio, schedules, reminders |
 | **Counter** | Quick +buttons, undo, edit total, 14-day history chart |
 | **Elements** | Create, edit, archive/restore, or delete habits and counters |

@@ -15,3 +15,5 @@ Example:
 4. Rebuild the dev client APK (sounds ship inside the app)
 
 Current tracks: `meditation15min`, `meditation30min`, `wimhofMorning`, `wimhofEvening`.
+
+Completion feedback: `habitComplete.wav` — soft ~2.4s singing-bowl style chime (bundled; reload Metro to pick up asset changes).

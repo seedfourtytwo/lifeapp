@@ -4,7 +4,7 @@ import {
   isThemeMode,
   type AppSettings,
 } from '../protocol/appSettings';
-import { isDailyViewFilter } from '../protocol/dailyView';
+import { migrateDailyViewFilter } from '../protocol/dailyView';
 import * as settingsRepo from './repositories/settingsRepository';
 
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
@@ -19,8 +19,9 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
   if (themeMode && isThemeMode(themeMode)) {
     settings.themeMode = themeMode;
   }
-  if (dailyViewFilter && isDailyViewFilter(dailyViewFilter)) {
-    settings.dailyViewFilter = dailyViewFilter;
+  const migratedFilter = migrateDailyViewFilter(dailyViewFilter);
+  if (migratedFilter) {
+    settings.dailyViewFilter = migratedFilter;
   }
   if (habitRemindersEnabled === 'true' || habitRemindersEnabled === 'false') {
     settings.habitRemindersEnabled = habitRemindersEnabled === 'true';

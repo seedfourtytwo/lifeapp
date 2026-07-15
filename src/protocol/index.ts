@@ -101,11 +101,15 @@ export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './sched
 export {
   DAILY_VIEW_FILTERS,
   DAILY_VIEW_FILTER_LABELS,
+  DAILY_REORDER_VIEW,
   isDailyViewFilter,
+  migrateDailyViewFilter,
   filterHabitsForDailyView,
   isHabitDueToday,
+  dailyViewUsesSlotSections,
+  groupHabitsForDailyView,
 } from './dailyView';
-export type { DailyViewFilter } from './dailyView';
+export type { DailyViewFilter, DailyHabitSection } from './dailyView';
 export type {
   HabitConfig,
   HabitEventMeta,

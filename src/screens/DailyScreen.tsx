@@ -1,24 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Chip, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Menu, Text, useTheme } from 'react-native-paper';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import {
+  DAILY_REORDER_VIEW,
   DAILY_VIEW_FILTER_LABELS,
   DAILY_VIEW_FILTERS,
-  filterHabitsForDailyView,
   HABIT_TIME_SLOT_LABELS,
-  HABIT_TIME_SLOT_ORDER,
+  filterHabitsForDailyView,
+  groupHabitsForDailyView,
   parseHabitConfig,
-  type HabitConfig,
-  type HabitTimeSlot,
   toDateString,
+  type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
-import HabitDailyCard from './daily/HabitDailyCard';
+import HabitDailyRow from './daily/HabitDailyRow';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 export default function DailyScreen() {
@@ -27,11 +27,14 @@ export default function DailyScreen() {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
+  const reorderHabitInSlot = useElementStore((s) => s.reorderHabitInSlot);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
   const dailyViewFilter = useSettingsStore((s) => s.dailyViewFilter);
   const setDailyViewFilter = useSettingsStore((s) => s.setDailyViewFilter);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   useRefreshHabitDayOnFocus();
 
@@ -62,14 +65,22 @@ export default function DailyScreen() {
     [now, habitDoneToday],
   );
 
+  // Sort mode overlays "All today" without persisting the filter setting.
+  const activeFilter = reordering ? DAILY_REORDER_VIEW : dailyViewFilter;
+
   const habits = useMemo(
-    () => filterHabitsForDailyView(allHabits, dailyViewFilter, filterContext),
-    [allHabits, dailyViewFilter, filterContext],
+    () => filterHabitsForDailyView(allHabits, activeFilter, filterContext),
+    [allHabits, activeFilter, filterContext],
   );
 
   const dueTodayHabits = useMemo(
-    () => filterHabitsForDailyView(allHabits, 'all_due', filterContext),
+    () => filterHabitsForDailyView(allHabits, 'all', filterContext),
     [allHabits, filterContext],
+  );
+
+  const sections = useMemo(
+    () => groupHabitsForDailyView(habits, activeFilter, habitConfigs),
+    [habits, activeFilter, habitConfigs],
   );
 
   useEffect(() => {
@@ -94,51 +105,91 @@ export default function DailyScreen() {
     );
   }
 
-  const habitsBySlot = HABIT_TIME_SLOT_ORDER.map((slot) => ({
-    slot,
-    items: habits.filter((habit) => habitConfigs.get(habit.id)?.timeSlot === slot),
-  })).filter((group) => group.items.length > 0);
-
   const doneCount = dueTodayHabits.filter((h) => habitDoneToday[h.id]).length;
-
-  const filterChips = allHabits.length > 0 ? (
-    <View style={styles.filterRow}>
-      {DAILY_VIEW_FILTERS.map((filter) => (
-        <Chip
-          key={filter}
-          selected={dailyViewFilter === filter}
-          onPress={() => void setDailyViewFilter(filter)}
-          compact
-        >
-          {DAILY_VIEW_FILTER_LABELS[filter]}
-        </Chip>
-      ))}
-    </View>
-  ) : null;
+  let emptyMessage: string | null = null;
+  if (totalHabitCount === 0) {
+    emptyMessage = 'No habits yet. Open Settings to add one.';
+  } else if (allHabits.length === 0) {
+    emptyMessage = 'No active habits. Open Settings → Elements to restore something from Archive.';
+  } else if (habits.length === 0) {
+    emptyMessage = 'Nothing to show for this view.';
+  }
 
   return (
     <ScrollView
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void onRefresh()}
+          enabled={!reordering}
+        />
+      }
     >
-      {filterChips}
-      {totalHabitCount === 0 ? (
-        <Text variant="bodyLarge" style={styles.empty}>
-          No habits yet. Open Settings to add one.
+      <View style={styles.toolbar}>
+        <Menu
+          visible={viewMenuOpen}
+          onDismiss={() => setViewMenuOpen(false)}
+          anchor={
+            <Button
+              mode="outlined"
+              compact
+              icon="filter-variant"
+              disabled={reordering}
+              onPress={() => setViewMenuOpen(true)}
+              contentStyle={styles.viewButtonContent}
+            >
+              {DAILY_VIEW_FILTER_LABELS[activeFilter]}
+            </Button>
+          }
+        >
+          {DAILY_VIEW_FILTERS.map((filter) => (
+            <Menu.Item
+              key={filter}
+              title={DAILY_VIEW_FILTER_LABELS[filter]}
+              leadingIcon={dailyViewFilter === filter ? 'check' : undefined}
+              onPress={() => {
+                setViewMenuOpen(false);
+                void setDailyViewFilter(filter);
+              }}
+            />
+          ))}
+        </Menu>
+
+        {reordering ? (
+          <Button mode="contained-tonal" compact onPress={() => setReordering(false)}>
+            Done
+          </Button>
+        ) : (
+          <Button
+            mode="outlined"
+            compact
+            icon="sort"
+            disabled={dueTodayHabits.length < 2}
+            onPress={() => {
+              setViewMenuOpen(false);
+              setReordering(true);
+            }}
+          >
+            Sort
+          </Button>
+        )}
+      </View>
+
+      {reordering ? (
+        <Text variant="bodySmall" style={styles.reorderHint}>
+          Showing all habits due today. Move items within each time of day — order is kept when you
+          filter.
         </Text>
-      ) : allHabits.length === 0 ? (
+      ) : null}
+
+      {emptyMessage ? (
         <Text variant="bodyLarge" style={styles.empty}>
-          No active habits. Open Settings → Elements to restore something from Archive.
-        </Text>
-      ) : habits.length === 0 ? (
-        <Text variant="bodyLarge" style={styles.empty}>
-          {dailyViewFilter === 'all'
-            ? 'No habits match this filter.'
-            : 'Nothing due right now for this filter.'}
+          {emptyMessage}
         </Text>
       ) : (
         <>
-          {dueTodayHabits.length > 0 ? (
+          {!reordering && dueTodayHabits.length > 0 ? (
             <Text
               variant="bodyMedium"
               style={[
@@ -149,21 +200,34 @@ export default function DailyScreen() {
               {doneCount} of {dueTodayHabits.length} done today
             </Text>
           ) : null}
-          {habitsBySlot.map(({ slot, items }) => (
-            <View key={slot} style={styles.section}>
-              <Text
-                variant="titleSmall"
-                style={[
-                  styles.sectionTitle,
-                  isCartoon && { color: theme.colors.outline, fontWeight: '700' },
-                ]}
-              >
-                {HABIT_TIME_SLOT_LABELS[slot as HabitTimeSlot]}
-              </Text>
-              {items.map((habit) => {
+          {sections.map(({ slot, items }) => (
+            <View key={slot ?? 'flat'} style={styles.section}>
+              {slot ? (
+                <Text
+                  variant="titleSmall"
+                  style={[
+                    styles.sectionTitle,
+                    isCartoon && { color: theme.colors.outline, fontWeight: '700' },
+                  ]}
+                >
+                  {HABIT_TIME_SLOT_LABELS[slot]}
+                </Text>
+              ) : null}
+              {items.map((habit, index) => {
                 const config = habitConfigs.get(habit.id);
                 if (!config) return null;
-                return <HabitDailyCard key={habit.id} habit={habit} config={config} />;
+                return (
+                  <HabitDailyRow
+                    key={habit.id}
+                    habit={habit}
+                    config={config}
+                    reordering={reordering}
+                    canMoveUp={reordering && index > 0}
+                    canMoveDown={reordering && index < items.length - 1}
+                    onMoveUp={() => void reorderHabitInSlot(habit.id, 'up')}
+                    onMoveDown={() => void reorderHabitInSlot(habit.id, 'down')}
+                  />
+                );
               })}
             </View>
           ))}
@@ -176,15 +240,24 @@ export default function DailyScreen() {
 const styles = {
   ...homeTabScreenStyles,
   ...StyleSheet.create({
+    toolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 12,
+    },
+    viewButtonContent: {
+      maxWidth: 200,
+    },
+    reorderHint: {
+      opacity: 0.65,
+      marginBottom: 12,
+      lineHeight: 18,
+    },
     summary: {
       marginBottom: 16,
       opacity: 0.8,
-    },
-    filterRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 12,
     },
     section: {
       marginBottom: 20,

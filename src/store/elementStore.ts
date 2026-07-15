@@ -8,9 +8,12 @@ import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
+import { HabitConfigSchema } from '../protocol';
 import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
+import { mergeHabitOrderIntoDashboard, moveHabitInSlotOrder } from '../utils/reorderHabits';
+import { getActiveHabits } from '../utils/dashboardElements';
 import { useEventStore } from './eventStore';
 
 async function insertActiveElement(
@@ -84,6 +87,8 @@ interface ElementState {
   archiveElement: (elementId: string) => Promise<void>;
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
+  /** Move a habit up/down within its time slot; persists dashboard sort_order. */
+  reorderHabitInSlot: (habitId: string, direction: 'up' | 'down') => Promise<void>;
 }
 
 export const useElementStore = create<ElementState>((set, get) => ({
@@ -284,5 +289,41 @@ export const useElementStore = create<ElementState>((set, get) => ({
       elements: get().elements.filter((element) => element.id !== id),
       dashboard: get().dashboard.filter((item) => item.elementId !== id),
     });
+  },
+
+  reorderHabitInSlot: async (habitId, direction) => {
+    const { elements, dashboard } = get();
+    const habits = getActiveHabits(elements, dashboard);
+    const target = habits.find((habit) => habit.id === habitId);
+    if (!target) return;
+
+    const configs = new Map(
+      habits.map((habit) => [habit.id, HabitConfigSchema.parse(habit.config)] as const),
+    );
+    const slot = configs.get(habitId)?.timeSlot;
+    if (!slot) return;
+
+    const slotHabitIds = habits
+      .filter((habit) => configs.get(habit.id)?.timeSlot === slot)
+      .map((habit) => habit.id);
+
+    const nextHabitOrder = moveHabitInSlotOrder(
+      habits.map((habit) => habit.id),
+      slotHabitIds,
+      habitId,
+      direction,
+    );
+    if (!nextHabitOrder) return;
+
+    const { updates, nextDashboard } = mergeHabitOrderIntoDashboard(
+      dashboard,
+      elements,
+      nextHabitOrder,
+    );
+    if (updates.length === 0) return;
+
+    const db = await getDatabase();
+    await dashboardRepo.setDashboardSortOrders(db, updates);
+    set({ dashboard: nextDashboard });
   },
 }));
