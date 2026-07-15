@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   pauseHabitSound,
   playHabitSound,
@@ -107,12 +107,6 @@ export function useHabitTimerControls() {
     },
     [resetHabitToday],
   );
-
-  useEffect(() => {
-    return () => {
-      void stopHabitSound();
-    };
-  }, []);
 
   return {
     handleTimerPress,

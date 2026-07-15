@@ -1,3 +1,4 @@
+import { AppState, type AppStateStatus } from 'react-native';
 import type { HabitTimerSound } from '../protocol/habitSound';
 import { getHabitTimerPlaybackMode } from '../protocol/habitSound';
 import { getBundledHabitSoundModule } from './bundledHabitSoundAssets';
@@ -19,7 +20,10 @@ let activeLooping = true;
 let audioModule: AvAudio | null = null;
 let audioUnavailable = false;
 let audioModeReady = false;
+let backgroundPlaybackEnabled = false;
+let userPausedPlayback = false;
 let playbackEpoch = 0;
+let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
 
 const loadedSounds = new Map<string, AvSound>();
 const loadingSounds = new Map<string, Promise<AvSound | null>>();
@@ -54,13 +58,51 @@ async function getAudio(): Promise<AvAudio | null> {
   }
 }
 
-async function ensureAudioMode(Audio: AvAudio): Promise<void> {
-  if (audioModeReady) return;
+async function ensureAudioMode(Audio: AvAudio, forBackgroundPlayback: boolean): Promise<void> {
+  if (audioModeReady && backgroundPlaybackEnabled === forBackgroundPlayback) {
+    return;
+  }
+
   await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
     playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
+    staysActiveInBackground: forBackgroundPlayback,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
   });
+
   audioModeReady = true;
+  backgroundPlaybackEnabled = forBackgroundPlayback;
+}
+
+function ensureAppStateResumeListener(): void {
+  if (appStateSubscription) return;
+
+  appStateSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+    if (state === 'active') {
+      void resumeActiveSoundIfInterrupted();
+    }
+  });
+}
+
+async function resumeActiveSoundIfInterrupted(): Promise<void> {
+  if (!activeSound || userPausedPlayback) return;
+
+  try {
+    const status = await activeSound.getStatusAsync();
+    if (status.isLoaded && !status.isPlaying && status.positionMillis > 0) {
+      await activeSound.playAsync();
+    }
+  } catch {
+    // Playback may have been torn down by the OS.
+  }
+}
+
+async function releaseBackgroundAudioMode(): Promise<void> {
+  const Audio = await getAudio();
+  if (!Audio || !backgroundPlaybackEnabled) return;
+
+  await ensureAudioMode(Audio, false);
 }
 
 async function loadSoundIntoCache(source: HabitTimerPlaybackSource): Promise<AvSound | null> {
@@ -75,7 +117,7 @@ async function loadSoundIntoCache(source: HabitTimerPlaybackSource): Promise<AvS
     const Audio = await getAudio();
     if (!Audio) return null;
 
-    await ensureAudioMode(Audio);
+    await ensureAudioMode(Audio, false);
 
     const { sound } = await Audio.Sound.createAsync(source.moduleId, {
       shouldPlay: false,
@@ -162,6 +204,12 @@ async function playSource(
 
   if (isPlaybackStale(requestEpoch)) return false;
 
+  const Audio = await getAudio();
+  if (!Audio) return false;
+
+  await ensureAudioMode(Audio, true);
+  ensureAppStateResumeListener();
+
   await sound.setIsLoopingAsync(loop);
   attachEndedHandler(sound, loop, onEnded);
   await sound.setPositionAsync(0);
@@ -182,7 +230,7 @@ async function playSource(
 export async function warmupHabitSoundPlayback(): Promise<void> {
   const Audio = await getAudio();
   if (!Audio) return;
-  await ensureAudioMode(Audio);
+  await ensureAudioMode(Audio, false);
 }
 
 export async function preloadHabitSound(sound?: HabitTimerSound): Promise<boolean> {
@@ -211,10 +259,12 @@ export async function playHabitSound(
   if (!source || isPlaybackStale(requestEpoch)) return false;
 
   const loop = getHabitTimerPlaybackMode(sound) === 'loop';
+  userPausedPlayback = false;
   return playSource(source, loop, options?.onEnded, requestEpoch, true);
 }
 
 export async function pauseHabitSound(): Promise<void> {
+  userPausedPlayback = true;
   if (!activeSound) return;
   try {
     await pauseSound(activeSound, false);
@@ -225,6 +275,8 @@ export async function pauseHabitSound(): Promise<void> {
 
 export async function resumeHabitSound(sound?: HabitTimerSound): Promise<boolean> {
   if (!sound) return false;
+
+  userPausedPlayback = false;
 
   if (activeSound) {
     const status = await activeSound.getStatusAsync();
@@ -244,6 +296,7 @@ export async function resumeHabitSound(sound?: HabitTimerSound): Promise<boolean
 
 export async function stopHabitSound(): Promise<void> {
   playbackEpoch += 1;
+  userPausedPlayback = false;
 
   if (!activeSound) {
     activeSourceKey = null;
@@ -260,4 +313,6 @@ export async function stopHabitSound(): Promise<void> {
   } catch {
     // Sound may already be unloaded.
   }
+
+  await releaseBackgroundAudioMode();
 }
