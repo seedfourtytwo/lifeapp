@@ -53,6 +53,7 @@ function normalizeElement(
   soundsById: Map<string, LegacySoundAsset>,
   activeElementIds: Set<string>,
   exportedAt: string,
+  legacyTreatAllActive: boolean,
 ): unknown {
   if (!raw || typeof raw !== 'object') return raw;
 
@@ -60,9 +61,10 @@ function normalizeElement(
   const { category: _category, parentId: _parentId, ...rest } = element;
   const id = typeof rest.id === 'string' ? rest.id : '';
   // Legacy bundles lack archivedAt: dashboard membership means active.
+  // Empty-dashboard legacy backups treat all elements as active (pre-archive model).
   const archivedAt =
     rest.archivedAt === undefined
-      ? activeElementIds.has(id)
+      ? activeElementIds.has(id) || legacyTreatAllActive
         ? null
         : exportedAt
       : rest.archivedAt;
@@ -102,9 +104,26 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
       : [],
   );
 
+  const elementList = Array.isArray(bundle.elements) ? bundle.elements : [];
+  const legacyWithoutArchiveField =
+    elementList.length > 0 &&
+    elementList.every(
+      (element) =>
+        !element ||
+        typeof element !== 'object' ||
+        !('archivedAt' in (element as Record<string, unknown>)),
+    );
+  const legacyTreatAllActive = legacyWithoutArchiveField && activeElementIds.size === 0;
+
   const elements = Array.isArray(bundle.elements)
     ? bundle.elements.map((element) =>
-        normalizeElement(element, soundsById, activeElementIds, exportedAt),
+        normalizeElement(
+          element,
+          soundsById,
+          activeElementIds,
+          exportedAt,
+          legacyTreatAllActive,
+        ),
       )
     : bundle.elements;
 

@@ -48,6 +48,8 @@ interface EventState {
     date?: string,
     options?: { trackCompleted?: boolean },
   ) => Promise<void>;
+  /** Drop an in-progress timer without writing an event (archive/delete). */
+  discardHabitTimer: (elementId: string) => void;
   resetHabitToday: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
 }
 
@@ -296,6 +298,14 @@ export const useEventStore = create<EventState>((set, get) => ({
       habitStreaks: { ...get().habitStreaks, [elementId]: streak },
       habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
     });
+  },
+
+  discardHabitTimer: (elementId) => {
+    const session = get().activeTimerSessions[elementId];
+    if (!session) return;
+    const nextSessions = { ...get().activeTimerSessions };
+    delete nextSessions[elementId];
+    set({ activeTimerSessions: nextSessions });
   },
 
   resetHabitToday: async (elementId, config, date = todayDate()) => {

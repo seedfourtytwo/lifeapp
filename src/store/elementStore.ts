@@ -10,6 +10,8 @@ import { buildCounterConfig, type CounterConfig, type CounterInput } from '../pr
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
+import { stopHabitSound } from '../audio/habitTimerSound';
+import { useEventStore } from './eventStore';
 
 async function insertActiveElement(
   db: SQLiteDatabase,
@@ -23,6 +25,40 @@ async function insertActiveElement(
   await elementRepo.insertElement(db, element);
   await dashboardRepo.insertDashboardItem(db, dashboardItem);
   return dashboardItem;
+}
+
+/** Stop in-memory timer + audio when that habit is leaving Home. */
+function clearHabitRuntime(elementId: string): void {
+  const hadSession = useEventStore.getState().activeTimerSessions[elementId] != null;
+  useEventStore.getState().discardHabitTimer(elementId);
+  if (hadSession) {
+    void stopHabitSound();
+  }
+}
+
+/** Ensure every active element has a dashboard sort row. */
+async function healMissingDashboardPlacements(
+  db: SQLiteDatabase,
+  elements: ElementDefinition[],
+  dashboard: DashboardItem[],
+): Promise<DashboardItem[]> {
+  const placed = new Set(dashboard.map((item) => item.elementId));
+  let sortOrder = await dashboardRepo.getNextSortOrder(db);
+  const added: DashboardItem[] = [];
+
+  for (const element of elements) {
+    if (element.archivedAt != null || placed.has(element.id)) continue;
+    const item: DashboardItem = {
+      id: newId(),
+      elementId: element.id,
+      sortOrder,
+    };
+    await dashboardRepo.insertDashboardItem(db, item);
+    added.push(item);
+    sortOrder += 1;
+  }
+
+  return added.length === 0 ? dashboard : [...dashboard, ...added];
 }
 
 function applyElementMutation(
@@ -60,10 +96,11 @@ export const useElementStore = create<ElementState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const db = await getDatabase();
-      const [elements, dashboard] = await Promise.all([
+      const [elements, dashboardRows] = await Promise.all([
         elementRepo.getAllElements(db),
         dashboardRepo.getDashboardItems(db),
       ]);
+      const dashboard = await healMissingDashboardPlacements(db, elements, dashboardRows);
       set({ elements, dashboard, isLoading: false });
     } catch (error) {
       set({
@@ -174,6 +211,8 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt != null) return;
 
+    clearHabitRuntime(elementId);
+
     const archivedAt = new Date().toISOString();
     const dashboardItem = get().dashboard.find((item) => item.elementId === elementId);
 
@@ -239,6 +278,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
     if (!existing) {
       throw new Error('Element not found');
     }
+    clearHabitRuntime(id);
     await elementRepo.deleteElement(db, id);
     set({
       elements: get().elements.filter((element) => element.id !== id),
