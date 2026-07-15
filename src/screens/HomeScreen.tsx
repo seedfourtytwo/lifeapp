@@ -8,6 +8,7 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from '../navigation/types';
 import CountersScreen from './CountersScreen';
 import DailyScreen from './DailyScreen';
+import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 
 type HomeTab = 'daily' | 'counters';
 
@@ -21,6 +22,8 @@ export default function HomeScreen() {
   const { decorations: deco, isCartoon } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('daily');
+
+  useDayRolloverRefresh();
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>

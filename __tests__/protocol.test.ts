@@ -10,7 +10,15 @@ import {
   parseElementDefinition,
   parseProtocolBundle,
   PROTOCOL_VERSION,
+  toDateString,
 } from '../src/protocol';
+
+describe('toDateString', () => {
+  it('uses the device local calendar date', () => {
+    expect(toDateString(new Date(2026, 6, 15, 23, 30, 0))).toBe('2026-07-15');
+    expect(toDateString(new Date(2026, 6, 16, 0, 15, 0))).toBe('2026-07-16');
+  });
+});
 
 describe('CounterConfigSchema', () => {
   it('accepts valid counter config', () => {
