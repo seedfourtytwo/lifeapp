@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import { newId } from '../utils/id';
-import type { DashboardItem, ElementDefinition, ElementKind } from '../protocol';
+import type { DashboardItem, ElementDefinition } from '../protocol';
 import { PROTOCOL_VERSION } from '../protocol';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
@@ -11,7 +11,7 @@ import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 
-async function insertElementPinnedToDashboard(
+async function insertActiveElement(
   db: SQLiteDatabase,
   element: ElementDefinition,
 ): Promise<DashboardItem> {
@@ -45,8 +45,8 @@ interface ElementState {
   updateCounter: (id: string, input: CounterInput) => Promise<void>;
   createHabit: (input: HabitInput) => Promise<void>;
   updateHabit: (id: string, input: HabitInput) => Promise<void>;
-  pinToDashboard: (elementId: string) => Promise<void>;
-  unpinFromDashboard: (dashboardItemId: string) => Promise<void>;
+  archiveElement: (elementId: string) => Promise<void>;
+  restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
 }
 
@@ -79,14 +79,15 @@ export const useElementStore = create<ElementState>((set, get) => ({
 
     const element: ElementDefinition = {
       id: newId(),
-      kind: 'counter' as ElementKind,
+      kind: 'counter',
       name: input.name.trim(),
       config,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: new Date().toISOString(),
+      archivedAt: null,
     };
 
-    const dashboardItem = await insertElementPinnedToDashboard(db, element);
+    const dashboardItem = await insertActiveElement(db, element);
     applyElementMutation(set, {
       elements: [...get().elements, element],
       dashboard: [...get().dashboard, dashboardItem],
@@ -128,14 +129,15 @@ export const useElementStore = create<ElementState>((set, get) => ({
 
     const element: ElementDefinition = {
       id,
-      kind: 'habit' as ElementKind,
+      kind: 'habit',
       name: input.name.trim(),
       config,
       protocolVersion: PROTOCOL_VERSION,
       createdAt: new Date().toISOString(),
+      archivedAt: null,
     };
 
-    const dashboardItem = await insertElementPinnedToDashboard(db, element);
+    const dashboardItem = await insertActiveElement(db, element);
     applyElementMutation(set, {
       elements: [...get().elements, element],
       dashboard: [...get().dashboard, dashboardItem],
@@ -167,26 +169,63 @@ export const useElementStore = create<ElementState>((set, get) => ({
     });
   },
 
-  pinToDashboard: async (elementId) => {
+  archiveElement: async (elementId) => {
     const db = await getDatabase();
-    const alreadyPinned = await dashboardRepo.isElementOnDashboard(db, elementId);
-    if (alreadyPinned) return;
+    const existing = get().elements.find((element) => element.id === elementId);
+    if (!existing || existing.archivedAt != null) return;
 
-    const dashboardItem: DashboardItem = {
-      id: newId(),
-      elementId,
-      sortOrder: await dashboardRepo.getNextSortOrder(db),
-    };
-    await dashboardRepo.insertDashboardItem(db, dashboardItem);
-    set({ dashboard: [...get().dashboard, dashboardItem] });
+    const archivedAt = new Date().toISOString();
+    try {
+      await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
+      const dashboardItem = get().dashboard.find((item) => item.elementId === elementId);
+      if (dashboardItem) {
+        await dashboardRepo.deleteDashboardItem(db, dashboardItem.id);
+      }
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to archive element',
+      );
+    }
+
+    set({
+      elements: get().elements.map((element) =>
+        element.id === elementId ? { ...element, archivedAt } : element,
+      ),
+      dashboard: get().dashboard.filter((item) => item.elementId !== elementId),
+    });
   },
 
-  unpinFromDashboard: async (dashboardItemId) => {
+  restoreElement: async (elementId) => {
     const db = await getDatabase();
-    await dashboardRepo.deleteDashboardItem(db, dashboardItemId);
-    set({
-      dashboard: get().dashboard.filter((item) => item.id !== dashboardItemId),
-    });
+    const existing = get().elements.find((element) => element.id === elementId);
+    if (!existing || existing.archivedAt == null) return;
+
+    try {
+      await elementRepo.setElementArchivedAt(db, elementId, null);
+      const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
+      let dashboardItem: DashboardItem | null = null;
+      if (!alreadyActive) {
+        dashboardItem = {
+          id: newId(),
+          elementId,
+          sortOrder: await dashboardRepo.getNextSortOrder(db),
+        };
+        await dashboardRepo.insertDashboardItem(db, dashboardItem);
+      }
+
+      set({
+        elements: get().elements.map((element) =>
+          element.id === elementId ? { ...element, archivedAt: null } : element,
+        ),
+        dashboard: dashboardItem
+          ? [...get().dashboard, dashboardItem]
+          : get().dashboard,
+      });
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to restore element',
+      );
+    }
   },
 
   deleteElement: async (id) => {

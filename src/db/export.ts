@@ -19,7 +19,10 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
 
   return createProtocolBundle({
     elements,
-    dashboard,
+    dashboard: dashboard.filter((item) => {
+      const element = elements.find((candidate) => candidate.id === item.elementId);
+      return element != null && element.archivedAt == null;
+    }),
     events,
     settings,
   });

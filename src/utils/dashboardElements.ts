@@ -1,32 +1,51 @@
 import type { DashboardItem, ElementDefinition } from '../protocol';
 
-/** Elements pinned to Home, ordered by dashboard sort_order. */
-export function getPinnedElements(
+export function isElementArchived(element: ElementDefinition): boolean {
+  return element.archivedAt != null;
+}
+
+function sortActiveElements(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
 ): ElementDefinition[] {
   const order = new Map(dashboard.map((item, index) => [item.elementId, index]));
-  return elements
-    .filter((element) => order.has(element.id))
-    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  return [...elements].sort((a, b) => {
+    const aOrder = order.get(a.id);
+    const bOrder = order.get(b.id);
+    if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+    if (aOrder !== undefined) return -1;
+    if (bOrder !== undefined) return 1;
+    return a.createdAt.localeCompare(b.createdAt);
+  });
 }
 
-export function getPinnedHabits(
+/** Non-archived elements shown on Home, ordered by dashboard sort_order. */
+export function getActiveElements(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
 ): ElementDefinition[] {
-  return getPinnedElements(
+  return sortActiveElements(
+    elements.filter((element) => !isElementArchived(element)),
+    dashboard,
+  );
+}
+
+export function getActiveHabits(
+  elements: ElementDefinition[],
+  dashboard: DashboardItem[],
+): ElementDefinition[] {
+  return getActiveElements(
     elements.filter((element) => element.kind === 'habit'),
     dashboard,
   );
 }
 
-/** Stable key for pinned habit identity — avoids redundant bootstrap when unrelated fields change. */
-export function pinnedHabitIdsKey(
+/** Stable key for active habit identity — avoids redundant bootstrap when unrelated fields change. */
+export function activeHabitIdsKey(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
 ): string {
-  return getPinnedHabits(elements, dashboard)
+  return getActiveHabits(elements, dashboard)
     .map((habit) => habit.id)
     .sort()
     .join('|');

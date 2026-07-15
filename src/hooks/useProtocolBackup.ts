@@ -50,7 +50,7 @@ export function useProtocolBackup() {
     if (!isImportBackupAvailable()) {
       Alert.alert(
         'Rebuild required',
-        'Backup import needs a fresh dev build. Run: eas build --platform android --profile development',
+        'Backup import needs a dev client with document picker. Run: npx expo run:android (local) or eas build --platform android --profile development',
       );
       return;
     }

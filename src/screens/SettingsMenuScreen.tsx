@@ -13,7 +13,7 @@ export default function SettingsMenuScreen() {
       <List.Section>
         <List.Item
           title="Elements"
-          description="Manage habits and counters"
+          description="Manage, archive, and restore habits and counters"
           left={(props) => <List.Icon {...props} icon="shape-plus" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Elements')}

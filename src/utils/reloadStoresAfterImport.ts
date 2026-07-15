@@ -1,5 +1,5 @@
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
-import { getPinnedElements, getPinnedHabits } from './dashboardElements';
+import { getActiveElements, getActiveHabits } from './dashboardElements';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -16,8 +16,8 @@ export async function reloadStoresAfterImport(): Promise<void> {
 
   await useElementStore.getState().load();
   const { elements, dashboard } = useElementStore.getState();
-  const habitInputs = habitStreakInputsFromElements(getPinnedHabits(elements, dashboard));
-  const counterIds = getPinnedElements(
+  const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
+  const counterIds = getActiveElements(
     elements.filter((element) => element.kind === 'counter'),
     dashboard,
   ).map((element) => element.id);
@@ -29,6 +29,6 @@ export async function reloadStoresAfterImport(): Promise<void> {
     counterIds.length > 0 ? loadCounterTotals(counterIds) : Promise.resolve(),
   ]);
 
-  void preloadConfiguredHabitSounds(getPinnedHabits(elements, dashboard));
+  void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));
   await useSettingsStore.getState().load();
 }

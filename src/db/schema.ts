@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS elements (
   parent_id TEXT,
   config_json TEXT NOT NULL,
   protocol_version INTEGER NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  archived_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dashboard_items (

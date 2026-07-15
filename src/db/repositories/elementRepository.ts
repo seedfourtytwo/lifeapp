@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { ElementDefinition, ElementKind } from '../../protocol';
 import { PROTOCOL_VERSION, validateElementConfig } from '../../protocol';
+import { ensureElementsSchema } from '../schemaIntegrity';
 
 interface ElementRow {
   id: string;
@@ -11,6 +12,7 @@ interface ElementRow {
   config_json: string;
   protocol_version: number;
   created_at: string;
+  archived_at: string | null;
 }
 
 function rowToElement(row: ElementRow): ElementDefinition {
@@ -24,6 +26,7 @@ function rowToElement(row: ElementRow): ElementDefinition {
     config,
     protocolVersion: PROTOCOL_VERSION,
     createdAt: row.created_at,
+    archivedAt: row.archived_at ?? null,
   };
 }
 
@@ -52,8 +55,8 @@ export async function insertElement(
   validateElementConfig(element.kind, element.config);
 
   await db.runAsync(
-    `INSERT INTO elements (id, kind, name, category, parent_id, config_json, protocol_version, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO elements (id, kind, name, category, parent_id, config_json, protocol_version, created_at, archived_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     element.id,
     element.kind,
     element.name,
@@ -62,6 +65,7 @@ export async function insertElement(
     JSON.stringify(element.config),
     element.protocolVersion,
     element.createdAt,
+    element.archivedAt ?? null,
   );
 }
 
@@ -83,4 +87,13 @@ export async function updateElement(
 
 export async function deleteElement(db: SQLiteDatabase, id: string): Promise<void> {
   await db.runAsync('DELETE FROM elements WHERE id = ?', id);
+}
+
+export async function setElementArchivedAt(
+  db: SQLiteDatabase,
+  id: string,
+  archivedAt: string | null,
+): Promise<void> {
+  await ensureElementsSchema(db);
+  await db.runAsync('UPDATE elements SET archived_at = ? WHERE id = ?', archivedAt, id);
 }

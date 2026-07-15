@@ -51,19 +51,30 @@ function migrateHabitConfig(
 function normalizeElement(
   raw: unknown,
   soundsById: Map<string, LegacySoundAsset>,
+  pinnedElementIds: Set<string>,
+  exportedAt: string,
 ): unknown {
   if (!raw || typeof raw !== 'object') return raw;
 
   const element = raw as Record<string, unknown>;
   const { category: _category, parentId: _parentId, ...rest } = element;
+  const id = typeof rest.id === 'string' ? rest.id : '';
+  const archivedAt =
+    rest.archivedAt === undefined
+      ? pinnedElementIds.has(id)
+        ? null
+        : exportedAt
+      : rest.archivedAt;
 
-  if (rest.kind !== 'habit' || !rest.config || typeof rest.config !== 'object') {
-    return rest;
+  const normalized = { ...rest, archivedAt } as Record<string, unknown>;
+
+  if (normalized.kind !== 'habit' || !normalized.config || typeof normalized.config !== 'object') {
+    return normalized;
   }
 
   return {
-    ...rest,
-    config: migrateHabitConfig(rest.config as Record<string, unknown>, soundsById),
+    ...normalized,
+    config: migrateHabitConfig(normalized.config as Record<string, unknown>, soundsById),
   };
 }
 
@@ -76,9 +87,24 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
     ? parseLegacySoundLibrary(bundle.soundLibrary)
     : [];
   const soundsById = new Map(soundLibrary.map((sound) => [sound.id, sound]));
+  const exportedAt =
+    typeof bundle.exportedAt === 'string' ? bundle.exportedAt : new Date().toISOString();
+  const pinnedElementIds = new Set(
+    Array.isArray(bundle.dashboard)
+      ? bundle.dashboard
+          .map((item) =>
+            item && typeof item === 'object' && 'elementId' in item
+              ? String((item as { elementId?: string }).elementId ?? '')
+              : '',
+          )
+          .filter(Boolean)
+      : [],
+  );
 
   const elements = Array.isArray(bundle.elements)
-    ? bundle.elements.map((element) => normalizeElement(element, soundsById))
+    ? bundle.elements.map((element) =>
+        normalizeElement(element, soundsById, pinnedElementIds, exportedAt),
+      )
     : bundle.elements;
 
   const { soundLibrary: _removed, ...rest } = bundle;

@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
 import { isScheduleSupportedForReminders, toExpoWeekday } from '../protocol/schedule';
+import { isElementArchived } from '../utils/dashboardElements';
 import { timeToMinutes } from '../utils/time';
 
 const REMINDER_PREFIX = 'habit-reminder-';
@@ -169,7 +170,9 @@ export async function syncHabitReminders(
   const granted = await requestNotificationPermissions();
   if (!granted) return;
 
-  const habits = elements.filter((element) => element.kind === 'habit');
+  const habits = elements.filter(
+    (element) => element.kind === 'habit' && !isElementArchived(element),
+  );
 
   for (const element of habits) {
     const config = HabitConfigSchema.parse(element.config);

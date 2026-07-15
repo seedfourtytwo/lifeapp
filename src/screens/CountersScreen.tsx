@@ -12,7 +12,7 @@ import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import { getPinnedElements } from '../utils/dashboardElements';
+import { getActiveElements } from '../utils/dashboardElements';
 import { pinnedTabScreenStyles as styles } from './shared/screenStyles';
 
 export default function CountersScreen() {
@@ -29,7 +29,7 @@ export default function CountersScreen() {
 
   const counters = useMemo(() => {
     const all = elements.filter((e) => e.kind === 'counter');
-    return getPinnedElements(all, dashboard);
+    return getActiveElements(all, dashboard);
   }, [elements, dashboard]);
 
   const onRefresh = useCallback(async () => {

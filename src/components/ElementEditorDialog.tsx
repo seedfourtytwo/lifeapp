@@ -176,7 +176,13 @@ export default function ElementEditorDialog({
             <View style={styles.footer}>
               {editingId && onDelete ? (
                 <Button
-                  textColor={theme.colors.error}
+                  mode="outlined"
+                  icon="delete-outline"
+                  textColor={theme.colors.onErrorContainer}
+                  style={{
+                    borderColor: theme.colors.error,
+                    backgroundColor: theme.colors.errorContainer,
+                  }}
                   onPress={onDelete}
                   loading={deleting}
                   disabled={saving || deleting}

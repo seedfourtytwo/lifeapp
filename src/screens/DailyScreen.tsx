@@ -17,7 +17,7 @@ import {
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { getPinnedHabits } from '../utils/dashboardElements';
+import { getActiveHabits } from '../utils/dashboardElements';
 import HabitDailyCard from './daily/HabitDailyCard';
 import { pinnedTabScreenStyles } from './shared/screenStyles';
 
@@ -36,7 +36,7 @@ export default function DailyScreen() {
   useRefreshHabitDayOnFocus();
 
   const allHabits = useMemo(
-    () => getPinnedHabits(elements, dashboard),
+    () => getActiveHabits(elements, dashboard),
     [elements, dashboard],
   );
 

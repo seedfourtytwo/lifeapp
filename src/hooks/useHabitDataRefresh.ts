@@ -1,24 +1,24 @@
 import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { getPinnedHabits } from '../utils/dashboardElements';
+import { getActiveHabits } from '../utils/dashboardElements';
 import { refreshAllDailyData } from './refreshAllDailyData';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useElementStore } from '../store/elementStore';
 
-/** Pinned habits as streak/day-state query inputs — stable while pin set is unchanged. */
-export function usePinnedHabitInputs() {
+/** Active habits as streak/day-state query inputs — stable while the active set is unchanged. */
+export function useActiveHabitInputs() {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
 
   return useMemo(() => {
-    const habits = getPinnedHabits(elements, dashboard);
+    const habits = getActiveHabits(elements, dashboard);
     return habitStreakInputsFromElements(habits);
   }, [elements, dashboard]);
 }
 
 /** Refresh today's completion state when the Daily tab gains focus. */
 export function useRefreshHabitDayOnFocus(): void {
-  const inputs = usePinnedHabitInputs();
+  const inputs = useActiveHabitInputs();
   const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
 
   useFocusEffect(

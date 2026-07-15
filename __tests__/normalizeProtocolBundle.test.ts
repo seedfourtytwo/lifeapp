@@ -38,5 +38,34 @@ describe('normalizeProtocolBundleInput', () => {
     expect(bundle.elements[0].config).toEqual({
       timeSlot: 'anytime',
     });
+    expect(bundle.elements[0].archivedAt).toBe('2025-01-01T00:00:00.000Z');
+  });
+
+  it('marks dashboard elements as active when archivedAt is missing', () => {
+    const normalized = normalizeProtocolBundleInput({
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          kind: 'counter',
+          name: 'Water',
+          config: { quickIncrements: [1], unit: 'glass' },
+          protocolVersion: PROTOCOL_VERSION,
+          createdAt: '2025-01-01T00:00:00.000Z',
+        },
+      ],
+      dashboard: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440010',
+          elementId: '550e8400-e29b-41d4-a716-446655440000',
+          sortOrder: 0,
+        },
+      ],
+      events: [],
+    });
+
+    const bundle = parseProtocolBundle(normalized);
+    expect(bundle.elements[0].archivedAt).toBeNull();
   });
 });

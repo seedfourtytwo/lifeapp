@@ -8,6 +8,7 @@ import {
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { isElementArchived } from '../utils/dashboardElements';
 
 export function useHabitReminderSync(): void {
   const elements = useElementStore((s) => s.elements);
@@ -32,7 +33,9 @@ export function useHabitReminderSync(): void {
 
     const now = new Date();
     const today = toDateString(now);
-    const habitElements = elements.filter((element) => element.kind === 'habit');
+    const habitElements = elements.filter(
+      (element) => element.kind === 'habit' && !isElementArchived(element),
+    );
     const undoneCount = habitElements.filter((habit) => {
       const config = parseHabitConfig(habit.config);
       if (!isHabitDueToday(config, { now, today })) return false;

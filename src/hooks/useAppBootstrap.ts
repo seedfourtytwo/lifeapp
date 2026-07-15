@@ -5,7 +5,7 @@ import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSou
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { getPinnedHabits, pinnedHabitIdsKey } from '../utils/dashboardElements';
+import { getActiveHabits, activeHabitIdsKey } from '../utils/dashboardElements';
 
 /** Loads settings, elements, habit state, and warms timer sounds at app start. */
 export function useAppBootstrap(): void {
@@ -18,8 +18,8 @@ export function useAppBootstrap(): void {
   const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
   const loadHabitStreaks = useEventStore((s) => s.loadHabitStreaks);
 
-  const pinnedHabitKey = useMemo(
-    () => pinnedHabitIdsKey(elements, dashboard),
+  const activeHabitKey = useMemo(
+    () => activeHabitIdsKey(elements, dashboard),
     [elements, dashboard],
   );
 
@@ -35,9 +35,9 @@ export function useAppBootstrap(): void {
   }, [loadElements, settingsLoaded]);
 
   useEffect(() => {
-    if (!settingsLoaded || elementsLoading || !pinnedHabitKey) return;
+    if (!settingsLoaded || elementsLoading || !activeHabitKey) return;
 
-    const habitElements = getPinnedHabits(elements, dashboard);
+    const habitElements = getActiveHabits(elements, dashboard);
     const inputs = habitStreakInputsFromElements(habitElements);
     if (inputs.length > 0) {
       void loadHabitDayState(inputs);
@@ -51,7 +51,7 @@ export function useAppBootstrap(): void {
     elementsLoading,
     loadHabitDayState,
     loadHabitStreaks,
-    pinnedHabitKey,
+    activeHabitKey,
     settingsLoaded,
   ]);
 }

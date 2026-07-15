@@ -1,15 +1,15 @@
-import { getPinnedElements, getPinnedHabits } from '../utils/dashboardElements';
+import { getActiveElements, getActiveHabits } from '../utils/dashboardElements';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useElementStore } from '../store/elementStore';
 
-/** Reload pinned habits, counters, and streaks for the current calendar day. */
+/** Reload active habits, counters, and streaks for the current calendar day. */
 export async function refreshAllDailyData(): Promise<void> {
   const loadElements = useElementStore.getState().load;
   await loadElements();
 
   const { elements, dashboard } = useElementStore.getState();
-  const habitInputs = habitStreakInputsFromElements(getPinnedHabits(elements, dashboard));
-  const counterIds = getPinnedElements(
+  const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
+  const counterIds = getActiveElements(
     elements.filter((element) => element.kind === 'counter'),
     dashboard,
   ).map((element) => element.id);

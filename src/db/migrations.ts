@@ -8,8 +8,9 @@ import * as dashboardRepo from './repositories/dashboardRepository';
 import * as elementRepo from './repositories/elementRepository';
 import * as settingsRepo from './repositories/settingsRepository';
 import { SCHEMA_SQL } from './schema';
+import { ensureElementsSchema } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 5;
+const CURRENT_SCHEMA_VERSION = 7;
 
 interface HabitElementRow {
   id: string;
@@ -112,6 +113,21 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
 
     await db.runAsync("DELETE FROM app_settings WHERE key = 'sound_library'");
   },
+  6: async (db) => {
+    await ensureElementsSchema(db);
+
+    const dashboard = await dashboardRepo.getDashboardItems(db);
+    const activeIds = new Set(dashboard.map((item) => item.elementId));
+    const rows = await db.getAllAsync<{ id: string; archived_at: string | null }>(
+      'SELECT id, archived_at FROM elements',
+    );
+
+    const archivedAt = new Date().toISOString();
+    for (const row of rows) {
+      if (row.archived_at != null || activeIds.has(row.id)) continue;
+      await elementRepo.setElementArchivedAt(db, row.id, archivedAt);
+    }
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -123,6 +139,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
 
   if (!row) {
     await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', CURRENT_SCHEMA_VERSION);
+    await ensureElementsSchema(db);
     return;
   }
 
@@ -136,4 +153,6 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     version = next;
     await db.runAsync('UPDATE schema_version SET version = ?', version);
   }
+
+  await ensureElementsSchema(db);
 }

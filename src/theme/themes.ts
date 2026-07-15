@@ -65,6 +65,8 @@ export const appCartoonTheme: MD3Theme = {
     onTertiary: '#FFFDF5',
     error: '#E05252',
     onError: '#FFFDF5',
+    errorContainer: '#FFE8E8',
+    onErrorContainer: '#8B1A1A',
     background: '#FFF8E7',
     surface: '#FFFDF5',
     surfaceVariant: '#E8F5D6',

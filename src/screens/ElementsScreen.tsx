@@ -1,13 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
-import {
-  ActivityIndicator,
-  Chip,
-  FAB,
-  Text,
-} from 'react-native-paper';
+import { ActivityIndicator, Text } from 'react-native-paper';
 import ElementEditorDialog from '../components/ElementEditorDialog';
-import ElementLibraryCard from '../components/ElementLibraryCard';
+import ElementLibraryCard, {
+  type ElementLibraryBadge,
+} from '../components/ElementLibraryCard';
+import ElementsCollapsibleSection from '../components/ElementsCollapsibleSection';
 import {
   editorSessionFromCounter,
   editorSessionFromHabit,
@@ -15,74 +13,77 @@ import {
   type ElementEditorSaveData,
   type ElementEditorSession,
 } from '../components/elementEditor';
+import { useAppTheme } from '../hooks/useAppTheme';
 import {
   CounterConfigSchema,
   HABIT_TIME_SLOT_LABELS,
   HabitConfigSchema,
+  type ElementDefinition,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { counterMetaLines, habitMetaLines } from '../utils/elementMetaLines';
+import { getElementKindAccent } from '../utils/elementKindAccent';
+import { isElementArchived } from '../utils/dashboardElements';
 import { parseElementEditorSave } from '../utils/parseElementEditorSave';
 
+function runElementMutation(action: () => Promise<void>, errorTitle: string): void {
+  void action().catch((error) => {
+    Alert.alert(errorTitle, error instanceof Error ? error.message : 'Something went wrong');
+  });
+}
+
+function confirmArchive(
+  elementName: string,
+  kindLabel: string,
+  onConfirm: () => Promise<void>,
+): void {
+  Alert.alert(
+    `Archive ${kindLabel}?`,
+    `"${elementName}" will be hidden from Home. You can restore it from Archive later.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Archive',
+        onPress: () => runElementMutation(onConfirm, 'Could not archive'),
+      },
+    ],
+  );
+}
+
 export default function ElementsScreen() {
+  const { themeMode } = useAppTheme();
+  const counterAccent = getElementKindAccent(themeMode, 'counter').color;
+  const habitAccent = getElementKindAccent(themeMode, 'habit').color;
+
   const elements = useElementStore((s) => s.elements);
-  const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
   const createCounter = useElementStore((s) => s.createCounter);
   const updateCounter = useElementStore((s) => s.updateCounter);
   const createHabit = useElementStore((s) => s.createHabit);
   const updateHabit = useElementStore((s) => s.updateHabit);
+  const archiveElement = useElementStore((s) => s.archiveElement);
+  const restoreElement = useElementStore((s) => s.restoreElement);
   const deleteElement = useElementStore((s) => s.deleteElement);
-  const pinToDashboard = useElementStore((s) => s.pinToDashboard);
-  const unpinFromDashboard = useElementStore((s) => s.unpinFromDashboard);
 
   const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
 
-  const pinnedElementIds = useMemo(
-    () => new Set(dashboard.map((d) => d.elementId)),
-    [dashboard],
-  );
-  const counters = useMemo(
-    () => elements.filter((e) => e.kind === 'counter'),
+  const activeCounters = useMemo(
+    () => elements.filter((element) => element.kind === 'counter' && !isElementArchived(element)),
     [elements],
   );
-  const habits = useMemo(
-    () => elements.filter((e) => e.kind === 'habit'),
+  const activeHabits = useMemo(
+    () => elements.filter((element) => element.kind === 'habit' && !isElementArchived(element)),
     [elements],
   );
-
-  const getDashboardItemId = useCallback(
-    (elementId: string) => dashboard.find((d) => d.elementId === elementId)?.id,
-    [dashboard],
+  const archivedElements = useMemo(
+    () =>
+      elements
+        .filter((element) => isElementArchived(element))
+        .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '')),
+    [elements],
   );
-
-  const handleSave = async (data: ElementEditorSaveData) => {
-    const editingId = editorSession?.editingId ?? null;
-    setSaving(true);
-    try {
-      const parsed = parseElementEditorSave(data);
-      if (parsed.kind === 'counter') {
-        if (editingId) {
-          await updateCounter(editingId, parsed.input);
-        } else {
-          await createCounter(parsed.input);
-        }
-      } else if (editingId) {
-        await updateHabit(editingId, parsed.input);
-      } else {
-        await createHabit(parsed.input);
-      }
-      setEditorSession(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save';
-      Alert.alert('Could not save', message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const confirmDelete = useCallback(
     (elementId: string, elementName: string, kindLabel: string) => {
@@ -115,6 +116,91 @@ export default function ElementsScreen() {
     [deleteElement],
   );
 
+  const renderElementCard = useCallback(
+    (element: ElementDefinition, archived: boolean) => {
+      const kindLabel = element.kind === 'counter' ? 'counter' : 'habit';
+      const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
+      const badges: ElementLibraryBadge[] =
+        element.kind === 'counter'
+          ? [{ label: 'Counter', tone: archived ? 'muted' : 'accent' }]
+          : (() => {
+              const config = HabitConfigSchema.parse(element.config);
+              return [
+                {
+                  label: config.trackingMode === 'timer' ? 'Timer' : 'Check off',
+                  tone: archived ? 'muted' : 'accent',
+                },
+                { label: HABIT_TIME_SLOT_LABELS[config.timeSlot], tone: 'muted' },
+              ];
+            })();
+
+      const metaLines =
+        element.kind === 'counter'
+          ? counterMetaLines(CounterConfigSchema.parse(element.config))
+          : habitMetaLines(HabitConfigSchema.parse(element.config));
+
+      const openEditor = () => {
+        if (element.kind === 'counter') {
+          const config = CounterConfigSchema.parse(element.config);
+          setEditorSession(editorSessionFromCounter(element.id, element.name, config));
+          return;
+        }
+        const config = HabitConfigSchema.parse(element.config);
+        setEditorSession(editorSessionFromHabit(element.id, element.name, config));
+      };
+
+      return (
+        <ElementLibraryCard
+          key={element.id}
+          kind={element.kind}
+          accentColor={accentColor}
+          name={element.name}
+          badges={badges}
+          metaLines={metaLines}
+          archived={archived}
+          onEdit={openEditor}
+          onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
+          onArchive={
+            archived
+              ? undefined
+              : () => confirmArchive(element.name, kindLabel, () => archiveElement(element.id))
+          }
+          onRestore={
+            archived
+              ? () => runElementMutation(() => restoreElement(element.id), 'Could not restore')
+              : undefined
+          }
+        />
+      );
+    },
+    [archiveElement, confirmDelete, counterAccent, habitAccent, restoreElement],
+  );
+
+  const handleSave = async (data: ElementEditorSaveData) => {
+    const editingId = editorSession?.editingId ?? null;
+    setSaving(true);
+    try {
+      const parsed = parseElementEditorSave(data);
+      if (parsed.kind === 'counter') {
+        if (editingId) {
+          await updateCounter(editingId, parsed.input);
+        } else {
+          await createCounter(parsed.input);
+        }
+      } else if (editingId) {
+        await updateHabit(editingId, parsed.input);
+      } else {
+        await createHabit(parsed.input);
+      }
+      setEditorSession(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save';
+      Alert.alert('Could not save', message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const editingElement = editorSession?.editingId
     ? elements.find((element) => element.id === editorSession.editingId)
     : undefined;
@@ -131,104 +217,51 @@ export default function ElementsScreen() {
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text variant="bodyMedium" style={styles.intro}>
-          Create counters and habits here. Pin items to show them on Home.
+          Active counters and habits appear on Home. Archive items to hide them without losing
+          history — restore anytime from Archive below.
         </Text>
 
-        <Text variant="titleSmall" style={styles.sectionHeader}>
-          Counters
-        </Text>
-        {counters.length === 0 ? (
-          <Text variant="bodySmall" style={styles.sectionEmpty}>
-            No counters yet. Tap + to add one.
-          </Text>
-        ) : null}
-        {counters.map((element) => {
-          const config = CounterConfigSchema.parse(element.config);
-          const isPinned = pinnedElementIds.has(element.id);
-          const dashboardItemId = getDashboardItemId(element.id);
+        <ElementsCollapsibleSection
+          title="Counters"
+          subtitle="Track quantities with optional daily goals"
+          icon="counter"
+          accentColor={counterAccent}
+          count={activeCounters.length}
+          addLabel="New counter"
+          defaultCollapsed={activeCounters.length === 0 && activeHabits.length > 0}
+          onAdd={() => setEditorSession(newEditorSession({ mode: 'counter' }))}
+          emptyMessage="No active counters. Add one to track water, steps, or anything countable."
+        >
+          {activeCounters.map((element) => renderElementCard(element, false))}
+        </ElementsCollapsibleSection>
 
-          return (
-            <ElementLibraryCard
-              key={element.id}
-              name={element.name}
-              chips={<Chip compact>Counter</Chip>}
-              metaLines={counterMetaLines(config)}
-              isPinned={isPinned}
-              deleteLabel="Delete"
-              dashboardItemId={dashboardItemId}
-              onEdit={() =>
-                setEditorSession(editorSessionFromCounter(element.id, element.name, config))
-              }
-              onDelete={() => confirmDelete(element.id, element.name, 'counter')}
-              onPin={() => void pinToDashboard(element.id)}
-              onUnpin={() => dashboardItemId && void unpinFromDashboard(dashboardItemId)}
-            />
-          );
-        })}
+        <ElementsCollapsibleSection
+          title="Habits"
+          subtitle="Daily check-offs or timed sessions"
+          icon="checkbox-marked-circle-outline"
+          accentColor={habitAccent}
+          count={activeHabits.length}
+          addLabel="New habit"
+          defaultCollapsed={activeHabits.length === 0 && activeCounters.length > 0}
+          onAdd={() => setEditorSession(newEditorSession({ mode: 'habit' }))}
+          emptyMessage="No active habits. Add one for meditation, reading, or any daily routine."
+        >
+          {activeHabits.map((element) => renderElementCard(element, false))}
+        </ElementsCollapsibleSection>
 
-        <Text variant="titleSmall" style={styles.sectionHeader}>
-          Habits
-        </Text>
-        {habits.length === 0 ? (
-          <Text variant="bodySmall" style={styles.sectionEmpty}>
-            No habits yet. Tap + to add one.
-          </Text>
-        ) : null}
-        {habits.map((element) => {
-          const config = HabitConfigSchema.parse(element.config);
-          const isPinned = pinnedElementIds.has(element.id);
-          const dashboardItemId = getDashboardItemId(element.id);
-
-          return (
-            <ElementLibraryCard
-              key={element.id}
-              name={element.name}
-              chips={
-                <>
-                  <Chip compact>{config.trackingMode === 'timer' ? 'Timer' : 'Check off'}</Chip>
-                  <Chip compact>{HABIT_TIME_SLOT_LABELS[config.timeSlot]}</Chip>
-                </>
-              }
-              metaLines={habitMetaLines(config)}
-              isPinned={isPinned}
-              deleteLabel="Delete"
-              dashboardItemId={dashboardItemId}
-              onEdit={() =>
-                setEditorSession(editorSessionFromHabit(element.id, element.name, config))
-              }
-              onDelete={() => confirmDelete(element.id, element.name, 'habit')}
-              onPin={() => void pinToDashboard(element.id)}
-              onUnpin={() => dashboardItemId && void unpinFromDashboard(dashboardItemId)}
-            />
-          );
-        })}
+        <ElementsCollapsibleSection
+          title="Archive"
+          subtitle="Hidden from Home — history kept until deleted"
+          icon="archive-outline"
+          accentColor="#64748B"
+          count={archivedElements.length}
+          showAddButton={false}
+          defaultCollapsed={archivedElements.length === 0}
+          emptyMessage="Nothing archived. Archive a counter or habit to pause it without deleting its history."
+        >
+          {archivedElements.map((element) => renderElementCard(element, true))}
+        </ElementsCollapsibleSection>
       </ScrollView>
-
-      <FAB.Group
-        open={fabOpen}
-        visible
-        icon={fabOpen ? 'close' : 'plus'}
-        actions={[
-          {
-            icon: 'counter',
-            label: 'New counter',
-            onPress: () => {
-              setFabOpen(false);
-              setEditorSession(newEditorSession({ mode: 'counter' }));
-            },
-          },
-          {
-            icon: 'checkbox-marked-circle-outline',
-            label: 'New habit',
-            onPress: () => {
-              setFabOpen(false);
-              setEditorSession(newEditorSession({ mode: 'habit' }));
-            },
-          },
-        ]}
-        onStateChange={({ open }) => setFabOpen(open)}
-        style={styles.fab}
-      />
 
       <ElementEditorDialog
         session={editorSession}
@@ -253,24 +286,11 @@ export default function ElementsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 96 },
+  container: { padding: 16, paddingBottom: 32 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   intro: {
-    opacity: 0.7,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  sectionHeader: {
-    marginTop: 16,
-    marginBottom: 8,
-    opacity: 0.7,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  sectionEmpty: { marginBottom: 12, opacity: 0.5 },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
+    opacity: 0.75,
+    marginBottom: 16,
+    lineHeight: 22,
   },
 });

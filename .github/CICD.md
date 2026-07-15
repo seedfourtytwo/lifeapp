@@ -23,15 +23,19 @@ npm test
 Expo Go may not work on GrapheneOS. Use EAS builds:
 
 ```bash
-# Installable APK for daily use
-eas build --platform android --profile preview
-
-# Dev client with hot reload
+# Dev client — hot reload via Metro; required for backup import testing
 eas build --platform android --profile development
 
-# Local build (no Expo cloud)
+# Standalone APK for daily use (no Metro)
+eas build --platform android --profile preview
+
+# Local EAS build (no Expo cloud queue)
 eas build --platform android --profile preview --local
 ```
+
+Cancel a queued cloud build: `eas build:cancel`.
+
+After a new **development** APK is installed, start Metro with `--dev-client --lan` and open `http://<laptop-ip>:8081` on the phone.
 
 ## Legacy code
 

@@ -22,7 +22,7 @@ export function isImportBackupAvailable(): boolean {
 async function getDocumentPicker(): Promise<DocumentPickerModule> {
   if (!isImportBackupAvailable()) {
     throw new Error(
-      'Import needs a dev client rebuild. Run: eas build --platform android --profile development',
+      'Import needs a dev client rebuild. Run: npx expo run:android or eas build --platform android --profile development',
     );
   }
 

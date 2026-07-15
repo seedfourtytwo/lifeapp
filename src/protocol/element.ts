@@ -15,6 +15,8 @@ export const ElementDefinitionSchema = z.object({
   config: z.record(z.unknown()),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   createdAt: z.string().datetime(),
+  /** When set, the element is hidden from Home but kept for later restore. */
+  archivedAt: z.string().datetime().nullable().optional(),
 });
 
 export type ElementDefinition = z.infer<typeof ElementDefinitionSchema>;
@@ -38,5 +40,8 @@ export function validateElementConfig(
 export function parseElementDefinition(raw: unknown): ElementDefinition {
   const element = ElementDefinitionSchema.parse(raw);
   validateElementConfig(element.kind, element.config);
-  return element;
+  return {
+    ...element,
+    archivedAt: element.archivedAt ?? null,
+  };
 }

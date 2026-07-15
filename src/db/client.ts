@@ -29,6 +29,7 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
 
 export async function getDatabase(): Promise<SQLiteDatabase> {
   if (dbInstance) {
+    await runMigrations(dbInstance);
     return dbInstance;
   }
 

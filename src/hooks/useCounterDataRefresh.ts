@@ -1,17 +1,17 @@
 import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { getPinnedElements } from '../utils/dashboardElements';
+import { getActiveElements } from '../utils/dashboardElements';
 import { refreshAllDailyData } from './refreshAllDailyData';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 
-function usePinnedCounterIds(): string[] {
+function useActiveCounterIds(): string[] {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
 
   return useMemo(
     () =>
-      getPinnedElements(
+      getActiveElements(
         elements.filter((element) => element.kind === 'counter'),
         dashboard,
       ).map((element) => element.id),
@@ -21,7 +21,7 @@ function usePinnedCounterIds(): string[] {
 
 /** Refresh today's totals when the Counter tab gains focus. */
 export function useRefreshCounterTotalsOnFocus(): void {
-  const counterIds = usePinnedCounterIds();
+  const counterIds = useActiveCounterIds();
   const loadCounterTotals = useEventStore((s) => s.loadCounterTotals);
 
   useFocusEffect(

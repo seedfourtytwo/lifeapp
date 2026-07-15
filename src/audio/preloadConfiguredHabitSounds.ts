@@ -25,7 +25,7 @@ async function mapWithConcurrency<T>(
   await Promise.all(runners);
 }
 
-/** Preload bundled timer sounds for pinned timer habits (parallel, deduped). */
+/** Preload bundled timer sounds for active timer habits (parallel, deduped). */
 export async function preloadConfiguredHabitSounds(
   elements: ElementDefinition[],
 ): Promise<void> {
