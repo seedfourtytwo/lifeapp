@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { isHabitDueToday, parseHabitConfig, toDateString } from '../protocol';
 import {
+  cancelAllHabitReminders,
   isNotificationsNativeAvailable,
   scheduleEndOfDayReminder,
   syncHabitReminders,
@@ -17,17 +18,28 @@ export function useHabitReminderSync(): void {
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
 
   useEffect(() => {
-    if (!settingsLoaded || !habitRemindersEnabled || !isNotificationsNativeAvailable()) {
+    if (!settingsLoaded || !isNotificationsNativeAvailable()) {
       return;
     }
 
-    void syncHabitReminders(elements, habitRemindersEnabled).catch((error) => {
+    if (!habitRemindersEnabled) {
+      void cancelAllHabitReminders().catch((error) => {
+        console.warn('Habit reminder cancel skipped', error);
+      });
+      return;
+    }
+
+    void syncHabitReminders(elements, true).catch((error) => {
       console.warn('Habit reminder sync skipped', error);
     });
   }, [elements, habitRemindersEnabled, settingsLoaded]);
 
   useEffect(() => {
-    if (!settingsLoaded || !habitRemindersEnabled || !isNotificationsNativeAvailable()) {
+    if (!settingsLoaded || !isNotificationsNativeAvailable()) {
+      return;
+    }
+
+    if (!habitRemindersEnabled) {
       return;
     }
 
@@ -42,7 +54,7 @@ export function useHabitReminderSync(): void {
       return !(habitDoneToday[habit.id] ?? false);
     }).length;
 
-    void scheduleEndOfDayReminder(habitRemindersEnabled, undoneCount).catch((error) => {
+    void scheduleEndOfDayReminder(true, undoneCount).catch((error) => {
       console.warn('End-of-day reminder sync skipped', error);
     });
   }, [elements, habitDoneToday, habitRemindersEnabled, settingsLoaded]);

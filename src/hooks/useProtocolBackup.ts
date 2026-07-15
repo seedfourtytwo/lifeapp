@@ -17,6 +17,8 @@ export function useProtocolBackup() {
       const result = await exportBackupToFile();
       if (result === 'saved') {
         Alert.alert('Backup saved', 'Your JSON backup was saved to the folder you chose.');
+      } else {
+        Alert.alert('Backup ready', 'Share or save the JSON file from the share sheet.');
       }
     } catch (error) {
       Alert.alert(

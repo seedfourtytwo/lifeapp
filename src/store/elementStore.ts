@@ -175,12 +175,15 @@ export const useElementStore = create<ElementState>((set, get) => ({
     if (!existing || existing.archivedAt != null) return;
 
     const archivedAt = new Date().toISOString();
+    const dashboardItem = get().dashboard.find((item) => item.elementId === elementId);
+
     try {
-      await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
-      const dashboardItem = get().dashboard.find((item) => item.elementId === elementId);
-      if (dashboardItem) {
-        await dashboardRepo.deleteDashboardItem(db, dashboardItem.id);
-      }
+      await db.withTransactionAsync(async () => {
+        await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
+        if (dashboardItem) {
+          await dashboardRepo.deleteDashboardItem(db, dashboardItem.id);
+        }
+      });
     } catch (error) {
       throw new Error(
         error instanceof Error ? error.message : 'Failed to archive element',
@@ -200,32 +203,34 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt == null) return;
 
+    let dashboardItem: DashboardItem | null = null;
     try {
-      await elementRepo.setElementArchivedAt(db, elementId, null);
-      const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
-      let dashboardItem: DashboardItem | null = null;
-      if (!alreadyActive) {
-        dashboardItem = {
-          id: newId(),
-          elementId,
-          sortOrder: await dashboardRepo.getNextSortOrder(db),
-        };
-        await dashboardRepo.insertDashboardItem(db, dashboardItem);
-      }
-
-      set({
-        elements: get().elements.map((element) =>
-          element.id === elementId ? { ...element, archivedAt: null } : element,
-        ),
-        dashboard: dashboardItem
-          ? [...get().dashboard, dashboardItem]
-          : get().dashboard,
+      await db.withTransactionAsync(async () => {
+        await elementRepo.setElementArchivedAt(db, elementId, null);
+        const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
+        if (!alreadyActive) {
+          dashboardItem = {
+            id: newId(),
+            elementId,
+            sortOrder: await dashboardRepo.getNextSortOrder(db),
+          };
+          await dashboardRepo.insertDashboardItem(db, dashboardItem);
+        }
       });
     } catch (error) {
       throw new Error(
         error instanceof Error ? error.message : 'Failed to restore element',
       );
     }
+
+    set({
+      elements: get().elements.map((element) =>
+        element.id === elementId ? { ...element, archivedAt: null } : element,
+      ),
+      dashboard: dashboardItem
+        ? [...get().dashboard, dashboardItem]
+        : get().dashboard,
+    });
   },
 
   deleteElement: async (id) => {

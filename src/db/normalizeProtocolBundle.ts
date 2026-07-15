@@ -51,7 +51,7 @@ function migrateHabitConfig(
 function normalizeElement(
   raw: unknown,
   soundsById: Map<string, LegacySoundAsset>,
-  pinnedElementIds: Set<string>,
+  activeElementIds: Set<string>,
   exportedAt: string,
 ): unknown {
   if (!raw || typeof raw !== 'object') return raw;
@@ -59,9 +59,10 @@ function normalizeElement(
   const element = raw as Record<string, unknown>;
   const { category: _category, parentId: _parentId, ...rest } = element;
   const id = typeof rest.id === 'string' ? rest.id : '';
+  // Legacy bundles lack archivedAt: dashboard membership means active.
   const archivedAt =
     rest.archivedAt === undefined
-      ? pinnedElementIds.has(id)
+      ? activeElementIds.has(id)
         ? null
         : exportedAt
       : rest.archivedAt;
@@ -89,7 +90,7 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
   const soundsById = new Map(soundLibrary.map((sound) => [sound.id, sound]));
   const exportedAt =
     typeof bundle.exportedAt === 'string' ? bundle.exportedAt : new Date().toISOString();
-  const pinnedElementIds = new Set(
+  const activeElementIds = new Set(
     Array.isArray(bundle.dashboard)
       ? bundle.dashboard
           .map((item) =>
@@ -103,7 +104,7 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
 
   const elements = Array.isArray(bundle.elements)
     ? bundle.elements.map((element) =>
-        normalizeElement(element, soundsById, pinnedElementIds, exportedAt),
+        normalizeElement(element, soundsById, activeElementIds, exportedAt),
       )
     : bundle.elements;
 

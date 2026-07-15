@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 /** Shared layout styles for Daily and Counter home tabs. */
-export const pinnedTabScreenStyles = StyleSheet.create({
+export const homeTabScreenStyles = StyleSheet.create({
   container: {
     padding: 16,
     flexGrow: 1,

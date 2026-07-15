@@ -11,6 +11,7 @@ import { SCHEMA_SQL } from './schema';
 import { ensureElementsSchema } from './schemaIntegrity';
 
 const CURRENT_SCHEMA_VERSION = 7;
+/** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 
 interface HabitElementRow {
   id: string;

@@ -1,4 +1,5 @@
-import { NativeModules, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   exportProtocolBundle,
@@ -14,9 +15,9 @@ type DocumentPickerModule = typeof import('expo-document-picker');
 
 export type ExportBackupResult = 'saved' | 'shared';
 
-/** Avoid loading expo-document-picker when the native module is missing (old dev client). */
+/** Expo Modules (new architecture) — not present on React Native NativeModules. */
 export function isImportBackupAvailable(): boolean {
-  return NativeModules.ExpoDocumentPicker != null;
+  return requireOptionalNativeModule('ExpoDocumentPicker') != null;
 }
 
 async function getDocumentPicker(): Promise<DocumentPickerModule> {

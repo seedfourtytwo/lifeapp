@@ -6,7 +6,7 @@ import { useAppTheme } from '../hooks/useAppTheme';
 
 export type ElementLibraryBadge = {
   label: string;
-  tone?: 'neutral' | 'accent' | 'muted';
+  tone?: 'accent' | 'muted';
 };
 
 type Props = {

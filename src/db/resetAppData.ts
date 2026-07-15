@@ -11,7 +11,7 @@ export async function clearAppSettings(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM app_settings');
 }
 
-/** Wipe all local app data — elements, events, dashboard pins, and preferences. */
+/** Wipe all local app data — elements, events, dashboard placements, and preferences. */
 export async function clearAllAppData(): Promise<void> {
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {

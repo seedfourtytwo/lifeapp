@@ -1,6 +1,5 @@
+import type { ElementKind } from '../protocol';
 import type { ThemeMode } from '../theme/types';
-
-export type ElementKind = 'counter' | 'habit';
 
 export interface ElementKindAccent {
   color: string;

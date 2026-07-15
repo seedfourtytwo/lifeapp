@@ -39,7 +39,14 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
     for (const element of bundle.elements) {
       await elementRepo.insertElement(db, element);
     }
+
+    const activeElementIds = new Set(
+      bundle.elements
+        .filter((element) => element.archivedAt == null)
+        .map((element) => element.id),
+    );
     for (const item of bundle.dashboard) {
+      if (!activeElementIds.has(item.elementId)) continue;
       await dashboardRepo.insertDashboardItem(db, item);
     }
     for (const event of bundle.events) {

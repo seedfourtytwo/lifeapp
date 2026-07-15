@@ -19,7 +19,7 @@ import { useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 import HabitDailyCard from './daily/HabitDailyCard';
-import { pinnedTabScreenStyles } from './shared/screenStyles';
+import { homeTabScreenStyles } from './shared/screenStyles';
 
 export default function DailyScreen() {
   const theme = useTheme();
@@ -128,7 +128,7 @@ export default function DailyScreen() {
         </Text>
       ) : allHabits.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
-          No habits pinned. Open Settings and pin habits to show them here.
+          No active habits. Open Settings → Elements to restore something from Archive.
         </Text>
       ) : habits.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
@@ -174,7 +174,7 @@ export default function DailyScreen() {
 }
 
 const styles = {
-  ...pinnedTabScreenStyles,
+  ...homeTabScreenStyles,
   ...StyleSheet.create({
     summary: {
       marginBottom: 16,

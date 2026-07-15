@@ -10,4 +10,6 @@ alwaysApply: false
 - Config JSON in SQLite must pass kind-specific Zod schema before insert.
 - Use parameterized queries (`runAsync('... WHERE id = ?', id)`). Never interpolate user input.
 - Schema changes: add migration step in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
-- Export/import uses `ProtocolBundle` — same shape for backup and future sync.
+- Soft-hide via `elements.archived_at` (null = active). Home shows non-archived only; `dashboard_items` stores sort order for active elements.
+- Export/import uses `ProtocolBundle` — same shape for backup and future sync. Dashboard rows must not reference archived elements.
+- If a column can be missing after a version bump, repair with an idempotent helper (see `schemaIntegrity.ts`).

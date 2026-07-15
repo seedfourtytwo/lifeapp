@@ -30,11 +30,28 @@ export async function importBackupFromFile(): Promise<boolean> {
     input.type = 'file';
     input.accept = 'application/json,.json';
 
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('focus', onWindowFocus);
+      resolve(value);
+    };
+
+    const onWindowFocus = () => {
+      // File dialog cancel does not fire onchange; resolve after focus returns.
+      window.setTimeout(() => {
+        if (!input.files?.length) {
+          settle(false);
+        }
+      }, 300);
+    };
+
     input.onchange = () => {
       void (async () => {
         const file = input.files?.[0];
         if (!file) {
-          resolve(false);
+          settle(false);
           return;
         }
 
@@ -42,13 +59,16 @@ export async function importBackupFromFile(): Promise<boolean> {
           const json = await file.text();
           const raw: unknown = JSON.parse(json);
           await importProtocolBundle(raw);
-          resolve(true);
+          settle(true);
         } catch (error) {
+          settled = true;
+          window.removeEventListener('focus', onWindowFocus);
           reject(error);
         }
       })();
     };
 
+    window.addEventListener('focus', onWindowFocus);
     input.click();
   });
 }

@@ -1,5 +1,9 @@
 import type { DashboardItem, ElementDefinition } from '../protocol';
 
+/**
+ * Active elements appear on Home. Invariant: active ⇔ `archivedAt == null`
+ * and (normally) a matching `dashboard_items` row for sort order.
+ */
 export function isElementArchived(element: ElementDefinition): boolean {
   return element.archivedAt != null;
 }

@@ -158,7 +158,7 @@ export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
 ): Promise<void> {
-  if (!enabled || !isNotificationsNativeAvailable()) {
+  if (!isNotificationsNativeAvailable()) {
     return;
   }
 
@@ -166,6 +166,10 @@ export async function syncHabitReminders(
   if (!Notifications) return;
 
   await cancelHabitStartRemindersWith(Notifications);
+
+  if (!enabled) {
+    return;
+  }
 
   const granted = await requestNotificationPermissions();
   if (!granted) return;
@@ -190,7 +194,7 @@ export async function scheduleEndOfDayReminder(
   enabled: boolean,
   undoneCount: number,
 ): Promise<void> {
-  if (!enabled || undoneCount <= 0 || !isNotificationsNativeAvailable()) {
+  if (!isNotificationsNativeAvailable()) {
     return;
   }
 
@@ -198,6 +202,10 @@ export async function scheduleEndOfDayReminder(
   if (!Notifications) return;
 
   await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
+
+  if (!enabled || undoneCount <= 0) {
+    return;
+  }
 
   const granted = await requestNotificationPermissions();
   if (!granted) return;

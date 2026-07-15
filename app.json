@@ -34,6 +34,7 @@
     },
     "plugins": [
       "expo-sqlite",
+      "expo-document-picker",
       [
         "expo-notifications",
         {

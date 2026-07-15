@@ -228,7 +228,7 @@ export default function ElementsScreen() {
           accentColor={counterAccent}
           count={activeCounters.length}
           addLabel="New counter"
-          defaultCollapsed={activeCounters.length === 0 && activeHabits.length > 0}
+          defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'counter' }))}
           emptyMessage="No active counters. Add one to track water, steps, or anything countable."
         >
@@ -242,7 +242,7 @@ export default function ElementsScreen() {
           accentColor={habitAccent}
           count={activeHabits.length}
           addLabel="New habit"
-          defaultCollapsed={activeHabits.length === 0 && activeCounters.length > 0}
+          defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'habit' }))}
           emptyMessage="No active habits. Add one for meditation, reading, or any daily routine."
         >

@@ -13,7 +13,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveElements } from '../utils/dashboardElements';
-import { pinnedTabScreenStyles as styles } from './shared/screenStyles';
+import { homeTabScreenStyles as styles } from './shared/screenStyles';
 
 export default function CountersScreen() {
   const theme = useTheme();
@@ -66,7 +66,7 @@ export default function CountersScreen() {
       {counters.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
           {elements.some((e) => e.kind === 'counter')
-            ? 'No counters pinned. Open Settings and pin counters to show them here.'
+            ? 'No active counters. Open Settings → Elements to restore something from Archive.'
             : 'No counters yet. Open Settings to add one.'}
         </Text>
       ) : (

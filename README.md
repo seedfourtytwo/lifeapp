@@ -100,8 +100,8 @@ After installing a new APK, reconnect to Metro for day-to-day JS changes.
 
 | Concept | Purpose |
 |---------|---------|
-| **ElementDefinition** | What you track (`counter` or `habit` + config); optional `archivedAt` |
-| **DashboardItem** | Sort order for active items on Daily / Counter tabs |
+| **ElementDefinition** | What you track (`counter` or `habit` + config); optional `archivedAt` for soft-hide |
+| **DashboardItem** | Sort order on Daily / Counter for **active** (non-archived) elements only |
 | **Event** | Append-only fact (`value` + `timestamp` + optional `meta`) |
 
 Kinds: `counter`, `habit`. Extend via `src/kinds/registry.ts` and `src/protocol/kinds/`.
