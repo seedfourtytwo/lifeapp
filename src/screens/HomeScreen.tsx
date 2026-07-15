@@ -1,105 +1,101 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { IconButton, Text, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
 import CountersScreen from './CountersScreen';
 import DailyScreen from './DailyScreen';
-import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 
 type HomeTab = 'daily' | 'counters';
 
-const TABS: { value: HomeTab; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'counters', label: 'Counter' },
+type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
+
+const TABS: { value: HomeTab; label: string; icon: DockIconName }[] = [
+  { value: 'daily', label: 'Daily', icon: 'calendar-check' },
+  { value: 'counters', label: 'Counter', icon: 'counter' },
 ];
 
 export default function HomeScreen() {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('daily');
 
   useDayRolloverRefresh();
 
+  const activeColor = isCartoon
+    ? theme.colors.onSecondaryContainer
+    : theme.colors.primary;
+  const quietColor = theme.colors.onSurfaceVariant;
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <SafeAreaView
-        edges={['top']}
-        style={{
-          backgroundColor: theme.colors.surface,
-          borderBottomColor: theme.colors.outlineVariant,
-          borderBottomWidth: deco.headerBorderWidth,
-        }}
-      >
-        <View style={styles.header}>
-          <View
-            style={[
-              styles.tabs,
-              {
-                backgroundColor: theme.colors.surfaceVariant,
-                borderRadius: deco.tabRadius,
-                borderWidth: isCartoon ? deco.borderWidth : 0,
-                borderColor: theme.colors.outline,
-              },
-            ]}
-          >
-            {TABS.map(({ value, label }) => {
-              const active = tab === value;
-              return (
-                <Pressable
-                  key={value}
-                  onPress={() => setTab(value)}
-                  style={[
-                    styles.tab,
-                    { borderRadius: deco.radius.sm },
-                    active && [
-                      styles.tabActive,
-                      {
-                        backgroundColor: isCartoon
-                          ? theme.colors.secondaryContainer
-                          : theme.colors.surface,
-                        borderWidth: isCartoon ? deco.borderWidth : 0,
-                        borderColor: theme.colors.outline,
-                      },
-                    ],
-                  ]}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                >
-                  <Text
-                    variant="labelLarge"
-                    style={{
-                      color: active
-                        ? isCartoon
-                          ? theme.colors.onSecondaryContainer
-                          : theme.colors.primary
-                        : theme.colors.onSurfaceVariant,
-                      fontWeight: active ? '700' : '500',
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <IconButton
-            icon="cog-outline"
-            size={22}
-            iconColor={theme.colors.onSurfaceVariant}
-            onPress={() => navigation.navigate('SettingsMenu')}
-            accessibilityLabel="Settings"
-            style={styles.gear}
-          />
-        </View>
-      </SafeAreaView>
-
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top }]}>
         {tab === 'daily' ? <DailyScreen /> : <CountersScreen />}
+      </View>
+
+      <View
+        style={[
+          styles.dock,
+          {
+            paddingBottom: Math.max(insets.bottom, 8),
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.outlineVariant,
+            borderTopWidth: deco.headerBorderWidth > 0 ? deco.headerBorderWidth : StyleSheet.hairlineWidth,
+          },
+        ]}
+      >
+        {TABS.map(({ value, label, icon }) => {
+          const active = tab === value;
+          const color = active ? activeColor : quietColor;
+          return (
+            <Pressable
+              key={value}
+              onPress={() => setTab(value)}
+              style={styles.dockItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}
+            >
+              <MaterialCommunityIcons name={icon} size={22} color={color} />
+              <Text
+                variant="labelSmall"
+                style={{
+                  color,
+                  fontWeight: active ? '700' : '500',
+                  marginTop: 2,
+                }}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          onPress={() => navigation.navigate('SettingsMenu')}
+          style={styles.dockItem}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+        >
+          <MaterialCommunityIcons name="cog-outline" size={22} color={quietColor} />
+          <Text
+            variant="labelSmall"
+            style={{
+              color: quietColor,
+              fontWeight: '500',
+              marginTop: 2,
+            }}
+          >
+            Settings
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -109,38 +105,20 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
+  content: {
+    flex: 1,
+  },
+  dock: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 4,
-    paddingTop: 4,
-    paddingBottom: 12,
-    gap: 8,
+    paddingTop: 8,
+    paddingHorizontal: 8,
   },
-  tabs: {
-    flex: 1,
-    flexDirection: 'row',
-    padding: 4,
-    gap: 4,
-  },
-  tab: {
+  dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  tabActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  gear: {
-    margin: 0,
-  },
-  content: {
-    flex: 1,
+    paddingVertical: 4,
+    minHeight: 48,
   },
 });

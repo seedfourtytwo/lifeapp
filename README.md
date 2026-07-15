@@ -8,9 +8,9 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 | Feature | Description |
 |---------|-------------|
-| **Daily** | Active habits for today — view menu (all / remaining / by time) + optional sort |
+| **Daily** | Habits for today — bottom tabs, remaining progress, view filter + sort |
 | **Habits** | Check-off or timer mode, bundled meditation audio, schedules, reminders |
-| **Counter** | Quick +buttons, undo, edit total, 14-day history chart |
+| **Counter** | Quick +buttons, undo, edit total, reorder, 14-day history chart |
 | **Elements** | Create, edit, archive/restore, or delete habits and counters |
 | **Settings → Data** | JSON export, import, and delete-all backup |
 | **Offline SQLite** | All data on device — no account, no cloud |

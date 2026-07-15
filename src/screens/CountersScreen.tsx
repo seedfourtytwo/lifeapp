@@ -12,8 +12,9 @@ import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import { getActiveElements } from '../utils/dashboardElements';
-import { homeTabScreenStyles as styles } from './shared/screenStyles';
+import { getActiveCounters } from '../utils/dashboardElements';
+import ReorderControls from './shared/ReorderControls';
+import { homeTabScreenStyles } from './shared/screenStyles';
 
 export default function CountersScreen() {
   const theme = useTheme();
@@ -22,15 +23,17 @@ export default function CountersScreen() {
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
+  const reorderCounter = useElementStore((s) => s.reorderCounter);
   const { dailyTotals, logEvent, setDailyTotal } = useEventStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   useRefreshCounterTotalsOnFocus();
 
-  const counters = useMemo(() => {
-    const all = elements.filter((e) => e.kind === 'counter');
-    return getActiveElements(all, dashboard);
-  }, [elements, dashboard]);
+  const counters = useMemo(
+    () => getActiveCounters(elements, dashboard),
+    [elements, dashboard],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -52,7 +55,13 @@ export default function CountersScreen() {
   return (
     <ScrollView
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void onRefresh()}
+          enabled={!reordering}
+        />
+      }
     >
       {error ? (
         <View style={styles.errorBox}>
@@ -63,6 +72,31 @@ export default function CountersScreen() {
         </View>
       ) : null}
 
+      {counters.length > 0 ? (
+        <View style={styles.metaRow}>
+          <Text variant="bodyMedium" style={styles.metaStatus} numberOfLines={1}>
+            {reordering
+              ? 'Move with arrows'
+              : `${counters.length} counter${counters.length === 1 ? '' : 's'}`}
+          </Text>
+          {reordering ? (
+            <Button compact mode="text" onPress={() => setReordering(false)}>
+              Done
+            </Button>
+          ) : (
+            <Button
+              mode="text"
+              compact
+              icon="sort"
+              disabled={counters.length < 2}
+              onPress={() => setReordering(true)}
+            >
+              Sort
+            </Button>
+          )}
+        </View>
+      ) : null}
+
       {counters.length === 0 ? (
         <Text variant="bodyLarge" style={styles.empty}>
           {elements.some((e) => e.kind === 'counter')
@@ -70,7 +104,7 @@ export default function CountersScreen() {
             : 'No counters yet. Open Settings to add one.'}
         </Text>
       ) : (
-        counters.map((element) => {
+        counters.map((element, index) => {
           const handler = getKindHandler(element.kind);
           if (!handler) return null;
 
@@ -78,20 +112,34 @@ export default function CountersScreen() {
           const config = CounterConfigSchema.parse(element.config);
 
           return (
-            <Widget
-              key={element.id}
-              element={element}
-              config={config}
-              todayTotal={dailyTotals[element.id] ?? 0}
-              onLog={(value, meta) => logEvent(element.id, value, meta)}
-              onSetDailyTotal={(total) => setDailyTotal(element.id, total)}
-              onOpenDetails={() =>
-                navigation.navigate('ElementHistory', { elementId: element.id })
-              }
-            />
+            <View key={element.id} style={styles.reorderRow}>
+              {reordering ? (
+                <ReorderControls
+                  canMoveUp={index > 0}
+                  canMoveDown={index < counters.length - 1}
+                  onMoveUp={() => void reorderCounter(element.id, 'up')}
+                  onMoveDown={() => void reorderCounter(element.id, 'down')}
+                  accessibilityNoun="counter"
+                />
+              ) : null}
+              <View style={styles.reorderCard}>
+                <Widget
+                  element={element}
+                  config={config}
+                  todayTotal={dailyTotals[element.id] ?? 0}
+                  onLog={(value, meta) => logEvent(element.id, value, meta)}
+                  onSetDailyTotal={(total) => setDailyTotal(element.id, total)}
+                  onOpenDetails={() =>
+                    navigation.navigate('ElementHistory', { elementId: element.id })
+                  }
+                />
+              </View>
+            </View>
           );
         })
       )}
     </ScrollView>
   );
 }
+
+const styles = homeTabScreenStyles;

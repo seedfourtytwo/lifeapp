@@ -12,9 +12,32 @@ import { HabitConfigSchema } from '../protocol';
 import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { mergeHabitOrderIntoDashboard, moveHabitInSlotOrder } from '../utils/reorderHabits';
-import { getActiveHabits } from '../utils/dashboardElements';
+import {
+  mergeKindOrderIntoDashboard,
+  movePeersInOrder,
+} from '../utils/reorderHabits';
+import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 import { useEventStore } from './eventStore';
+
+async function persistKindOrder(
+  kind: 'habit' | 'counter',
+  nextKindOrder: string[],
+  get: () => ElementState,
+  set: (partial: Partial<ElementState>) => void,
+): Promise<void> {
+  const { elements, dashboard } = get();
+  const { updates, nextDashboard } = mergeKindOrderIntoDashboard(
+    dashboard,
+    elements,
+    kind,
+    nextKindOrder,
+  );
+  if (updates.length === 0) return;
+
+  const db = await getDatabase();
+  await dashboardRepo.setDashboardSortOrders(db, updates);
+  set({ dashboard: nextDashboard });
+}
 
 async function insertActiveElement(
   db: SQLiteDatabase,
@@ -89,6 +112,8 @@ interface ElementState {
   deleteElement: (id: string) => Promise<void>;
   /** Move a habit up/down within its time slot; persists dashboard sort_order. */
   reorderHabitInSlot: (habitId: string, direction: 'up' | 'down') => Promise<void>;
+  /** Move a counter up/down among counters; persists dashboard sort_order. */
+  reorderCounter: (counterId: string, direction: 'up' | 'down') => Promise<void>;
 }
 
 export const useElementStore = create<ElementState>((set, get) => ({
@@ -307,7 +332,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       .filter((habit) => configs.get(habit.id)?.timeSlot === slot)
       .map((habit) => habit.id);
 
-    const nextHabitOrder = moveHabitInSlotOrder(
+    const nextHabitOrder = movePeersInOrder(
       habits.map((habit) => habit.id),
       slotHabitIds,
       habitId,
@@ -315,15 +340,21 @@ export const useElementStore = create<ElementState>((set, get) => ({
     );
     if (!nextHabitOrder) return;
 
-    const { updates, nextDashboard } = mergeHabitOrderIntoDashboard(
-      dashboard,
-      elements,
-      nextHabitOrder,
-    );
-    if (updates.length === 0) return;
+    await persistKindOrder('habit', nextHabitOrder, get, set);
+  },
 
-    const db = await getDatabase();
-    await dashboardRepo.setDashboardSortOrders(db, updates);
-    set({ dashboard: nextDashboard });
+  reorderCounter: async (counterId, direction) => {
+    const { elements, dashboard } = get();
+    const counters = getActiveCounters(elements, dashboard);
+    const orderedIds = counters.map((counter) => counter.id);
+    const nextCounterOrder = movePeersInOrder(
+      orderedIds,
+      orderedIds,
+      counterId,
+      direction,
+    );
+    if (!nextCounterOrder) return;
+
+    await persistKindOrder('counter', nextCounterOrder, get, set);
   },
 }));

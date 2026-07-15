@@ -44,6 +44,16 @@ export function getActiveHabits(
   );
 }
 
+export function getActiveCounters(
+  elements: ElementDefinition[],
+  dashboard: DashboardItem[],
+): ElementDefinition[] {
+  return getActiveElements(
+    elements.filter((element) => element.kind === 'counter'),
+    dashboard,
+  );
+}
+
 /** Stable key for active habit identity — avoids redundant bootstrap when unrelated fields change. */
 export function activeHabitIdsKey(
   elements: ElementDefinition[],

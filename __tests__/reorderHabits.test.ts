@@ -1,11 +1,16 @@
 import { PROTOCOL_VERSION, type DashboardItem, type ElementDefinition } from '../src/protocol';
-import { mergeHabitOrderIntoDashboard, moveHabitInSlotOrder } from '../src/utils/reorderHabits';
+import {
+  mergeHabitOrderIntoDashboard,
+  mergeKindOrderIntoDashboard,
+  moveHabitInSlotOrder,
+  movePeersInOrder,
+} from '../src/utils/reorderHabits';
 
-describe('moveHabitInSlotOrder', () => {
+describe('movePeersInOrder', () => {
   it('moves a habit up within its slot peers', () => {
     const ordered = ['m1', 'a1', 'm2', 'e1', 'm3'];
     const morning = ['m1', 'm2', 'm3'];
-    expect(moveHabitInSlotOrder(ordered, morning, 'm2', 'up')).toEqual([
+    expect(movePeersInOrder(ordered, morning, 'm2', 'up')).toEqual([
       'm2',
       'a1',
       'm1',
@@ -27,13 +32,13 @@ describe('moveHabitInSlotOrder', () => {
   it('returns null at the ends or for foreign habit', () => {
     const ordered = ['m1', 'm2'];
     const morning = ['m1', 'm2'];
-    expect(moveHabitInSlotOrder(ordered, morning, 'm1', 'up')).toBeNull();
-    expect(moveHabitInSlotOrder(ordered, morning, 'm2', 'down')).toBeNull();
-    expect(moveHabitInSlotOrder(ordered, morning, 'x', 'up')).toBeNull();
+    expect(movePeersInOrder(ordered, morning, 'm1', 'up')).toBeNull();
+    expect(movePeersInOrder(ordered, morning, 'm2', 'down')).toBeNull();
+    expect(movePeersInOrder(ordered, morning, 'x', 'up')).toBeNull();
   });
 });
 
-describe('mergeHabitOrderIntoDashboard', () => {
+describe('mergeKindOrderIntoDashboard', () => {
   const element = (
     id: string,
     kind: 'habit' | 'counter',
@@ -63,5 +68,15 @@ describe('mergeHabitOrderIntoDashboard', () => {
     expect(updates.map((u) => u.id)).toEqual(['d-c1', 'd-h2', 'd-h1']);
     expect(nextDashboard.map((item) => item.elementId)).toEqual(['c1', 'h2', 'h1']);
     expect(nextDashboard.map((item) => item.sortOrder)).toEqual([0, 1, 2]);
+  });
+
+  it('rewrites counter order while keeping habits in place', () => {
+    const elements = [element('h1', 'habit'), element('c1', 'counter'), element('c2', 'counter')];
+    const dashboard = [dash('h1', 0), dash('c1', 1), dash('c2', 2)];
+    const { nextDashboard } = mergeKindOrderIntoDashboard(dashboard, elements, 'counter', [
+      'c2',
+      'c1',
+    ]);
+    expect(nextDashboard.map((item) => item.elementId)).toEqual(['h1', 'c2', 'c1']);
   });
 });

@@ -65,7 +65,6 @@ export default function DailyScreen() {
     [now, habitDoneToday],
   );
 
-  // Sort mode overlays "All today" without persisting the filter setting.
   const activeFilter = reordering ? DAILY_REORDER_VIEW : dailyViewFilter;
 
   const habits = useMemo(
@@ -106,6 +105,15 @@ export default function DailyScreen() {
   }
 
   const doneCount = dueTodayHabits.filter((h) => habitDoneToday[h.id]).length;
+  const remainingCount = dueTodayHabits.length - doneCount;
+  // Prefer "N remaining" while work is left; otherwise compact "N of N".
+  const statusLabel =
+    dueTodayHabits.length === 0
+      ? null
+      : remainingCount > 0
+        ? `${remainingCount} remaining`
+        : `${doneCount} of ${dueTodayHabits.length}`;
+
   let emptyMessage: string | null = null;
   if (totalHabitCount === 0) {
     emptyMessage = 'No habits yet. Open Settings to add one.';
@@ -126,112 +134,118 @@ export default function DailyScreen() {
         />
       }
     >
-      <View style={styles.toolbar}>
-        <Menu
-          visible={viewMenuOpen}
-          onDismiss={() => setViewMenuOpen(false)}
-          anchor={
-            <Button
-              mode="outlined"
-              compact
-              icon="filter-variant"
-              disabled={reordering}
-              onPress={() => setViewMenuOpen(true)}
-              contentStyle={styles.viewButtonContent}
+      <View style={styles.metaRow}>
+        <View style={styles.metaStatus}>
+          {reordering ? (
+            <Text variant="bodySmall" style={styles.metaQuiet}>
+              Move within each time of day
+            </Text>
+          ) : statusLabel ? (
+            <Text
+              variant="bodyMedium"
+              style={[
+                styles.statusText,
+                isCartoon && {
+                  color: theme.colors.onSecondaryContainer,
+                  fontWeight: '600',
+                },
+              ]}
+              numberOfLines={1}
             >
-              {DAILY_VIEW_FILTER_LABELS[activeFilter]}
+              {statusLabel}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.metaRight}>
+          {reordering ? (
+            <Button compact mode="text" onPress={() => setReordering(false)}>
+              Done
             </Button>
-          }
-        >
-          {DAILY_VIEW_FILTERS.map((filter) => (
-            <Menu.Item
-              key={filter}
-              title={DAILY_VIEW_FILTER_LABELS[filter]}
-              leadingIcon={dailyViewFilter === filter ? 'check' : undefined}
-              onPress={() => {
-                setViewMenuOpen(false);
-                void setDailyViewFilter(filter);
-              }}
-            />
-          ))}
-        </Menu>
-
-        {reordering ? (
-          <Button mode="contained-tonal" compact onPress={() => setReordering(false)}>
-            Done
-          </Button>
-        ) : (
-          <Button
-            mode="outlined"
-            compact
-            icon="sort"
-            disabled={dueTodayHabits.length < 2}
-            onPress={() => {
-              setViewMenuOpen(false);
-              setReordering(true);
-            }}
-          >
-            Sort
-          </Button>
-        )}
+          ) : (
+            <>
+              <Menu
+                visible={viewMenuOpen}
+                onDismiss={() => setViewMenuOpen(false)}
+                anchor={
+                  <Button
+                    mode="text"
+                    compact
+                    icon="filter-variant"
+                    onPress={() => setViewMenuOpen(true)}
+                    contentStyle={styles.viewButtonContent}
+                    labelStyle={styles.controlLabel}
+                  >
+                    {DAILY_VIEW_FILTER_LABELS[activeFilter]}
+                  </Button>
+                }
+              >
+                {DAILY_VIEW_FILTERS.map((filter) => (
+                  <Menu.Item
+                    key={filter}
+                    title={DAILY_VIEW_FILTER_LABELS[filter]}
+                    leadingIcon={dailyViewFilter === filter ? 'check' : undefined}
+                    onPress={() => {
+                      setViewMenuOpen(false);
+                      void setDailyViewFilter(filter);
+                    }}
+                  />
+                ))}
+              </Menu>
+              <Button
+                mode="text"
+                compact
+                icon="sort"
+                disabled={dueTodayHabits.length < 2}
+                onPress={() => {
+                  setViewMenuOpen(false);
+                  setReordering(true);
+                }}
+                labelStyle={styles.controlLabel}
+              >
+                Sort
+              </Button>
+            </>
+          )}
+        </View>
       </View>
-
-      {reordering ? (
-        <Text variant="bodySmall" style={styles.reorderHint}>
-          Showing all habits due today. Move items within each time of day — order is kept when you
-          filter.
-        </Text>
-      ) : null}
 
       {emptyMessage ? (
         <Text variant="bodyLarge" style={styles.empty}>
           {emptyMessage}
         </Text>
       ) : (
-        <>
-          {!reordering && dueTodayHabits.length > 0 ? (
-            <Text
-              variant="bodyMedium"
-              style={[
-                styles.summary,
-                isCartoon && { color: theme.colors.onSecondaryContainer, fontWeight: '600' },
-              ]}
-            >
-              {doneCount} of {dueTodayHabits.length} done today
-            </Text>
-          ) : null}
-          {sections.map(({ slot, items }) => (
-            <View key={slot ?? 'flat'} style={styles.section}>
-              {slot ? (
-                <Text
-                  variant="titleSmall"
-                  style={[
-                    styles.sectionTitle,
-                    isCartoon && { color: theme.colors.outline, fontWeight: '700' },
-                  ]}
-                >
-                  {HABIT_TIME_SLOT_LABELS[slot]}
-                </Text>
-              ) : null}
-              {items.map((habit, index) => {
-                const config = habitConfigs.get(habit.id);
-                if (!config) return null;
-                return (
-                  <HabitDailyRow
-                    key={habit.id}
-                    habit={habit}
-                    config={config}
-                    reordering={reordering}
-                    canMoveUp={reordering && index > 0}
-                    canMoveDown={reordering && index < items.length - 1}
-                    onMoveUp={() => void reorderHabitInSlot(habit.id, 'up')}
-                    onMoveDown={() => void reorderHabitInSlot(habit.id, 'down')}
-                  />
-                );
-              })}
-            </View>
-          ))}
-        </>
+        sections.map(({ slot, items }) => (
+          <View key={slot ?? 'flat'} style={styles.section}>
+            {slot ? (
+              <Text
+                variant="labelMedium"
+                style={[
+                  styles.sectionTitle,
+                  isCartoon && { color: theme.colors.outline },
+                ]}
+              >
+                {HABIT_TIME_SLOT_LABELS[slot]}
+              </Text>
+            ) : null}
+            {items.map((habit, index) => {
+              const config = habitConfigs.get(habit.id);
+              if (!config) return null;
+              return (
+                <HabitDailyRow
+                  key={habit.id}
+                  habit={habit}
+                  config={config}
+                  reordering={reordering}
+                  canMoveUp={reordering && index > 0}
+                  canMoveDown={reordering && index < items.length - 1}
+                  onMoveUp={() => void reorderHabitInSlot(habit.id, 'up')}
+                  onMoveDown={() => void reorderHabitInSlot(habit.id, 'down')}
+                />
+              );
+            })}
+          </View>
+        ))
       )}
     </ScrollView>
   );
@@ -240,33 +254,30 @@ export default function DailyScreen() {
 const styles = {
   ...homeTabScreenStyles,
   ...StyleSheet.create({
-    toolbar: {
+    metaRight: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      marginBottom: 12,
+      flexShrink: 0,
     },
     viewButtonContent: {
-      maxWidth: 200,
+      maxWidth: 140,
     },
-    reorderHint: {
-      opacity: 0.65,
-      marginBottom: 12,
-      lineHeight: 18,
+    controlLabel: {
+      marginHorizontal: 4,
     },
-    summary: {
-      marginBottom: 16,
-      opacity: 0.8,
+    statusText: {
+      opacity: 0.85,
+    },
+    metaQuiet: {
+      opacity: 0.55,
     },
     section: {
-      marginBottom: 20,
+      marginBottom: 16,
     },
     sectionTitle: {
-      marginBottom: 8,
-      opacity: 0.7,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
+      marginBottom: 6,
+      opacity: 0.55,
+      letterSpacing: 0.4,
     },
   }),
 };

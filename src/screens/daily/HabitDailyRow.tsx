@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { IconButton } from 'react-native-paper';
+import { View } from 'react-native';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
+import ReorderControls from '../shared/ReorderControls';
+import { homeTabScreenStyles as styles } from '../shared/screenStyles';
 import HabitDailyCard from './HabitDailyCard';
 
 type Props = {
@@ -24,44 +25,19 @@ export default function HabitDailyRow({
   onMoveDown,
 }: Props) {
   return (
-    <View style={styles.row}>
+    <View style={styles.reorderRow}>
       {reordering ? (
-        <View style={styles.controls}>
-          <IconButton
-            icon="chevron-up"
-            size={22}
-            disabled={!canMoveUp}
-            onPress={onMoveUp}
-            accessibilityLabel="Move habit up"
-          />
-          <IconButton
-            icon="chevron-down"
-            size={22}
-            disabled={!canMoveDown}
-            onPress={onMoveDown}
-            accessibilityLabel="Move habit down"
-          />
-        </View>
+        <ReorderControls
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          onMoveUp={onMoveUp}
+          onMoveDown={onMoveDown}
+          accessibilityNoun="habit"
+        />
       ) : null}
-      <View style={styles.card}>
+      <View style={styles.reorderCard}>
         <HabitDailyCard habit={habit} config={config} />
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  controls: {
-    justifyContent: 'center',
-  },
-  card: {
-    flex: 1,
-    minWidth: 0,
-  },
-});
