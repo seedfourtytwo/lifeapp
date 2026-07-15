@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { List, Switch, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
+import { useProtocolBackup } from '../hooks/useProtocolBackup';
 import { requestNotificationPermissions, isNotificationsNativeAvailable } from '../notifications/habitReminders';
 import { useSettingsStore } from '../store/settingsStore';
 import { THEME_MODE_OPTIONS } from '../theme';
@@ -13,6 +14,8 @@ export default function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
   const setHabitRemindersEnabled = useSettingsStore((s) => s.setHabitRemindersEnabled);
+  const { busy, importAvailable, handleExport, handleImport, handleClearAllData } =
+    useProtocolBackup();
 
   const handleRemindersToggle = async (enabled: boolean) => {
     if (enabled && !isNotificationsNativeAvailable()) {
@@ -71,6 +74,35 @@ export default function SettingsScreen() {
       </List.Section>
 
       <List.Section>
+        <List.Subheader>Data</List.Subheader>
+        <List.Item
+          title="Export backup"
+          description="Save habits, counters, history, and app preferences as JSON"
+          left={(props) => <List.Icon {...props} icon="export" />}
+          right={() => (busy ? <ActivityIndicator size={20} /> : null)}
+          onPress={busy ? undefined : () => void handleExport()}
+        />
+        <List.Item
+          title="Import backup"
+          description={
+            importAvailable
+              ? 'Replace this device with a backup file'
+              : 'Needs dev client rebuild — export works now'
+          }
+          left={(props) => <List.Icon {...props} icon="import" />}
+          right={() => (busy ? <ActivityIndicator size={20} /> : null)}
+          onPress={busy ? undefined : handleImport}
+        />
+        <List.Item
+          title="Delete all data"
+          description="Erase habits, counters, history, and preferences"
+          left={(props) => <List.Icon {...props} icon="delete-forever" color={theme.colors.error} />}
+          right={() => (busy ? <ActivityIndicator size={20} /> : null)}
+          onPress={busy ? undefined : handleClearAllData}
+        />
+      </List.Section>
+
+      <List.Section>
         <List.Subheader>About</List.Subheader>
         <List.Item
           title="Life Dashboard"
@@ -81,7 +113,7 @@ export default function SettingsScreen() {
 
       <View style={styles.note}>
         <Text variant="bodySmall" style={styles.noteText}>
-          Your data stays on this device. Export and backup options are coming soon.
+          Backups are JSON files you can move between installs. Import replaces all local data.
         </Text>
       </View>
     </ScrollView>

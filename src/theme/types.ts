@@ -1,10 +1,6 @@
-export const THEME_MODES = ['light', 'dark', 'cartoon'] as const;
+import type { ThemeMode } from '../protocol/appSettings';
 
-export type ThemeMode = (typeof THEME_MODES)[number];
-
-export function isThemeMode(value: string): value is ThemeMode {
-  return (THEME_MODES as readonly string[]).includes(value);
-}
+export { THEME_MODES, isThemeMode, type ThemeMode } from '../protocol/appSettings';
 
 export interface ThemeModeOption {
   value: ThemeMode;

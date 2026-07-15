@@ -13,8 +13,15 @@ export { EventSchema, toDateString } from './event';
 export type { LifeEvent } from './event';
 
 export {
+  AppSettingsSchema,
+  APP_SETTING_KEYS,
+  THEME_MODES,
+  isThemeMode,
+} from './appSettings';
+export type { AppSettings, ThemeMode } from './appSettings';
+
+export {
   DashboardItemSchema,
-  ProtocolBundleSchema,
   parseProtocolBundle,
   createProtocolBundle,
 } from './bundle';

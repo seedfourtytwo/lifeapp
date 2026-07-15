@@ -15,7 +15,7 @@ export interface HabitStreakMaps {
   failureStreaks: Record<string, number>;
 }
 
-export function computeStreakMapsFromEvents(
+function computeStreakMapsFromEvents(
   habits: HabitStreakInput[],
   eventsByElement: Map<string, LifeEvent[]>,
 ): HabitStreakMaps {
@@ -32,18 +32,13 @@ export function computeStreakMapsFromEvents(
   return { streaks, failureStreaks };
 }
 
-export async function fetchHabitStreakEvents(
+async function fetchHabitStreakEvents(
   db: SQLiteDatabase,
   habitIds: string[],
   since = streakHistorySinceDate(),
 ): Promise<Map<string, LifeEvent[]>> {
   if (habitIds.length === 0) return new Map();
   return eventRepo.getEventsForElementsSince(db, habitIds, since);
-}
-
-export async function fetchHabitYearEvents(elementId: string): Promise<LifeEvent[]> {
-  const db = await getDatabase();
-  return eventRepo.getEventsForElementSince(db, elementId, streakHistorySinceDate());
 }
 
 export async function loadHabitStreakMaps(

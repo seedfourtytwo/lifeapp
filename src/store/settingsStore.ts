@@ -1,16 +1,14 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import * as settingsRepo from '../db/repositories/settingsRepository';
+import { APP_SETTING_KEYS } from '../protocol/appSettings';
 import {
   isDailyViewFilter,
   type DailyViewFilter,
 } from '../protocol';
 import { isThemeMode, type ThemeMode } from '../theme/types';
 
-const THEME_MODE_KEY = 'theme_mode';
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
-const DAILY_VIEW_FILTER_KEY = 'daily_view_filter';
-const HABIT_REMINDERS_KEY = 'habit_reminders_enabled';
 
 interface SettingsState {
   themeMode: ThemeMode;
@@ -32,9 +30,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   load: async () => {
     try {
       const db = await getDatabase();
-      const storedMode = await settingsRepo.getSetting(db, THEME_MODE_KEY);
-      const storedFilter = await settingsRepo.getSetting(db, DAILY_VIEW_FILTER_KEY);
-      const storedReminders = await settingsRepo.getSetting(db, HABIT_REMINDERS_KEY);
+      const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
+      const storedFilter = await settingsRepo.getSetting(db, APP_SETTING_KEYS.dailyViewFilter);
+      const storedReminders = await settingsRepo.getSetting(
+        db,
+        APP_SETTING_KEYS.habitRemindersEnabled,
+      );
 
       let themeMode: ThemeMode = 'light';
       if (storedMode && isThemeMode(storedMode)) {
@@ -59,19 +60,23 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   setThemeMode: async (mode) => {
     const db = await getDatabase();
-    await settingsRepo.setSetting(db, THEME_MODE_KEY, mode);
+    await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, mode);
     set({ themeMode: mode });
   },
 
   setDailyViewFilter: async (filter) => {
     const db = await getDatabase();
-    await settingsRepo.setSetting(db, DAILY_VIEW_FILTER_KEY, filter);
+    await settingsRepo.setSetting(db, APP_SETTING_KEYS.dailyViewFilter, filter);
     set({ dailyViewFilter: filter });
   },
 
   setHabitRemindersEnabled: async (enabled) => {
     const db = await getDatabase();
-    await settingsRepo.setSetting(db, HABIT_REMINDERS_KEY, enabled ? 'true' : 'false');
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.habitRemindersEnabled,
+      enabled ? 'true' : 'false',
+    );
     set({ habitRemindersEnabled: enabled });
   },
 }));

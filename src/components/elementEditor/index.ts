@@ -1,5 +1,4 @@
 export type {
-  ElementEditorMode,
   ElementEditorSaveData,
   ElementEditorSession,
   HabitEditorFieldState,

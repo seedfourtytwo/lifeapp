@@ -13,10 +13,6 @@ export const EventSchema = z.object({
 
 export type LifeEvent = z.infer<typeof EventSchema>;
 
-export function parseEvent(raw: unknown): LifeEvent {
-  return EventSchema.parse(raw);
-}
-
 export function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }

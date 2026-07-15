@@ -1,10 +1,15 @@
 import { z } from 'zod';
 import { PROTOCOL_VERSION } from './envelope';
+import { AppSettingsSchema } from './appSettings';
 import { ElementDefinitionSchema } from './element';
 import { EventSchema } from './event';
 import { validateBundleEventLinks } from './eventMeta';
+import type { AppSettings } from './appSettings';
 import type { ElementDefinition } from './element';
 import type { LifeEvent } from './event';
+
+export { AppSettingsSchema } from './appSettings';
+export type { AppSettings } from './appSettings';
 
 export const DashboardItemSchema = z.object({
   id: z.string().uuid(),
@@ -21,6 +26,7 @@ export const ProtocolBundleSchema = z.object({
   elements: z.array(ElementDefinitionSchema),
   dashboard: z.array(DashboardItemSchema),
   events: z.array(EventSchema),
+  settings: AppSettingsSchema.optional(),
 });
 
 export type ProtocolBundle = z.infer<typeof ProtocolBundleSchema>;
@@ -35,6 +41,7 @@ export function createProtocolBundle(input: {
   elements: ElementDefinition[];
   dashboard: z.infer<typeof DashboardItemSchema>[];
   events: LifeEvent[];
+  settings?: AppSettings;
 }): ProtocolBundle {
   const bundle: ProtocolBundle = {
     protocolVersion: PROTOCOL_VERSION,
@@ -42,6 +49,7 @@ export function createProtocolBundle(input: {
     elements: input.elements,
     dashboard: input.dashboard,
     events: input.events,
+    ...(input.settings ? { settings: input.settings } : {}),
   };
   validateBundleEventLinks(bundle.elements, bundle.events);
   return bundle;

@@ -1,7 +1,6 @@
 import type { ElementDefinition } from './element';
 import type { HabitConfig } from './kinds/habit';
 import { HabitConfigSchema, isHabitScheduledOnDate, isHabitStartingSoon, shouldShowHabitOnHabitsPage } from './kinds/habit';
-import { toDateString } from './event';
 
 export const DAILY_VIEW_FILTERS = [
   'all_due',
@@ -68,12 +67,4 @@ export function filterHabitsForDailyView(
 
     return true;
   });
-}
-
-export function defaultDailyFilterContext(now = new Date()): DailyHabitFilterContext {
-  return {
-    now,
-    today: toDateString(now),
-    habitDoneToday: {},
-  };
 }

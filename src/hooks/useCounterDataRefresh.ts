@@ -12,7 +12,7 @@ function pinnedCounterIds(): string[] {
   ).map((element) => element.id);
 }
 
-export function usePinnedCounterIds(): string[] {
+function usePinnedCounterIds(): string[] {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
 
