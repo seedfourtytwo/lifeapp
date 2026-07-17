@@ -16,9 +16,11 @@ export {
   AppSettingsSchema,
   APP_SETTING_KEYS,
   THEME_MODES,
+  WEATHER_LOCATION_MODES,
   isThemeMode,
+  isWeatherLocationMode,
 } from './appSettings';
-export type { AppSettings, ThemeMode } from './appSettings';
+export type { AppSettings, ThemeMode, WeatherLocationMode } from './appSettings';
 
 export {
   DashboardItemSchema,

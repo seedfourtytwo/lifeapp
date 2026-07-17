@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from './client';
+import * as weatherRepo from './repositories/weatherRepository';
 
 async function clearProtocolTables(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM events');
@@ -16,6 +17,7 @@ export async function clearAllAppData(): Promise<void> {
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {
     await clearProtocolTables(db);
+    await weatherRepo.clearWeatherDaily(db);
     await clearAppSettings(db);
   });
 }

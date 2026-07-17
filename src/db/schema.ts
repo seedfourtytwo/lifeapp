@@ -46,4 +46,16 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS weather_daily (
+  date TEXT PRIMARY KEY NOT NULL,
+  temp_c REAL NOT NULL,
+  temp_min_c REAL NOT NULL,
+  temp_max_c REAL NOT NULL,
+  weather_code INTEGER NOT NULL,
+  condition TEXT NOT NULL,
+  lat REAL,
+  lon REAL,
+  fetched_at TEXT NOT NULL
+);
 `;

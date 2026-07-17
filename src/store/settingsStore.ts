@@ -1,42 +1,103 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import * as settingsRepo from '../db/repositories/settingsRepository';
-import { APP_SETTING_KEYS } from '../protocol/appSettings';
+import {
+  APP_SETTING_KEYS,
+  isWeatherLocationMode,
+  type WeatherLocationMode,
+} from '../protocol/appSettings';
 import {
   migrateDailyViewFilter,
   type DailyViewFilter,
 } from '../protocol';
 import { isThemeMode, type ThemeMode } from '../theme/types';
+import { defaultBubblePosition } from '../weather/bubblePosition';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
 const DEFAULT_DAILY_VIEW_FILTER: DailyViewFilter = 'remaining';
+const DEFAULT_BUBBLE = defaultBubblePosition();
+
+function parseBool(value: string | null): boolean {
+  return value === 'true';
+}
+
+function parseOptionalNumber(value: string | null): number | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseNorm(value: string | null, fallback: number): number {
+  const n = parseOptionalNumber(value);
+  if (n == null) return fallback;
+  return Math.min(1, Math.max(0, n));
+}
 
 interface SettingsState {
   themeMode: ThemeMode;
   dailyViewFilter: DailyViewFilter;
   habitRemindersEnabled: boolean;
+  weatherWidgetEnabled: boolean;
+  weatherLocationMode: WeatherLocationMode;
+  weatherPlaceName: string | null;
+  weatherLat: number | null;
+  weatherLon: number | null;
+  weatherBubbleX: number;
+  weatherBubbleY: number;
   isLoaded: boolean;
   load: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setDailyViewFilter: (filter: DailyViewFilter) => Promise<void>;
   setHabitRemindersEnabled: (enabled: boolean) => Promise<void>;
+  setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
+  setWeatherLocationMode: (mode: WeatherLocationMode) => Promise<void>;
+  setWeatherPlace: (place: {
+    placeName: string;
+    lat: number;
+    lon: number;
+  }) => Promise<void>;
+  setWeatherBubblePosition: (x: number, y: number) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
   dailyViewFilter: DEFAULT_DAILY_VIEW_FILTER,
   habitRemindersEnabled: false,
+  weatherWidgetEnabled: false,
+  weatherLocationMode: 'manual',
+  weatherPlaceName: null,
+  weatherLat: null,
+  weatherLon: null,
+  weatherBubbleX: DEFAULT_BUBBLE.x,
+  weatherBubbleY: DEFAULT_BUBBLE.y,
   isLoaded: false,
 
   load: async () => {
     try {
       const db = await getDatabase();
-      const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
-      const storedFilter = await settingsRepo.getSetting(db, APP_SETTING_KEYS.dailyViewFilter);
-      const storedReminders = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.habitRemindersEnabled,
-      );
+      const [
+        storedMode,
+        storedFilter,
+        storedReminders,
+        storedWeatherEnabled,
+        storedLocationMode,
+        storedPlaceName,
+        storedLat,
+        storedLon,
+        storedBubbleX,
+        storedBubbleY,
+      ] = await Promise.all([
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.dailyViewFilter),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.habitRemindersEnabled),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherWidgetEnabled),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLocationMode),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherPlaceName),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLon),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleX),
+        settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleY),
+      ]);
 
       let themeMode: ThemeMode = 'light';
       if (storedMode && isThemeMode(storedMode)) {
@@ -49,10 +110,22 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const dailyViewFilter =
         migrateDailyViewFilter(storedFilter) ?? DEFAULT_DAILY_VIEW_FILTER;
 
+      const weatherLocationMode =
+        storedLocationMode && isWeatherLocationMode(storedLocationMode)
+          ? storedLocationMode
+          : 'manual';
+
       set({
         themeMode,
         dailyViewFilter,
-        habitRemindersEnabled: storedReminders === 'true',
+        habitRemindersEnabled: parseBool(storedReminders),
+        weatherWidgetEnabled: parseBool(storedWeatherEnabled),
+        weatherLocationMode,
+        weatherPlaceName: storedPlaceName,
+        weatherLat: parseOptionalNumber(storedLat),
+        weatherLon: parseOptionalNumber(storedLon),
+        weatherBubbleX: parseNorm(storedBubbleX, DEFAULT_BUBBLE.x),
+        weatherBubbleY: parseNorm(storedBubbleY, DEFAULT_BUBBLE.y),
         isLoaded: true,
       });
     } catch (error) {
@@ -81,5 +154,42 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       enabled ? 'true' : 'false',
     );
     set({ habitRemindersEnabled: enabled });
+  },
+
+  setWeatherWidgetEnabled: async (enabled) => {
+    const db = await getDatabase();
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.weatherWidgetEnabled,
+      enabled ? 'true' : 'false',
+    );
+    set({ weatherWidgetEnabled: enabled });
+  },
+
+  setWeatherLocationMode: async (mode) => {
+    const db = await getDatabase();
+    await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLocationMode, mode);
+    set({ weatherLocationMode: mode });
+  },
+
+  setWeatherPlace: async ({ placeName, lat, lon }) => {
+    const db = await getDatabase();
+    await Promise.all([
+      settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherPlaceName, placeName),
+      settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLat, String(lat)),
+      settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLon, String(lon)),
+    ]);
+    set({ weatherPlaceName: placeName, weatherLat: lat, weatherLon: lon });
+  },
+
+  setWeatherBubblePosition: async (x, y) => {
+    const clampedX = Math.min(1, Math.max(0, x));
+    const clampedY = Math.min(1, Math.max(0, y));
+    const db = await getDatabase();
+    await Promise.all([
+      settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleX, String(clampedX)),
+      settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleY, String(clampedY)),
+    ]);
+    set({ weatherBubbleX: clampedX, weatherBubbleY: clampedY });
   },
 }));

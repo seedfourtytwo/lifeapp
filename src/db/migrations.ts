@@ -10,8 +10,9 @@ import * as settingsRepo from './repositories/settingsRepository';
 import { SCHEMA_SQL } from './schema';
 import { ensureElementsSchema } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 7;
+const CURRENT_SCHEMA_VERSION = 8;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
+/** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 
 interface HabitElementRow {
   id: string;
@@ -128,6 +129,21 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
       if (row.archived_at != null || activeIds.has(row.id)) continue;
       await elementRepo.setElementArchivedAt(db, row.id, archivedAt);
     }
+  },
+  8: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS weather_daily (
+        date TEXT PRIMARY KEY NOT NULL,
+        temp_c REAL NOT NULL,
+        temp_min_c REAL NOT NULL,
+        temp_max_c REAL NOT NULL,
+        weather_code INTEGER NOT NULL,
+        condition TEXT NOT NULL,
+        lat REAL,
+        lon REAL,
+        fetched_at TEXT NOT NULL
+      );
+    `);
   },
 };
 
