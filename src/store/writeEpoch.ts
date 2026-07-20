@@ -2,6 +2,10 @@
 
 const writeEpochs = new Map<string, number>();
 
+export function getWriteEpoch(elementId: string): number {
+  return writeEpochs.get(elementId) ?? 0;
+}
+
 export function bumpWriteEpoch(elementId: string): number {
   const next = (writeEpochs.get(elementId) ?? 0) + 1;
   writeEpochs.set(elementId, next);

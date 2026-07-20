@@ -25,5 +25,6 @@ export function resetInMemoryDailyState(): void {
     dailyTotals: {},
     habitDoneToday: {},
     dayStateReady: false,
+    counterTotalsReady: false,
   });
 }

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { getDatabase } from '../db/client';
+import { withDbWriteLock } from '../db/writeLock';
 import * as settingsRepo from '../db/repositories/settingsRepository';
+import { getEventDataEpoch } from '../store/eventStore';
+import { getWeatherDataEpoch } from './weatherEpoch';
 import type { WeatherForecast } from './types';
 
 /** Internal cache key — not part of protocol backup AppSettings. */
@@ -38,23 +41,40 @@ export async function loadCachedForecast(): Promise<WeatherForecast | null> {
   }
 }
 
-export async function saveCachedForecast(forecast: WeatherForecast): Promise<void> {
+export async function saveCachedForecast(
+  forecast: WeatherForecast,
+  opts?: { epochAtStart?: number; weatherEpochAtStart?: number },
+): Promise<boolean> {
   try {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(
-      db,
-      WEATHER_FORECAST_CACHE_KEY,
-      JSON.stringify(forecast),
-    );
+    const epochAtStart = opts?.epochAtStart ?? getEventDataEpoch();
+    const weatherEpochAtStart = opts?.weatherEpochAtStart ?? getWeatherDataEpoch();
+    return await withDbWriteLock(async () => {
+      if (
+        epochAtStart !== getEventDataEpoch() ||
+        weatherEpochAtStart !== getWeatherDataEpoch()
+      ) {
+        return false;
+      }
+      const db = await getDatabase();
+      await settingsRepo.setSetting(
+        db,
+        WEATHER_FORECAST_CACHE_KEY,
+        JSON.stringify(forecast),
+      );
+      return true;
+    });
   } catch (error) {
     console.error('Failed to cache weather forecast', error);
+    return false;
   }
 }
 
 export async function clearCachedForecast(): Promise<void> {
   try {
-    const db = await getDatabase();
-    await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
+    await withDbWriteLock(async () => {
+      const db = await getDatabase();
+      await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
+    });
   } catch {
     // ignore
   }

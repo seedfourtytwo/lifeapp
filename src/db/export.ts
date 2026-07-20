@@ -11,36 +11,40 @@ import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
 import { withDbWriteLock } from './writeLock';
 import { newId } from '../utils/id';
-import { awaitHabitTimerStops, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { awaitPendingEventWrites, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { bumpCalendarDataEpoch } from '../store/calendarStore';
+import { bumpWeatherDataEpoch } from '../weather/weatherEpoch';
 import { stopHabitSound } from '../audio/habitTimerSound';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
-  const db = await getDatabase();
-  // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
-  const elements = await elementRepo.getAllElements(db);
-  const dashboard = await dashboardRepo.getDashboardItems(db);
-  const events = await eventRepo.getAllEvents(db);
-  const settings = await readAppSettings(db);
-  const calendars = await calendarRepo.getAllCalendars(db);
-  const calendarEvents = await calendarRepo.getAllEvents(db);
-  const reminders = await calendarRepo.getAllReminders(db);
-  const clears = await calendarRepo.getAllOccurrenceClears(db);
+  return withDbWriteLock(async () => {
+    const db = await getDatabase();
+    // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+    const elements = await elementRepo.getAllElements(db);
+    const dashboard = await dashboardRepo.getDashboardItems(db);
+    const events = await eventRepo.getAllEvents(db);
+    const settings = await readAppSettings(db);
+    const calendars = await calendarRepo.getAllCalendars(db);
+    const calendarEvents = await calendarRepo.getAllEvents(db);
+    const reminders = await calendarRepo.getAllReminders(db);
+    const clears = await calendarRepo.getAllOccurrenceClears(db);
 
-  return createProtocolBundle({
-    elements,
-    dashboard: dashboard.filter((item) => {
-      const element = elements.find((candidate) => candidate.id === item.elementId);
-      return element != null && element.archivedAt == null;
-    }),
-    events,
-    settings,
-    calendar: {
-      schemaVersion: CALENDAR_BACKUP_VERSION,
-      calendars,
-      events: calendarEvents,
-      reminders,
-      clearedOccurrences: clears,
-    },
+    return createProtocolBundle({
+      elements,
+      dashboard: dashboard.filter((item) => {
+        const element = elements.find((candidate) => candidate.id === item.elementId);
+        return element != null && element.archivedAt == null;
+      }),
+      events,
+      settings,
+      calendar: {
+        schemaVersion: CALENDAR_BACKUP_VERSION,
+        calendars,
+        events: calendarEvents,
+        reminders,
+        clearedOccurrences: clears,
+      },
+    });
   });
 }
 
@@ -50,10 +54,15 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
 
   await stopHabitSound();
   bumpEventDataEpoch();
-  await awaitHabitTimerStops();
+  await awaitPendingEventWrites();
   useEventStore.setState({ activeTimerSessions: {} });
 
   await withDbWriteLock(async () => {
+    // Invalidate writers that started after the pre-lock drain.
+    bumpEventDataEpoch();
+    bumpCalendarDataEpoch();
+    bumpWeatherDataEpoch();
+
     const db = await getDatabase();
 
     await db.withTransactionAsync(async () => {
@@ -108,6 +117,11 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
 
       await calendarRepo.ensureDefaultCalendar(db);
     });
+
+    // Invalidate writers that captured the mid-import epoch while waiting on this lock.
+    bumpEventDataEpoch();
+    bumpCalendarDataEpoch();
+    bumpWeatherDataEpoch();
   });
 }
 

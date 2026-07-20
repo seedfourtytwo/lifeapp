@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ import {
   type ElementDefinition,
 } from '../protocol';
 import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } from '../utils/dates';
+import { createdOnLocalDate } from '../utils/createdOnLocalDate';
 import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
 
 const CHART_DAYS = 14;
@@ -57,13 +58,16 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [failureStreak, setFailureStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadGenerationRef = useRef(0);
 
   const load = useCallback(async () => {
+    const generation = ++loadGenerationRef.current;
     setLoading(true);
     setError(null);
     try {
       const db = await getDatabase();
       const loaded = await elementRepo.getElementById(db, elementId);
+      if (generation !== loadGenerationRef.current) return;
       if (!loaded) {
         setElement(null);
         setDays([]);
@@ -77,6 +81,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
       const range = lastNDates(CHART_DAYS);
       const since = range[0];
       const rows = await eventRepo.getDailyTotalsByElement(db, elementId, since);
+      if (generation !== loadGenerationRef.current) return;
       const byDate = new Map(rows.map((r) => [r.date, r.total]));
 
       setDays(
@@ -94,12 +99,13 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
           elementId,
           streakHistorySinceDate(),
         );
+        if (generation !== loadGenerationRef.current) return;
         const { streak: currentStreak, failureStreak: currentFailureStreak } =
           computeHabitStreaksFromEvents(
             yearRows,
             config,
             undefined,
-            loaded.createdAt?.slice(0, 10) ?? null,
+            createdOnLocalDate(loaded.createdAt),
           );
         setStreak(currentStreak);
         setFailureStreak(currentFailureStreak);
@@ -108,9 +114,12 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setFailureStreak(0);
       }
     } catch (err) {
+      if (generation !== loadGenerationRef.current) return;
       setError(err instanceof Error ? err.message : 'Could not load history');
     } finally {
-      setLoading(false);
+      if (generation === loadGenerationRef.current) {
+        setLoading(false);
+      }
     }
   }, [elementId]);
 
@@ -174,10 +183,16 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
       ? isHabitDayComplete(d.total, habitConfig)
       : d.total > 0,
   );
-  const best = completedDays.reduce<DayRow | null>(
-    (max, d) => (!max || d.total > max.total ? d : max),
-    null,
-  );
+  const best = completedDays.reduce<DayRow | null>((max, d) => {
+    if (!max) return d;
+    if (d.total > max.total) return d;
+    if (d.total === max.total && d.date > max.date) return d;
+    return max;
+  }, null);
+  const lastCompleted = completedDays.reduce<DayRow | null>((latest, d) => {
+    if (!latest || d.date > latest.date) return d;
+    return latest;
+  }, null);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -209,7 +224,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
           {best && (isHabit ? isHabitDayComplete(best.total, habitConfig!) : best.total > 0) ? (
             <Text variant="bodySmall" style={styles.hint}>
               {isHabit && !isTimerHabit
-                ? `Last completed: ${formatFullDate(best.date)}`
+                ? `Last completed: ${formatFullDate((lastCompleted ?? best).date)}`
                 : isTimerHabit
                   ? `Best day: ${formatHabitTimerDuration(best.total)} on ${formatFullDate(best.date)}`
                   : `Best day: ${formatDayValue(element, best.total)} on ${formatFullDate(best.date)}`}

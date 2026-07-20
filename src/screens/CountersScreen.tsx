@@ -26,11 +26,12 @@ export default function CountersScreen() {
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const reorderCounter = useElementStore((s) => s.reorderCounter);
-  const { dailyTotals, logEvent, setDailyTotal } = useEventStore(
+  const { dailyTotals, logEvent, setDailyTotal, counterTotalsReady } = useEventStore(
     useShallow((s) => ({
       dailyTotals: s.dailyTotals,
       logEvent: s.logEvent,
       setDailyTotal: s.setDailyTotal,
+      counterTotalsReady: s.counterTotalsReady,
     })),
   );
   const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +62,14 @@ export default function CountersScreen() {
   }, []);
 
   if (isLoading && elements.length === 0 && !error) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (counters.length > 0 && !counterTotalsReady && !error) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -154,14 +163,17 @@ export default function CountersScreen() {
                       );
                     })
                   }
-                  onSetDailyTotal={(total) =>
-                    setDailyTotal(element.id, total).catch((err) => {
+                  onSetDailyTotal={async (total) => {
+                    try {
+                      await setDailyTotal(element.id, total);
+                    } catch (err) {
                       Alert.alert(
                         'Could not update total',
                         err instanceof Error ? err.message : 'Something went wrong',
                       );
-                    })
-                  }
+                      throw err;
+                    }
+                  }}
                   onOpenDetails={() =>
                     navigation.navigate('TrackerHistory', { elementId: element.id })
                   }

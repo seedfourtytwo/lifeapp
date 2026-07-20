@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -135,7 +135,14 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
                 ) : null}
                 <View style={styles.row}>
                   <Pressable
-                    onPress={() => void clearOccurrence(occ)}
+                    onPress={() =>
+                      void clearOccurrence(occ).catch((error) => {
+                        Alert.alert(
+                          'Could not mark done',
+                          error instanceof Error ? error.message : 'Something went wrong',
+                        );
+                      })
+                    }
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel="Mark done for this occurrence"

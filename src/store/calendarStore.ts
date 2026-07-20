@@ -20,8 +20,23 @@ import type {
 import { withoutClearedOccurrences } from '../calendar/types';
 import { getDatabase } from '../db/client';
 import * as calendarRepo from '../db/repositories/calendarRepository';
+import { withDbWriteLock } from '../db/writeLock';
 import { newId } from '../utils/id';
 
+let calendarLoadGeneration = 0;
+let calendarDataEpoch = 0;
+
+export function bumpCalendarDataEpoch(): void {
+  calendarDataEpoch += 1;
+}
+
+export function getCalendarDataEpoch(): number {
+  return calendarDataEpoch;
+}
+
+function invalidateCalendarLoads(): void {
+  calendarLoadGeneration += 1;
+}
 export interface CalendarEventInput {
   title: string;
   notes: string | null;
@@ -117,22 +132,28 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   isLoaded: false,
 
   load: async () => {
+    const generation = ++calendarLoadGeneration;
     try {
-      const db = await getDatabase();
-      await calendarRepo.ensureDefaultCalendar(db);
-      const calendars = await calendarRepo.getAllCalendars(db);
-      const events = await calendarRepo.getAllEvents(db);
-      const reminders = await calendarRepo.getAllReminders(db);
-      const clears = await calendarRepo.getAllOccurrenceClears(db);
-      set({
-        calendars,
-        events,
-        reminders,
-        clearedByKey: clearsToRecord(clears),
-        isLoaded: true,
+      await withDbWriteLock(async () => {
+        if (generation !== calendarLoadGeneration) return;
+        const db = await getDatabase();
+        await calendarRepo.ensureDefaultCalendar(db);
+        const calendars = await calendarRepo.getAllCalendars(db);
+        const events = await calendarRepo.getAllEvents(db);
+        const reminders = await calendarRepo.getAllReminders(db);
+        const clears = await calendarRepo.getAllOccurrenceClears(db);
+        if (generation !== calendarLoadGeneration) return;
+        set({
+          calendars,
+          events,
+          reminders,
+          clearedByKey: clearsToRecord(clears),
+          isLoaded: true,
+        });
       });
     } catch (error) {
       console.error('Failed to load calendar', error);
+      if (generation !== calendarLoadGeneration) return;
       // Never keep ghost events/reminders that could reschedule notifications.
       set({
         calendars: [],
@@ -145,120 +166,170 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   createEvent: async (input) => {
-    const db = await getDatabase();
-    const calendar =
-      (input.calendarId
-        ? get().calendars.find((c) => c.id === input.calendarId)
-        : get().calendars[0]) ?? (await calendarRepo.ensureDefaultCalendar(db));
+    const epochAtStart = getCalendarDataEpoch();
+    return withDbWriteLock(async () => {
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      const db = await getDatabase();
+      const calendar =
+        (input.calendarId
+          ? get().calendars.find((c) => c.id === input.calendarId)
+          : get().calendars[0]) ?? (await calendarRepo.ensureDefaultCalendar(db));
 
-    const { startAt, endAt } = serializeEventTimes(input.allDay, input.start, input.end);
-    const event: CalendarEvent = {
-      id: newId(),
-      calendarId: calendar.id,
-      uid: `${newId()}@lifeapp.local`,
-      title: input.title.trim(),
-      notes: input.notes?.trim() ? input.notes.trim() : null,
-      eventType: input.eventType,
-      allDay: input.allDay,
-      startAt,
-      endAt,
-      timezone: deviceTimeZone(),
-      rrule: recurrenceToRrule(input.recurrence),
-    };
-    const reminders = buildReminderRows(event.id, input.reminderOffsets);
+      const { startAt, endAt } = serializeEventTimes(input.allDay, input.start, input.end);
+      const event: CalendarEvent = {
+        id: newId(),
+        calendarId: calendar.id,
+        uid: `${newId()}@lifeapp.local`,
+        title: input.title.trim(),
+        notes: input.notes?.trim() ? input.notes.trim() : null,
+        eventType: input.eventType,
+        allDay: input.allDay,
+        startAt,
+        endAt,
+        timezone: deviceTimeZone(),
+        rrule: recurrenceToRrule(input.recurrence),
+      };
+      const reminders = buildReminderRows(event.id, input.reminderOffsets);
 
-    await calendarRepo.insertEventWithReminders(db, event, reminders);
+      await calendarRepo.insertEventWithReminders(db, event, reminders);
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
 
-    const events = [...get().events, event];
-    const allReminders = [
-      ...get().reminders.filter((r) => r.eventId !== event.id),
-      ...reminders,
-    ];
-    const calendars = get().calendars.some((c) => c.id === calendar.id)
-      ? get().calendars
-      : [...get().calendars, calendar];
+      invalidateCalendarLoads();
+      const events = [...get().events, event];
+      const allReminders = [
+        ...get().reminders.filter((r) => r.eventId !== event.id),
+        ...reminders,
+      ];
+      const calendars = get().calendars.some((c) => c.id === calendar.id)
+        ? get().calendars
+        : [...get().calendars, calendar];
 
-    set({ events, reminders: allReminders, calendars });
-    return event.id;
+      set({ events, reminders: allReminders, calendars });
+      return event.id;
+    });
   },
 
   updateEvent: async (eventId, input) => {
-    const existing = get().events.find((e) => e.id === eventId);
-    if (!existing) throw new Error('Event not found');
-
-    const db = await getDatabase();
-    const calendarId = input.calendarId ?? existing.calendarId;
-    const { startAt, endAt } = serializeEventTimes(input.allDay, input.start, input.end);
-    const nextRrule = recurrenceToRrule(input.recurrence);
-
-    const scheduleChanged =
-      existing.allDay !== input.allDay ||
-      existing.startAt !== startAt ||
-      existing.endAt !== endAt ||
-      existing.rrule !== nextRrule;
-
-    const event: CalendarEvent = {
-      ...existing,
-      calendarId,
-      title: input.title.trim(),
-      notes: input.notes?.trim() ? input.notes.trim() : null,
-      eventType: input.eventType,
-      allDay: input.allDay,
-      startAt,
-      endAt,
-      timezone: existing.timezone || deviceTimeZone(),
-      rrule: nextRrule,
-    };
-    const reminders = buildReminderRows(event.id, input.reminderOffsets);
-
-    await calendarRepo.updateEventWithReminders(db, event, reminders);
-
-    let clearedByKey = get().clearedByKey;
-    if (scheduleChanged) {
-      await calendarRepo.deleteOccurrenceClearsForEvent(db, eventId);
-      clearedByKey = { ...clearedByKey };
-      for (const key of Object.keys(clearedByKey)) {
-        if (clearedByKey[key]?.eventId === eventId) delete clearedByKey[key];
+    const epochAtStart = getCalendarDataEpoch();
+    await withDbWriteLock(async () => {
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
       }
-    }
+      const existing = get().events.find((e) => e.id === eventId);
+      if (!existing) throw new Error('Event not found');
 
-    const events = get().events.map((e) => (e.id === eventId ? event : e));
-    const allReminders = [
-      ...get().reminders.filter((r) => r.eventId !== eventId),
-      ...reminders,
-    ];
-    set({ events, reminders: allReminders, clearedByKey });
+      const db = await getDatabase();
+      const calendarId = input.calendarId ?? existing.calendarId;
+      const { startAt, endAt } = serializeEventTimes(input.allDay, input.start, input.end);
+      const nextRrule = recurrenceToRrule(input.recurrence);
+
+      const scheduleChanged =
+        existing.allDay !== input.allDay ||
+        existing.startAt !== startAt ||
+        existing.endAt !== endAt ||
+        existing.rrule !== nextRrule;
+
+      const event: CalendarEvent = {
+        ...existing,
+        calendarId,
+        title: input.title.trim(),
+        notes: input.notes?.trim() ? input.notes.trim() : null,
+        eventType: input.eventType,
+        allDay: input.allDay,
+        startAt,
+        endAt,
+        timezone: existing.timezone || deviceTimeZone(),
+        rrule: nextRrule,
+      };
+      const reminders = buildReminderRows(event.id, input.reminderOffsets);
+
+      await calendarRepo.updateEventWithReminders(db, event, reminders);
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+
+      let clearedByKey = get().clearedByKey;
+      if (scheduleChanged) {
+        await calendarRepo.deleteOccurrenceClearsForEvent(db, eventId);
+        clearedByKey = { ...clearedByKey };
+        for (const key of Object.keys(clearedByKey)) {
+          if (clearedByKey[key]?.eventId === eventId) delete clearedByKey[key];
+        }
+      }
+
+      invalidateCalendarLoads();
+      const events = get().events.map((e) => (e.id === eventId ? event : e));
+      const allReminders = [
+        ...get().reminders.filter((r) => r.eventId !== eventId),
+        ...reminders,
+      ];
+      set({ events, reminders: allReminders, clearedByKey });
+    });
   },
 
   deleteEvent: async (eventId) => {
-    const db = await getDatabase();
-    await calendarRepo.deleteEvent(db, eventId);
-    const events = get().events.filter((e) => e.id !== eventId);
-    const reminders = get().reminders.filter((r) => r.eventId !== eventId);
-    const clearedByKey = { ...get().clearedByKey };
-    for (const key of Object.keys(clearedByKey)) {
-      if (clearedByKey[key]?.eventId === eventId) delete clearedByKey[key];
-    }
-    set({ events, reminders, clearedByKey });
+    const epochAtStart = getCalendarDataEpoch();
+    await withDbWriteLock(async () => {
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      const db = await getDatabase();
+      await calendarRepo.deleteEvent(db, eventId);
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      invalidateCalendarLoads();
+      const events = get().events.filter((e) => e.id !== eventId);
+      const reminders = get().reminders.filter((r) => r.eventId !== eventId);
+      const clearedByKey = { ...get().clearedByKey };
+      for (const key of Object.keys(clearedByKey)) {
+        if (clearedByKey[key]?.eventId === eventId) delete clearedByKey[key];
+      }
+      set({ events, reminders, clearedByKey });
+    });
   },
 
   clearOccurrence: async (occurrence) => {
-    const clear: CalendarOccurrenceClear = {
-      occurrenceKey: occurrence.occurrenceKey,
-      eventId: occurrence.eventId,
-      clearedAt: new Date().toISOString(),
-    };
-    const db = await getDatabase();
-    await calendarRepo.upsertOccurrenceClear(db, clear);
-    set({ clearedByKey: { ...get().clearedByKey, [clear.occurrenceKey]: clear } });
+    const epochAtStart = getCalendarDataEpoch();
+    await withDbWriteLock(async () => {
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      const clear: CalendarOccurrenceClear = {
+        occurrenceKey: occurrence.occurrenceKey,
+        eventId: occurrence.eventId,
+        clearedAt: new Date().toISOString(),
+      };
+      const db = await getDatabase();
+      await calendarRepo.upsertOccurrenceClear(db, clear);
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      invalidateCalendarLoads();
+      set({ clearedByKey: { ...get().clearedByKey, [clear.occurrenceKey]: clear } });
+    });
   },
 
   unclearedOccurrence: async (occurrenceKey) => {
-    const db = await getDatabase();
-    await calendarRepo.deleteOccurrenceClear(db, occurrenceKey);
-    const clearedByKey = { ...get().clearedByKey };
-    delete clearedByKey[occurrenceKey];
-    set({ clearedByKey });
+    const epochAtStart = getCalendarDataEpoch();
+    await withDbWriteLock(async () => {
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      const db = await getDatabase();
+      await calendarRepo.deleteOccurrenceClear(db, occurrenceKey);
+      if (epochAtStart !== getCalendarDataEpoch()) {
+        throw new Error('Data was replaced; try again');
+      }
+      invalidateCalendarLoads();
+      const clearedByKey = { ...get().clearedByKey };
+      delete clearedByKey[occurrenceKey];
+      set({ clearedByKey });
+    });
   },
 
   isOccurrenceCleared: (occurrenceKey) => get().clearedByKey[occurrenceKey] != null,

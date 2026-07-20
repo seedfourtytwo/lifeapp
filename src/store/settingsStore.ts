@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { withDbWriteLock } from '../db/writeLock';
 import * as settingsRepo from '../db/repositories/settingsRepository';
 import {
   APP_SETTING_KEYS,
@@ -8,9 +9,28 @@ import {
 } from '../protocol/appSettings';
 import { isThemeMode, type ThemeMode } from '../theme/types';
 import { defaultBubblePosition } from '../weather/bubblePosition';
+import { getEventDataEpoch } from './eventStore';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
 const DEFAULT_BUBBLE = defaultBubblePosition();
+
+let settingsLoadGeneration = 0;
+
+function invalidateSettingsLoads(): void {
+  settingsLoadGeneration += 1;
+}
+
+async function withGuardedSettingsWrite<T>(fn: () => Promise<T>): Promise<T> {
+  const epochAtStart = getEventDataEpoch();
+  return withDbWriteLock(async () => {
+    if (epochAtStart !== getEventDataEpoch()) {
+      throw new Error('Data was replaced; try again');
+    }
+    const result = await fn();
+    invalidateSettingsLoads();
+    return result;
+  });
+}
 
 function parseBool(value: string | null): boolean {
   return value === 'true';
@@ -68,6 +88,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   isLoaded: false,
 
   load: async () => {
+    const generation = ++settingsLoadGeneration;
     try {
       const db = await getDatabase();
       // Sequential reads — concurrent prepareAsync on the same DB can release statements early.
@@ -110,6 +131,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           ? storedLocationMode
           : 'manual';
 
+      if (generation !== settingsLoadGeneration) return;
+
       set({
         themeMode,
         habitRemindersEnabled: parseBool(storedReminders),
@@ -125,60 +148,73 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       });
     } catch (error) {
       console.error('Failed to load settings', error);
+      if (generation !== settingsLoadGeneration) return;
       set({ isLoaded: true });
     }
   },
 
   setThemeMode: async (mode) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, mode);
-    set({ themeMode: mode });
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, mode);
+      set({ themeMode: mode });
+    });
   },
 
   setHabitRemindersEnabled: async (enabled) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(
-      db,
-      APP_SETTING_KEYS.habitRemindersEnabled,
-      enabled ? 'true' : 'false',
-    );
-    set({ habitRemindersEnabled: enabled });
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(
+        db,
+        APP_SETTING_KEYS.habitRemindersEnabled,
+        enabled ? 'true' : 'false',
+      );
+      set({ habitRemindersEnabled: enabled });
+    });
   },
 
   setWeatherWidgetEnabled: async (enabled) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(
-      db,
-      APP_SETTING_KEYS.weatherWidgetEnabled,
-      enabled ? 'true' : 'false',
-    );
-    set({ weatherWidgetEnabled: enabled });
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(
+        db,
+        APP_SETTING_KEYS.weatherWidgetEnabled,
+        enabled ? 'true' : 'false',
+      );
+      set({ weatherWidgetEnabled: enabled });
+    });
   },
 
   setCalendarWidgetEnabled: async (enabled) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(
-      db,
-      APP_SETTING_KEYS.calendarWidgetEnabled,
-      enabled ? 'true' : 'false',
-    );
-    set({ calendarWidgetEnabled: enabled });
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(
+        db,
+        APP_SETTING_KEYS.calendarWidgetEnabled,
+        enabled ? 'true' : 'false',
+      );
+      set({ calendarWidgetEnabled: enabled });
+    });
   },
 
   setWeatherLocationMode: async (mode) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLocationMode, mode);
-    set({ weatherLocationMode: mode });
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLocationMode, mode);
+      set({ weatherLocationMode: mode });
+    });
   },
 
   setWeatherPlace: async ({ placeName, lat, lon }) => {
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherPlaceName, placeName);
-      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLat, String(lat));
-      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLon, String(lon));
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await db.withTransactionAsync(async () => {
+        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherPlaceName, placeName);
+        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLat, String(lat));
+        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLon, String(lon));
+      });
+      set({ weatherPlaceName: placeName, weatherLat: lat, weatherLon: lon });
     });
-    set({ weatherPlaceName: placeName, weatherLat: lat, weatherLon: lon });
   },
 
   setWeatherBubblePosition: async (x, y) => {
@@ -187,9 +223,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     // Optimistic UI — persist after so dragging stays smooth
     set({ weatherBubbleX: clampedX, weatherBubbleY: clampedY });
     try {
-      const db = await getDatabase();
-      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleX, String(clampedX));
-      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleY, String(clampedY));
+      await withGuardedSettingsWrite(async () => {
+        const db = await getDatabase();
+        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleX, String(clampedX));
+        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleY, String(clampedY));
+      });
     } catch (error) {
       console.error('Failed to save weather bubble position', error);
     }

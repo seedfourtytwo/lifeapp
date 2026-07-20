@@ -124,7 +124,8 @@ export default function TrackerEditorDialog({
     <Portal>
       <Modal
         visible={visible}
-        onDismiss={closeEditor}
+        dismissable={!saving && !deleting}
+        onDismiss={saving || deleting ? undefined : closeEditor}
         contentContainerStyle={[
           styles.modalContainer,
           { width: sheetWidth, maxHeight: sheetMaxHeight },

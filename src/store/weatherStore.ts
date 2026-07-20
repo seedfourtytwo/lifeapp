@@ -1,16 +1,20 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { withDbWriteLock } from '../db/writeLock';
 import * as weatherRepo from '../db/repositories/weatherRepository';
 import { toDateString } from '../protocol';
 import { useSettingsStore } from './settingsStore';
+import { getEventDataEpoch } from './eventStore';
 import {
   classifyWeatherFetchError,
   weatherErrorMessage,
 } from '../weather/errors';
 import {
+  clearCachedForecast,
   loadCachedForecast,
   saveCachedForecast,
 } from '../weather/forecastCache';
+import { bumpWeatherDataEpoch, getWeatherDataEpoch } from '../weather/weatherEpoch';
 import {
   getDeviceCoords,
   isDeviceLocationAvailable,
@@ -67,32 +71,48 @@ async function resolveCoords(refreshGps: boolean): Promise<WeatherCoords | null>
   return saved;
 }
 
-async function persistDailySnapshot(forecast: WeatherForecast): Promise<void> {
+let refreshSeq = 0;
+
+async function persistDailySnapshot(
+  forecast: WeatherForecast,
+  epochAtStart: number,
+  weatherEpochAtStart: number,
+  seq: number,
+): Promise<boolean> {
   const today = toDateString(new Date());
   const todayDaily = forecast.daily.find((d) => d.date === today) ?? forecast.daily[0];
-  if (!todayDaily) return;
+  if (!todayDaily) return true;
 
   try {
-    const db = await getDatabase();
-    await weatherRepo.upsertWeatherDaily(db, {
-      date: todayDaily.date,
-      tempC: todayDaily.tempMeanC,
-      tempMinC: todayDaily.tempMinC,
-      tempMaxC: todayDaily.tempMaxC,
-      weatherCode: todayDaily.weatherCode,
-      condition: todayDaily.condition,
-      precipProbabilityPct: todayDaily.precipProbabilityPct,
-      lat: forecast.lat,
-      lon: forecast.lon,
-      fetchedAt: forecast.fetchedAt,
+    return await withDbWriteLock(async () => {
+      if (
+        epochAtStart !== getEventDataEpoch() ||
+        weatherEpochAtStart !== getWeatherDataEpoch() ||
+        seq !== refreshSeq
+      ) {
+        return false;
+      }
+      const db = await getDatabase();
+      await weatherRepo.upsertWeatherDaily(db, {
+        date: todayDaily.date,
+        tempC: todayDaily.tempMeanC,
+        tempMinC: todayDaily.tempMinC,
+        tempMaxC: todayDaily.tempMaxC,
+        weatherCode: todayDaily.weatherCode,
+        condition: todayDaily.condition,
+        precipProbabilityPct: todayDaily.precipProbabilityPct,
+        lat: forecast.lat,
+        lon: forecast.lon,
+        fetchedAt: forecast.fetchedAt,
+      });
+      return true;
     });
   } catch (error) {
     // Snapshot is best-effort — don't hide a successful forecast
     console.error('Failed to persist weather_daily snapshot', error);
+    return false;
   }
 }
-
-let refreshSeq = 0;
 
 export const useWeatherStore = create<WeatherState>((set, get) => ({
   forecast: null,
@@ -102,6 +122,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
   lastFetchAt: null,
 
   clear: () => {
+    bumpWeatherDataEpoch();
+    refreshSeq += 1;
     set({
       forecast: null,
       loading: false,
@@ -123,6 +145,7 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
     const { weatherWidgetEnabled } = useSettingsStore.getState();
     if (!weatherWidgetEnabled) {
       get().clear();
+      void clearCachedForecast();
       return;
     }
 
@@ -143,6 +166,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
     }
 
     const seq = ++refreshSeq;
+    const epochAtStart = getEventDataEpoch();
+    const weatherEpochAtStart = getWeatherDataEpoch();
     set({ loading: true });
 
     try {
@@ -158,10 +183,40 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       }
 
       const next = await fetchForecast(coords.lat, coords.lon);
-      if (seq !== refreshSeq) return;
+      if (
+        seq !== refreshSeq ||
+        epochAtStart !== getEventDataEpoch() ||
+        weatherEpochAtStart !== getWeatherDataEpoch()
+      ) {
+        return;
+      }
 
-      await saveCachedForecast(next);
-      await persistDailySnapshot(next);
+      const cached = await saveCachedForecast(next, {
+        epochAtStart,
+        weatherEpochAtStart,
+      });
+      if (
+        !cached ||
+        seq !== refreshSeq ||
+        epochAtStart !== getEventDataEpoch() ||
+        weatherEpochAtStart !== getWeatherDataEpoch()
+      ) {
+        return;
+      }
+      const snapOk = await persistDailySnapshot(
+        next,
+        epochAtStart,
+        weatherEpochAtStart,
+        seq,
+      );
+      if (
+        !snapOk ||
+        seq !== refreshSeq ||
+        epochAtStart !== getEventDataEpoch() ||
+        weatherEpochAtStart !== getWeatherDataEpoch()
+      ) {
+        return;
+      }
 
       set({
         forecast: next,
@@ -175,9 +230,9 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       if (seq !== refreshSeq) return;
 
       const kind = classifyWeatherFetchError(error);
-      const cached = get().forecast ?? (await loadCachedForecast());
+      const cachedForecast = get().forecast ?? (await loadCachedForecast());
       set({
-        forecast: cached,
+        forecast: cachedForecast,
         loading: false,
         offline: kind === 'offline',
         error: weatherErrorMessage(kind),

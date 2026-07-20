@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, FAB, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -169,8 +169,15 @@ export default function CalendarScreen() {
                 >
                   <Pressable
                     onPress={() => {
-                      if (cleared) void unclearedOccurrence(occ.occurrenceKey);
-                      else void clearOccurrence(occ);
+                      const action = cleared
+                        ? unclearedOccurrence(occ.occurrenceKey)
+                        : clearOccurrence(occ);
+                      void action.catch((error) => {
+                        Alert.alert(
+                          cleared ? 'Could not restore' : 'Could not mark done',
+                          error instanceof Error ? error.message : 'Something went wrong',
+                        );
+                      });
                     }}
                     hitSlop={6}
                     accessibilityRole="checkbox"

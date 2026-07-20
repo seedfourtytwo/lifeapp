@@ -178,6 +178,7 @@ export default function TrackersScreen() {
   );
 
   const handleSave = async (data: TrackerEditorSaveData) => {
+    if (saving) return;
     const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {

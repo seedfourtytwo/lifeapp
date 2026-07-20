@@ -48,13 +48,23 @@ async function refreshForNewCalendarDay(previousDate: string): Promise<void> {
   await refreshAllDailyData();
 }
 
+const ROLLOVER_RETRY_MS = 5_000;
+
 /** Reload habits and counters when the app calendar day changes or the app returns active. */
 export function useDayRolloverRefresh(): void {
   const dateRef = useRef(currentAppCalendarDate());
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
 
   useEffect(() => {
+    const clearRetry = () => {
+      if (retryRef.current) {
+        clearTimeout(retryRef.current);
+        retryRef.current = null;
+      }
+    };
+
     const handlePotentialRollover = async () => {
       if (!hasAppCalendarDayChanged(dateRef.current) || inFlightRef.current) {
         return;
@@ -65,8 +75,14 @@ export function useDayRolloverRefresh(): void {
         await refreshForNewCalendarDay(previousDate);
         // Only advance after success so AppState active can retry a failed rollover.
         dateRef.current = currentAppCalendarDate();
+        clearRetry();
       } catch (error) {
-        console.warn('Day rollover refresh failed; will retry on next active', error);
+        console.warn('Day rollover refresh failed; scheduling retry', error);
+        clearRetry();
+        retryRef.current = setTimeout(() => {
+          retryRef.current = null;
+          void handlePotentialRollover();
+        }, ROLLOVER_RETRY_MS);
       } finally {
         inFlightRef.current = false;
       }
@@ -95,6 +111,7 @@ export function useDayRolloverRefresh(): void {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      clearRetry();
       subscription.remove();
     };
   }, []);

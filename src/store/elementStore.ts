@@ -19,11 +19,33 @@ import {
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 import {
   abortHabitTimerRestore,
+  awaitElementEventWrites,
   awaitHabitTimerStop,
+  getEventDataEpoch,
   useEventStore,
 } from './eventStore';
-import { clearWriteEpoch } from './writeEpoch';
+import { bumpWriteEpoch, clearWriteEpoch } from './writeEpoch';
+import { withDbWriteLock } from '../db/writeLock';
 
+let elementLoadGeneration = 0;
+
+function invalidateElementLoads(): void {
+  elementLoadGeneration += 1;
+}
+
+async function withGuardedElementWrite<T>(fn: () => Promise<T>): Promise<T> {
+  const epochAtStart = getEventDataEpoch();
+  return withDbWriteLock(async () => {
+    if (epochAtStart !== getEventDataEpoch()) {
+      throw new Error('Data was replaced; try again');
+    }
+    const result = await fn();
+    if (epochAtStart !== getEventDataEpoch()) {
+      throw new Error('Data was replaced; try again');
+    }
+    return result;
+  });
+}
 async function persistKindOrder(
   kind: 'habit' | 'counter',
   nextKindOrder: string[],
@@ -39,14 +61,17 @@ async function persistKindOrder(
   );
   if (updates.length === 0) return;
 
-  const db = await getDatabase();
-  await dashboardRepo.setDashboardSortOrders(db, updates);
-  // Drop pins for elements archived while reorder was in flight.
-  const activeIds = new Set(
-    elements.filter((element) => element.archivedAt == null).map((element) => element.id),
-  );
-  set({
-    dashboard: nextDashboard.filter((item) => activeIds.has(item.elementId)),
+  await withGuardedElementWrite(async () => {
+    const db = await getDatabase();
+    await dashboardRepo.setDashboardSortOrders(db, updates);
+    // Drop pins for elements archived while reorder was in flight.
+    const activeIds = new Set(
+      elements.filter((element) => element.archivedAt == null).map((element) => element.id),
+    );
+    invalidateElementLoads();
+    set({
+      dashboard: nextDashboard.filter((item) => activeIds.has(item.elementId)),
+    });
   });
 }
 
@@ -168,15 +193,21 @@ export const useElementStore = create<ElementState>((set, get) => ({
   error: null,
 
   load: async () => {
+    const generation = ++elementLoadGeneration;
     set({ isLoading: true, error: null });
     try {
-      const db = await getDatabase();
-      // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
-      const elements = await elementRepo.getAllElements(db);
-      const dashboardRows = await dashboardRepo.getDashboardItems(db);
-      const dashboard = await reconcileDashboardPlacements(db, elements, dashboardRows);
-      set({ elements, dashboard, isLoading: false });
+      await withDbWriteLock(async () => {
+        if (generation !== elementLoadGeneration) return;
+        const db = await getDatabase();
+        // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+        const elements = await elementRepo.getAllElements(db);
+        const dashboardRows = await dashboardRepo.getDashboardItems(db);
+        const dashboard = await reconcileDashboardPlacements(db, elements, dashboardRows);
+        if (generation !== elementLoadGeneration) return;
+        set({ elements, dashboard, isLoading: false });
+      });
     } catch (error) {
+      if (generation !== elementLoadGeneration) return;
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to load elements',
@@ -185,121 +216,146 @@ export const useElementStore = create<ElementState>((set, get) => ({
   },
 
   createCounter: async (input) => {
-    const db = await getDatabase();
-    const config = buildCounterConfig(counterHandler.defaultConfig, input);
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const config = buildCounterConfig(counterHandler.defaultConfig, input);
 
-    const element: ElementDefinition = {
-      id: newId(),
-      kind: 'counter',
-      name: input.name.trim(),
-      config,
-      protocolVersion: PROTOCOL_VERSION,
-      createdAt: new Date().toISOString(),
-      archivedAt: null,
-    };
+      const element: ElementDefinition = {
+        id: newId(),
+        kind: 'counter',
+        name: input.name.trim(),
+        config,
+        protocolVersion: PROTOCOL_VERSION,
+        createdAt: new Date().toISOString(),
+        archivedAt: null,
+      };
 
-    const dashboardItem = await insertActiveElement(db, element);
-    applyElementMutation(set, {
-      elements: [...get().elements, element],
-      dashboard: [...get().dashboard, dashboardItem],
+      const dashboardItem = await insertActiveElement(db, element);
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: [...get().elements, element],
+        dashboard: [...get().dashboard, dashboardItem],
+      });
     });
   },
 
   updateCounter: async (id, input) => {
-    const db = await getDatabase();
-    const existing = get().elements.find((e) => e.id === id);
-    if (!existing || existing.kind !== 'counter') {
-      throw new Error('Counter element not found');
-    }
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const existing = get().elements.find((e) => e.id === id);
+      if (!existing || existing.kind !== 'counter') {
+        throw new Error('Counter element not found');
+      }
 
-    const config = buildCounterConfig(existing.config as Partial<CounterConfig>, input);
+      const config = buildCounterConfig(existing.config as Partial<CounterConfig>, input);
 
-    await elementRepo.updateElement(
-      db,
-      id,
-      {
-        name: input.name.trim(),
-        config,
-      },
-      'counter',
-    );
-    applyElementMutation(set, {
-      elements: get().elements.map((element) =>
-        element.id === id
-          ? { ...element, name: input.name.trim(), config }
-          : element,
-      ),
+      await elementRepo.updateElement(
+        db,
+        id,
+        {
+          name: input.name.trim(),
+          config,
+        },
+        'counter',
+      );
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: get().elements.map((element) =>
+          element.id === id
+            ? { ...element, name: input.name.trim(), config }
+            : element,
+        ),
+      });
     });
   },
 
   createHabit: async (input) => {
-    const db = await getDatabase();
-    const id = newId();
-    const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
-    const config = buildHabitConfig({ ...input, timerSound });
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const id = newId();
+      const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
+      const config = buildHabitConfig({ ...input, timerSound });
 
-    const element: ElementDefinition = {
-      id,
-      kind: 'habit',
-      name: input.name.trim(),
-      config,
-      protocolVersion: PROTOCOL_VERSION,
-      createdAt: new Date().toISOString(),
-      archivedAt: null,
-    };
+      const element: ElementDefinition = {
+        id,
+        kind: 'habit',
+        name: input.name.trim(),
+        config,
+        protocolVersion: PROTOCOL_VERSION,
+        createdAt: new Date().toISOString(),
+        archivedAt: null,
+      };
 
-    const dashboardItem = await insertActiveElement(db, element);
-    applyElementMutation(set, {
-      elements: [...get().elements, element],
-      dashboard: [...get().dashboard, dashboardItem],
+      const dashboardItem = await insertActiveElement(db, element);
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: [...get().elements, element],
+        dashboard: [...get().dashboard, dashboardItem],
+      });
     });
   },
 
   updateHabit: async (id, input) => {
-    const db = await getDatabase();
-    const existing = get().elements.find((e) => e.id === id);
-    if (!existing || existing.kind !== 'habit') {
-      throw new Error('Habit not found');
-    }
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const existing = get().elements.find((e) => e.id === id);
+      if (!existing || existing.kind !== 'habit') {
+        throw new Error('Habit not found');
+      }
 
-    const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
-    const config = buildHabitConfig({ ...input, timerSound });
+      const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
+      const config = buildHabitConfig({ ...input, timerSound });
 
-    await elementRepo.updateElement(
-      db,
-      id,
-      { name: input.name.trim(), config },
-      'habit',
-    );
-    applyElementMutation(set, {
-      elements: get().elements.map((element) =>
-        element.id === id
-          ? { ...element, name: input.name.trim(), config }
-          : element,
-      ),
+      await elementRepo.updateElement(
+        db,
+        id,
+        { name: input.name.trim(), config },
+        'habit',
+      );
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: get().elements.map((element) =>
+          element.id === id
+            ? { ...element, name: input.name.trim(), config }
+            : element,
+        ),
+      });
     });
   },
 
   archiveElement: async (elementId) => {
-    const db = await getDatabase();
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt != null) return;
 
+    // Invalidate in-flight counter/toggle writes, then drain them before archive.
+    bumpWriteEpoch(elementId);
+    await awaitElementEventWrites(elementId);
+
     const archivedAt = new Date().toISOString();
 
-    try {
-      await db.withTransactionAsync(async () => {
-        await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
-        await dashboardRepo.deleteDashboardItemForElement(db, elementId);
-      });
-    } catch (error) {
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to archive element',
-      );
-    }
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      try {
+        await db.withTransactionAsync(async () => {
+          await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
+          await dashboardRepo.deleteDashboardItemForElement(db, elementId);
+        });
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Failed to archive element',
+        );
+      }
+    });
 
-    await clearHabitRuntime(elementId);
+    try {
+      await clearHabitRuntime(elementId);
+    } catch (error) {
+      console.warn('Timer teardown after archive failed', error);
+      abortHabitTimerRestore(elementId);
+      useEventStore.getState().discardHabitTimer(elementId);
+    }
     clearWriteEpoch(elementId);
+    invalidateElementLoads();
     set({
       elements: get().elements.map((element) =>
         element.id === elementId ? { ...element, archivedAt } : element,
@@ -309,50 +365,66 @@ export const useElementStore = create<ElementState>((set, get) => ({
   },
 
   restoreElement: async (elementId) => {
-    const db = await getDatabase();
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt == null) return;
 
     let dashboardItem: DashboardItem | null = null;
-    try {
-      await db.withTransactionAsync(async () => {
-        await elementRepo.setElementArchivedAt(db, elementId, null);
-        const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
-        if (!alreadyActive) {
-          dashboardItem = {
-            id: newId(),
-            elementId,
-            sortOrder: await dashboardRepo.getNextSortOrder(db),
-          };
-          await dashboardRepo.insertDashboardItem(db, dashboardItem);
-        }
-      });
-    } catch (error) {
-      throw new Error(
-        error instanceof Error ? error.message : 'Failed to restore element',
-      );
-    }
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      try {
+        await db.withTransactionAsync(async () => {
+          await elementRepo.setElementArchivedAt(db, elementId, null);
+          const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
+          if (!alreadyActive) {
+            dashboardItem = {
+              id: newId(),
+              elementId,
+              sortOrder: await dashboardRepo.getNextSortOrder(db),
+            };
+            await dashboardRepo.insertDashboardItem(db, dashboardItem);
+          } else {
+            const existingPin = (await dashboardRepo.getDashboardItems(db)).find(
+              (item) => item.elementId === elementId,
+            );
+            dashboardItem = existingPin ?? null;
+          }
+        });
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Failed to restore element',
+        );
+      }
+    });
 
+    invalidateElementLoads();
     set({
       elements: get().elements.map((element) =>
         element.id === elementId ? { ...element, archivedAt: null } : element,
       ),
       dashboard: dashboardItem
-        ? [...get().dashboard, dashboardItem]
+        ? [
+            ...get().dashboard.filter((item) => item.elementId !== elementId),
+            dashboardItem,
+          ]
         : get().dashboard,
     });
   },
 
   deleteElement: async (id) => {
-    const db = await getDatabase();
     const existing = get().elements.find((e) => e.id === id);
     if (!existing) {
       throw new Error('Element not found');
     }
+    bumpWriteEpoch(id);
+    await awaitElementEventWrites(id);
     // Finalize/abort timer before CASCADE delete so stop can't rehydrate a ghost.
     await clearHabitRuntime(id);
-    await elementRepo.deleteElement(db, id);
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      await elementRepo.deleteElement(db, id);
+    });
     clearWriteEpoch(id);
+    invalidateElementLoads();
     set({
       elements: get().elements.filter((element) => element.id !== id),
       dashboard: get().dashboard.filter((item) => item.elementId !== id),

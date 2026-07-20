@@ -25,8 +25,10 @@ import {
 import {
   bumpWriteEpoch,
   captureWriteEpochs,
+  getWriteEpoch,
   mergeUnchangedEntries,
 } from './writeEpoch';
+import { withDbWriteLock } from '../db/writeLock';
 
 export type { HabitStreakInput };
 
@@ -38,6 +40,8 @@ interface EventState {
   activeTimerSessions: Record<string, ActiveTimerSession>;
   /** True after at least one successful habit day-state load this process. */
   dayStateReady: boolean;
+  /** True after at least one successful counter totals load this process. */
+  counterTotalsReady: boolean;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;
@@ -86,10 +90,39 @@ export function bumpEventDataEpoch(): void {
   dataEpoch += 1;
 }
 
+export function getEventDataEpoch(): number {
+  return dataEpoch;
+}
+
 export async function awaitHabitTimerStops(): Promise<void> {
   const pending = [...habitTimerStopPromises.values()];
   if (pending.length === 0) return;
   await Promise.allSettled(pending);
+}
+
+/** Drain in-flight counter writes and habit toggles before a destructive wipe. */
+export async function awaitPendingEventWrites(): Promise<void> {
+  await awaitHabitTimerStops();
+  const counterPending = [...counterWriteChains.values()];
+  if (counterPending.length > 0) {
+    await Promise.allSettled(counterPending);
+  }
+  // Toggles are short; wait a tick for in-flight Set members by polling briefly.
+  const deadline = Date.now() + 2_000;
+  while (habitToggleInFlight.size > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+/** Drain pending event writes for one element (archive/delete). */
+export async function awaitElementEventWrites(elementId: string): Promise<void> {
+  await awaitHabitTimerStop(elementId);
+  const counterPending = counterWriteChains.get(elementId);
+  if (counterPending) await Promise.allSettled([counterPending]);
+  const deadline = Date.now() + 2_000;
+  while (habitToggleInFlight.has(elementId) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
 }
 
 export async function awaitHabitTimerStop(elementId: string): Promise<void> {
@@ -102,9 +135,16 @@ export function abortHabitTimerRestore(elementId: string): void {
   habitTimerStopAbortRestore.add(elementId);
 }
 
-function enqueueCounterWrite(elementId: string, work: () => Promise<void>): Promise<void> {
+function enqueueCounterWrite(
+  elementId: string,
+  work: (dataEpochAtStart: number, writeEpochAtStart: number) => Promise<void>,
+): Promise<void> {
   const previous = counterWriteChains.get(elementId) ?? Promise.resolve();
-  const next = previous.catch(() => undefined).then(work);
+  const next = previous.catch(() => undefined).then(async () => {
+    const dataEpochAtStart = dataEpoch;
+    const writeEpochAtStart = getWriteEpoch(elementId);
+    await work(dataEpochAtStart, writeEpochAtStart);
+  });
   counterWriteChains.set(
     elementId,
     next.then(
@@ -113,6 +153,12 @@ function enqueueCounterWrite(elementId: string, work: () => Promise<void>): Prom
     ),
   );
   return next;
+}
+
+function eventWriteStillValid(dataEpochAtStart: number, elementId: string, writeEpochAtStart: number): boolean {
+  return (
+    dataEpochAtStart === dataEpoch && getWriteEpoch(elementId) === writeEpochAtStart
+  );
 }
 
 async function refreshTotal(
@@ -168,9 +214,13 @@ export const useEventStore = create<EventState>((set, get) => ({
   habitFailureStreaks: {},
   activeTimerSessions: {},
   dayStateReady: false,
+  counterTotalsReady: false,
 
   loadCounterTotals: async (elementIds) => {
-    if (elementIds.length === 0) return;
+    if (elementIds.length === 0) {
+      set({ counterTotalsReady: true });
+      return;
+    }
 
     const generation = ++counterTotalLoadGeneration;
     const epochs = captureWriteEpochs(elementIds);
@@ -189,6 +239,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         ...get().dailyTotals,
         ...mergeUnchangedEntries(todayTotals, epochs),
       },
+      counterTotalsReady: true,
     });
   },
 
@@ -267,57 +318,91 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   logEvent: (elementId, value, meta) =>
-    enqueueCounterWrite(elementId, async () => {
-      bumpWriteEpoch(elementId);
-      const db = await getDatabase();
-      const now = new Date();
-      const date = toDateString(now);
+    enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
+      if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
+      const ourWriteEpoch = bumpWriteEpoch(elementId);
+      await withDbWriteLock(async () => {
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
+        }
+        const now = new Date();
+        const date = toDateString(now);
+        await eventRepo.insertEvent(await getDatabase(), {
+          id: newId(),
+          elementId,
+          timestamp: now.toISOString(),
+          date,
+          value,
+          meta,
+          protocolVersion: PROTOCOL_VERSION,
+        });
 
-      await eventRepo.insertEvent(db, {
-        id: newId(),
-        elementId,
-        timestamp: now.toISOString(),
-        date,
-        value,
-        meta,
-        protocolVersion: PROTOCOL_VERSION,
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
+        }
+        await refreshTotal(elementId, date, set, get);
       });
-
-      await refreshTotal(elementId, date, set, get);
     }),
 
   setDailyTotal: (elementId, total, date = todayDate()) =>
-    enqueueCounterWrite(elementId, async () => {
+    enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
       if (total < 0 || !Number.isFinite(total)) {
         throw new Error('Total must be a non-negative number');
       }
+      if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
 
-      bumpWriteEpoch(elementId);
-      const db = await getDatabase();
-      await db.withTransactionAsync(async () => {
-        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-
-        if (total > 0) {
-          const now = new Date();
-          await eventRepo.insertEvent(db, {
-            id: newId(),
-            elementId,
-            timestamp: now.toISOString(),
-            date,
-            value: total,
-            meta: { source: 'manual' },
-            protocolVersion: PROTOCOL_VERSION,
-          });
+      const ourWriteEpoch = bumpWriteEpoch(elementId);
+      await withDbWriteLock(async () => {
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
         }
-      });
+        const db = await getDatabase();
+        await db.withTransactionAsync(async () => {
+          await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
 
-      await refreshTotal(elementId, date, set, get);
+          if (total > 0) {
+            const now = new Date();
+            await eventRepo.insertEvent(db, {
+              id: newId(),
+              elementId,
+              timestamp: now.toISOString(),
+              date,
+              value: total,
+              meta: { source: 'manual' },
+              protocolVersion: PROTOCOL_VERSION,
+            });
+          }
+        });
+
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
+        }
+        await refreshTotal(elementId, date, set, get);
+      });
     }),
 
   toggleHabit: async (elementId, config, date = todayDate()) => {
     if (habitToggleInFlight.has(elementId)) return;
     habitToggleInFlight.add(elementId);
-    bumpWriteEpoch(elementId);
+    const dataEpochAtStart = dataEpoch;
+    const writeEpochAtStart = getWriteEpoch(elementId);
+    if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) {
+      habitToggleInFlight.delete(elementId);
+      return;
+    }
+    const ourWriteEpoch = bumpWriteEpoch(elementId);
 
     const done = get().habitDoneToday[elementId] ?? false;
     applyTodayMaps(
@@ -329,33 +414,52 @@ export const useEventStore = create<EventState>((set, get) => ({
     );
 
     try {
-      const db = await getDatabase();
-      if (done) {
-        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-      } else {
-        const now = new Date();
-        await eventRepo.insertEvent(db, {
-          id: newId(),
-          elementId,
-          timestamp: now.toISOString(),
-          date,
-          value: 1,
-          meta: { source: 'habit_tick' },
-          protocolVersion: PROTOCOL_VERSION,
-        });
-        void playHabitCompleteHaptic();
-      }
+      await withDbWriteLock(async () => {
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
+        }
+        const db = await getDatabase();
+        if (done) {
+          await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+        } else {
+          const now = new Date();
+          await eventRepo.insertEvent(db, {
+            id: newId(),
+            elementId,
+            timestamp: now.toISOString(),
+            date,
+            value: 1,
+            meta: { source: 'habit_tick' },
+            protocolVersion: PROTOCOL_VERSION,
+          });
+          void playHabitCompleteHaptic();
+        }
 
-      const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
-      applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch
+        ) {
+          return;
+        }
+        const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+        applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+      });
     } catch (error) {
-      applyTodayMaps(
-        elementId,
-        date,
-        { habitDone: done, dailyTotal: done ? 1 : 0 },
-        set,
-        get,
-      );
+      if (
+        dataEpochAtStart === dataEpoch &&
+        getWriteEpoch(elementId) === ourWriteEpoch
+      ) {
+        applyTodayMaps(
+          elementId,
+          date,
+          { habitDone: done, dailyTotal: done ? 1 : 0 },
+          set,
+          get,
+        );
+      }
       throw error;
     } finally {
       habitToggleInFlight.delete(elementId);
@@ -363,6 +467,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   startHabitTimer: (elementId) => {
+    if (get().activeTimerSessions[elementId]) return;
     set({
       activeTimerSessions: {
         ...get().activeTimerSessions,
@@ -417,10 +522,10 @@ export const useEventStore = create<EventState>((set, get) => ({
       const session = get().activeTimerSessions[elementId];
       if (!session) return;
 
-      const epochAtStart = dataEpoch;
+      const dataEpochAtStart = dataEpoch;
       // Persist onto the day the timer started — not the day Done/rollover ran.
       const persistDate = session.calendarDate;
-      bumpWriteEpoch(elementId);
+      const ourWriteEpoch = bumpWriteEpoch(elementId);
 
       const endedAt = new Date();
       const stopOpts = habitTimerStopOptions.get(elementId);
@@ -435,50 +540,71 @@ export const useEventStore = create<EventState>((set, get) => ({
       applyTodayMaps(elementId, persistDate, { dailyTotal: nextTotal }, set, get);
 
       try {
-        if (epochAtStart !== dataEpoch) return;
+        await withDbWriteLock(async () => {
+          if (
+            dataEpochAtStart !== dataEpoch ||
+            getWriteEpoch(elementId) !== ourWriteEpoch
+          ) {
+            return;
+          }
 
-        const db = await getDatabase();
-        const existingEvents = await eventRepo.getEventsForElementOnDate(
-          db,
-          elementId,
-          persistDate,
-        );
-        const nextEvents = [...existingEvents, { value, meta }];
-        const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
-        const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
+          const db = await getDatabase();
+          const existingEvents = await eventRepo.getEventsForElementOnDate(
+            db,
+            elementId,
+            persistDate,
+          );
+          const nextEvents = [...existingEvents, { value, meta }];
+          const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
+          const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
 
-        if (epochAtStart !== dataEpoch) return;
+          if (
+            dataEpochAtStart !== dataEpoch ||
+            getWriteEpoch(elementId) !== ourWriteEpoch
+          ) {
+            return;
+          }
 
-        await eventRepo.insertEvent(db, {
-          id: newId(),
-          elementId,
-          timestamp: endedAt.toISOString(),
-          date: persistDate,
-          value,
-          meta,
-          protocolVersion: PROTOCOL_VERSION,
+          await eventRepo.insertEvent(db, {
+            id: newId(),
+            elementId,
+            timestamp: endedAt.toISOString(),
+            date: persistDate,
+            value,
+            meta,
+            protocolVersion: PROTOCOL_VERSION,
+          });
+
+          if (
+            dataEpochAtStart !== dataEpoch ||
+            getWriteEpoch(elementId) !== ourWriteEpoch
+          ) {
+            return;
+          }
+
+          // Target-crossing chime plays live in HabitTimerWidget; only chime here for play-once end.
+          if (stopOpts?.trackCompleted) {
+            void playHabitCompleteChime();
+          }
+          if (!wasComplete && isComplete) {
+            void playHabitCompleteHaptic();
+          }
+
+          const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+          applyTodayMaps(
+            elementId,
+            persistDate,
+            { dailyTotal: nextTotal, habitDone: isComplete, streak, failureStreak },
+            set,
+            get,
+          );
         });
-
-        if (epochAtStart !== dataEpoch) return;
-
-        // Target-crossing chime plays live in HabitTimerWidget; only chime here for play-once end.
-        if (stopOpts?.trackCompleted) {
-          void playHabitCompleteChime();
-        }
-        if (!wasComplete && isComplete) {
-          void playHabitCompleteHaptic();
-        }
-
-        const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
-        applyTodayMaps(
-          elementId,
-          persistDate,
-          { dailyTotal: nextTotal, habitDone: isComplete, streak, failureStreak },
-          set,
-          get,
-        );
       } catch (error) {
-        if (epochAtStart !== dataEpoch || habitTimerStopAbortRestore.has(elementId)) {
+        if (
+          dataEpochAtStart !== dataEpoch ||
+          getWriteEpoch(elementId) !== ourWriteEpoch ||
+          habitTimerStopAbortRestore.has(elementId)
+        ) {
           throw error;
         }
         set({
@@ -512,21 +638,48 @@ export const useEventStore = create<EventState>((set, get) => ({
     const pendingStop = habitTimerStopPromises.get(elementId);
     if (pendingStop) await pendingStop;
 
-    bumpWriteEpoch(elementId);
-    const db = await getDatabase();
-    await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-
-    const nextSessions = { ...get().activeTimerSessions };
-    delete nextSessions[elementId];
-    set({ activeTimerSessions: nextSessions });
-    applyTodayMaps(elementId, date, { dailyTotal: 0, habitDone: false }, set, get);
-
-    try {
-      const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
-      applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
-    } catch {
-      // Day wipe already applied; streaks can refresh on next focus.
+    // Persist any leftover session (including yesterday's) before wiping today.
+    const session = get().activeTimerSessions[elementId];
+    if (session) {
+      try {
+        await get().stopHabitTimer(elementId, config);
+      } catch (error) {
+        console.warn('Failed to finalize timer before reset', error);
+        get().discardHabitTimer(elementId);
+      }
     }
+
+    const dataEpochAtStart = dataEpoch;
+    const ourWriteEpoch = bumpWriteEpoch(elementId);
+    await withDbWriteLock(async () => {
+      if (
+        dataEpochAtStart !== dataEpoch ||
+        getWriteEpoch(elementId) !== ourWriteEpoch
+      ) {
+        return;
+      }
+      const db = await getDatabase();
+      await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+
+      if (
+        dataEpochAtStart !== dataEpoch ||
+        getWriteEpoch(elementId) !== ourWriteEpoch
+      ) {
+        return;
+      }
+
+      const nextSessions = { ...get().activeTimerSessions };
+      delete nextSessions[elementId];
+      set({ activeTimerSessions: nextSessions });
+      applyTodayMaps(elementId, date, { dailyTotal: 0, habitDone: false }, set, get);
+
+      try {
+        const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+        applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+      } catch {
+        // Day wipe already applied; streaks can refresh on next focus.
+      }
+    });
   },
 }));
 

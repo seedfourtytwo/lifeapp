@@ -11,7 +11,9 @@ import {
   type ClearAppDataOptions,
 } from './clearDataPlan';
 import { withDbWriteLock } from './writeLock';
-import { awaitHabitTimerStops, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { awaitPendingEventWrites, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { bumpCalendarDataEpoch } from '../store/calendarStore';
+import { bumpWeatherDataEpoch } from '../weather/weatherEpoch';
 import { stopHabitSound } from '../audio/habitTimerSound';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
@@ -52,13 +54,34 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     resolveActivityDeleteBeforeDate(options.activityPeriod);
   }
 
+  const touchesActivity = options.definitions || options.activityHistory;
+  const touchesSettings = options.preferences;
+  const touchesEventEpoch = touchesActivity || touchesSettings;
+
+  // Invalidate + drain outside the lock so in-flight event writers (which take
+  // the same lock) can finish or abort without deadlocking against this clear.
+  // Only bump the event epoch when activity/definitions/preferences are cleared —
+  // weather/calendar-only clears must not drop in-flight counter/habit writes.
+  if (touchesEventEpoch) {
+    bumpEventDataEpoch();
+  }
+  if (touchesActivity) {
+    await stopHabitSound();
+    await awaitPendingEventWrites();
+    useEventStore.setState({ activeTimerSessions: {} });
+  }
+  if (options.calendar) {
+    bumpCalendarDataEpoch();
+  }
+  if (options.weather) {
+    bumpWeatherDataEpoch();
+  }
+
   await withDbWriteLock(async () => {
-    if (options.definitions || options.activityHistory) {
-      await stopHabitSound();
-      bumpEventDataEpoch();
-      await awaitHabitTimerStops();
-      useEventStore.setState({ activeTimerSessions: {} });
-    }
+    // Invalidate anyone who queued after the drain above.
+    if (touchesEventEpoch) bumpEventDataEpoch();
+    if (options.calendar) bumpCalendarDataEpoch();
+    if (options.weather) bumpWeatherDataEpoch();
 
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
@@ -87,6 +110,11 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
         await clearAppSettings(db);
       }
     });
+
+    // Invalidate writers that captured the mid-clear epoch while waiting on this lock.
+    if (touchesEventEpoch) bumpEventDataEpoch();
+    if (options.calendar) bumpCalendarDataEpoch();
+    if (options.weather) bumpWeatherDataEpoch();
   });
 }
 

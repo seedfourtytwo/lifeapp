@@ -7,6 +7,7 @@ import {
 import * as eventRepo from '../db/repositories/eventRepository';
 import { getDatabase } from '../db/client';
 import { streakHistorySinceDate } from '../utils/dates';
+import { createdOnLocalDate } from '../utils/createdOnLocalDate';
 import {
   computeHabitStreaksFromDailyTotals,
   computeHabitStreaksFromEvents,
@@ -20,8 +21,7 @@ export interface HabitStreakInput {
 }
 
 function createdOnDate(createdAt?: string | null): string | null {
-  if (!createdAt) return null;
-  return createdAt.slice(0, 10);
+  return createdOnLocalDate(createdAt);
 }
 
 export interface HabitStreakMaps {

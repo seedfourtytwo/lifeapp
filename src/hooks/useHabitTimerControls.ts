@@ -96,7 +96,10 @@ export function useHabitTimerControls() {
     (elementId: string, config: HabitConfig) => {
       void enqueueTimerStart(async () => {
         try {
+          // Deduplicate rapid Start taps — do not reset startedAt on an active session.
+          if (useEventStore.getState().activeTimerSessions[elementId]) return;
           await finalizeOtherTimers(elementId);
+          if (useEventStore.getState().activeTimerSessions[elementId]) return;
           startHabitTimer(elementId);
           playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
             void handleFinishTimer(id, cfg, trackCompleted).catch((error) => {

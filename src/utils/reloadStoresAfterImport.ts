@@ -51,6 +51,7 @@ export async function reloadStoresAfterImport(
       habitStreaks: {},
       habitFailureStreaks: {},
       dayStateReady: false,
+      counterTotalsReady: false,
     });
   }
 
