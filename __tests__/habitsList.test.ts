@@ -3,7 +3,7 @@ import {
   habitTimeHintLabel,
   isHabitDueToday,
   migrateDailyViewFilter,
-  orderHabitsForDailyList,
+  orderHabitsList,
   PROTOCOL_VERSION,
   type ElementDefinition,
 } from '../src/protocol';
@@ -78,10 +78,10 @@ describe('filterHabitsDueToday', () => {
   });
 });
 
-describe('orderHabitsForDailyList', () => {
+describe('orderHabitsList', () => {
   it('keeps remaining first and parks done at the bottom', () => {
     const habits = [habit('a'), habit('b'), habit('c')];
-    const ordered = orderHabitsForDailyList(habits, { a: true, c: false });
+    const ordered = orderHabitsList(habits, { a: true, c: false });
     expect(ordered.map((item) => item.id)).toEqual(['b', 'c', 'a']);
   });
 });

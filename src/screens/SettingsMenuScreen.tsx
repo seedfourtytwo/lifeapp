@@ -12,11 +12,11 @@ export default function SettingsMenuScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <List.Section>
         <List.Item
-          title="Elements"
+          title="Trackers"
           description="Manage, archive, and restore habits and counters"
           left={(props) => <List.Icon {...props} icon="shape-plus" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => navigation.navigate('Elements')}
+          onPress={() => navigation.navigate('Trackers')}
         />
         <List.Item
           title="Calendar"

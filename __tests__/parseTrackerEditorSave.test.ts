@@ -1,9 +1,9 @@
-import type { ElementEditorSaveData } from '../src/components/elementEditor/types';
-import { parseElementEditorSave } from '../src/utils/parseElementEditorSave';
+import type { TrackerEditorSaveData } from '../src/components/trackerEditor/types';
+import { parseTrackerEditorSave } from '../src/utils/parseTrackerEditorSave';
 
 const habitSaveData = (
-  overrides: Partial<Extract<ElementEditorSaveData, { mode: 'habit' }>> = {},
-): Extract<ElementEditorSaveData, { mode: 'habit' }> => ({
+  overrides: Partial<Extract<TrackerEditorSaveData, { mode: 'habit' }>> = {},
+): Extract<TrackerEditorSaveData, { mode: 'habit' }> => ({
   mode: 'habit',
   name: 'Meditation',
   targetLabel: '',
@@ -26,9 +26,9 @@ const habitSaveData = (
   ...overrides,
 });
 
-describe('parseElementEditorSave', () => {
+describe('parseTrackerEditorSave', () => {
   it('parses counter input', () => {
-    const result = parseElementEditorSave({
+    const result = parseTrackerEditorSave({
       mode: 'counter',
       name: ' Pushups',
       increments: '5, 10',
@@ -46,7 +46,7 @@ describe('parseElementEditorSave', () => {
   });
 
   it('parses timer sound from bundled track', () => {
-    const result = parseElementEditorSave(
+    const result = parseTrackerEditorSave(
       habitSaveData({
         habitTrackingMode: 'timer',
         habitSoundTrackId: 'meditation15min',
@@ -63,7 +63,7 @@ describe('parseElementEditorSave', () => {
   });
 
   it('parses boolean streak display option', () => {
-    const result = parseElementEditorSave(
+    const result = parseTrackerEditorSave(
       habitSaveData({
         showStreakOnCard: true,
       }),
@@ -75,7 +75,7 @@ describe('parseElementEditorSave', () => {
   });
 
   it('parses timer streak display option', () => {
-    const result = parseElementEditorSave(
+    const result = parseTrackerEditorSave(
       habitSaveData({
         habitTrackingMode: 'timer',
         habitDailyGoalMinutes: '15',
@@ -91,7 +91,7 @@ describe('parseElementEditorSave', () => {
 
   it('rejects invalid increments', () => {
     expect(() =>
-      parseElementEditorSave({
+      parseTrackerEditorSave({
         mode: 'counter',
         name: 'Test',
         increments: 'abc',

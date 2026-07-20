@@ -1,6 +1,6 @@
 export type {
-  ElementEditorSaveData,
-  ElementEditorSession,
+  TrackerEditorSaveData,
+  TrackerEditorSession,
   HabitEditorFieldState,
   HabitScheduleType,
 } from './types';
@@ -8,4 +8,4 @@ export {
   editorSessionFromCounter,
   editorSessionFromHabit,
   newEditorSession,
-} from './elementEditorSession';
+} from './trackerEditorSession';

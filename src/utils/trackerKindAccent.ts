@@ -1,11 +1,11 @@
 import type { ElementKind } from '../protocol';
 import type { ThemeMode } from '../theme/types';
 
-export interface ElementKindAccent {
+export interface TrackerKindAccent {
   color: string;
 }
 
-const ELEMENT_KIND_ACCENTS: Record<ThemeMode, Record<ElementKind, ElementKindAccent>> = {
+const TRACKER_KIND_ACCENTS: Record<ThemeMode, Record<ElementKind, TrackerKindAccent>> = {
   light: {
     counter: { color: '#EA580C' },
     habit: { color: '#0D9488' },
@@ -20,6 +20,6 @@ const ELEMENT_KIND_ACCENTS: Record<ThemeMode, Record<ElementKind, ElementKindAcc
   },
 };
 
-export function getElementKindAccent(mode: ThemeMode, kind: ElementKind): ElementKindAccent {
-  return ELEMENT_KIND_ACCENTS[mode][kind];
+export function getTrackerKindAccent(mode: ThemeMode, kind: ElementKind): TrackerKindAccent {
+  return TRACKER_KIND_ACCENTS[mode][kind];
 }

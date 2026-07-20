@@ -1,4 +1,4 @@
-import { getActiveElements, getActiveHabits } from '../utils/dashboardElements';
+import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useElementStore } from '../store/elementStore';
 
@@ -9,10 +9,7 @@ export async function refreshAllDailyData(): Promise<void> {
 
   const { elements, dashboard } = useElementStore.getState();
   const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
-  const counterIds = getActiveElements(
-    elements.filter((element) => element.kind === 'counter'),
-    dashboard,
-  ).map((element) => element.id);
+  const counterIds = getActiveCounters(elements, dashboard).map((element) => element.id);
 
   const { loadHabitDayState, loadHabitStreaks, loadCounterTotals } = useEventStore.getState();
   await Promise.all([

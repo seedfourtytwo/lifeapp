@@ -5,7 +5,7 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import {
   filterHabitsDueToday,
-  orderHabitsForDailyList,
+  orderHabitsList,
   parseHabitConfig,
   toDateString,
   type HabitConfig,
@@ -13,16 +13,17 @@ import {
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveHabits } from '../utils/dashboardElements';
-import HabitDailyRow from './daily/HabitDailyRow';
+import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
-export default function DailyScreen() {
+export default function HabitsScreen() {
   const theme = useTheme();
   const { isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
+  const error = useElementStore((s) => s.error);
   const reorderHabit = useElementStore((s) => s.reorderHabit);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,7 +65,7 @@ export default function DailyScreen() {
   );
 
   const habits = useMemo(
-    () => orderHabitsForDailyList(dueTodayHabits, habitDoneToday),
+    () => orderHabitsList(dueTodayHabits, habitDoneToday),
     [dueTodayHabits, habitDoneToday],
   );
 
@@ -88,7 +89,7 @@ export default function DailyScreen() {
     }
   };
 
-  if (isLoading && allHabits.length === 0) {
+  if (isLoading && allHabits.length === 0 && !error) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -111,10 +112,10 @@ export default function DailyScreen() {
     emptyMessage = 'No habits yet. Add one to start your daily list.';
     emptyWithCta = true;
   } else if (allHabits.length === 0) {
-    emptyMessage = 'No active habits. Restore something from Archive in Elements.';
+    emptyMessage = 'No active habits. Restore something from Archive in Trackers.';
     emptyWithCta = true;
   } else if (habits.length === 0) {
-    emptyMessage = 'Nothing due today.';
+    emptyMessage = 'Nothing due today — check schedule or time window in Trackers.';
   }
 
   return (
@@ -128,48 +129,59 @@ export default function DailyScreen() {
         />
       }
     >
-      <View style={styles.metaRow}>
-        <View style={styles.metaStatus}>
-          {reordering ? (
-            <Text variant="bodySmall" style={styles.metaQuiet}>
-              Move to set your order
-            </Text>
-          ) : statusLabel ? (
-            <Text
-              variant="bodyMedium"
-              style={[
-                styles.statusText,
-                isCartoon && {
-                  color: theme.colors.onSecondaryContainer,
-                  fontWeight: '600',
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {statusLabel}
-            </Text>
-          ) : null}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
+          <Button mode="outlined" onPress={() => void onRefresh()}>
+            Retry
+          </Button>
         </View>
+      ) : null}
 
-        <View style={styles.metaRight}>
-          {reordering ? (
-            <Button compact mode="text" onPress={() => setReordering(false)}>
-              Done
-            </Button>
-          ) : (
-            <Button
-              mode="text"
-              compact
-              icon="sort"
-              disabled={reorderPeerIds.length < 2}
-              onPress={() => setReordering(true)}
-              labelStyle={styles.controlLabel}
-            >
-              Sort
-            </Button>
-          )}
+      {habits.length > 0 ? (
+        <View style={styles.metaRow}>
+          <View style={styles.metaStatus}>
+            {reordering ? (
+              <Text variant="bodySmall" style={styles.metaQuiet}>
+                Move to set your order
+              </Text>
+            ) : statusLabel ? (
+              <Text
+                variant="bodyMedium"
+                style={[
+                  styles.statusText,
+                  isCartoon && {
+                    color: theme.colors.onSecondaryContainer,
+                    fontWeight: '600',
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {statusLabel}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.metaRight}>
+            {reordering ? (
+              <Button compact mode="text" onPress={() => setReordering(false)}>
+                Done
+              </Button>
+            ) : (
+              <Button
+                mode="text"
+                compact
+                icon="sort"
+                disabled={reorderPeerIds.length < 2}
+                onPress={() => setReordering(true)}
+                labelStyle={styles.controlLabel}
+              >
+                Sort
+              </Button>
+            )}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {emptyMessage ? (
         emptyWithCta ? (
@@ -187,7 +199,7 @@ export default function DailyScreen() {
           const peerIndex = reorderPeerIds.indexOf(habit.id);
           const canReorder = reordering && !isDone && peerIndex >= 0;
           return (
-            <HabitDailyRow
+            <HabitRow
               key={habit.id}
               habit={habit}
               config={config}

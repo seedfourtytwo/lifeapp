@@ -10,6 +10,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { toDateString } from '../protocol';
 import { useCalendarStore } from '../store/calendarStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -33,6 +34,10 @@ type SheetKind = 'weather' | 'calendar' | null;
 
 export default function HomeChromeBubble() {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
+  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
+  const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
+  const outlineWidth = isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth;
   const insets = useSafeAreaInsets();
   const weatherEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
@@ -193,13 +198,14 @@ export default function HomeChromeBubble() {
               left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
               top: bubbleTop + BUBBLE_HEIGHT + 6,
               backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outlineVariant,
+              borderColor: outlineColor,
+              borderWidth: outlineWidth,
             },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Open weather"
         >
-          <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={theme.colors.primary} />
+          <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={accent} />
         </Pressable>
       ) : null}
 
@@ -215,7 +221,8 @@ export default function HomeChromeBubble() {
               left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
               top: bubbleTop + BUBBLE_HEIGHT + (weatherEnabled ? 52 : 6),
               backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outlineVariant,
+              borderColor: outlineColor,
+              borderWidth: outlineWidth,
             },
           ]}
           accessibilityRole="button"
@@ -225,7 +232,7 @@ export default function HomeChromeBubble() {
               : 'Open calendar'
           }
         >
-          <MaterialCommunityIcons name="calendar" size={22} color={theme.colors.primary} />
+          <MaterialCommunityIcons name="calendar" size={22} color={accent} />
           {badgeCount > 0 ? (
             <View style={[styles.fanBadge, { backgroundColor: theme.colors.error }]}>
               <Text variant="labelSmall" style={{ color: theme.colors.onError, fontSize: 10 }}>
@@ -244,7 +251,8 @@ export default function HomeChromeBubble() {
             left: bubbleLeft,
             top: bubbleTop,
             backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.outlineVariant,
+            borderColor: outlineColor,
+            borderWidth: outlineWidth,
             shadowColor: '#000',
             opacity: weatherOffline && hasForecast ? 0.92 : 1,
           },
@@ -265,7 +273,7 @@ export default function HomeChromeBubble() {
               color={
                 !hasForecast && (weatherOffline || weatherError)
                   ? theme.colors.onSurfaceVariant
-                  : theme.colors.primary
+                  : accent
               }
             />
             {!calendarEnabled ? (
@@ -283,7 +291,7 @@ export default function HomeChromeBubble() {
             )}
           </>
         ) : (
-          <MaterialCommunityIcons name="calendar" size={18} color={theme.colors.primary} />
+          <MaterialCommunityIcons name="calendar" size={18} color={accent} />
         )}
         {calendarEnabled && badgeCount > 0 ? (
           <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
@@ -320,7 +328,6 @@ const styles = StyleSheet.create({
     width: BUBBLE_SIZE,
     height: BUBBLE_HEIGHT,
     borderRadius: BUBBLE_HEIGHT / 2,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
@@ -349,7 +356,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
     elevation: 3,
     shadowOpacity: 0.15,
     shadowRadius: 4,

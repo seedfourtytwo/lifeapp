@@ -3,13 +3,13 @@ import { View } from 'react-native';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
 import ReorderControls from '../shared/ReorderControls';
 import { homeTabScreenStyles as styles } from '../shared/screenStyles';
-import HabitDailyCard from './HabitDailyCard';
+import HabitCard from './HabitCard';
 
 type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
   reordering: boolean;
-  /** Quieter presentation for completed habits in All today. */
+  /** Quieter presentation for completed habits. */
   dimmed?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -17,7 +17,7 @@ type Props = {
   onMoveDown: () => void;
 };
 
-export default function HabitDailyRow({
+export default function HabitRow({
   habit,
   config,
   reordering,
@@ -39,7 +39,7 @@ export default function HabitDailyRow({
         />
       ) : null}
       <View style={[styles.reorderCard, dimmed ? styles.dimmedCard : null]}>
-        <HabitDailyCard habit={habit} config={config} />
+        <HabitCard habit={habit} config={config} />
       </View>
     </View>
   );

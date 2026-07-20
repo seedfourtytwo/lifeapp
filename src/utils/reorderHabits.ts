@@ -67,10 +67,10 @@ export function applyVisibleOrder(
 }
 
 /**
- * Plan a Daily habit move against the current on-screen sequence.
+ * Plan a Habits-tab habit move against the current on-screen sequence.
  * Peers are only the visible habits so chevrons match what the user sees.
  */
-export function planDailyHabitReorder(args: {
+export function planHabitReorder(args: {
   orderedHabitIds: string[];
   visibleOrder: readonly string[];
   habitId: string;

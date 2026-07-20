@@ -5,9 +5,9 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import SettingsMenuScreen from '../screens/SettingsMenuScreen';
-import ElementsScreen from '../screens/ElementsScreen';
+import TrackersScreen from '../screens/TrackersScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import ElementHistoryScreen from '../screens/ElementHistoryScreen';
+import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 
@@ -48,9 +48,9 @@ export default function AppNavigator() {
         options={{ title: 'Settings' }}
       />
       <Stack.Screen
-        name="Elements"
-        component={ElementsScreen}
-        options={{ title: 'Elements' }}
+        name="Trackers"
+        component={TrackersScreen}
+        options={{ title: 'Trackers' }}
       />
       <Stack.Screen
         name="AppSettings"
@@ -58,8 +58,8 @@ export default function AppNavigator() {
         options={{ title: 'App settings' }}
       />
       <Stack.Screen
-        name="ElementHistory"
-        component={ElementHistoryScreen}
+        name="TrackerHistory"
+        component={TrackerHistoryScreen}
         options={{ title: 'History' }}
       />
       <Stack.Screen

@@ -16,7 +16,7 @@ export function useActiveHabitInputs() {
   }, [elements, dashboard]);
 }
 
-/** Refresh today's completion state when the Daily tab gains focus. */
+/** Refresh today's completion state when the Habits tab gains focus. */
 export function useRefreshHabitDayOnFocus(): void {
   const inputs = useActiveHabitInputs();
   const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);

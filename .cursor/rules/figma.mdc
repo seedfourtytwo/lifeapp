@@ -13,12 +13,12 @@ alwaysApply: false
 
 ## Screen → code mapping
 
-| Figma frame | Source |
-|-------------|--------|
-| `Home / Daily` | `src/screens/HomeScreen.tsx` + `src/screens/DailyScreen.tsx` |
-| `Home / Counter` | `src/screens/HomeScreen.tsx` + `src/screens/CountersScreen.tsx` |
-| Counter card | `src/kinds/counter/CounterWidget.tsx` |
-| Elements / Settings | `src/screens/ElementsScreen.tsx`, `SettingsMenuScreen.tsx` |
+| Figma frame (legacy title) | App today | Source |
+|----------------------------|-----------|--------|
+| `Home / Daily` | Habits tab | `HomeScreen.tsx` + `HabitsScreen.tsx` |
+| `Home / Counter` | Counters tab | `HomeScreen.tsx` + `CountersScreen.tsx` |
+| Counter card | Counter widget | `kinds/counter/CounterWidget.tsx` |
+| Elements / Settings | Trackers | `TrackersScreen.tsx`, `SettingsMenuScreen.tsx` |
 
 ## Design tokens
 

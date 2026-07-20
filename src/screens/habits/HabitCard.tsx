@@ -12,7 +12,7 @@ type Props = {
   config: HabitConfig;
 };
 
-export default function HabitDailyCard({ habit, config }: Props) {
+export default function HabitCard({ habit, config }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { handleTimerPress, handleFinishTimer, handleResetToday } = useHabitTimerControls();
   const {
@@ -51,7 +51,7 @@ export default function HabitDailyCard({ habit, config }: Props) {
       onTimerPress={() => handleTimerPress(habit.id, config)}
       onTimerFinish={() => handleFinishTimer(habit.id, config)}
       onResetToday={() => handleResetToday(habit.id, config)}
-      onOpenDetails={() => navigation.navigate('ElementHistory', { elementId: habit.id })}
+      onOpenDetails={() => navigation.navigate('TrackerHistory', { elementId: habit.id })}
     />
   );
 }

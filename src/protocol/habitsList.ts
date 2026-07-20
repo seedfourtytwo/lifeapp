@@ -6,7 +6,7 @@ import {
   shouldShowHabitOnHabitsPage,
 } from './kinds/habit';
 
-export interface DailyHabitFilterContext {
+export interface HabitListFilterContext {
   now: Date;
   today: string;
   habitDoneToday: Record<string, boolean>;
@@ -14,7 +14,7 @@ export interface DailyHabitFilterContext {
 
 export function isHabitDueToday(
   config: HabitConfig,
-  context: Pick<DailyHabitFilterContext, 'now' | 'today'>,
+  context: Pick<HabitListFilterContext, 'now' | 'today'>,
 ): boolean {
   return (
     isHabitScheduledOnDate(config, context.today) &&
@@ -25,7 +25,7 @@ export function isHabitDueToday(
 /** Habits due today, in dashboard sort_order (caller supplies already-sorted active habits). */
 export function filterHabitsDueToday(
   habits: ElementDefinition[],
-  context: DailyHabitFilterContext,
+  context: HabitListFilterContext,
 ): ElementDefinition[] {
   return habits.filter((habit) => {
     const config = HabitConfigSchema.parse(habit.config);
@@ -34,10 +34,10 @@ export function filterHabitsDueToday(
 }
 
 /**
- * Daily list order: remaining first (user sort_order), then done (user sort_order).
+ * Habits list order: remaining first (user sort_order), then done (user sort_order).
  * Keeps completed habits visible without a filter.
  */
-export function orderHabitsForDailyList(
+export function orderHabitsList(
   habits: ElementDefinition[],
   habitDoneToday: Record<string, boolean>,
 ): ElementDefinition[] {
@@ -53,7 +53,7 @@ export function orderHabitsForDailyList(
   return [...remaining, ...done];
 }
 
-/** Quiet part-of-day cue on Daily cards — not a list structure. */
+/** Quiet part-of-day cue on habit cards — not a list structure. */
 export function habitTimeHintLabel(timeSlot: HabitTimeSlot): string | null {
   switch (timeSlot) {
     case 'morning':
@@ -68,8 +68,9 @@ export function habitTimeHintLabel(timeSlot: HabitTimeSlot): string | null {
 }
 
 // --- Legacy filter ids (older backups / settings rows) -----------------
+// Setting keys stay `daily_view_filter` / `daily_arrange_mode` for backup compatibility.
 
-/** @deprecated Kept so older backups still parse; Daily no longer uses filters. */
+/** @deprecated Kept so older backups still parse; Habits tab no longer uses filters. */
 export const DAILY_VIEW_FILTERS = [
   'all',
   'remaining',

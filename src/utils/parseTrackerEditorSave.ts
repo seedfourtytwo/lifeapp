@@ -1,4 +1,4 @@
-import type { ElementEditorSaveData } from '../components/elementEditor/types';
+import type { TrackerEditorSaveData } from '../components/trackerEditor/types';
 import {
   buildHabitTimerSound,
   isScheduleSupportedForReminders,
@@ -39,7 +39,7 @@ function parseDailyGoalSeconds(raw: string): number | undefined {
   return minutes * 60;
 }
 
-function parseSchedule(data: Extract<ElementEditorSaveData, { mode: 'habit' }>): HabitSchedule {
+function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>): HabitSchedule {
   if (data.scheduleType === 'daily') {
     return { type: 'daily' };
   }
@@ -61,7 +61,7 @@ function parseSchedule(data: Extract<ElementEditorSaveData, { mode: 'habit' }>):
 }
 
 function parseRemindMinutes(
-  data: Extract<ElementEditorSaveData, { mode: 'habit' }>,
+  data: Extract<TrackerEditorSaveData, { mode: 'habit' }>,
   hasTimeRange: boolean,
   schedule: HabitSchedule,
 ): number | undefined {
@@ -76,8 +76,8 @@ function parseRemindMinutes(
   return minutes;
 }
 
-export function parseElementEditorSave(
-  data: ElementEditorSaveData,
+export function parseTrackerEditorSave(
+  data: TrackerEditorSaveData,
 ): { kind: 'counter'; input: CounterInput } | { kind: 'habit'; input: HabitInput } {
   if (data.mode === 'counter') {
     return {

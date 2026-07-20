@@ -169,3 +169,16 @@ export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {
   );
   return rows.map(rowToEvent);
 }
+
+/** Wipe every protocol event (activity history). */
+export async function deleteAllEvents(db: SQLiteDatabase): Promise<void> {
+  await db.runAsync('DELETE FROM events');
+}
+
+/** Delete activity with local `date` strictly before `beforeDate` (YYYY-MM-DD). */
+export async function deleteEventsBeforeDate(
+  db: SQLiteDatabase,
+  beforeDate: string,
+): Promise<void> {
+  await db.runAsync('DELETE FROM events WHERE date < ?', beforeDate);
+}

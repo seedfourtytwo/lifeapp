@@ -4,7 +4,7 @@ import { Button, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../hooks/useAppTheme';
 
-export type ElementLibraryBadge = {
+export type TrackerLibraryBadge = {
   label: string;
   tone?: 'accent' | 'muted';
 };
@@ -13,7 +13,7 @@ type Props = {
   kind: 'counter' | 'habit';
   accentColor: string;
   name: string;
-  badges: ElementLibraryBadge[];
+  badges: TrackerLibraryBadge[];
   metaLines: string[];
   archived?: boolean;
   onEdit: () => void;
@@ -26,7 +26,7 @@ function kindIcon(kind: 'counter' | 'habit'): keyof typeof MaterialCommunityIcon
   return kind === 'counter' ? 'counter' : 'checkbox-marked-circle-outline';
 }
 
-export default function ElementLibraryCard({
+export default function TrackerLibraryCard({
   kind,
   accentColor,
   name,
@@ -41,7 +41,7 @@ export default function ElementLibraryCard({
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
 
-  const badgeColors = (tone: ElementLibraryBadge['tone']) => {
+  const badgeColors = (tone: TrackerLibraryBadge['tone']) => {
     switch (tone) {
       case 'accent':
         return {

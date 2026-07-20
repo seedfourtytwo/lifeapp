@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DAILY_ARRANGE_MODES, DAILY_VIEW_FILTERS } from './dailyView';
+import { DAILY_ARRANGE_MODES, DAILY_VIEW_FILTERS } from './habitsList';
 
 export const THEME_MODES = ['light', 'dark', 'cartoon'] as const;
 
@@ -19,9 +19,9 @@ export function isWeatherLocationMode(value: string): value is WeatherLocationMo
 
 export const AppSettingsSchema = z.object({
   themeMode: z.enum(THEME_MODES).optional(),
-  /** @deprecated Daily no longer uses view filters; accepted for older backups. */
+  /** @deprecated Habits tab no longer uses view filters; accepted for older backups. */
   dailyViewFilter: z.enum(DAILY_VIEW_FILTERS).optional(),
-  /** @deprecated Daily no longer uses arrange modes; accepted for older backups. */
+  /** @deprecated Habits tab no longer uses arrange modes; accepted for older backups. */
   dailyArrangeMode: z.enum(DAILY_ARRANGE_MODES).optional(),
   habitRemindersEnabled: z.boolean().optional(),
   weatherWidgetEnabled: z.boolean().optional(),

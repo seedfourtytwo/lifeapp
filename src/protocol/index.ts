@@ -107,11 +107,11 @@ export {
   isDailyArrangeMode,
   migrateDailyViewFilter,
   filterHabitsDueToday,
-  orderHabitsForDailyList,
+  orderHabitsList,
   habitTimeHintLabel,
   isHabitDueToday,
-} from './dailyView';
-export type { DailyViewFilter, DailyArrangeMode } from './dailyView';
+} from './habitsList';
+export type { DailyViewFilter, DailyArrangeMode, HabitListFilterContext } from './habitsList';
 export type {
   HabitConfig,
   HabitEventMeta,

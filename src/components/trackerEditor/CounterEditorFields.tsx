@@ -18,7 +18,7 @@ export default function CounterEditorFields({
   return (
     <FormSection
       title="Counter settings"
-      description="Quick buttons add to today's total. Daily target is optional."
+      description="Quick buttons add to today's total (resets at midnight). Daily target is optional."
     >
       <TextInput
         label="Quick increments"

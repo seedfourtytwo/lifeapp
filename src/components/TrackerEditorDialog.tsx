@@ -18,26 +18,27 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import CounterEditorFields from './elementEditor/CounterEditorFields';
-import { newEditorSession } from './elementEditor/elementEditorSession';
-import FormSection from './elementEditor/FormSection';
-import HabitEditorFields from './elementEditor/HabitEditorFields';
+import { useAppTheme } from '../hooks/useAppTheme';
+import CounterEditorFields from './trackerEditor/CounterEditorFields';
+import { newEditorSession } from './trackerEditor/trackerEditorSession';
+import FormSection from './trackerEditor/FormSection';
+import HabitEditorFields from './trackerEditor/HabitEditorFields';
 import type {
-  ElementEditorSaveData,
-  ElementEditorSession,
+  TrackerEditorSaveData,
+  TrackerEditorSession,
   HabitEditorFieldState,
-} from './elementEditor/types';
+} from './trackerEditor/types';
 
 type Props = {
-  session: ElementEditorSession | null;
+  session: TrackerEditorSession | null;
   saving: boolean;
   deleting?: boolean;
   onDismiss: () => void;
-  onSave: (data: ElementEditorSaveData) => void;
+  onSave: (data: TrackerEditorSaveData) => void;
   onDelete?: () => void;
 };
 
-function habitFieldStateFromSession(session: ElementEditorSession): HabitEditorFieldState {
+function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorFieldState {
   return {
     targetLabel: session.targetLabel,
     habitTrackingMode: session.habitTrackingMode,
@@ -62,7 +63,7 @@ function habitFieldStateFromSession(session: ElementEditorSession): HabitEditorF
 const emptyHabitFields = (): HabitEditorFieldState =>
   habitFieldStateFromSession(newEditorSession({ mode: 'habit' }));
 
-export default function ElementEditorDialog({
+export default function TrackerEditorDialog({
   session,
   saving,
   deleting = false,
@@ -71,6 +72,7 @@ export default function ElementEditorDialog({
   onDelete,
 }: Props) {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
   const { width, height } = useWindowDimensions();
   const sheetWidth = Math.min(width - 24, 480);
   const sheetMaxHeight = Math.min(height * 0.9, 720);
@@ -132,9 +134,24 @@ export default function ElementEditorDialog({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoid}
         >
-          <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: theme.colors.surface,
+                borderRadius: deco.radius.lg,
+                ...(isCartoon && {
+                  borderWidth: deco.cardBorderWidth,
+                  borderColor: theme.colors.outline,
+                }),
+              },
+            ]}
+          >
             <View style={styles.header}>
-              <Text variant="titleLarge" style={styles.headerTitle}>
+              <Text
+                variant="titleLarge"
+                style={[styles.headerTitle, isCartoon && { color: theme.colors.onSurface }]}
+              >
                 {title}
               </Text>
               <IconButton icon="close" onPress={closeEditor} accessibilityLabel="Close" />
@@ -182,6 +199,7 @@ export default function ElementEditorDialog({
                   style={{
                     borderColor: theme.colors.error,
                     backgroundColor: theme.colors.errorContainer,
+                    borderRadius: deco.buttonRadius,
                   }}
                   onPress={onDelete}
                   loading={deleting}
@@ -201,6 +219,8 @@ export default function ElementEditorDialog({
                   loading={saving}
                   onPress={handleSave}
                   disabled={!name.trim() || saving || deleting}
+                  buttonColor={isCartoon ? theme.colors.primary : undefined}
+                  style={{ borderRadius: deco.buttonRadius }}
                 >
                   Save
                 </Button>
@@ -222,7 +242,6 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   sheet: {
-    borderRadius: 16,
     overflow: 'hidden',
     maxHeight: '100%',
   },

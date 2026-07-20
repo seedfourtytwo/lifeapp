@@ -78,7 +78,7 @@ export default function CountersScreen() {
           <Text variant="bodyMedium" style={styles.metaStatus} numberOfLines={1}>
             {reordering
               ? 'Move with arrows'
-              : `${counters.length} counter${counters.length === 1 ? '' : 's'}`}
+              : 'Today · resets at midnight'}
           </Text>
           {reordering ? (
             <Button compact mode="text" onPress={() => setReordering(false)}>
@@ -102,8 +102,8 @@ export default function CountersScreen() {
         <EmptyTabState
           message={
             elements.some((e) => e.kind === 'counter')
-              ? 'No active counters. Restore something from Archive in Elements.'
-              : 'No counters yet. Add one to track water, steps, or anything countable.'
+              ? 'No active counters. Restore something from Archive in Trackers.'
+              : 'No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.'
           }
         />
       ) : (
@@ -133,7 +133,7 @@ export default function CountersScreen() {
                   onLog={(value, meta) => logEvent(element.id, value, meta)}
                   onSetDailyTotal={(total) => setDailyTotal(element.id, total)}
                   onOpenDetails={() =>
-                    navigation.navigate('ElementHistory', { elementId: element.id })
+                    navigation.navigate('TrackerHistory', { elementId: element.id })
                   }
                 />
               </View>

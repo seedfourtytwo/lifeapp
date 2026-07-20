@@ -12,15 +12,15 @@ import type { RootStackParamList } from '../navigation/types';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import CountersScreen from './CountersScreen';
-import DailyScreen from './DailyScreen';
+import HabitsScreen from './HabitsScreen';
 
-type HomeTab = 'daily' | 'counters';
+type HomeTab = 'habits' | 'counters';
 
 type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 const TABS: { value: HomeTab; label: string; icon: DockIconName }[] = [
-  { value: 'daily', label: 'Daily', icon: 'calendar-check' },
-  { value: 'counters', label: 'Counter', icon: 'counter' },
+  { value: 'habits', label: 'Habits', icon: 'calendar-check' },
+  { value: 'counters', label: 'Counters', icon: 'counter' },
 ];
 
 export default function HomeScreen() {
@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const { decorations: deco, isCartoon } = useAppTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [tab, setTab] = useState<HomeTab>('daily');
+  const [tab, setTab] = useState<HomeTab>('habits');
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
   const refreshWeather = useWeatherStore((s) => s.refresh);
@@ -49,7 +49,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.content, { paddingTop: insets.top }]}>
-        {tab === 'daily' ? <DailyScreen /> : <CountersScreen />}
+        {tab === 'habits' ? <HabitsScreen /> : <CountersScreen />}
       </View>
 
       {showChrome ? <HomeChromeBubble /> : null}

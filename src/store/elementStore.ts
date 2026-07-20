@@ -13,7 +13,7 @@ import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
 import {
   mergeKindOrderIntoDashboard,
-  planDailyHabitReorder,
+  planHabitReorder,
   movePeersInOrder,
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
@@ -111,7 +111,7 @@ interface ElementState {
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
   /**
-   * Move a habit in the Daily list. Uses the on-screen visible order so
+   * Move a habit in the Habits list. Uses the on-screen visible order so
    * chevrons match what the user sees.
    */
   reorderHabit: (
@@ -329,7 +329,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const target = habits.find((habit) => habit.id === habitId);
     if (!target) return;
 
-    const nextHabitOrder = planDailyHabitReorder({
+    const nextHabitOrder = planHabitReorder({
       orderedHabitIds: habits.map((habit) => habit.id),
       visibleOrder,
       habitId,

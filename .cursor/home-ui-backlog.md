@@ -1,9 +1,5 @@
-# Home / Daily backlog (later)
+# Home / Habits backlog (later)
 
-Deferred polish from the home UI hierarchy pass. Do not scaffold early.
+- **Persist last Home tab** — only if Counters bouncing becomes common; default Habits stays correct.
 
-- **Smart “This part of day” filter** — one clock-based option instead of Morning/Afternoon/Evening/Anytime, after real use shows whether slot filters are used.
-- **Persist last Home tab** — only if Counter bouncing becomes common; default Daily stays correct.
-- **Drag-and-drop reorder** — chevrons are enough until lists get long.
-
-Implemented already: bottom dock (Daily / Counter / Settings), Daily meta row, Counter Sort, empty-state CTA to Elements, light haptics on habit complete, quieter completed habits in All today.
+Implemented already: bottom dock (Habits / Counters / Settings), Habits meta row, Counters Sort + daily-reset cue, empty-state CTA to Trackers, light haptics on habit complete, quieter completed habits.

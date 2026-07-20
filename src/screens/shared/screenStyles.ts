@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-/** Shared layout styles for Daily and Counter home tabs. */
+/** Shared layout styles for Habits and Counters home tabs. */
 export const homeTabScreenStyles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,

@@ -80,7 +80,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
       <FormSection
         title="Streak"
-        description="Optional streak badge on the Daily habit card."
+        description="Optional streak badge on the habit card."
         collapsible
         defaultCollapsed={!state.showStreakOnCard}
       >
@@ -102,7 +102,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
       <FormSection
         title="Time of day"
-        description="Optional cue on the Daily list (AM, Lunch, PM). Does not change order."
+        description="Optional cue on the Habits list (AM, Lunch, PM). Does not change order."
         collapsible
         defaultCollapsed={state.timeSlot === 'anytime'}
       >
@@ -197,7 +197,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
       <FormSection
         title="Time window"
-        description="Optional. Limit when the habit shows on the Daily tab."
+        description="Optional. Limit when the habit shows on the Habits tab."
         collapsible
         defaultCollapsed={!state.useTimeRange}
       >
@@ -234,7 +234,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
               <View style={styles.switchLabel}>
                 <Text variant="bodyMedium">Only show during this window</Text>
                 <Text variant="bodySmall" style={styles.hint}>
-                  Hidden outside this time on Daily
+                  Hidden outside this time on Habits
                 </Text>
               </View>
               <Switch

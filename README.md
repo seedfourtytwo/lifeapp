@@ -4,18 +4,17 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 > Previous activity-timer codebase is preserved at git tag `legacy-v1`.
 
-## What ships in v1
+## What ships in v1.1
 
 | Feature | Description |
 |---------|-------------|
-| **Home** | Dashboard with Daily / Counter tabs; ambient weather + calendar bubble |
-| **Daily** | Habits for today — remaining progress, view filter + sort, reorder |
-| **Habits** | Check-off or timer mode, bundled meditation audio, schedules, reminders |
-| **Counter** | Quick +buttons, undo, edit total, reorder, 14-day history chart |
+| **Home** | Dashboard with Habits / Counters tabs; ambient weather + calendar bubble |
+| **Habits** | Today's check-offs or timers — remaining progress, sort, reorder |
+| **Counters** | Quick +buttons, undo, edit total, reorder, 14-day history; totals reset daily |
 | **Calendar** | Local events, recurrence, reminders, per-occurrence Done (ambient — not a protocol kind) |
 | **Weather** | Optional forecast chip on Home (ambient — not a protocol kind) |
-| **Elements** | Create, edit, archive/restore, or delete habits and counters |
-| **Settings → Data** | JSON export/import (includes calendar when present) and delete-all |
+| **Trackers** | Create, edit, archive/restore, or delete habits and counters |
+| **Settings → Data** | JSON export/import; granular **Clear data…** (history by period, calendar, cache, prefs, or definitions) |
 | **Offline SQLite** | All data on device — no account, no cloud |
 | **Life Protocol v1** | Zod-validated elements + append-only events |
 
@@ -25,18 +24,18 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 ```
 Home (default)
-├── Daily tab      — active habits for today
-├── Counter tab    — active counters
+├── Habits tab     — active habits for today
+├── Counters tab   — active counters (today's totals; reset at midnight)
 ├── Ambient bubble — weather + calendar fan-out (optional in Settings)
 └── ⚙ Settings
-    ├── Elements   — manage habits & counters (active + archive)
+    ├── Trackers   — manage habits & counters (active + archive)
     ├── Calendar   — full month browse / edit
     └── App settings — theme, reminders, weather/calendar toggles, backup, about
 ```
 
-### Elements: active vs archive
+### Trackers: active vs archive
 
-- **Active** counters and habits appear on Home (Daily / Counter tabs).
+- **Active** counters and habits appear on Home (Habits / Counters tabs).
 - **Archive** hides an item from Home but keeps its history.
 - **Delete** removes the element and all events permanently.
 
@@ -59,7 +58,7 @@ src/
 ├── db/             # SQLite client, migrations, repositories, export
 ├── kinds/          # counter + habit widgets and handlers
 ├── store/          # Zustand stores
-├── screens/        # Home, Daily, Counters, Calendar, Elements, Settings
+├── screens/        # Home, Habits, Counters, Calendar, Trackers, Settings
 ├── components/     # Home chrome bubble, peek sheets, shared UI
 ├── hooks/          # Bootstrap, reminder sync, timer, backup
 ├── notifications/  # Habit + calendar local notifications (native/web)
@@ -113,7 +112,7 @@ After installing a new APK, reconnect to Metro for day-to-day JS changes.
 | Concept | Purpose |
 |---------|---------|
 | **ElementDefinition** | What you track (`counter` or `habit` + config); optional `archivedAt` for soft-hide |
-| **DashboardItem** | Sort order on Daily / Counter for **active** (non-archived) elements only |
+| **DashboardItem** | Sort order on Habits / Counters for **active** (non-archived) elements only |
 | **Event** | Append-only fact (`value` + `timestamp` + optional `meta`) |
 
 Kinds: `counter`, `habit`. Extend via `src/kinds/registry.ts` and `src/protocol/kinds/`.

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
+import ClearDataSheet from '../components/ClearDataSheet';
 import WeatherSettingsSection from '../components/WeatherSettingsSection';
 import CalendarSettingsSection from '../components/CalendarSettingsSection';
 import { useProtocolBackup } from '../hooks/useProtocolBackup';
@@ -19,8 +20,16 @@ export default function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
   const setHabitRemindersEnabled = useSettingsStore((s) => s.setHabitRemindersEnabled);
-  const { busy, importAvailable, handleExport, handleImport, handleClearAllData } =
-    useProtocolBackup();
+  const {
+    busy,
+    importAvailable,
+    clearSheetVisible,
+    handleExport,
+    handleImport,
+    openClearSheet,
+    dismissClearSheet,
+    handleClearConfirm,
+  } = useProtocolBackup();
 
   const handleRemindersToggle = async (enabled: boolean) => {
     if (enabled && !isNotificationsNativeAvailable()) {
@@ -103,11 +112,11 @@ export default function SettingsScreen() {
           onPress={busy ? undefined : handleImport}
         />
         <List.Item
-          title="Delete all data"
-          description="Erase habits, counters, history, and preferences"
+          title="Clear data…"
+          description="Wipe history, calendar, cache, prefs — or habits/counters"
           left={(props) => <List.Icon {...props} icon="delete-forever" color={theme.colors.error} />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
-          onPress={busy ? undefined : handleClearAllData}
+          onPress={busy ? undefined : openClearSheet}
         />
       </List.Section>
 
@@ -123,8 +132,17 @@ export default function SettingsScreen() {
       <View style={styles.note}>
         <Text variant="bodySmall" style={styles.noteText}>
           Backups are JSON files you can move between installs. Import replaces all local data.
+          Clear data can keep habits and counters while wiping activity only.
         </Text>
       </View>
+
+      <ClearDataSheet
+        visible={clearSheetVisible}
+        busy={busy}
+        onDismiss={dismissClearSheet}
+        onConfirm={handleClearConfirm}
+        onExportFirst={() => void handleExport()}
+      />
     </ScrollView>
   );
 }

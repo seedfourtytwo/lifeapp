@@ -9,7 +9,7 @@ type Props = {
   message: string;
 };
 
-/** Empty Daily/Counter tab with a single CTA into Elements. */
+/** Empty Habits/Counters tab with a single CTA into Trackers. */
 export default function EmptyTabState({ message }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -18,8 +18,8 @@ export default function EmptyTabState({ message }: Props) {
       <Text variant="bodyLarge" style={styles.message}>
         {message}
       </Text>
-      <Button mode="contained-tonal" onPress={() => navigation.navigate('Elements')}>
-        Open Elements
+      <Button mode="contained-tonal" onPress={() => navigation.navigate('Trackers')}>
+        Open Trackers
       </Button>
     </View>
   );

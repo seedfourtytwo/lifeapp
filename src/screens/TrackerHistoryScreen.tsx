@@ -21,7 +21,7 @@ import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
 
 const CHART_DAYS = 14;
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ElementHistory'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'TrackerHistory'>;
 
 interface DayRow {
   date: string;
@@ -47,7 +47,7 @@ function formatDayValue(
   return `${total} ${unit}`;
 }
 
-export default function ElementHistoryScreen({ route, navigation }: Props) {
+export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
   const { elementId } = route.params;
@@ -128,7 +128,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
   if (!element) {
     return (
       <View style={styles.centered}>
-        <Text variant="bodyLarge">Habit not found.</Text>
+        <Text variant="bodyLarge">Tracker not found.</Text>
       </View>
     );
   }
@@ -194,7 +194,7 @@ export default function ElementHistoryScreen({ route, navigation }: Props) {
             </Text>
           ) : (
             <Text variant="bodySmall" style={styles.hint}>
-              {isHabit ? 'No completions yet — check in from the Daily tab.' : 'No data yet — log from the Counter tab.'}
+              {isHabit ? 'No completions yet — check in from the Habits tab.' : 'No data yet — log from the Counters tab.'}
             </Text>
           )}
         </Card.Content>

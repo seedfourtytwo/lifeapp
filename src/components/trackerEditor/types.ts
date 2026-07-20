@@ -2,11 +2,11 @@ import type { HabitSchedule, HabitTimeSlot, HabitTrackingMode, HabitTimerPlaybac
 
 export type HabitScheduleType = HabitSchedule['type'];
 
-export type ElementEditorMode = 'counter' | 'habit';
+export type TrackerEditorMode = 'counter' | 'habit';
 
-export type ElementEditorSession = {
+export type TrackerEditorSession = {
   sessionId: string;
-  mode: ElementEditorMode;
+  mode: TrackerEditorMode;
   editingId: string | null;
   name: string;
   increments: string;
@@ -30,7 +30,7 @@ export type ElementEditorSession = {
   showStreakOnCard: boolean;
 };
 
-export type ElementEditorSaveData =
+export type TrackerEditorSaveData =
   | {
       mode: 'counter';
       name: string;
@@ -60,7 +60,7 @@ export type ElementEditorSaveData =
     };
 
 export type HabitEditorFieldState = Pick<
-  ElementEditorSession,
+  TrackerEditorSession,
   | 'targetLabel'
   | 'habitTrackingMode'
   | 'habitDailyGoalMinutes'

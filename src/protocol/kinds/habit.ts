@@ -56,7 +56,7 @@ export const HabitConfigSchema = z.object({
   timerSound: HabitTimerSoundSchema.optional(),
   /** Minutes before timeRange.start to fire a local reminder */
   remindMinutesBefore: z.number().int().nonnegative().optional(),
-  /** Show current success or failure streak on the Daily habit card */
+  /** Show current success or failure streak on the habit card */
   showStreakOnCard: z.boolean().optional(),
 });
 

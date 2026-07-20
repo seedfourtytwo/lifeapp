@@ -1,10 +1,10 @@
 import { toDateString, type CounterConfig, type HabitConfig, getHabitTimerPlaybackMode } from '../../protocol';
 import { newId } from '../../utils/id';
-import type { ElementEditorSession } from './types';
+import type { TrackerEditorSession } from './types';
 
 export function newEditorSession(
-  overrides: Partial<ElementEditorSession> & Pick<ElementEditorSession, 'mode'>,
-): ElementEditorSession {
+  overrides: Partial<TrackerEditorSession> & Pick<TrackerEditorSession, 'mode'>,
+): TrackerEditorSession {
   return {
     sessionId: newId(),
     editingId: null,
@@ -36,7 +36,7 @@ export function editorSessionFromCounter(
   id: string,
   name: string,
   config: CounterConfig,
-): ElementEditorSession {
+): TrackerEditorSession {
   return newEditorSession({
     mode: 'counter',
     editingId: id,
@@ -50,7 +50,7 @@ export function editorSessionFromHabit(
   id: string,
   name: string,
   config: HabitConfig,
-): ElementEditorSession {
+): TrackerEditorSession {
   const schedule = config.schedule;
   const timerSound = config.timerSound;
   return newEditorSession({

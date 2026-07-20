@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import {
   Button,
   Card,
-  Dialog,
+  Divider,
   IconButton,
+  Modal,
   Portal,
   ProgressBar,
   Text,
@@ -28,9 +37,13 @@ export function CounterWidget({
   onOpenDetails,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const { themeMode, decorations: deco, isCartoon } = useAppTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const sheetWidth = Math.min(width - 24, 400);
 
   const dailyTarget = config.dailyTarget;
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
@@ -50,6 +63,11 @@ export function CounterWidget({
     ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)}`
     : `${todayTotal} ${formatCounterUnit(todayTotal, config.unit)}`;
 
+  const closeEdit = () => {
+    if (saving) return;
+    setEditVisible(false);
+  };
+
   const openEdit = () => {
     setEditValue(String(todayTotal));
     setEditVisible(true);
@@ -61,6 +79,7 @@ export function CounterWidget({
       Alert.alert('Invalid total', 'Enter a whole number zero or greater.');
       return;
     }
+    setSaving(true);
     try {
       await onSetDailyTotal?.(total);
       setEditVisible(false);
@@ -69,6 +88,8 @@ export function CounterWidget({
         'Could not update',
         error instanceof Error ? error.message : 'Try again',
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -164,21 +185,81 @@ export function CounterWidget({
       </Card>
 
       <Portal>
-        <Dialog visible={editVisible} onDismiss={() => setEditVisible(false)}>
-          <Dialog.Title>Edit today&apos;s total</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label={`Total (${config.unit})`}
-              value={editValue}
-              onChangeText={setEditValue}
-              keyboardType="number-pad"
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setEditVisible(false)}>Cancel</Button>
-            <Button onPress={() => void saveEdit()}>Save</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Modal
+          visible={editVisible}
+          onDismiss={closeEdit}
+          contentContainerStyle={[styles.modalContainer, { width: sheetWidth }]}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderRadius: deco.radius.lg,
+                  ...(isCartoon && {
+                    borderWidth: deco.cardBorderWidth,
+                    borderColor: theme.colors.outline,
+                  }),
+                },
+              ]}
+            >
+              <View style={styles.sheetHeader}>
+                <Text
+                  variant="titleLarge"
+                  style={[styles.sheetTitle, isCartoon && { color: theme.colors.onSurface }]}
+                >
+                  Edit today&apos;s total
+                </Text>
+                <IconButton
+                  icon="close"
+                  onPress={closeEdit}
+                  disabled={saving}
+                  accessibilityLabel="Close"
+                />
+              </View>
+
+              <View style={styles.sheetBody}>
+                <Text
+                  variant="bodySmall"
+                  style={[styles.sheetHint, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  Replaces today&apos;s logged {config.unit} with a single total.
+                </Text>
+                <TextInput
+                  label={`Total (${config.unit})`}
+                  value={editValue}
+                  onChangeText={setEditValue}
+                  keyboardType="number-pad"
+                  mode="outlined"
+                  autoFocus
+                  selectTextOnFocus
+                />
+              </View>
+
+              <Divider />
+
+              <View style={styles.sheetFooter}>
+                <Button onPress={closeEdit} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => void saveEdit()}
+                  loading={saving}
+                  disabled={saving}
+                  buttonColor={isCartoon ? theme.colors.primary : undefined}
+                  style={{ borderRadius: deco.buttonRadius }}
+                >
+                  Save
+                </Button>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </Portal>
     </>
   );
@@ -212,15 +293,18 @@ const styles = StyleSheet.create({
   countCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 0,
+    flexShrink: 1,
+    maxWidth: '58%',
+    gap: 0,
   },
   countText: {
+    flexShrink: 1,
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
   },
   editButton: {
     margin: 0,
-    marginRight: -8,
+    marginRight: -4,
     width: 32,
     height: 32,
   },
@@ -245,5 +329,43 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     marginTop: 2,
+  },
+  modalContainer: {
+    alignSelf: 'center',
+    marginHorizontal: 12,
+  },
+  keyboardAvoid: {
+    flexGrow: 0,
+  },
+  sheet: {
+    overflow: 'hidden',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 20,
+    paddingRight: 4,
+    paddingTop: 4,
+  },
+  sheetTitle: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  sheetBody: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  sheetHint: {
+    lineHeight: 18,
+  },
+  sheetFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 4,
   },
 });

@@ -1,5 +1,5 @@
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
-import { getActiveElements, getActiveHabits } from './dashboardElements';
+import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
@@ -19,10 +19,7 @@ export async function reloadStoresAfterImport(): Promise<void> {
   await useElementStore.getState().load();
   const { elements, dashboard } = useElementStore.getState();
   const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
-  const counterIds = getActiveElements(
-    elements.filter((element) => element.kind === 'counter'),
-    dashboard,
-  ).map((element) => element.id);
+  const counterIds = getActiveCounters(elements, dashboard).map((element) => element.id);
 
   const { loadHabitDayState, loadHabitStreaks, loadCounterTotals } = useEventStore.getState();
   await Promise.all([

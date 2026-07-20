@@ -4,7 +4,7 @@ import {
   mergeKindOrderIntoDashboard,
   moveHabitInSlotOrder,
   movePeersInOrder,
-  planDailyHabitReorder,
+  planHabitReorder,
 } from '../src/utils/reorderHabits';
 
 describe('movePeersInOrder', () => {
@@ -39,9 +39,9 @@ describe('movePeersInOrder', () => {
   });
 });
 
-describe('planDailyHabitReorder', () => {
+describe('planHabitReorder', () => {
   it('reorders against the visible sequence', () => {
-    const next = planDailyHabitReorder({
+    const next = planHabitReorder({
       orderedHabitIds: ['a1', 'm1', 'e1', 'm2'],
       visibleOrder: ['a1', 'm1', 'e1', 'm2'],
       habitId: 'a1',
@@ -51,7 +51,7 @@ describe('planDailyHabitReorder', () => {
   });
 
   it('only rewrites visible peers, leaving hidden habits in place', () => {
-    const next = planDailyHabitReorder({
+    const next = planHabitReorder({
       orderedHabitIds: ['a1', 'hidden', 'm1'],
       visibleOrder: ['a1', 'm1'],
       habitId: 'a1',

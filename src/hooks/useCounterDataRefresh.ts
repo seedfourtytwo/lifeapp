@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveElements } from '../utils/dashboardElements';
+import { getActiveCounters } from '../utils/dashboardElements';
 import { refreshAllDailyData } from './refreshAllDailyData';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
@@ -10,16 +10,12 @@ function useActiveCounterIds(): string[] {
   const dashboard = useElementStore((s) => s.dashboard);
 
   return useMemo(
-    () =>
-      getActiveElements(
-        elements.filter((element) => element.kind === 'counter'),
-        dashboard,
-      ).map((element) => element.id),
+    () => getActiveCounters(elements, dashboard).map((element) => element.id),
     [elements, dashboard],
   );
 }
 
-/** Refresh today's totals when the Counter tab gains focus. */
+/** Refresh today's totals when the Counters tab gains focus. */
 export function useRefreshCounterTotalsOnFocus(): void {
   const counterIds = useActiveCounterIds();
   const loadCounterTotals = useEventStore((s) => s.loadCounterTotals);

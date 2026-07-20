@@ -1,6 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
-import { clearAllAppData } from '../db/resetAppData';
+import { stopHabitSound } from '../audio/habitTimerSound';
+import {
+  clearAppData,
+  clearOptionsAreEmpty,
+  describeClearPlan,
+  type ClearAppDataOptions,
+} from '../db/resetAppData';
 import {
   exportBackupToFile,
   importBackupFromFile,
@@ -10,6 +16,7 @@ import { reloadStoresAfterImport } from '../utils/reloadStoresAfterImport';
 
 export function useProtocolBackup() {
   const [busy, setBusy] = useState(false);
+  const [clearSheetVisible, setClearSheetVisible] = useState(false);
 
   const handleExport = useCallback(async () => {
     setBusy(true);
@@ -67,38 +74,78 @@ export function useProtocolBackup() {
     );
   }, [runImport]);
 
-  const runClearAllData = useCallback(async () => {
+  const runClearData = useCallback(async (options: ClearAppDataOptions) => {
+    if (clearOptionsAreEmpty(options)) return;
+
     setBusy(true);
     try {
-      await clearAllAppData();
+      await stopHabitSound();
+      await clearAppData(options);
       await reloadStoresAfterImport();
-      Alert.alert('Data deleted', 'All habits, counters, history, and preferences were removed.');
+      setClearSheetVisible(false);
+      const lines = describeClearPlan(options);
+      Alert.alert(
+        'Data cleared',
+        lines.length > 0 ? lines.map((line) => `• ${line}`).join('\n') : 'Selected data was removed.',
+      );
     } catch (error) {
       Alert.alert(
-        'Delete failed',
-        error instanceof Error ? error.message : 'Could not delete local data.',
+        'Clear failed',
+        error instanceof Error ? error.message : 'Could not clear local data.',
       );
     } finally {
       setBusy(false);
     }
   }, []);
 
-  const handleClearAllData = useCallback(() => {
-    Alert.alert(
-      'Delete all data?',
-      'This removes every habit, counter, calendar event, and app preference on this device. Export a backup first if you might need it.',
-      [
+  const handleClearConfirm = useCallback(
+    (options: ClearAppDataOptions) => {
+      const lines = describeClearPlan(options);
+      const body =
+        (lines.length > 0 ? `${lines.map((line) => `• ${line}`).join('\n')}\n\n` : '') +
+        'This cannot be undone.';
+
+      if (options.definitions) {
+        Alert.alert('Remove habits & counters?', body, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove everything selected',
+            style: 'destructive',
+            onPress: () => void runClearData(options),
+          },
+        ]);
+        return;
+      }
+
+      Alert.alert('Clear selected data?', body, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete all', style: 'destructive', onPress: () => void runClearAllData() },
-      ],
-    );
-  }, [runClearAllData]);
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => void runClearData(options),
+        },
+      ]);
+    },
+    [runClearData],
+  );
+
+  const openClearSheet = useCallback(() => {
+    setClearSheetVisible(true);
+  }, []);
+
+  const dismissClearSheet = useCallback(() => {
+    if (busy) return;
+    setClearSheetVisible(false);
+  }, [busy]);
 
   return {
     busy,
     importAvailable: isImportBackupAvailable(),
+    clearSheetVisible,
     handleExport,
     handleImport,
-    handleClearAllData,
+    openClearSheet,
+    dismissClearSheet,
+    handleClearConfirm,
   };
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { toDateString } from '../protocol';
 import { useWeatherStore } from '../store/weatherStore';
 import { conditionIconName } from '../weather/codes';
@@ -14,6 +15,8 @@ interface Props {
 /** Bottom sheet body for the 5-day forecast (used by Home chrome bubble). */
 export default function WeatherForecastSheet({ onClose }: Props) {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
+  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const forecast = useWeatherStore((s) => s.forecast);
   const error = useWeatherStore((s) => s.error);
   const offline = useWeatherStore((s) => s.offline);
@@ -21,8 +24,24 @@ export default function WeatherForecastSheet({ onClose }: Props) {
   const todayForecast = forecast?.daily.find((d) => d.date === toDateString(new Date()));
 
   return (
-    <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
-      <Text variant="titleMedium" style={{ marginBottom: 4 }}>
+    <View
+      style={[
+        styles.sheet,
+        {
+          backgroundColor: theme.colors.surface,
+          borderTopLeftRadius: deco.radius.lg,
+          borderTopRightRadius: deco.radius.lg,
+          ...(isCartoon && {
+            borderTopWidth: deco.headerBorderWidth,
+            borderColor: theme.colors.outline,
+          }),
+        },
+      ]}
+    >
+      <Text
+        variant="titleMedium"
+        style={[styles.title, isCartoon && { color: theme.colors.onSurface }]}
+      >
         Forecast
       </Text>
       {offline ? (
@@ -53,7 +72,7 @@ export default function WeatherForecastSheet({ onClose }: Props) {
             <MaterialCommunityIcons
               name={conditionIconName(day.condition)}
               size={20}
-              color={theme.colors.primary}
+              color={accent}
             />
             <Text variant="bodyMedium" style={styles.dayDate}>
               {formatDayLabel(day.date)}
@@ -80,7 +99,7 @@ export default function WeatherForecastSheet({ onClose }: Props) {
         accessibilityRole="button"
         accessibilityLabel="Close forecast"
       >
-        <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
+        <Text variant="labelLarge" style={{ color: accent }}>
           Close
         </Text>
       </Pressable>
@@ -90,11 +109,13 @@ export default function WeatherForecastSheet({ onClose }: Props) {
 
 const styles = StyleSheet.create({
   sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 28,
+  },
+  title: {
+    marginBottom: 4,
+    fontWeight: '700',
   },
   dayRow: {
     flexDirection: 'row',

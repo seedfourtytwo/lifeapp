@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatDayHeading, formatOccurrenceTime } from '../calendar/format';
 import { toDateString } from '../calendar/dates';
+import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from '../navigation/types';
 import { useCalendarStore } from '../store/calendarStore';
 
@@ -20,6 +21,8 @@ const PEEK_WITHIN_DAYS = 60;
 /** Attention list only — cleared occurrences drop off (silence). Full history stays on Calendar. */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
+  const { decorations: deco, isCartoon } = useAppTheme();
+  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
@@ -57,19 +60,33 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
   let lastDay = '';
 
   return (
-    <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
+    <View
+      style={[
+        styles.sheet,
+        {
+          backgroundColor: theme.colors.surface,
+          borderTopLeftRadius: deco.radius.lg,
+          borderTopRightRadius: deco.radius.lg,
+          ...(isCartoon && {
+            borderTopWidth: deco.headerBorderWidth,
+            borderColor: theme.colors.outline,
+          }),
+        },
+      ]}
+    >
       <Pressable
         onPress={openFullCalendar}
         style={styles.header}
         accessibilityRole="button"
         accessibilityLabel="Open full calendar"
       >
-        <Text variant="titleMedium">Calendar</Text>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={22}
-          color={theme.colors.primary}
-        />
+        <Text
+          variant="titleMedium"
+          style={isCartoon ? { color: theme.colors.onSurface, fontWeight: '700' } : undefined}
+        >
+          Calendar
+        </Text>
+        <MaterialCommunityIcons name="chevron-right" size={22} color={accent} />
       </Pressable>
       <Text
         variant="bodySmall"
@@ -86,7 +103,13 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
           >
             Nothing needing attention right now.
           </Text>
-          <Button mode="contained-tonal" icon="calendar-month" onPress={openFullCalendar}>
+          <Button
+            mode="contained-tonal"
+            icon="calendar-month"
+            onPress={openFullCalendar}
+            style={{ borderRadius: deco.buttonRadius }}
+            buttonColor={isCartoon ? theme.colors.secondaryContainer : undefined}
+          >
             Open calendar
           </Button>
         </View>
@@ -100,7 +123,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
               {showHeading ? (
                 <Text
                   variant="labelLarge"
-                  style={{ marginTop: 8, marginBottom: 4, color: theme.colors.primary }}
+                  style={{ marginTop: 8, marginBottom: 4, color: accent }}
                 >
                   {formatDayHeading(occ.start)}
                 </Text>
@@ -169,8 +192,6 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 28,

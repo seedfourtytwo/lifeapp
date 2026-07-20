@@ -1,18 +1,18 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
-import ElementEditorDialog from '../components/ElementEditorDialog';
-import ElementLibraryCard, {
-  type ElementLibraryBadge,
-} from '../components/ElementLibraryCard';
-import ElementsCollapsibleSection from '../components/ElementsCollapsibleSection';
+import TrackerEditorDialog from '../components/TrackerEditorDialog';
+import TrackerLibraryCard, {
+  type TrackerLibraryBadge,
+} from '../components/TrackerLibraryCard';
+import TrackersCollapsibleSection from '../components/TrackersCollapsibleSection';
 import {
   editorSessionFromCounter,
   editorSessionFromHabit,
   newEditorSession,
-  type ElementEditorSaveData,
-  type ElementEditorSession,
-} from '../components/elementEditor';
+  type TrackerEditorSaveData,
+  type TrackerEditorSession,
+} from '../components/trackerEditor';
 import { useAppTheme } from '../hooks/useAppTheme';
 import {
   CounterConfigSchema,
@@ -21,10 +21,10 @@ import {
   type ElementDefinition,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { counterMetaLines, habitMetaLines } from '../utils/elementMetaLines';
-import { getElementKindAccent } from '../utils/elementKindAccent';
+import { counterMetaLines, habitMetaLines } from '../utils/trackerMetaLines';
+import { getTrackerKindAccent } from '../utils/trackerKindAccent';
 import { isElementArchived } from '../utils/dashboardElements';
-import { parseElementEditorSave } from '../utils/parseElementEditorSave';
+import { parseTrackerEditorSave } from '../utils/parseTrackerEditorSave';
 
 function runElementMutation(action: () => Promise<void>, errorTitle: string): void {
   void action().catch((error) => {
@@ -50,10 +50,10 @@ function confirmArchive(
   );
 }
 
-export default function ElementsScreen() {
+export default function TrackersScreen() {
   const { themeMode } = useAppTheme();
-  const counterAccent = getElementKindAccent(themeMode, 'counter').color;
-  const habitAccent = getElementKindAccent(themeMode, 'habit').color;
+  const counterAccent = getTrackerKindAccent(themeMode, 'counter').color;
+  const habitAccent = getTrackerKindAccent(themeMode, 'habit').color;
 
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
@@ -65,7 +65,7 @@ export default function ElementsScreen() {
   const restoreElement = useElementStore((s) => s.restoreElement);
   const deleteElement = useElementStore((s) => s.deleteElement);
 
-  const [editorSession, setEditorSession] = useState<ElementEditorSession | null>(null);
+  const [editorSession, setEditorSession] = useState<TrackerEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -120,7 +120,7 @@ export default function ElementsScreen() {
     (element: ElementDefinition, archived: boolean) => {
       const kindLabel = element.kind === 'counter' ? 'counter' : 'habit';
       const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
-      const badges: ElementLibraryBadge[] =
+      const badges: TrackerLibraryBadge[] =
         element.kind === 'counter'
           ? [{ label: 'Counter', tone: archived ? 'muted' : 'accent' }]
           : (() => {
@@ -151,7 +151,7 @@ export default function ElementsScreen() {
       };
 
       return (
-        <ElementLibraryCard
+        <TrackerLibraryCard
           key={element.id}
           kind={element.kind}
           accentColor={accentColor}
@@ -177,11 +177,11 @@ export default function ElementsScreen() {
     [archiveElement, confirmDelete, counterAccent, habitAccent, restoreElement],
   );
 
-  const handleSave = async (data: ElementEditorSaveData) => {
+  const handleSave = async (data: TrackerEditorSaveData) => {
     const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {
-      const parsed = parseElementEditorSave(data);
+      const parsed = parseTrackerEditorSave(data);
       if (parsed.kind === 'counter') {
         if (editingId) {
           await updateCounter(editingId, parsed.input);
@@ -218,13 +218,13 @@ export default function ElementsScreen() {
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text variant="bodyMedium" style={styles.intro}>
-          Active counters and habits appear on Home. Archive items to hide them without losing
+          Active habits and counters appear on Home. Archive items to hide them without losing
           history — restore anytime from Archive below.
         </Text>
 
-        <ElementsCollapsibleSection
+        <TrackersCollapsibleSection
           title="Counters"
-          subtitle="Track quantities with optional daily goals"
+          subtitle="Daily quantities with optional targets — totals reset each day"
           icon="counter"
           accentColor={counterAccent}
           count={activeCounters.length}
@@ -234,9 +234,9 @@ export default function ElementsScreen() {
           emptyMessage="No active counters. Add one to track water, steps, or anything countable."
         >
           {activeCounters.map((element) => renderElementCard(element, false))}
-        </ElementsCollapsibleSection>
+        </TrackersCollapsibleSection>
 
-        <ElementsCollapsibleSection
+        <TrackersCollapsibleSection
           title="Habits"
           subtitle="Daily check-offs or timed sessions"
           icon="checkbox-marked-circle-outline"
@@ -248,9 +248,9 @@ export default function ElementsScreen() {
           emptyMessage="No active habits. Add one for meditation, reading, or any daily routine."
         >
           {activeHabits.map((element) => renderElementCard(element, false))}
-        </ElementsCollapsibleSection>
+        </TrackersCollapsibleSection>
 
-        <ElementsCollapsibleSection
+        <TrackersCollapsibleSection
           title="Archive"
           subtitle="Hidden from Home — history kept until deleted"
           icon="archive-outline"
@@ -261,10 +261,10 @@ export default function ElementsScreen() {
           emptyMessage="Nothing archived. Archive a counter or habit to pause it without deleting its history."
         >
           {archivedElements.map((element) => renderElementCard(element, true))}
-        </ElementsCollapsibleSection>
+        </TrackersCollapsibleSection>
       </ScrollView>
 
-      <ElementEditorDialog
+      <TrackerEditorDialog
         session={editorSession}
         saving={saving}
         deleting={deleting}

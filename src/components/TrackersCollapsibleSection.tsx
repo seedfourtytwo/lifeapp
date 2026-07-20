@@ -18,7 +18,7 @@ type Props = {
   emptyMessage: string;
 };
 
-export default function ElementsCollapsibleSection({
+export default function TrackersCollapsibleSection({
   title,
   subtitle,
   icon,

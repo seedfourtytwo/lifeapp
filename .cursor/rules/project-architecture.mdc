@@ -25,7 +25,8 @@ Local-first personal dashboard. Data lives in SQLite on device. All trackable th
 ## Data rules
 
 - **Events** are append-only facts (`value` + `timestamp`). Never mutate past events.
-- **Elements** are definitions; **dashboard_items** are pinned instances.
+- **Elements** (protocol) are definitions; UI calls the manage screen **Trackers**. **dashboard_items** are pinned instances.
+- Home tabs: **Habits** / **Counters**. Calendar-day aggregates stay `daily*` in protocol/code.
 - Validate all config on write with Zod, not just TypeScript.
 - Bump `PROTOCOL_VERSION` only on breaking schema changes; add DB migrations.
 
