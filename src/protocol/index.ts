@@ -102,16 +102,16 @@ export {
 export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
 export {
   DAILY_VIEW_FILTERS,
-  DAILY_VIEW_FILTER_LABELS,
-  DAILY_REORDER_VIEW,
+  DAILY_ARRANGE_MODES,
   isDailyViewFilter,
+  isDailyArrangeMode,
   migrateDailyViewFilter,
-  filterHabitsForDailyView,
+  filterHabitsDueToday,
+  orderHabitsForDailyList,
+  habitTimeHintLabel,
   isHabitDueToday,
-  dailyViewUsesSlotSections,
-  groupHabitsForDailyView,
 } from './dailyView';
-export type { DailyViewFilter, DailyHabitSection } from './dailyView';
+export type { DailyViewFilter, DailyArrangeMode } from './dailyView';
 export type {
   HabitConfig,
   HabitEventMeta,

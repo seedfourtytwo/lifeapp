@@ -8,12 +8,12 @@ import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
-import { HabitConfigSchema } from '../protocol';
 import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
 import {
   mergeKindOrderIntoDashboard,
+  planDailyHabitReorder,
   movePeersInOrder,
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
@@ -110,8 +110,15 @@ interface ElementState {
   archiveElement: (elementId: string) => Promise<void>;
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
-  /** Move a habit up/down within its time slot; persists dashboard sort_order. */
-  reorderHabitInSlot: (habitId: string, direction: 'up' | 'down') => Promise<void>;
+  /**
+   * Move a habit in the Daily list. Uses the on-screen visible order so
+   * chevrons match what the user sees.
+   */
+  reorderHabit: (
+    habitId: string,
+    direction: 'up' | 'down',
+    visibleOrder: readonly string[],
+  ) => Promise<void>;
   /** Move a counter up/down among counters; persists dashboard sort_order. */
   reorderCounter: (counterId: string, direction: 'up' | 'down') => Promise<void>;
 }
@@ -316,28 +323,18 @@ export const useElementStore = create<ElementState>((set, get) => ({
     });
   },
 
-  reorderHabitInSlot: async (habitId, direction) => {
+  reorderHabit: async (habitId, direction, visibleOrder) => {
     const { elements, dashboard } = get();
     const habits = getActiveHabits(elements, dashboard);
     const target = habits.find((habit) => habit.id === habitId);
     if (!target) return;
 
-    const configs = new Map(
-      habits.map((habit) => [habit.id, HabitConfigSchema.parse(habit.config)] as const),
-    );
-    const slot = configs.get(habitId)?.timeSlot;
-    if (!slot) return;
-
-    const slotHabitIds = habits
-      .filter((habit) => configs.get(habit.id)?.timeSlot === slot)
-      .map((habit) => habit.id);
-
-    const nextHabitOrder = movePeersInOrder(
-      habits.map((habit) => habit.id),
-      slotHabitIds,
+    const nextHabitOrder = planDailyHabitReorder({
+      orderedHabitIds: habits.map((habit) => habit.id),
+      visibleOrder,
       habitId,
       direction,
-    );
+    });
     if (!nextHabitOrder) return;
 
     await persistKindOrder('habit', nextHabitOrder, get, set);

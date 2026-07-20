@@ -8,12 +8,18 @@ import * as dashboardRepo from './repositories/dashboardRepository';
 import * as elementRepo from './repositories/elementRepository';
 import * as settingsRepo from './repositories/settingsRepository';
 import { SCHEMA_SQL } from './schema';
-import { ensureElementsSchema, ensureWeatherDailySchema } from './schemaIntegrity';
+import {
+  ensureCalendarSchema,
+  ensureElementsSchema,
+  ensureWeatherDailySchema,
+} from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 9;
+const CURRENT_SCHEMA_VERSION = 11;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
+/** v10: ambient local calendars / events / reminders (not protocol kinds). */
+/** v11: per-occurrence calendar clears (silence badge/alerts for one instance only). */
 
 interface HabitElementRow {
   id: string;
@@ -149,6 +155,12 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   9: async (db) => {
     await ensureWeatherDailySchema(db);
   },
+  10: async (db) => {
+    await ensureCalendarSchema(db);
+  },
+  11: async (db) => {
+    await ensureCalendarSchema(db);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -162,6 +174,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', CURRENT_SCHEMA_VERSION);
     await ensureElementsSchema(db);
     await ensureWeatherDailySchema(db);
+    await ensureCalendarSchema(db);
     return;
   }
 
@@ -178,4 +191,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
 
   await ensureElementsSchema(db);
   await ensureWeatherDailySchema(db);
+  await ensureCalendarSchema(db);
 }

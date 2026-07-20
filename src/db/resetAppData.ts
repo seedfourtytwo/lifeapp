@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from './client';
 import * as weatherRepo from './repositories/weatherRepository';
+import * as calendarRepo from './repositories/calendarRepository';
 
 async function clearProtocolTables(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM events');
@@ -18,12 +19,14 @@ export async function clearAllAppData(): Promise<void> {
   await db.withTransactionAsync(async () => {
     await clearProtocolTables(db);
     await weatherRepo.clearWeatherDaily(db);
+    await calendarRepo.clearCalendarData(db);
     await clearAppSettings(db);
   });
 }
 
-/** Replace protocol tables and preferences before importing a backup bundle. */
+/** Replace protocol tables, calendar, and preferences before importing a backup bundle. */
 export async function clearDataForImport(db: SQLiteDatabase): Promise<void> {
   await clearProtocolTables(db);
+  await calendarRepo.clearCalendarData(db);
   await clearAppSettings(db);
 }

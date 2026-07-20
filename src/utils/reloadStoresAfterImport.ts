@@ -1,5 +1,6 @@
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
 import { getActiveElements, getActiveHabits } from './dashboardElements';
+import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -32,6 +33,7 @@ export async function reloadStoresAfterImport(): Promise<void> {
 
   void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));
   await useSettingsStore.getState().load();
+  await useCalendarStore.getState().load();
 
   useWeatherStore.getState().clear();
   if (useSettingsStore.getState().weatherWidgetEnabled) {

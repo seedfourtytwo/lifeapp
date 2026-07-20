@@ -8,13 +8,16 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 | Feature | Description |
 |---------|-------------|
-| **Daily** | Habits for today — bottom tabs, remaining progress, view filter + sort |
+| **Home** | Dashboard with Daily / Counter tabs; ambient weather + calendar bubble |
+| **Daily** | Habits for today — remaining progress, view filter + sort, reorder |
 | **Habits** | Check-off or timer mode, bundled meditation audio, schedules, reminders |
 | **Counter** | Quick +buttons, undo, edit total, reorder, 14-day history chart |
+| **Calendar** | Local events, recurrence, reminders, per-occurrence Done (ambient — not a protocol kind) |
+| **Weather** | Optional forecast chip on Home (ambient — not a protocol kind) |
 | **Elements** | Create, edit, archive/restore, or delete habits and counters |
-| **Settings → Data** | JSON export, import, and delete-all backup |
+| **Settings → Data** | JSON export/import (includes calendar when present) and delete-all |
 | **Offline SQLite** | All data on device — no account, no cloud |
-| **Life Protocol v1** | Zod-validated elements + append-only events, JSON export/import |
+| **Life Protocol v1** | Zod-validated elements + append-only events |
 
 **Primary target:** Android phone (Expo dev client). Web is dev-only.
 
@@ -24,9 +27,11 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 Home (default)
 ├── Daily tab      — active habits for today
 ├── Counter tab    — active counters
+├── Ambient bubble — weather + calendar fan-out (optional in Settings)
 └── ⚙ Settings
     ├── Elements   — manage habits & counters (active + archive)
-    └── App settings — theme, reminders, backup, about
+    ├── Calendar   — full month browse / edit
+    └── App settings — theme, reminders, weather/calendar toggles, backup, about
 ```
 
 ### Elements: active vs archive
@@ -42,18 +47,22 @@ Home (default)
 - Zod — protocol validation
 - Zustand — UI state
 - React Native Paper — Material UI
-- Jest — unit tests (109+)
+- Jest — unit tests (150)
 
 ## Project structure
 
 ```
 src/
 ├── protocol/       # Life Protocol v1 schemas (no React/SQLite)
+├── calendar/       # Ambient calendar domain (types, RRULE, occurrences)
+├── weather/        # Ambient weather helpers
 ├── db/             # SQLite client, migrations, repositories, export
 ├── kinds/          # counter + habit widgets and handlers
 ├── store/          # Zustand stores
-├── screens/        # Home, Daily, Counters, Elements, Settings
-├── hooks/          # Bootstrap, data refresh, timer controls, backup
+├── screens/        # Home, Daily, Counters, Calendar, Elements, Settings
+├── components/     # Home chrome bubble, peek sheets, shared UI
+├── hooks/          # Bootstrap, reminder sync, timer, backup
+├── notifications/  # Habit + calendar local notifications (native/web)
 ├── audio/          # Timer sounds + completion chime (native)
 └── navigation/     # Root stack navigator
 ```
@@ -91,6 +100,7 @@ Open the dev client and enter `http://<laptop-ip>:8081`.
 | Feature | Metro reload only | New dev/preview APK |
 |---------|-------------------|---------------------|
 | Habits, counters, archive, export, delete-all | ✓ | |
+| Local calendar (no new native modules) | ✓ | |
 | Backup **import** (`expo-document-picker`) | | ✓ |
 | Background timer audio, habit reminders | | ✓ |
 | Weather phone location (`expo-location`) | | ✓ |
@@ -108,7 +118,7 @@ After installing a new APK, reconnect to Metro for day-to-day JS changes.
 
 Kinds: `counter`, `habit`. Extend via `src/kinds/registry.ts` and `src/protocol/kinds/`.
 
-Backup bundle: `src/db/export.ts` — elements, dashboard order, events, and app settings as JSON.
+**Ambient features** (weather, calendar) live outside the protocol kinds layer; calendar is an optional section on the backup bundle (`src/db/export.ts`).
 
 ## License
 

@@ -16,6 +16,7 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
 import type { WidgetProps } from '../types';
 import { HabitStreakBadge } from './HabitStreakBadge';
+import { HabitTimeHint } from './HabitTimeHint';
 import { habitWidgetStyles as styles } from './habitWidgetStyles';
 
 export function HabitTimerWidget({
@@ -111,13 +112,16 @@ export function HabitTimerWidget({
               pressed && onOpenDetails && styles.pressed,
             ]}
           >
-            <Text
-              variant="titleSmall"
-              numberOfLines={1}
-              style={[styles.name, isCartoon && { color: theme.colors.onSurface }]}
-            >
-              {element.name}
-            </Text>
+            <View style={styles.titleLeading}>
+              <Text
+                variant="titleSmall"
+                numberOfLines={1}
+                style={[styles.name, isCartoon && { color: theme.colors.onSurface }]}
+              >
+                {element.name}
+              </Text>
+              <HabitTimeHint timeSlot={config.timeSlot} />
+            </View>
             <HabitStreakBadge config={config} streak={streak} failureStreak={failureStreak} />
           </Pressable>
           <View style={styles.timerTotalCluster}>

@@ -36,6 +36,25 @@ jest.mock('../src/db/repositories/settingsRepository', () => ({
   setSetting: jest.fn(),
 }));
 
+jest.mock('../src/db/repositories/calendarRepository', () => ({
+  getAllCalendars: jest.fn(async () => []),
+  getAllEvents: jest.fn(async () => []),
+  getAllReminders: jest.fn(async () => []),
+  getAllOccurrenceClears: jest.fn(async () => []),
+  clearCalendarData: jest.fn(async () => undefined),
+  importCalendarData: jest.fn(async () => undefined),
+  ensureDefaultCalendar: jest.fn(async () => ({
+    id: '550e8400-e29b-41d4-a716-446655440201',
+    name: 'Personal',
+    color: '#3D7EA6',
+    source: 'local',
+  })),
+}));
+
+jest.mock('../src/db/repositories/weatherRepository', () => ({
+  clearWeatherDaily: jest.fn(async () => undefined),
+}));
+
 const habitElement = {
   id: '550e8400-e29b-41d4-a716-446655440010',
   kind: 'habit' as const,
@@ -67,7 +86,6 @@ describe('protocol backup settings', () => {
       events: [],
       settings: {
         themeMode: 'cartoon',
-        dailyViewFilter: 'remaining',
         habitRemindersEnabled: true,
       },
     });
@@ -75,9 +93,25 @@ describe('protocol backup settings', () => {
     expect(parseProtocolBundle(bundle)).toEqual(bundle);
     expect(JSON.parse(serializeBundle(bundle)).settings).toEqual({
       themeMode: 'cartoon',
-      dailyViewFilter: 'remaining',
       habitRemindersEnabled: true,
     });
+  });
+
+  it('accepts older backups that still carry daily filter settings', () => {
+    const legacy = {
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [habitElement],
+      dashboard: [],
+      events: [],
+      settings: {
+        themeMode: 'light' as const,
+        dailyViewFilter: 'remaining' as const,
+        dailyArrangeMode: 'order' as const,
+      },
+    };
+
+    expect(parseProtocolBundle(legacy).settings).toEqual(legacy.settings);
   });
 
   it('accepts older backups without settings', () => {
@@ -92,11 +126,10 @@ describe('protocol backup settings', () => {
     expect(parseProtocolBundle(legacy).settings).toBeUndefined();
   });
 
-  it('reads theme, filter, and reminder settings from SQLite', async () => {
+  it('reads theme and reminder settings from SQLite', async () => {
     (settingsRepo.getSetting as jest.Mock).mockImplementation(
       async (_db: unknown, key: string) => {
         if (key === 'theme_mode') return 'dark';
-        if (key === 'daily_view_filter') return 'starting_soon';
         if (key === 'habit_reminders_enabled') return 'true';
         return null;
       },
@@ -104,7 +137,6 @@ describe('protocol backup settings', () => {
 
     await expect(readAppSettings(db as never)).resolves.toEqual({
       themeMode: 'dark',
-      dailyViewFilter: 'remaining',
       habitRemindersEnabled: true,
     });
   });
@@ -112,12 +144,10 @@ describe('protocol backup settings', () => {
   it('writes settings during import', async () => {
     await writeAppSettings(db as never, {
       themeMode: 'light',
-      dailyViewFilter: 'all',
       habitRemindersEnabled: false,
     });
 
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(db, 'theme_mode', 'light');
-    expect(settingsRepo.setSetting).toHaveBeenCalledWith(db, 'daily_view_filter', 'all');
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(
       db,
       'habit_reminders_enabled',
@@ -147,7 +177,7 @@ describe('protocol backup settings', () => {
     expect(elementRepo.insertElement).toHaveBeenCalledWith(db, habitElement);
   });
 
-  it('clears protocol tables and app settings', async () => {
+  it('clears protocol tables, calendar, and app settings', async () => {
     await clearAllAppData();
 
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM events');

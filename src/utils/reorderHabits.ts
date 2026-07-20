@@ -37,8 +37,60 @@ export function movePeersInOrder(
   return next;
 }
 
-/** Alias used by habit slot reorder call sites/tests. */
+/** Alias used by habit reorder call sites/tests. */
 export const moveHabitInSlotOrder = movePeersInOrder;
+
+/**
+ * Write a new on-screen sequence for visible habits into the global habit order,
+ * keeping non-visible habits in their relative places.
+ */
+export function applyVisibleOrder(
+  orderedIds: string[],
+  nextVisibleOrder: readonly string[],
+): string[] | null {
+  const peerSet = new Set(nextVisibleOrder);
+  if (peerSet.size !== nextVisibleOrder.length) return null;
+
+  const peerPositions: number[] = [];
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    if (peerSet.has(orderedIds[index])) {
+      peerPositions.push(index);
+    }
+  }
+  if (peerPositions.length !== nextVisibleOrder.length) return null;
+
+  const next = [...orderedIds];
+  peerPositions.forEach((position, index) => {
+    next[position] = nextVisibleOrder[index];
+  });
+  return next;
+}
+
+/**
+ * Plan a Daily habit move against the current on-screen sequence.
+ * Peers are only the visible habits so chevrons match what the user sees.
+ */
+export function planDailyHabitReorder(args: {
+  orderedHabitIds: string[];
+  visibleOrder: readonly string[];
+  habitId: string;
+  direction: 'up' | 'down';
+}): string[] | null {
+  const { orderedHabitIds, visibleOrder, habitId, direction } = args;
+  const from = visibleOrder.indexOf(habitId);
+  if (from < 0) return null;
+
+  const to = direction === 'up' ? from - 1 : from + 1;
+  if (to < 0 || to >= visibleOrder.length) return null;
+
+  const nextVisibleOrder = [...visibleOrder];
+  [nextVisibleOrder[from], nextVisibleOrder[to]] = [
+    nextVisibleOrder[to],
+    nextVisibleOrder[from],
+  ];
+
+  return applyVisibleOrder(orderedHabitIds, nextVisibleOrder);
+}
 
 /**
  * Merge a new sequence for one element kind into the full dashboard order,

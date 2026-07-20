@@ -1,9 +1,11 @@
 import { createProtocolBundle, parseProtocolBundle } from '../protocol';
 import type { ProtocolBundle } from '../protocol';
+import { CALENDAR_BACKUP_VERSION } from '../calendar/types';
 import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import * as calendarRepo from '../db/repositories/calendarRepository';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
@@ -11,12 +13,17 @@ import { newId } from '../utils/id';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
   const db = await getDatabase();
-  const [elements, dashboard, events, settings] = await Promise.all([
-    elementRepo.getAllElements(db),
-    dashboardRepo.getDashboardItems(db),
-    eventRepo.getAllEvents(db),
-    readAppSettings(db),
-  ]);
+  const [elements, dashboard, events, settings, calendars, calendarEvents, reminders, clears] =
+    await Promise.all([
+      elementRepo.getAllElements(db),
+      dashboardRepo.getDashboardItems(db),
+      eventRepo.getAllEvents(db),
+      readAppSettings(db),
+      calendarRepo.getAllCalendars(db),
+      calendarRepo.getAllEvents(db),
+      calendarRepo.getAllReminders(db),
+      calendarRepo.getAllOccurrenceClears(db),
+    ]);
 
   return createProtocolBundle({
     elements,
@@ -26,6 +33,13 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     }),
     events,
     settings,
+    calendar: {
+      schemaVersion: CALENDAR_BACKUP_VERSION,
+      calendars,
+      events: calendarEvents,
+      reminders,
+      clearedOccurrences: clears,
+    },
   });
 }
 
@@ -67,6 +81,24 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       await eventRepo.insertEvent(db, event);
     }
     await writeAppSettings(db, bundle.settings);
+
+    if (bundle.calendar) {
+      const calendarIds = new Set(bundle.calendar.calendars.map((c) => c.id));
+      const events = bundle.calendar.events.filter((e) => calendarIds.has(e.calendarId));
+      const eventIds = new Set(events.map((e) => e.id));
+      const reminders = bundle.calendar.reminders.filter((r) => eventIds.has(r.eventId));
+      const clearedOccurrences = (bundle.calendar.clearedOccurrences ?? []).filter((c) =>
+        eventIds.has(c.eventId),
+      );
+      await calendarRepo.importCalendarData(db, {
+        calendars: bundle.calendar.calendars,
+        events,
+        reminders,
+        clearedOccurrences,
+      });
+    }
+
+    await calendarRepo.ensureDefaultCalendar(db);
   });
 }
 

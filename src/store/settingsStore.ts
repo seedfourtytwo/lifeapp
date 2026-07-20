@@ -6,15 +6,10 @@ import {
   isWeatherLocationMode,
   type WeatherLocationMode,
 } from '../protocol/appSettings';
-import {
-  migrateDailyViewFilter,
-  type DailyViewFilter,
-} from '../protocol';
 import { isThemeMode, type ThemeMode } from '../theme/types';
 import { defaultBubblePosition } from '../weather/bubblePosition';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
-const DEFAULT_DAILY_VIEW_FILTER: DailyViewFilter = 'remaining';
 const DEFAULT_BUBBLE = defaultBubblePosition();
 
 function parseBool(value: string | null): boolean {
@@ -35,9 +30,9 @@ function parseNorm(value: string | null, fallback: number): number {
 
 interface SettingsState {
   themeMode: ThemeMode;
-  dailyViewFilter: DailyViewFilter;
   habitRemindersEnabled: boolean;
   weatherWidgetEnabled: boolean;
+  calendarWidgetEnabled: boolean;
   weatherLocationMode: WeatherLocationMode;
   weatherPlaceName: string | null;
   weatherLat: number | null;
@@ -47,9 +42,9 @@ interface SettingsState {
   isLoaded: boolean;
   load: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
-  setDailyViewFilter: (filter: DailyViewFilter) => Promise<void>;
   setHabitRemindersEnabled: (enabled: boolean) => Promise<void>;
   setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
+  setCalendarWidgetEnabled: (enabled: boolean) => Promise<void>;
   setWeatherLocationMode: (mode: WeatherLocationMode) => Promise<void>;
   setWeatherPlace: (place: {
     placeName: string;
@@ -61,9 +56,9 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
-  dailyViewFilter: DEFAULT_DAILY_VIEW_FILTER,
   habitRemindersEnabled: false,
   weatherWidgetEnabled: false,
+  calendarWidgetEnabled: false,
   weatherLocationMode: 'manual',
   weatherPlaceName: null,
   weatherLat: null,
@@ -77,7 +72,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const db = await getDatabase();
       // Sequential reads — concurrent prepareAsync on the same DB can release statements early.
       const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
-      const storedFilter = await settingsRepo.getSetting(db, APP_SETTING_KEYS.dailyViewFilter);
       const storedReminders = await settingsRepo.getSetting(
         db,
         APP_SETTING_KEYS.habitRemindersEnabled,
@@ -85,6 +79,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const storedWeatherEnabled = await settingsRepo.getSetting(
         db,
         APP_SETTING_KEYS.weatherWidgetEnabled,
+      );
+      const storedCalendarEnabled = await settingsRepo.getSetting(
+        db,
+        APP_SETTING_KEYS.calendarWidgetEnabled,
       );
       const storedLocationMode = await settingsRepo.getSetting(
         db,
@@ -107,9 +105,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         themeMode = legacyDark === 'true' ? 'dark' : 'light';
       }
 
-      const dailyViewFilter =
-        migrateDailyViewFilter(storedFilter) ?? DEFAULT_DAILY_VIEW_FILTER;
-
       const weatherLocationMode =
         storedLocationMode && isWeatherLocationMode(storedLocationMode)
           ? storedLocationMode
@@ -117,9 +112,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
       set({
         themeMode,
-        dailyViewFilter,
         habitRemindersEnabled: parseBool(storedReminders),
         weatherWidgetEnabled: parseBool(storedWeatherEnabled),
+        calendarWidgetEnabled: parseBool(storedCalendarEnabled),
         weatherLocationMode,
         weatherPlaceName: storedPlaceName,
         weatherLat: parseOptionalNumber(storedLat),
@@ -140,12 +135,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ themeMode: mode });
   },
 
-  setDailyViewFilter: async (filter) => {
-    const db = await getDatabase();
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.dailyViewFilter, filter);
-    set({ dailyViewFilter: filter });
-  },
-
   setHabitRemindersEnabled: async (enabled) => {
     const db = await getDatabase();
     await settingsRepo.setSetting(
@@ -164,6 +153,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       enabled ? 'true' : 'false',
     );
     set({ weatherWidgetEnabled: enabled });
+  },
+
+  setCalendarWidgetEnabled: async (enabled) => {
+    const db = await getDatabase();
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.calendarWidgetEnabled,
+      enabled ? 'true' : 'false',
+    );
+    set({ calendarWidgetEnabled: enabled });
   },
 
   setWeatherLocationMode: async (mode) => {

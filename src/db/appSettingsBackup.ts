@@ -5,7 +5,6 @@ import {
   isWeatherLocationMode,
   type AppSettings,
 } from '../protocol/appSettings';
-import { migrateDailyViewFilter } from '../protocol/dailyView';
 import * as settingsRepo from './repositories/settingsRepository';
 
 function parseOptionalNumber(value: string | null): number | undefined {
@@ -23,9 +22,9 @@ function parseNorm(value: string | null): number | undefined {
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
   const [
     themeMode,
-    dailyViewFilter,
     habitRemindersEnabled,
     weatherWidgetEnabled,
+    calendarWidgetEnabled,
     weatherLocationMode,
     weatherPlaceName,
     weatherLat,
@@ -34,9 +33,9 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
     weatherBubbleY,
   ] = await Promise.all([
     settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.dailyViewFilter),
     settingsRepo.getSetting(db, APP_SETTING_KEYS.habitRemindersEnabled),
     settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherWidgetEnabled),
+    settingsRepo.getSetting(db, APP_SETTING_KEYS.calendarWidgetEnabled),
     settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLocationMode),
     settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherPlaceName),
     settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat),
@@ -50,15 +49,14 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
   if (themeMode && isThemeMode(themeMode)) {
     settings.themeMode = themeMode;
   }
-  const migratedFilter = migrateDailyViewFilter(dailyViewFilter);
-  if (migratedFilter) {
-    settings.dailyViewFilter = migratedFilter;
-  }
   if (habitRemindersEnabled === 'true' || habitRemindersEnabled === 'false') {
     settings.habitRemindersEnabled = habitRemindersEnabled === 'true';
   }
   if (weatherWidgetEnabled === 'true' || weatherWidgetEnabled === 'false') {
     settings.weatherWidgetEnabled = weatherWidgetEnabled === 'true';
+  }
+  if (calendarWidgetEnabled === 'true' || calendarWidgetEnabled === 'false') {
+    settings.calendarWidgetEnabled = calendarWidgetEnabled === 'true';
   }
   if (weatherLocationMode && isWeatherLocationMode(weatherLocationMode)) {
     settings.weatherLocationMode = weatherLocationMode;
@@ -87,13 +85,6 @@ export async function writeAppSettings(
   if (settings.themeMode) {
     await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, settings.themeMode);
   }
-  if (settings.dailyViewFilter) {
-    await settingsRepo.setSetting(
-      db,
-      APP_SETTING_KEYS.dailyViewFilter,
-      settings.dailyViewFilter,
-    );
-  }
   if (settings.habitRemindersEnabled !== undefined) {
     await settingsRepo.setSetting(
       db,
@@ -106,6 +97,13 @@ export async function writeAppSettings(
       db,
       APP_SETTING_KEYS.weatherWidgetEnabled,
       settings.weatherWidgetEnabled ? 'true' : 'false',
+    );
+  }
+  if (settings.calendarWidgetEnabled !== undefined) {
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.calendarWidgetEnabled,
+      settings.calendarWidgetEnabled ? 'true' : 'false',
     );
   }
   if (settings.weatherLocationMode) {

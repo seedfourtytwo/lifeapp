@@ -5,7 +5,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import WeatherBubble from '../components/WeatherBubble';
+import HomeChromeBubble from '../components/HomeChromeBubble';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
@@ -30,6 +30,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('daily');
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
+  const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
   useDayRolloverRefresh();
@@ -39,6 +40,7 @@ export default function HomeScreen() {
     void refreshWeather({ force: false });
   }, [weatherWidgetEnabled, refreshWeather]);
 
+  const showChrome = weatherWidgetEnabled || calendarWidgetEnabled;
   const activeColor = isCartoon
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
@@ -50,7 +52,7 @@ export default function HomeScreen() {
         {tab === 'daily' ? <DailyScreen /> : <CountersScreen />}
       </View>
 
-      {weatherWidgetEnabled ? <WeatherBubble /> : null}
+      {showChrome ? <HomeChromeBubble /> : null}
 
       <View
         style={[

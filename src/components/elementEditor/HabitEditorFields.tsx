@@ -101,8 +101,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
       <Divider style={styles.divider} />
 
       <FormSection
-        title="Daily tab grouping"
-        description="Which section this habit appears under on the Daily tab."
+        title="Time of day"
+        description="Optional cue on the Daily list (AM, Lunch, PM). Does not change order."
         collapsible
         defaultCollapsed={state.timeSlot === 'anytime'}
       >

@@ -16,8 +16,8 @@ import {
 import { useAppTheme } from '../hooks/useAppTheme';
 import {
   CounterConfigSchema,
-  HABIT_TIME_SLOT_LABELS,
   HabitConfigSchema,
+  habitTimeHintLabel,
   type ElementDefinition,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
@@ -125,12 +125,13 @@ export default function ElementsScreen() {
           ? [{ label: 'Counter', tone: archived ? 'muted' : 'accent' }]
           : (() => {
               const config = HabitConfigSchema.parse(element.config);
+              const timeHint = habitTimeHintLabel(config.timeSlot);
               return [
                 {
                   label: config.trackingMode === 'timer' ? 'Timer' : 'Check off',
                   tone: archived ? 'muted' : 'accent',
                 },
-                { label: HABIT_TIME_SLOT_LABELS[config.timeSlot], tone: 'muted' },
+                ...(timeHint ? [{ label: timeHint, tone: 'muted' as const }] : []),
               ];
             })();
 

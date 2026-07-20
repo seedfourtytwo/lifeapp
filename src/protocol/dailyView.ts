@@ -2,64 +2,9 @@ import type { ElementDefinition } from './element';
 import type { HabitConfig, HabitTimeSlot } from './kinds/habit';
 import {
   HabitConfigSchema,
-  HABIT_TIME_SLOT_ORDER,
   isHabitScheduledOnDate,
   shouldShowHabitOnHabitsPage,
 } from './kinds/habit';
-
-/**
- * Daily tab view filter.
- * Habit order is independent (`dashboard_items.sort_order`); filters only hide rows.
- */
-export const DAILY_VIEW_FILTERS = [
-  'all',
-  'remaining',
-  'morning',
-  'afternoon',
-  'evening',
-  'anytime',
-  'everything',
-] as const;
-
-export type DailyViewFilter = (typeof DAILY_VIEW_FILTERS)[number];
-
-export const DAILY_VIEW_FILTER_LABELS: Record<DailyViewFilter, string> = {
-  all: 'All today',
-  remaining: 'Remaining',
-  morning: 'Morning',
-  afternoon: 'Afternoon',
-  evening: 'Evening',
-  anytime: 'Anytime',
-  everything: 'Everything',
-};
-
-/** View used while the user is rearranging habits (shows the full due-today set). */
-export const DAILY_REORDER_VIEW: DailyViewFilter = 'all';
-
-const TIME_SLOT_FILTERS = new Set<DailyViewFilter>([
-  'morning',
-  'afternoon',
-  'evening',
-  'anytime',
-]);
-
-const LEGACY_DAILY_VIEW_FILTERS: Record<string, DailyViewFilter> = {
-  all_due: 'all',
-  undone: 'remaining',
-  starting_soon: 'remaining',
-  all_habits: 'everything',
-};
-
-export function isDailyViewFilter(value: string): value is DailyViewFilter {
-  return (DAILY_VIEW_FILTERS as readonly string[]).includes(value);
-}
-
-/** Map stored / backup values onto the current filter enum. */
-export function migrateDailyViewFilter(value: string | null | undefined): DailyViewFilter | null {
-  if (!value) return null;
-  if (isDailyViewFilter(value)) return value;
-  return LEGACY_DAILY_VIEW_FILTERS[value] ?? null;
-}
 
 export interface DailyHabitFilterContext {
   now: Date;
@@ -77,56 +22,90 @@ export function isHabitDueToday(
   );
 }
 
-export function filterHabitsForDailyView(
+/** Habits due today, in dashboard sort_order (caller supplies already-sorted active habits). */
+export function filterHabitsDueToday(
   habits: ElementDefinition[],
-  filter: DailyViewFilter,
   context: DailyHabitFilterContext,
 ): ElementDefinition[] {
   return habits.filter((habit) => {
     const config = HabitConfigSchema.parse(habit.config);
-
-    if (filter === 'everything') {
-      return shouldShowHabitOnHabitsPage(config, context.now);
-    }
-
-    if (!isHabitDueToday(config, context)) {
-      return false;
-    }
-
-    if (filter === 'remaining') {
-      return !(context.habitDoneToday[habit.id] ?? false);
-    }
-
-    if (TIME_SLOT_FILTERS.has(filter)) {
-      return config.timeSlot === filter;
-    }
-
-    return true;
+    return isHabitDueToday(config, context);
   });
 }
 
-/** Views that show multiple time-of-day section headers. */
-export function dailyViewUsesSlotSections(filter: DailyViewFilter): boolean {
-  return filter === 'all' || filter === 'remaining' || filter === 'everything';
+/**
+ * Daily list order: remaining first (user sort_order), then done (user sort_order).
+ * Keeps completed habits visible without a filter.
+ */
+export function orderHabitsForDailyList(
+  habits: ElementDefinition[],
+  habitDoneToday: Record<string, boolean>,
+): ElementDefinition[] {
+  const remaining: ElementDefinition[] = [];
+  const done: ElementDefinition[] = [];
+  for (const habit of habits) {
+    if (habitDoneToday[habit.id]) {
+      done.push(habit);
+    } else {
+      remaining.push(habit);
+    }
+  }
+  return [...remaining, ...done];
 }
 
-export type DailyHabitSection = {
-  slot: HabitTimeSlot | null;
-  items: ElementDefinition[];
+/** Quiet part-of-day cue on Daily cards — not a list structure. */
+export function habitTimeHintLabel(timeSlot: HabitTimeSlot): string | null {
+  switch (timeSlot) {
+    case 'morning':
+      return 'AM';
+    case 'afternoon':
+      return 'Lunch';
+    case 'evening':
+      return 'PM';
+    case 'anytime':
+      return null;
+  }
+}
+
+// --- Legacy filter ids (older backups / settings rows) -----------------
+
+/** @deprecated Kept so older backups still parse; Daily no longer uses filters. */
+export const DAILY_VIEW_FILTERS = [
+  'all',
+  'remaining',
+  'morning',
+  'afternoon',
+  'evening',
+  'anytime',
+  'everything',
+] as const;
+
+/** @deprecated */
+export type DailyViewFilter = (typeof DAILY_VIEW_FILTERS)[number];
+
+/** @deprecated */
+export const DAILY_ARRANGE_MODES = ['order', 'time'] as const;
+
+/** @deprecated */
+export type DailyArrangeMode = (typeof DAILY_ARRANGE_MODES)[number];
+
+const LEGACY_DAILY_VIEW_FILTERS: Record<string, DailyViewFilter> = {
+  all_due: 'all',
+  undone: 'remaining',
+  starting_soon: 'remaining',
+  all_habits: 'everything',
 };
 
-/** Group already-filtered habits for Daily list rendering. */
-export function groupHabitsForDailyView(
-  habits: ElementDefinition[],
-  filter: DailyViewFilter,
-  configs: Map<string, HabitConfig>,
-): DailyHabitSection[] {
-  if (!dailyViewUsesSlotSections(filter)) {
-    return [{ slot: null, items: habits }];
-  }
+export function isDailyViewFilter(value: string): value is DailyViewFilter {
+  return (DAILY_VIEW_FILTERS as readonly string[]).includes(value);
+}
 
-  return HABIT_TIME_SLOT_ORDER.map((slot) => ({
-    slot,
-    items: habits.filter((habit) => configs.get(habit.id)?.timeSlot === slot),
-  })).filter((group) => group.items.length > 0);
+export function isDailyArrangeMode(value: string): value is DailyArrangeMode {
+  return (DAILY_ARRANGE_MODES as readonly string[]).includes(value);
+}
+
+export function migrateDailyViewFilter(value: string | null | undefined): DailyViewFilter | null {
+  if (!value) return null;
+  if (isDailyViewFilter(value)) return value;
+  return LEGACY_DAILY_VIEW_FILTERS[value] ?? null;
 }

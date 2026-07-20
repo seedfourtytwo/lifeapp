@@ -19,6 +19,13 @@ export default function SettingsMenuScreen() {
           onPress={() => navigation.navigate('Elements')}
         />
         <List.Item
+          title="Calendar"
+          description="Birthdays, appointments, and reminders"
+          left={(props) => <List.Icon {...props} icon="calendar-month" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => navigation.navigate('Calendar')}
+        />
+        <List.Item
           title="App settings"
           description="About and preferences"
           left={(props) => <List.Icon {...props} icon="tune" />}

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { warmupHabitSoundPlayback } from '../audio/habitTimerSound';
 import { warmupHabitCompleteChime } from '../audio/habitCompleteSound';
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
+import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -32,6 +33,7 @@ export function useAppBootstrap(): void {
   useEffect(() => {
     if (!settingsLoaded) return;
     void loadElements();
+    void useCalendarStore.getState().load();
   }, [loadElements, settingsLoaded]);
 
   useEffect(() => {

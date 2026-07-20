@@ -8,6 +8,8 @@ import SettingsMenuScreen from '../screens/SettingsMenuScreen';
 import ElementsScreen from '../screens/ElementsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ElementHistoryScreen from '../screens/ElementHistoryScreen';
+import CalendarScreen from '../screens/CalendarScreen';
+import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,6 +61,21 @@ export default function AppNavigator() {
         name="ElementHistory"
         component={ElementHistoryScreen}
         options={{ title: 'History' }}
+      />
+      <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: 'Calendar' }}
+      />
+      <Stack.Screen
+        name="CalendarEventEditor"
+        component={CalendarEventEditorScreen}
+        getId={({ params }) =>
+          params?.eventId ?? `new-${params?.seedDate ?? 'blank'}`
+        }
+        options={({ route }) => ({
+          title: route.params?.eventId ? 'Edit event' : 'New event',
+        })}
       />
     </Stack.Navigator>
   );

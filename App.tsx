@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
+import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
 import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
@@ -25,6 +26,7 @@ function ThemedApp() {
 
   useAppBootstrap();
   useHabitReminderSync();
+  useCalendarReminderSync();
 
   if (!isLoaded) {
     return (

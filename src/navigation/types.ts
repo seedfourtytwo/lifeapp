@@ -4,4 +4,6 @@ export type RootStackParamList = {
   Elements: undefined;
   AppSettings: undefined;
   ElementHistory: { elementId: string };
+  Calendar: undefined;
+  CalendarEventEditor: { eventId?: string; seedDate?: string };
 };

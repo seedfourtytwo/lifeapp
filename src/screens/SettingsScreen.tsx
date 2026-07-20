@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
 import WeatherSettingsSection from '../components/WeatherSettingsSection';
+import CalendarSettingsSection from '../components/CalendarSettingsSection';
 import { useProtocolBackup } from '../hooks/useProtocolBackup';
 import {
   requestNotificationPermissions,
@@ -64,6 +65,8 @@ export default function SettingsScreen() {
 
       <WeatherSettingsSection />
 
+      <CalendarSettingsSection />
+
       <List.Section>
         <List.Subheader>Notifications</List.Subheader>
         <List.Item
@@ -83,7 +86,7 @@ export default function SettingsScreen() {
         <List.Subheader>Data</List.Subheader>
         <List.Item
           title="Export backup"
-          description="Save habits, counters, history, and app preferences as JSON"
+          description="Save habits, counters, calendar, history, and preferences as JSON"
           left={(props) => <List.Icon {...props} icon="export" />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : () => void handleExport()}

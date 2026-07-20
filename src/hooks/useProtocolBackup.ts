@@ -86,7 +86,7 @@ export function useProtocolBackup() {
   const handleClearAllData = useCallback(() => {
     Alert.alert(
       'Delete all data?',
-      'This removes every habit, counter, event, and app preference on this device. Export a backup first if you might need it.',
+      'This removes every habit, counter, calendar event, and app preference on this device. Export a backup first if you might need it.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete all', style: 'destructive', onPress: () => void runClearAllData() },

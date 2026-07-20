@@ -4,6 +4,7 @@ import {
   mergeKindOrderIntoDashboard,
   moveHabitInSlotOrder,
   movePeersInOrder,
+  planDailyHabitReorder,
 } from '../src/utils/reorderHabits';
 
 describe('movePeersInOrder', () => {
@@ -35,6 +36,28 @@ describe('movePeersInOrder', () => {
     expect(movePeersInOrder(ordered, morning, 'm1', 'up')).toBeNull();
     expect(movePeersInOrder(ordered, morning, 'm2', 'down')).toBeNull();
     expect(movePeersInOrder(ordered, morning, 'x', 'up')).toBeNull();
+  });
+});
+
+describe('planDailyHabitReorder', () => {
+  it('reorders against the visible sequence', () => {
+    const next = planDailyHabitReorder({
+      orderedHabitIds: ['a1', 'm1', 'e1', 'm2'],
+      visibleOrder: ['a1', 'm1', 'e1', 'm2'],
+      habitId: 'a1',
+      direction: 'down',
+    });
+    expect(next).toEqual(['m1', 'a1', 'e1', 'm2']);
+  });
+
+  it('only rewrites visible peers, leaving hidden habits in place', () => {
+    const next = planDailyHabitReorder({
+      orderedHabitIds: ['a1', 'hidden', 'm1'],
+      visibleOrder: ['a1', 'm1'],
+      habitId: 'a1',
+      direction: 'down',
+    });
+    expect(next).toEqual(['m1', 'hidden', 'a1']);
   });
 });
 
