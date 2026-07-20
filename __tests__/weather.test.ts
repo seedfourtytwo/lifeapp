@@ -8,6 +8,14 @@ import {
   weatherCodeToCondition,
 } from '../src/weather/codes';
 import { AppSettingsSchema } from '../src/protocol/appSettings';
+import {
+  buildGeocodeQueries,
+  formatGeocodeLabel,
+} from '../src/weather/openMeteo';
+import {
+  classifyWeatherFetchError,
+  weatherErrorMessage,
+} from '../src/weather/errors';
 
 describe('weatherCodeToCondition', () => {
   it('maps clear codes to sunny', () => {
@@ -82,5 +90,43 @@ describe('AppSettingsSchema weather fields', () => {
 
   it('rejects invalid bubble coords', () => {
     expect(() => AppSettingsSchema.parse({ weatherBubbleX: 1.5 })).toThrow();
+  });
+});
+
+describe('geocode query helpers', () => {
+  it('formats place labels', () => {
+    expect(
+      formatGeocodeLabel({
+        name: 'Munich',
+        admin1: 'Bavaria',
+        country: 'Germany',
+      }),
+    ).toBe('Munich, Bavaria, Germany');
+  });
+
+  it('builds fallback queries for City Country and commas', () => {
+    expect(buildGeocodeQueries('Paris France')).toEqual(['Paris France', 'Paris']);
+    expect(buildGeocodeQueries('Lyon, France')).toEqual([
+      'Lyon, France',
+      'Lyon',
+      'Lyon France',
+    ]);
+  });
+});
+
+describe('weather error classification', () => {
+  it('treats network failures as offline', () => {
+    expect(classifyWeatherFetchError(new TypeError('Network request failed'))).toBe(
+      'offline',
+    );
+    expect(classifyWeatherFetchError(new Error('Request timed out'))).toBe('offline');
+    expect(weatherErrorMessage('offline')).toBe('No connection');
+  });
+
+  it('classifies http and invalid payloads', () => {
+    expect(classifyWeatherFetchError(new Error('Forecast failed (500)'))).toBe('http');
+    expect(
+      classifyWeatherFetchError(new Error('Forecast response missing current or daily data')),
+    ).toBe('invalid');
   });
 });

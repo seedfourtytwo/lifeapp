@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Dimensions,
   Modal,
@@ -10,25 +10,19 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { toDateString } from '../protocol';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import {
+  BUBBLE_HEIGHT,
   BUBBLE_SIZE,
   clampBubblePosition,
 } from '../weather/bubblePosition';
 import { conditionIconName, conditionLabel } from '../weather/codes';
+import { formatDayLabel, formatTempC } from '../weather/format';
 
 const DOCK_RESERVE = 72;
 const TAP_SLOP = 8;
-
-function formatTemp(tempC: number): string {
-  return `${Math.round(tempC)}°`;
-}
-
-function formatDayLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-}
 
 export default function WeatherBubble() {
   const theme = useTheme();
@@ -39,6 +33,8 @@ export default function WeatherBubble() {
   const setWeatherBubblePosition = useSettingsStore((s) => s.setWeatherBubblePosition);
   const forecast = useWeatherStore((s) => s.forecast);
   const error = useWeatherStore((s) => s.error);
+  const offline = useWeatherStore((s) => s.offline);
+  const loading = useWeatherStore((s) => s.loading);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [layout, setLayout] = useState(() => {
@@ -101,8 +97,7 @@ export default function WeatherBubble() {
             setSheetOpen(true);
             return;
           }
-          const finalPos = posRef.current;
-          void setWeatherBubblePosition(finalPos.x, finalPos.y);
+          void setWeatherBubblePosition(posRef.current.x, posRef.current.y);
         },
       }),
     [setWeatherBubblePosition],
@@ -110,9 +105,33 @@ export default function WeatherBubble() {
 
   if (!weatherWidgetEnabled) return null;
 
+  const hasForecast = forecast != null;
   const condition = forecast?.currentCondition ?? 'other';
-  const tempLabel = forecast ? formatTemp(forecast.currentTempC) : '—';
-  const icon = conditionIconName(condition);
+  const tempLabel = hasForecast ? formatTempC(forecast.currentTempC) : '—';
+  const statusLabel = !hasForecast
+    ? offline
+      ? 'Offline'
+      : error
+        ? 'Unavailable'
+        : loading
+          ? '…'
+          : null
+    : `${forecast.precipProbabilityPct}%`;
+  const iconName =
+    !hasForecast && offline
+      ? 'cloud-off-outline'
+      : !hasForecast && error
+        ? 'weather-cloudy-alert'
+        : conditionIconName(condition);
+  const iconColor =
+    !hasForecast && (offline || error)
+      ? theme.colors.onSurfaceVariant
+      : theme.colors.primary;
+  const todayForecast = forecast?.daily.find((d) => d.date === toDateString(new Date()));
+
+  const a11y = hasForecast
+    ? `Weather ${tempLabel}, ${conditionLabel(condition)}, rain ${forecast.precipProbabilityPct}%${offline ? ', offline cache' : ''}. Opens forecast.`
+    : (error ?? (offline ? 'No connection' : 'Weather unavailable'));
 
   return (
     <View
@@ -133,19 +152,31 @@ export default function WeatherBubble() {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
             shadowColor: '#000',
+            opacity: offline && hasForecast ? 0.92 : 1,
           },
         ]}
         accessibilityRole="button"
-        accessibilityLabel={
-          forecast
-            ? `Weather ${tempLabel}, ${conditionLabel(condition)}. Opens forecast.`
-            : (error ?? 'Weather unavailable')
-        }
+        accessibilityLabel={a11y}
       >
-        <MaterialCommunityIcons name={icon} size={22} color={theme.colors.primary} />
+        <MaterialCommunityIcons name={iconName} size={20} color={iconColor} />
         <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
           {tempLabel}
         </Text>
+        {statusLabel ? (
+          <Text
+            variant="labelSmall"
+            style={{
+              color:
+                !hasForecast && (offline || error)
+                  ? theme.colors.error
+                  : theme.colors.onSurfaceVariant,
+              marginTop: -2,
+            }}
+            numberOfLines={1}
+          >
+            {statusLabel}
+          </Text>
+        ) : null}
       </View>
 
       <Modal
@@ -162,11 +193,30 @@ export default function WeatherBubble() {
             <Text variant="titleMedium" style={{ marginBottom: 4 }}>
               Forecast
             </Text>
+            {offline ? (
+              <Text
+                variant="bodySmall"
+                style={{ color: theme.colors.error, marginBottom: 4 }}
+              >
+                No connection — showing last saved weather
+              </Text>
+            ) : null}
+            {hasForecast ? (
+              <Text
+                variant="bodySmall"
+                style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4 }}
+              >
+                Now {formatTempC(forecast.currentTempC)}
+                {todayForecast
+                  ? ` · Today ${Math.round(todayForecast.tempMinC)}°–${Math.round(todayForecast.tempMaxC)}°`
+                  : ''}
+              </Text>
+            ) : null}
             <Text
               variant="bodySmall"
               style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
             >
-              Next 5 days · °C
+              Next 5 days · °C · rain chance
             </Text>
             {forecast?.daily.length ? (
               forecast.daily.slice(0, 5).map((day) => (
@@ -179,8 +229,11 @@ export default function WeatherBubble() {
                   <Text variant="bodyMedium" style={styles.dayDate}>
                     {formatDayLabel(day.date)}
                   </Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {conditionLabel(day.condition)}
+                  <Text
+                    variant="bodyMedium"
+                    style={[styles.dayRain, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    {day.precipProbabilityPct}%
                   </Text>
                   <Text variant="bodyMedium" style={styles.dayTemps}>
                     {Math.round(day.tempMinC)}° / {Math.round(day.tempMaxC)}°
@@ -213,8 +266,8 @@ const styles = StyleSheet.create({
   bubble: {
     position: 'absolute',
     width: BUBBLE_SIZE,
-    height: BUBBLE_SIZE,
-    borderRadius: BUBBLE_SIZE / 2,
+    height: BUBBLE_HEIGHT,
+    borderRadius: BUBBLE_HEIGHT / 2,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
@@ -223,6 +276,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     zIndex: 20,
+    paddingVertical: 4,
   },
   sheetBackdrop: {
     flex: 1,
@@ -246,8 +300,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: '600',
   },
+  dayRain: {
+    fontVariant: ['tabular-nums'],
+    minWidth: 40,
+    textAlign: 'right',
+  },
   dayTemps: {
-    marginLeft: 'auto',
     fontVariant: ['tabular-nums'],
     minWidth: 72,
     textAlign: 'right',

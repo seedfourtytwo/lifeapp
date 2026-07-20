@@ -4,6 +4,15 @@ import * as weatherRepo from '../db/repositories/weatherRepository';
 import { toDateString } from '../protocol';
 import { useSettingsStore } from './settingsStore';
 import {
+  classifyWeatherFetchError,
+  weatherErrorMessage,
+} from '../weather/errors';
+import {
+  clearCachedForecast,
+  loadCachedForecast,
+  saveCachedForecast,
+} from '../weather/forecastCache';
+import {
   getDeviceCoords,
   isDeviceLocationAvailable,
   requestDeviceLocationPermission,
@@ -16,47 +25,100 @@ const REFRESH_MS = 3 * 60 * 60 * 1000;
 interface WeatherState {
   forecast: WeatherForecast | null;
   loading: boolean;
+  /** User-facing status under the bubble (e.g. No connection). */
   error: string | null;
+  /** True when the last fetch failed due to network / timeout. */
+  offline: boolean;
   lastFetchAt: number | null;
-  refresh: (opts?: { force?: boolean }) => Promise<void>;
+  refresh: (opts?: { force?: boolean; refreshGps?: boolean }) => Promise<void>;
+  hydrateFromCache: () => Promise<void>;
   clear: () => void;
 }
 
-async function resolveCoords(): Promise<WeatherCoords | null> {
-  const {
-    weatherLocationMode,
-    weatherLat,
-    weatherLon,
-    weatherPlaceName,
-  } = useSettingsStore.getState();
+function savedCoords(): WeatherCoords | null {
+  const { weatherLat, weatherLon, weatherPlaceName } = useSettingsStore.getState();
+  if (weatherLat == null || weatherLon == null) return null;
+  return {
+    lat: weatherLat,
+    lon: weatherLon,
+    placeName: weatherPlaceName ?? undefined,
+  };
+}
 
-  if (weatherLocationMode === 'device' && isDeviceLocationAvailable()) {
+/**
+ * Prefer last-known coordinates so offline / quick refresh still works.
+ * Only hit GPS when explicitly requested (Settings → Use phone location).
+ */
+async function resolveCoords(refreshGps: boolean): Promise<WeatherCoords | null> {
+  const { weatherLocationMode } = useSettingsStore.getState();
+  const saved = savedCoords();
+
+  if (refreshGps && weatherLocationMode === 'device' && isDeviceLocationAvailable()) {
     const granted = await requestDeviceLocationPermission();
     if (granted) {
-      const device = await getDeviceCoords();
-      if (device) return device;
+      try {
+        const device = await getDeviceCoords();
+        if (device) return device;
+      } catch {
+        // fall through to saved
+      }
     }
   }
 
-  if (weatherLat != null && weatherLon != null) {
-    return {
-      lat: weatherLat,
-      lon: weatherLon,
-      placeName: weatherPlaceName ?? undefined,
-    };
-  }
-
-  return null;
+  return saved;
 }
+
+async function persistDailySnapshot(forecast: WeatherForecast): Promise<void> {
+  const today = toDateString(new Date());
+  const todayDaily = forecast.daily.find((d) => d.date === today) ?? forecast.daily[0];
+  if (!todayDaily) return;
+
+  try {
+    const db = await getDatabase();
+    await weatherRepo.upsertWeatherDaily(db, {
+      date: todayDaily.date,
+      tempC: todayDaily.tempMeanC,
+      tempMinC: todayDaily.tempMinC,
+      tempMaxC: todayDaily.tempMaxC,
+      weatherCode: todayDaily.weatherCode,
+      condition: todayDaily.condition,
+      precipProbabilityPct: todayDaily.precipProbabilityPct,
+      lat: forecast.lat,
+      lon: forecast.lon,
+      fetchedAt: forecast.fetchedAt,
+    });
+  } catch (error) {
+    // Snapshot is best-effort — don't hide a successful forecast
+    console.error('Failed to persist weather_daily snapshot', error);
+  }
+}
+
+let refreshSeq = 0;
 
 export const useWeatherStore = create<WeatherState>((set, get) => ({
   forecast: null,
   loading: false,
   error: null,
+  offline: false,
   lastFetchAt: null,
 
   clear: () => {
-    set({ forecast: null, loading: false, error: null, lastFetchAt: null });
+    set({
+      forecast: null,
+      loading: false,
+      error: null,
+      offline: false,
+      lastFetchAt: null,
+    });
+    void clearCachedForecast();
+  },
+
+  hydrateFromCache: async () => {
+    if (get().forecast) return;
+    const cached = await loadCachedForecast();
+    if (cached) {
+      set({ forecast: cached, offline: true, error: null });
+    }
   },
 
   refresh: async (opts) => {
@@ -78,48 +140,50 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       return;
     }
 
-    set({ loading: true, error: null });
+    if (!get().forecast) {
+      await get().hydrateFromCache();
+    }
+
+    const seq = ++refreshSeq;
+    set({ loading: true });
 
     try {
-      const coords = await resolveCoords();
+      const coords = await resolveCoords(opts?.refreshGps === true);
       if (!coords) {
+        if (seq !== refreshSeq) return;
         set({
           loading: false,
-          error: 'Set a location in Settings to show weather.',
+          offline: false,
+          error: 'Set a location in Settings',
         });
         return;
       }
 
       const next = await fetchForecast(coords.lat, coords.lon);
-      const today = toDateString(new Date());
-      const todayDaily = next.daily.find((d) => d.date === today) ?? next.daily[0];
+      if (seq !== refreshSeq) return;
 
-      if (todayDaily) {
-        const db = await getDatabase();
-        await weatherRepo.upsertWeatherDaily(db, {
-          date: todayDaily.date,
-          tempC: todayDaily.tempMeanC,
-          tempMinC: todayDaily.tempMinC,
-          tempMaxC: todayDaily.tempMaxC,
-          weatherCode: todayDaily.weatherCode,
-          condition: todayDaily.condition,
-          lat: next.lat,
-          lon: next.lon,
-          fetchedAt: next.fetchedAt,
-        });
-      }
+      await saveCachedForecast(next);
+      await persistDailySnapshot(next);
 
       set({
         forecast: next,
         loading: false,
         error: null,
+        offline: false,
         lastFetchAt: Date.now(),
       });
     } catch (error) {
       console.error('Weather refresh failed', error);
+      if (seq !== refreshSeq) return;
+
+      const kind = classifyWeatherFetchError(error);
+      const cached = get().forecast ?? (await loadCachedForecast());
       set({
+        forecast: cached,
         loading: false,
-        error: error instanceof Error ? error.message : 'Weather unavailable',
+        offline: kind === 'offline',
+        error: weatherErrorMessage(kind),
+        lastFetchAt: get().lastFetchAt,
       });
     }
   },

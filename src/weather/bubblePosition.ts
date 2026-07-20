@@ -1,6 +1,7 @@
 const BUBBLE_SIZE = 64;
+const BUBBLE_HEIGHT = 72;
 
-export { BUBBLE_SIZE };
+export { BUBBLE_SIZE, BUBBLE_HEIGHT };
 
 /** Clamp normalized bubble position so the bubble stays on-screen above the dock. */
 export function clampBubblePosition(
@@ -16,7 +17,7 @@ export function clampBubblePosition(
   const minX = 8;
   const maxX = Math.max(minX, width - BUBBLE_SIZE - 8);
   const minY = topInset + 8;
-  const maxY = Math.max(minY, height - bottomInset - BUBBLE_SIZE - 8);
+  const maxY = Math.max(minY, height - bottomInset - BUBBLE_HEIGHT - 8);
 
   const pixelX = xNorm * width;
   const pixelY = yNorm * height;

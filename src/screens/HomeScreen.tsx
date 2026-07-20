@@ -36,7 +36,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!weatherWidgetEnabled) return;
-    void refreshWeather();
+    void refreshWeather({ force: false });
   }, [weatherWidgetEnabled, refreshWeather]);
 
   const activeColor = isCartoon

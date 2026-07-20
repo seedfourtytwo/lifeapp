@@ -22,3 +22,7 @@ export async function setSetting(
     value,
   );
 }
+
+export async function deleteSetting(db: SQLiteDatabase, key: string): Promise<void> {
+  await db.runAsync('DELETE FROM app_settings WHERE key = ?', key);
+}

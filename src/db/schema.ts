@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS weather_daily (
   temp_max_c REAL NOT NULL,
   weather_code INTEGER NOT NULL,
   condition TEXT NOT NULL,
+  precip_probability INTEGER,
   lat REAL,
   lon REAL,
   fetched_at TEXT NOT NULL
