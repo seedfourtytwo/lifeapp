@@ -17,7 +17,11 @@ import {
   movePeersInOrder,
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
-import { useEventStore } from './eventStore';
+import {
+  abortHabitTimerRestore,
+  awaitHabitTimerStop,
+  useEventStore,
+} from './eventStore';
 import { clearWriteEpoch } from './writeEpoch';
 
 async function persistKindOrder(
@@ -63,9 +67,11 @@ async function insertActiveElement(
 }
 
 /** Stop in-memory timer + audio when that habit is leaving Home. */
-function clearHabitRuntime(elementId: string): void {
+async function clearHabitRuntime(elementId: string): Promise<void> {
   const hadSession = useEventStore.getState().activeTimerSessions[elementId] != null;
+  abortHabitTimerRestore(elementId);
   useEventStore.getState().discardHabitTimer(elementId);
+  await awaitHabitTimerStop(elementId);
   if (hadSession) {
     void stopHabitSound();
   }
@@ -292,7 +298,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       );
     }
 
-    clearHabitRuntime(elementId);
+    await clearHabitRuntime(elementId);
     clearWriteEpoch(elementId);
     set({
       elements: get().elements.map((element) =>
@@ -343,8 +349,9 @@ export const useElementStore = create<ElementState>((set, get) => ({
     if (!existing) {
       throw new Error('Element not found');
     }
+    // Finalize/abort timer before CASCADE delete so stop can't rehydrate a ghost.
+    await clearHabitRuntime(id);
     await elementRepo.deleteElement(db, id);
-    clearHabitRuntime(id);
     clearWriteEpoch(id);
     set({
       elements: get().elements.filter((element) => element.id !== id),

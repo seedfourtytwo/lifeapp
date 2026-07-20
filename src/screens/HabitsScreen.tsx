@@ -26,6 +26,7 @@ export default function HabitsScreen() {
   const error = useElementStore((s) => s.error);
   const reorderHabit = useElementStore((s) => s.reorderHabit);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
+  const dayStateReady = useEventStore((s) => s.dayStateReady);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [reordering, setReordering] = useState(false);
@@ -97,6 +98,15 @@ export default function HabitsScreen() {
   };
 
   if (isLoading && allHabits.length === 0 && !error) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // Wait for today's completion map before enabling toggles (avoids double-ticks).
+  if (allHabits.length > 0 && !dayStateReady && !error) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />

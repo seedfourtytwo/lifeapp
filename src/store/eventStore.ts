@@ -73,10 +73,14 @@ let counterTotalLoadGeneration = 0;
 /** Bumped on import/clear so in-flight stops don't write into a replaced DB. */
 let dataEpoch = 0;
 const habitToggleInFlight = new Set<string>();
+/** Serialize counter log/set-total so edit + quick-add can't interleave. */
+const counterWriteChains = new Map<string, Promise<void>>();
 /** Joinable stop promises — rollover/Done await the same in-flight stop. */
 const habitTimerStopPromises = new Map<string, Promise<void>>();
 /** Merged options for joiners (e.g. trackCompleted from natural end after Done started). */
 const habitTimerStopOptions = new Map<string, { trackCompleted?: boolean }>();
+/** Stops that must not restore the session on failure (archive/delete in flight). */
+const habitTimerStopAbortRestore = new Set<string>();
 
 export function bumpEventDataEpoch(): void {
   dataEpoch += 1;
@@ -86,6 +90,29 @@ export async function awaitHabitTimerStops(): Promise<void> {
   const pending = [...habitTimerStopPromises.values()];
   if (pending.length === 0) return;
   await Promise.allSettled(pending);
+}
+
+export async function awaitHabitTimerStop(elementId: string): Promise<void> {
+  const pending = habitTimerStopPromises.get(elementId);
+  if (pending) await pending;
+}
+
+/** Prevent an in-flight stop from rehydrating a session after archive/delete. */
+export function abortHabitTimerRestore(elementId: string): void {
+  habitTimerStopAbortRestore.add(elementId);
+}
+
+function enqueueCounterWrite(elementId: string, work: () => Promise<void>): Promise<void> {
+  const previous = counterWriteChains.get(elementId) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(work);
+  counterWriteChains.set(
+    elementId,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
 }
 
 async function refreshTotal(
@@ -239,51 +266,53 @@ export const useEventStore = create<EventState>((set, get) => ({
     });
   },
 
-  logEvent: async (elementId, value, meta) => {
-    bumpWriteEpoch(elementId);
-    const db = await getDatabase();
-    const now = new Date();
-    const date = toDateString(now);
+  logEvent: (elementId, value, meta) =>
+    enqueueCounterWrite(elementId, async () => {
+      bumpWriteEpoch(elementId);
+      const db = await getDatabase();
+      const now = new Date();
+      const date = toDateString(now);
 
-    await eventRepo.insertEvent(db, {
-      id: newId(),
-      elementId,
-      timestamp: now.toISOString(),
-      date,
-      value,
-      meta,
-      protocolVersion: PROTOCOL_VERSION,
-    });
+      await eventRepo.insertEvent(db, {
+        id: newId(),
+        elementId,
+        timestamp: now.toISOString(),
+        date,
+        value,
+        meta,
+        protocolVersion: PROTOCOL_VERSION,
+      });
 
-    await refreshTotal(elementId, date, set, get);
-  },
+      await refreshTotal(elementId, date, set, get);
+    }),
 
-  setDailyTotal: async (elementId, total, date = todayDate()) => {
-    if (total < 0 || !Number.isFinite(total)) {
-      throw new Error('Total must be a non-negative number');
-    }
-
-    bumpWriteEpoch(elementId);
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-
-      if (total > 0) {
-        const now = new Date();
-        await eventRepo.insertEvent(db, {
-          id: newId(),
-          elementId,
-          timestamp: now.toISOString(),
-          date,
-          value: total,
-          meta: { source: 'manual' },
-          protocolVersion: PROTOCOL_VERSION,
-        });
+  setDailyTotal: (elementId, total, date = todayDate()) =>
+    enqueueCounterWrite(elementId, async () => {
+      if (total < 0 || !Number.isFinite(total)) {
+        throw new Error('Total must be a non-negative number');
       }
-    });
 
-    await refreshTotal(elementId, date, set, get);
-  },
+      bumpWriteEpoch(elementId);
+      const db = await getDatabase();
+      await db.withTransactionAsync(async () => {
+        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+
+        if (total > 0) {
+          const now = new Date();
+          await eventRepo.insertEvent(db, {
+            id: newId(),
+            elementId,
+            timestamp: now.toISOString(),
+            date,
+            value: total,
+            meta: { source: 'manual' },
+            protocolVersion: PROTOCOL_VERSION,
+          });
+        }
+      });
+
+      await refreshTotal(elementId, date, set, get);
+    }),
 
   toggleHabit: async (elementId, config, date = todayDate()) => {
     if (habitToggleInFlight.has(elementId)) return;
@@ -449,7 +478,9 @@ export const useEventStore = create<EventState>((set, get) => ({
           get,
         );
       } catch (error) {
-        if (epochAtStart !== dataEpoch) throw error;
+        if (epochAtStart !== dataEpoch || habitTimerStopAbortRestore.has(elementId)) {
+          throw error;
+        }
         set({
           activeTimerSessions: {
             ...get().activeTimerSessions,
@@ -467,6 +498,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         habitTimerStopPromises.delete(elementId);
       }
       habitTimerStopOptions.delete(elementId);
+      habitTimerStopAbortRestore.delete(elementId);
     });
   },
 

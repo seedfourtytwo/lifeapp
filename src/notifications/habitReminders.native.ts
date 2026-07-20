@@ -10,6 +10,15 @@ const END_OF_DAY_REMINDER_ID = `${REMINDER_PREFIX}eod`;
 let habitReminderSyncGeneration = 0;
 let habitReminderSyncChain: Promise<void> = Promise.resolve();
 
+function enqueueHabitReminderWork(work: () => Promise<void>): Promise<void> {
+  const next = habitReminderSyncChain.then(work, work);
+  habitReminderSyncChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 type NotificationsModule = typeof import('expo-notifications');
 
 let notificationsModule: NotificationsModule | null = null;
@@ -196,11 +205,7 @@ export async function syncHabitReminders(
     }
   };
 
-  const next = habitReminderSyncChain.then(run, run);
-  habitReminderSyncChain = next.then(
-    () => undefined,
-    () => undefined,
-  );
+  const next = enqueueHabitReminderWork(run);
   await next;
 }
 
@@ -208,42 +213,49 @@ export async function scheduleEndOfDayReminder(
   enabled: boolean,
   undoneCount: number,
 ): Promise<void> {
-  if (!isNotificationsNativeAvailable()) {
-    return;
-  }
+  await enqueueHabitReminderWork(async () => {
+    if (!isNotificationsNativeAvailable()) {
+      return;
+    }
 
-  const Notifications = await getNotifications();
-  if (!Notifications) return;
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
 
-  await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
+    const generation = habitReminderSyncGeneration;
+    await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
+    if (generation !== habitReminderSyncGeneration) return;
 
-  if (!enabled || undoneCount <= 0) {
-    return;
-  }
+    if (!enabled || undoneCount <= 0) {
+      return;
+    }
 
-  const granted = await requestNotificationPermissions();
-  if (!granted) return;
+    const granted = await requestNotificationPermissions();
+    if (!granted || generation !== habitReminderSyncGeneration) return;
 
-  await Notifications.scheduleNotificationAsync({
-    identifier: END_OF_DAY_REMINDER_ID,
-    content: {
-      title: 'Habits left today',
-      body: `${undoneCount} habit${undoneCount === 1 ? '' : 's'} still to do`,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 20,
-      minute: 0,
-    },
+    await Notifications.scheduleNotificationAsync({
+      identifier: END_OF_DAY_REMINDER_ID,
+      content: {
+        title: 'Habits left today',
+        body: `${undoneCount} habit${undoneCount === 1 ? '' : 's'} still to do`,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 20,
+        minute: 0,
+      },
+    });
   });
 }
 
 export async function cancelAllHabitReminders(): Promise<void> {
-  if (!isNotificationsNativeAvailable()) return;
+  await enqueueHabitReminderWork(async () => {
+    if (!isNotificationsNativeAvailable()) return;
 
-  const Notifications = await getNotifications();
-  if (!Notifications) return;
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
 
-  await cancelHabitStartRemindersWith(Notifications);
-  await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
+    habitReminderSyncGeneration += 1;
+    await cancelHabitStartRemindersWith(Notifications);
+    await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
+  });
 }

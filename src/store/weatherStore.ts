@@ -128,12 +128,12 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
 
     const now = Date.now();
     const { lastFetchAt, forecast, loading } = get();
-    if (loading) return;
+    // Never drop a forced refresh while another fetch is in flight — bump seq so
+    // the older response is discarded and this call continues with fresh coords.
     if (
       !opts?.force &&
-      forecast &&
-      lastFetchAt != null &&
-      now - lastFetchAt < REFRESH_MS
+      (loading ||
+        (forecast && lastFetchAt != null && now - lastFetchAt < REFRESH_MS))
     ) {
       return;
     }

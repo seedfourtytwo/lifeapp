@@ -173,9 +173,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   setWeatherPlace: async ({ placeName, lat, lon }) => {
     const db = await getDatabase();
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherPlaceName, placeName);
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLat, String(lat));
-    await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLon, String(lon));
+    await db.withTransactionAsync(async () => {
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherPlaceName, placeName);
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLat, String(lat));
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherLon, String(lon));
+    });
     set({ weatherPlaceName: placeName, weatherLat: lat, weatherLon: lon });
   },
 

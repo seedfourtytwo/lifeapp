@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
-import { stopHabitSound } from '../audio/habitTimerSound';
 import {
   clearAppData,
   clearOptionsAreEmpty,
@@ -79,7 +78,6 @@ export function useProtocolBackup() {
 
     setBusy(true);
     try {
-      await stopHabitSound();
       await clearAppData(options);
       await reloadStoresAfterImport({
         cleared: {

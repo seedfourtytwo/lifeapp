@@ -11,6 +11,8 @@ import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
 import { withDbWriteLock } from './writeLock';
 import { newId } from '../utils/id';
+import { awaitHabitTimerStops, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { stopHabitSound } from '../audio/habitTimerSound';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
   const db = await getDatabase();
@@ -45,6 +47,11 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
 export async function importProtocolBundle(raw: unknown): Promise<void> {
   const normalized = normalizeProtocolBundleInput(raw);
   const bundle = parseProtocolBundle(normalized);
+
+  await stopHabitSound();
+  bumpEventDataEpoch();
+  await awaitHabitTimerStops();
+  useEventStore.setState({ activeTimerSessions: {} });
 
   await withDbWriteLock(async () => {
     const db = await getDatabase();

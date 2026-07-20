@@ -11,6 +11,8 @@ import {
   type ClearAppDataOptions,
 } from './clearDataPlan';
 import { withDbWriteLock } from './writeLock';
+import { awaitHabitTimerStops, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
+import { stopHabitSound } from '../audio/habitTimerSound';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
 export {
@@ -51,6 +53,13 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
   }
 
   await withDbWriteLock(async () => {
+    if (options.definitions || options.activityHistory) {
+      await stopHabitSound();
+      bumpEventDataEpoch();
+      await awaitHabitTimerStops();
+      useEventStore.setState({ activeTimerSessions: {} });
+    }
+
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       if (options.definitions) {

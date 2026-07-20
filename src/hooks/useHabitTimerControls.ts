@@ -61,6 +61,18 @@ async function finalizeOtherTimers(exceptElementId: string): Promise<void> {
   }
 }
 
+/** Serialize timer starts so two rapid taps can't leave two sessions. */
+let timerStartChain: Promise<void> = Promise.resolve();
+
+function enqueueTimerStart(work: () => Promise<void>): Promise<void> {
+  const next = timerStartChain.catch(() => undefined).then(work);
+  timerStartChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 /** Couples habit timer store actions with bundled sound playback. */
 export function useHabitTimerControls() {
   const activeTimerSessions = useEventStore((s) => s.activeTimerSessions);
@@ -82,7 +94,7 @@ export function useHabitTimerControls() {
 
   const handleStartTimer = useCallback(
     (elementId: string, config: HabitConfig) => {
-      void (async () => {
+      void enqueueTimerStart(async () => {
         try {
           await finalizeOtherTimers(elementId);
           startHabitTimer(elementId);
@@ -100,7 +112,7 @@ export function useHabitTimerControls() {
             error instanceof Error ? error.message : 'Something went wrong',
           );
         }
-      })();
+      });
     },
     [handleFinishTimer, startHabitTimer],
   );
