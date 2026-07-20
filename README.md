@@ -93,6 +93,7 @@ Open the dev client and enter `http://<laptop-ip>:8081`.
 | Habits, counters, archive, export, delete-all | ✓ | |
 | Backup **import** (`expo-document-picker`) | | ✓ |
 | Background timer audio, habit reminders | | ✓ |
+| Weather phone location (`expo-location`) | | ✓ |
 
 After installing a new APK, reconnect to Metro for day-to-day JS changes.
 

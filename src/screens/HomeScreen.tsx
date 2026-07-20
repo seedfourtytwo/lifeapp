@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import WeatherBubble from '../components/WeatherBubble';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
+import { useSettingsStore } from '../store/settingsStore';
+import { useWeatherStore } from '../store/weatherStore';
 import CountersScreen from './CountersScreen';
 import DailyScreen from './DailyScreen';
 
@@ -26,8 +29,15 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('daily');
+  const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
+  const refreshWeather = useWeatherStore((s) => s.refresh);
 
   useDayRolloverRefresh();
+
+  useEffect(() => {
+    if (!weatherWidgetEnabled) return;
+    void refreshWeather({ force: false });
+  }, [weatherWidgetEnabled, refreshWeather]);
 
   const activeColor = isCartoon
     ? theme.colors.onSecondaryContainer
@@ -39,6 +49,8 @@ export default function HomeScreen() {
       <View style={[styles.content, { paddingTop: insets.top }]}>
         {tab === 'daily' ? <DailyScreen /> : <CountersScreen />}
       </View>
+
+      {weatherWidgetEnabled ? <WeatherBubble /> : null}
 
       <View
         style={[

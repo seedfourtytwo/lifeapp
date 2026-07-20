@@ -1,8 +1,12 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
+import WeatherSettingsSection from '../components/WeatherSettingsSection';
 import { useProtocolBackup } from '../hooks/useProtocolBackup';
-import { requestNotificationPermissions, isNotificationsNativeAvailable } from '../notifications/habitReminders';
+import {
+  requestNotificationPermissions,
+  isNotificationsNativeAvailable,
+} from '../notifications/habitReminders';
 import { useSettingsStore } from '../store/settingsStore';
 import { THEME_MODE_OPTIONS } from '../theme';
 
@@ -39,7 +43,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <List.Section>
         <List.Subheader>Appearance</List.Subheader>
         {THEME_MODE_OPTIONS.map((option) => (
@@ -57,6 +61,8 @@ export default function SettingsScreen() {
           />
         ))}
       </List.Section>
+
+      <WeatherSettingsSection />
 
       <List.Section>
         <List.Subheader>Notifications</List.Subheader>

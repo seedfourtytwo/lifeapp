@@ -26,8 +26,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.lifeapp.dashboard",
-      "versionCode": 6,
-      "permissions": ["WAKE_LOCK"]
+      "versionCode": 8,
+      "permissions": [
+        "WAKE_LOCK",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,7 +45,13 @@
           "color": "#2E7D32"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Show local weather on your Home screen."
+        }
+      ]
     ],
     "extra": {
       "eas": {
