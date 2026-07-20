@@ -105,6 +105,14 @@ function expandDaily(
   return out;
 }
 
+function localCalendarDayDiff(later: Date, earlier: Date): number {
+  const a = startOfLocalDay(later);
+  const b = startOfLocalDay(earlier);
+  const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((utcA - utcB) / 86_400_000);
+}
+
 function expandWeekly(
   event: CalendarEvent,
   calendar: Calendar,
@@ -118,7 +126,6 @@ function expandWeekly(
   const out: CalendarOccurrence[] = [];
   const anchorDay = startOfLocalDay(anchor);
   // Jump near the requested window so old series (years of history) still expand.
-  // Walking from the anchor day-by-day hits MAX_OCCURRENCES_PER_EVENT before today.
   let cursor = startOfLocalDay(new Date(rangeStartMs));
   cursor = addLocalDays(cursor, -Math.ceil(durationMs / 86_400_000));
   if (cursor.getTime() < anchorDay.getTime()) {
@@ -143,9 +150,7 @@ function expandWeekly(
     if (start.getTime() >= rangeEndMs) break;
 
     if (start.getTime() >= anchor.getTime() && weekDays.includes(weekdayFromDate(start))) {
-      const weekIndex = Math.floor(
-        (startOfLocalDay(start).getTime() - anchorDay.getTime()) / (7 * 86_400_000),
-      );
+      const weekIndex = Math.floor(localCalendarDayDiff(start, anchorDay) / 7);
       if (weekIndex >= 0 && weekIndex % interval === 0 && overlapsRange(start, end, rangeStartMs, rangeEndMs)) {
         out.push(toOccurrence(event, calendar, start, durationMs));
       }
@@ -166,14 +171,24 @@ function expandMonthly(
 ): CalendarOccurrence[] {
   const out: CalendarOccurrence[] = [];
   let index = 0;
-  while (index < MAX_OCCURRENCES_PER_EVENT) {
+  if (anchor.getTime() < rangeStartMs) {
+    const rangeStart = new Date(rangeStartMs);
+    const monthsBehind =
+      (rangeStart.getFullYear() - anchor.getFullYear()) * 12 +
+      (rangeStart.getMonth() - anchor.getMonth());
+    index = Math.max(0, Math.floor(monthsBehind / interval) - 1);
+  }
+
+  let guard = 0;
+  while (guard < MAX_OCCURRENCES_PER_EVENT) {
+    guard += 1;
     const cursor = addLocalMonths(anchor, index * interval);
+    index += 1;
     const end = new Date(cursor.getTime() + durationMs);
     if (cursor.getTime() >= rangeEndMs) break;
     if (overlapsRange(cursor, end, rangeStartMs, rangeEndMs)) {
       out.push(toOccurrence(event, calendar, cursor, durationMs));
     }
-    index += 1;
   }
   return out;
 }
@@ -189,14 +204,22 @@ function expandYearly(
 ): CalendarOccurrence[] {
   const out: CalendarOccurrence[] = [];
   let index = 0;
-  while (index < MAX_OCCURRENCES_PER_EVENT) {
+  if (anchor.getTime() < rangeStartMs) {
+    const rangeStart = new Date(rangeStartMs);
+    const yearsBehind = rangeStart.getFullYear() - anchor.getFullYear();
+    index = Math.max(0, Math.floor(yearsBehind / interval) - 1);
+  }
+
+  let guard = 0;
+  while (guard < MAX_OCCURRENCES_PER_EVENT) {
+    guard += 1;
     const cursor = addLocalYears(anchor, index * interval);
+    index += 1;
     const end = new Date(cursor.getTime() + durationMs);
     if (cursor.getTime() >= rangeEndMs) break;
     if (overlapsRange(cursor, end, rangeStartMs, rangeEndMs)) {
       out.push(toOccurrence(event, calendar, cursor, durationMs));
     }
-    index += 1;
   }
   return out;
 }

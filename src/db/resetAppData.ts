@@ -88,5 +88,6 @@ export async function clearAllAppData(): Promise<void> {
 export async function clearDataForImport(db: SQLiteDatabase): Promise<void> {
   await clearProtocolTables(db);
   await calendarRepo.clearCalendarData(db);
+  await weatherRepo.clearWeatherDaily(db);
   await clearAppSettings(db);
 }

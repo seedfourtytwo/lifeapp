@@ -77,6 +77,8 @@ export {
   buildHabitConfig,
   isHabitDayComplete,
   completedDatesFromHabitEvents,
+  completedDatesFromDailyTotals,
+  habitNeedsEventMetaForCompletion,
   parseHabitConfig,
   shouldShowHabitOnHabitsPage,
   shouldShowHabitStreakOnCard,

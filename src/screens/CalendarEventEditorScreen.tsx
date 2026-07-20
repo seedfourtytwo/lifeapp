@@ -225,7 +225,14 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          void deleteEvent(eventId).then(() => navigation.goBack());
+          void deleteEvent(eventId)
+            .then(() => navigation.goBack())
+            .catch((error) => {
+              Alert.alert(
+                'Could not delete',
+                error instanceof Error ? error.message : 'Unknown error',
+              );
+            });
         },
       },
     ]);

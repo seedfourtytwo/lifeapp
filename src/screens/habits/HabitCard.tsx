@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Alert } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import { getKindHandler } from '../../kinds/registry';
@@ -47,10 +48,31 @@ export default function HabitCard({ habit, config }: Props) {
       streak={streak}
       failureStreak={failureStreak}
       activeTimerSession={activeTimerSession}
-      onToggle={() => toggleHabit(habit.id, config)}
+      onToggle={() =>
+        toggleHabit(habit.id, config).catch((error) => {
+          Alert.alert(
+            'Could not update habit',
+            error instanceof Error ? error.message : 'Something went wrong',
+          );
+        })
+      }
       onTimerPress={() => handleTimerPress(habit.id, config)}
-      onTimerFinish={() => handleFinishTimer(habit.id, config)}
-      onResetToday={() => handleResetToday(habit.id, config)}
+      onTimerFinish={() =>
+        handleFinishTimer(habit.id, config).catch((error) => {
+          Alert.alert(
+            'Could not finish timer',
+            error instanceof Error ? error.message : 'Something went wrong',
+          );
+        })
+      }
+      onResetToday={() =>
+        handleResetToday(habit.id, config).catch((error) => {
+          Alert.alert(
+            'Could not reset today',
+            error instanceof Error ? error.message : 'Something went wrong',
+          );
+        })
+      }
       onOpenDetails={() => navigation.navigate('TrackerHistory', { elementId: habit.id })}
     />
   );

@@ -275,6 +275,13 @@ export async function deleteOccurrenceClear(
   );
 }
 
+export async function deleteOccurrenceClearsForEvent(
+  db: SQLiteDatabase,
+  eventId: string,
+): Promise<void> {
+  await db.runAsync('DELETE FROM calendar_occurrence_clears WHERE event_id = ?', eventId);
+}
+
 export async function importCalendarData(
   db: SQLiteDatabase,
   data: {

@@ -184,6 +184,13 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     const db = await getDatabase();
     const calendarId = input.calendarId ?? existing.calendarId;
     const { startAt, endAt } = serializeEventTimes(input.allDay, input.start, input.end);
+    const nextRrule = recurrenceToRrule(input.recurrence);
+
+    const scheduleChanged =
+      existing.allDay !== input.allDay ||
+      existing.startAt !== startAt ||
+      existing.endAt !== endAt ||
+      existing.rrule !== nextRrule;
 
     const event: CalendarEvent = {
       ...existing,
@@ -195,18 +202,27 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       startAt,
       endAt,
       timezone: existing.timezone || deviceTimeZone(),
-      rrule: recurrenceToRrule(input.recurrence),
+      rrule: nextRrule,
     };
     const reminders = buildReminderRows(event.id, input.reminderOffsets);
 
     await calendarRepo.updateEventWithReminders(db, event, reminders);
+
+    let clearedByKey = get().clearedByKey;
+    if (scheduleChanged) {
+      await calendarRepo.deleteOccurrenceClearsForEvent(db, eventId);
+      clearedByKey = { ...clearedByKey };
+      for (const key of Object.keys(clearedByKey)) {
+        if (clearedByKey[key]?.eventId === eventId) delete clearedByKey[key];
+      }
+    }
 
     const events = get().events.map((e) => (e.id === eventId ? event : e));
     const allReminders = [
       ...get().reminders.filter((r) => r.eventId !== eventId),
       ...reminders,
     ];
-    set({ events, reminders: allReminders });
+    set({ events, reminders: allReminders, clearedByKey });
   },
 
   deleteEvent: async (eventId) => {

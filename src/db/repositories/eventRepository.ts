@@ -163,7 +163,6 @@ export async function getDailyTotal(
   return row?.total ?? 0;
 }
 
-/** Batched today's totals for many counters — one query instead of N. */
 export async function getDailyTotalsForElementsOnDate(
   db: SQLiteDatabase,
   elementIds: string[],
@@ -188,6 +187,36 @@ export async function getDailyTotalsForElementsOnDate(
     totals.set(row.element_id, row.total);
   }
   return totals;
+}
+
+/** Daily SUM(value) per element since a date — for streak completion without loading every row. */
+export async function getDailyTotalsForElementsSince(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  sinceDate: string,
+): Promise<Map<string, { date: string; total: number }[]>> {
+  const byElement = new Map<string, { date: string; total: number }[]>();
+  for (const id of elementIds) {
+    byElement.set(id, []);
+  }
+  if (elementIds.length === 0) return byElement;
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ element_id: string; date: string; total: number }>(
+    `SELECT element_id, date, COALESCE(SUM(value), 0) as total
+     FROM events
+     WHERE date >= ? AND element_id IN (${placeholders})
+     GROUP BY element_id, date
+     ORDER BY date ASC`,
+    sinceDate,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    const list = byElement.get(row.element_id) ?? [];
+    list.push({ date: row.date, total: row.total });
+    byElement.set(row.element_id, list);
+  }
+  return byElement;
 }
 
 export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {

@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShallow } from 'zustand/react/shallow';
-import { CounterConfigSchema } from '../protocol';
+import { CounterConfigSchema, type CounterConfig } from '../protocol';
 import {
   refreshAllCounterData,
   useRefreshCounterTotalsOnFocus,
@@ -42,6 +42,14 @@ export default function CountersScreen() {
     () => getActiveCounters(elements, dashboard),
     [elements, dashboard],
   );
+
+  const counterConfigs = useMemo(() => {
+    const configs = new Map<string, CounterConfig>();
+    for (const element of counters) {
+      configs.set(element.id, CounterConfigSchema.parse(element.config));
+    }
+    return configs;
+  }, [counters]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -119,7 +127,8 @@ export default function CountersScreen() {
           if (!handler) return null;
 
           const Widget = handler.DashboardWidget;
-          const config = CounterConfigSchema.parse(element.config);
+          const config = counterConfigs.get(element.id);
+          if (!config) return null;
 
           return (
             <View key={element.id} style={styles.reorderRow}>
@@ -137,8 +146,22 @@ export default function CountersScreen() {
                   element={element}
                   config={config}
                   todayTotal={dailyTotals[element.id] ?? 0}
-                  onLog={(value, meta) => logEvent(element.id, value, meta)}
-                  onSetDailyTotal={(total) => setDailyTotal(element.id, total)}
+                  onLog={(value, meta) =>
+                    logEvent(element.id, value, meta).catch((err) => {
+                      Alert.alert(
+                        'Could not log',
+                        err instanceof Error ? err.message : 'Something went wrong',
+                      );
+                    })
+                  }
+                  onSetDailyTotal={(total) =>
+                    setDailyTotal(element.id, total).catch((err) => {
+                      Alert.alert(
+                        'Could not update total',
+                        err instanceof Error ? err.message : 'Something went wrong',
+                      );
+                    })
+                  }
                   onOpenDetails={() =>
                     navigation.navigate('TrackerHistory', { elementId: element.id })
                   }

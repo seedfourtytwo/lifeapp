@@ -133,6 +133,21 @@ describe('expandOccurrences', () => {
     expect(occ[0]?.start.getFullYear()).toBe(2026);
   });
 
+  it('expands old monthly series into a near-term range', () => {
+    const event = allDayEvent({
+      id: '550e8400-e29b-41d4-a716-446655440016',
+      title: 'Rent',
+      startAt: '1990-01-15',
+      endAt: '1990-01-15',
+      rrule: 'FREQ=MONTHLY',
+    });
+    const rangeStart = new Date(2026, 6, 1);
+    const rangeEnd = new Date(2026, 9, 1);
+    const occ = expandOccurrences([event], calendars, rangeStart, rangeEnd);
+    expect(occ.map((o) => o.start.getMonth())).toEqual([6, 7, 8]);
+    expect(occ.every((o) => o.start.getDate() === 15)).toBe(true);
+  });
+
   it('expands timed events with duration', () => {
     const start = new Date(2026, 6, 20, 15, 0, 0);
     const end = new Date(2026, 6, 20, 16, 0, 0);

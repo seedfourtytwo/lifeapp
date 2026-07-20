@@ -162,6 +162,19 @@ export function isHabitDayComplete(
   return total >= 1;
 }
 
+/**
+ * True when day completion can depend on event meta (play-once timer without a seconds target).
+ * Those habits need full event rows for streaks / day state; everyone else can use daily SUMs.
+ */
+export function habitNeedsEventMetaForCompletion(config: HabitConfig): boolean {
+  if (config.trackingMode !== 'timer') return false;
+  if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) return false;
+  return (
+    hasHabitTimerSound(config.timerSound) &&
+    getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
+  );
+}
+
 function isTimerSessionTrackCompleted(
   event: Pick<LifeEvent, 'meta'>,
 ): boolean {
@@ -186,6 +199,20 @@ export function completedDatesFromHabitEvents(
   for (const [date, dayEvents] of byDate) {
     const total = sumEventValues(dayEvents);
     if (isHabitDayComplete(total, config, dayEvents)) {
+      completedDates.push(date);
+    }
+  }
+  return completedDates;
+}
+
+/** Completion dates from pre-aggregated daily totals (no per-event meta). */
+export function completedDatesFromDailyTotals(
+  dailyTotals: readonly { date: string; total: number }[],
+  config: HabitConfig,
+): string[] {
+  const completedDates: string[] = [];
+  for (const { date, total } of dailyTotals) {
+    if (isHabitDayComplete(total, config)) {
       completedDates.push(date);
     }
   }

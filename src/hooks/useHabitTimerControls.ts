@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { Alert } from 'react-native';
 import {
   pauseHabitSound,
   playHabitSound,
@@ -42,9 +43,9 @@ export function useHabitTimerControls() {
   const resetHabitToday = useEventStore((s) => s.resetHabitToday);
 
   const handleFinishTimer = useCallback(
-    (elementId: string, config: HabitConfig, trackCompleted = false) => {
-      void stopHabitSound();
-      void stopHabitTimer(elementId, config, undefined, { trackCompleted });
+    async (elementId: string, config: HabitConfig, trackCompleted = false) => {
+      await stopHabitSound();
+      await stopHabitTimer(elementId, config, undefined, { trackCompleted });
     },
     [stopHabitTimer],
   );
@@ -52,7 +53,14 @@ export function useHabitTimerControls() {
   const handleStartTimer = useCallback(
     (elementId: string, config: HabitConfig) => {
       startHabitTimer(elementId);
-      playSoundForConfig(elementId, config, handleFinishTimer);
+      playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
+        void handleFinishTimer(id, cfg, trackCompleted).catch((error) => {
+          Alert.alert(
+            'Could not finish timer',
+            error instanceof Error ? error.message : 'Something went wrong',
+          );
+        });
+      });
     },
     [handleFinishTimer, startHabitTimer],
   );
@@ -73,7 +81,14 @@ export function useHabitTimerControls() {
       if (hasHabitTimerSound(config.timerSound)) {
         void resumeHabitSound(config.timerSound);
       } else {
-        playSoundForConfig(elementId, config, handleFinishTimer);
+        playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
+          void handleFinishTimer(id, cfg, trackCompleted).catch((error) => {
+            Alert.alert(
+              'Could not finish timer',
+              error instanceof Error ? error.message : 'Something went wrong',
+            );
+          });
+        });
       }
     },
     [handleFinishTimer, resumeHabitTimer],

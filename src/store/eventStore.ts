@@ -3,6 +3,7 @@ import { newId } from '../utils/id';
 import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
+  habitNeedsEventMetaForCompletion,
   isHabitDayComplete,
   parseHabitConfig,
   PROTOCOL_VERSION,
@@ -12,7 +13,6 @@ import {
 } from '../protocol';
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
 import { sumEventValues } from '../utils/events';
-import { shouldPlayHabitCompletionChime } from '../utils/habitCompletionChime';
 import { playHabitCompleteHaptic } from '../utils/habitHaptics';
 import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
@@ -58,6 +58,12 @@ function todayDate(): string {
   return toDateString(new Date());
 }
 
+/** Ignore stale load results if a newer load started. */
+let habitDayLoadGeneration = 0;
+let habitStreakLoadGeneration = 0;
+let counterTotalLoadGeneration = 0;
+const habitToggleInFlight = new Set<string>();
+
 async function refreshTotal(
   elementId: string,
   date: string,
@@ -79,9 +85,12 @@ export const useEventStore = create<EventState>((set, get) => ({
   loadCounterTotals: async (elementIds) => {
     if (elementIds.length === 0) return;
 
+    const generation = ++counterTotalLoadGeneration;
     const db = await getDatabase();
     const today = todayDate();
     const totals = await eventRepo.getDailyTotalsForElementsOnDate(db, elementIds, today);
+    if (generation !== counterTotalLoadGeneration) return;
+
     const todayTotals: Record<string, number> = {};
     for (const [id, total] of totals) {
       todayTotals[id] = total;
@@ -95,18 +104,42 @@ export const useEventStore = create<EventState>((set, get) => ({
   loadHabitDayState: async (habits, date = todayDate()) => {
     if (habits.length === 0) return;
 
+    const generation = ++habitDayLoadGeneration;
     const db = await getDatabase();
-    const ids = habits.map((habit) => habit.id);
-    const eventsByElement = await eventRepo.getEventsForElementsOnDate(db, ids, date);
+    const metaHabits = habits.filter((h) => habitNeedsEventMetaForCompletion(h.config));
+    const totalHabits = habits.filter((h) => !habitNeedsEventMetaForCompletion(h.config));
+
     const totals: Record<string, number> = {};
     const status: Record<string, boolean> = {};
 
-    for (const { id, config } of habits) {
-      const events = eventsByElement.get(id) ?? [];
-      const total = sumEventValues(events);
-      totals[id] = total;
-      status[id] = isHabitDayComplete(total, config, events);
+    if (totalHabits.length > 0) {
+      const dayTotals = await eventRepo.getDailyTotalsForElementsOnDate(
+        db,
+        totalHabits.map((h) => h.id),
+        date,
+      );
+      for (const { id, config } of totalHabits) {
+        const total = dayTotals.get(id) ?? 0;
+        totals[id] = total;
+        status[id] = isHabitDayComplete(total, config);
+      }
     }
+
+    if (metaHabits.length > 0) {
+      const eventsByElement = await eventRepo.getEventsForElementsOnDate(
+        db,
+        metaHabits.map((h) => h.id),
+        date,
+      );
+      for (const { id, config } of metaHabits) {
+        const events = eventsByElement.get(id) ?? [];
+        const total = sumEventValues(events);
+        totals[id] = total;
+        status[id] = isHabitDayComplete(total, config, events);
+      }
+    }
+
+    if (generation !== habitDayLoadGeneration) return;
 
     set({
       dailyTotals: { ...get().dailyTotals, ...totals },
@@ -117,7 +150,10 @@ export const useEventStore = create<EventState>((set, get) => ({
   loadHabitStreaks: async (habits) => {
     if (habits.length === 0) return;
 
+    const generation = ++habitStreakLoadGeneration;
     const { streaks, failureStreaks } = await loadHabitStreakMaps(habits);
+    if (generation !== habitStreakLoadGeneration) return;
+
     set({
       habitStreaks: { ...get().habitStreaks, ...streaks },
       habitFailureStreaks: { ...get().habitFailureStreaks, ...failureStreaks },
@@ -169,36 +205,53 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   toggleHabit: async (elementId, config, date = todayDate()) => {
-    const db = await getDatabase();
+    if (habitToggleInFlight.has(elementId)) return;
+    habitToggleInFlight.add(elementId);
+
     const done = get().habitDoneToday[elementId] ?? false;
-
-    if (done) {
-      await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-    } else {
-      const now = new Date();
-      await eventRepo.insertEvent(db, {
-        id: newId(),
-        elementId,
-        timestamp: now.toISOString(),
-        date,
-        value: 1,
-        meta: { source: 'habit_tick' },
-        protocolVersion: PROTOCOL_VERSION,
-      });
-      void playHabitCompleteHaptic();
-    }
-
-    const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
-
     set({
       habitDoneToday: { ...get().habitDoneToday, [elementId]: !done },
-      habitStreaks: { ...get().habitStreaks, [elementId]: streak },
-      habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
       dailyTotals: {
         ...get().dailyTotals,
         [elementId]: done ? 0 : 1,
       },
     });
+
+    try {
+      const db = await getDatabase();
+      if (done) {
+        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+      } else {
+        const now = new Date();
+        await eventRepo.insertEvent(db, {
+          id: newId(),
+          elementId,
+          timestamp: now.toISOString(),
+          date,
+          value: 1,
+          meta: { source: 'habit_tick' },
+          protocolVersion: PROTOCOL_VERSION,
+        });
+        void playHabitCompleteHaptic();
+      }
+
+      const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+      set({
+        habitStreaks: { ...get().habitStreaks, [elementId]: streak },
+        habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
+      });
+    } catch (error) {
+      set({
+        habitDoneToday: { ...get().habitDoneToday, [elementId]: done },
+        dailyTotals: {
+          ...get().dailyTotals,
+          [elementId]: done ? 1 : 0,
+        },
+      });
+      throw error;
+    } finally {
+      habitToggleInFlight.delete(elementId);
+    }
   },
 
   startHabitTimer: (elementId) => {
@@ -248,48 +301,14 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     const endedAt = new Date();
     const { value, meta } = buildTimerSessionPayloadFromSession(session, endedAt, options);
-
-    const nextSessions = { ...get().activeTimerSessions };
-    delete nextSessions[elementId];
-
     const previousTotal = get().dailyTotals[elementId] ?? 0;
-    const optimisticTotal = previousTotal + value;
+    const nextTotal = previousTotal + value;
 
     const db = await getDatabase();
     const existingEvents = await eventRepo.getEventsForElementOnDate(db, elementId, date);
-    const optimisticEvents = [...existingEvents, { value, meta }];
-
+    const nextEvents = [...existingEvents, { value, meta }];
     const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
-    const isComplete = isHabitDayComplete(optimisticTotal, config, optimisticEvents);
-
-    if (
-      shouldPlayHabitCompletionChime(
-        config,
-        previousTotal,
-        optimisticTotal,
-        existingEvents,
-        optimisticEvents,
-        options,
-      )
-    ) {
-      void playHabitCompleteChime();
-    }
-    // Haptic only when the day newly becomes complete (not every track end).
-    if (!wasComplete && isComplete) {
-      void playHabitCompleteHaptic();
-    }
-
-    set({
-      activeTimerSessions: nextSessions,
-      dailyTotals: {
-        ...get().dailyTotals,
-        [elementId]: optimisticTotal,
-      },
-      habitDoneToday: {
-        ...get().habitDoneToday,
-        [elementId]: isComplete,
-      },
-    });
+    const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
 
     await eventRepo.insertEvent(db, {
       id: newId(),
@@ -301,9 +320,29 @@ export const useEventStore = create<EventState>((set, get) => ({
       protocolVersion: PROTOCOL_VERSION,
     });
 
+    const nextSessions = { ...get().activeTimerSessions };
+    delete nextSessions[elementId];
+
+    // Target-crossing chime plays live in HabitTimerWidget; only chime here for play-once end.
+    if (options?.trackCompleted) {
+      void playHabitCompleteChime();
+    }
+    if (!wasComplete && isComplete) {
+      void playHabitCompleteHaptic();
+    }
+
     const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
 
     set({
+      activeTimerSessions: nextSessions,
+      dailyTotals: {
+        ...get().dailyTotals,
+        [elementId]: nextTotal,
+      },
+      habitDoneToday: {
+        ...get().habitDoneToday,
+        [elementId]: isComplete,
+      },
       habitStreaks: { ...get().habitStreaks, [elementId]: streak },
       habitFailureStreaks: { ...get().habitFailureStreaks, [elementId]: failureStreak },
     });
