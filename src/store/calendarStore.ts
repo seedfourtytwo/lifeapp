@@ -120,12 +120,10 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     try {
       const db = await getDatabase();
       await calendarRepo.ensureDefaultCalendar(db);
-      const [calendars, events, reminders, clears] = await Promise.all([
-        calendarRepo.getAllCalendars(db),
-        calendarRepo.getAllEvents(db),
-        calendarRepo.getAllReminders(db),
-        calendarRepo.getAllOccurrenceClears(db),
-      ]);
+      const calendars = await calendarRepo.getAllCalendars(db);
+      const events = await calendarRepo.getAllEvents(db);
+      const reminders = await calendarRepo.getAllReminders(db);
+      const clears = await calendarRepo.getAllOccurrenceClears(db);
       set({
         calendars,
         events,
@@ -135,7 +133,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       });
     } catch (error) {
       console.error('Failed to load calendar', error);
-      set({ isLoaded: true });
+      // Never keep ghost events/reminders that could reschedule notifications.
+      set({
+        calendars: [],
+        events: [],
+        reminders: [],
+        clearedByKey: {},
+        isLoaded: true,
+      });
     }
   },
 

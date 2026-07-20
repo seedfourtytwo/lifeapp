@@ -24,7 +24,10 @@ export async function playHabitSound(
 
 export async function pauseHabitSound(): Promise<void> {}
 
-export async function resumeHabitSound(_sound?: HabitTimerSound): Promise<boolean> {
+export async function resumeHabitSound(
+  _sound?: HabitTimerSound,
+  _options?: HabitSoundPlaybackOptions,
+): Promise<boolean> {
   return false;
 }
 

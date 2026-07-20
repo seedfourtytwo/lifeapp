@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, type AppStateStatus, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
@@ -7,12 +7,12 @@ import {
   filterHabitsDueToday,
   orderHabitsList,
   parseHabitConfig,
-  toDateString,
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveHabits } from '../utils/dashboardElements';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
 import { homeTabScreenStyles } from './shared/screenStyles';
@@ -53,7 +53,7 @@ export default function HabitsScreen() {
   const filterContext = useMemo(
     () => ({
       now,
-      today: toDateString(now),
+      today: currentAppCalendarDate(now),
       habitDoneToday,
     }),
     [now, habitDoneToday],
@@ -76,8 +76,15 @@ export default function HabitsScreen() {
   );
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
+    const tick = () => setNow(new Date());
+    const timer = setInterval(tick, 60_000);
+    const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') tick();
+    });
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
   }, []);
 
   const onRefresh = async () => {

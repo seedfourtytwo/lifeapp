@@ -14,12 +14,13 @@ import {
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 11;
+const CURRENT_SCHEMA_VERSION = 12;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
 /** v10: ambient local calendars / events / reminders (not protocol kinds). */
 /** v11: per-occurrence calendar clears (silence badge/alerts for one instance only). */
+/** v12: destructive clean slate — drop unused columns; wipe local data. */
 
 interface HabitElementRow {
   id: string;
@@ -160,6 +161,24 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   },
   11: async (db) => {
     await ensureCalendarSchema(db);
+  },
+  12: async (db) => {
+    // Destructive clean schema: remove unused columns and start fresh.
+    // User opted out of preserving on-device / backup continuity.
+    await db.execAsync(`
+      PRAGMA foreign_keys = OFF;
+      DROP TABLE IF EXISTS events;
+      DROP TABLE IF EXISTS dashboard_items;
+      DROP TABLE IF EXISTS elements;
+      DROP TABLE IF EXISTS calendar_occurrence_clears;
+      DROP TABLE IF EXISTS calendar_reminders;
+      DROP TABLE IF EXISTS calendar_events;
+      DROP TABLE IF EXISTS calendars;
+      DROP TABLE IF EXISTS weather_daily;
+      DELETE FROM app_settings;
+      PRAGMA foreign_keys = ON;
+    `);
+    await db.execAsync(SCHEMA_SQL);
   },
 };
 

@@ -81,7 +81,7 @@ function expandDaily(
   let cursor = new Date(anchor);
 
   if (cursor.getTime() < rangeStartMs) {
-    const daysBehind = Math.floor((rangeStartMs - cursor.getTime()) / 86_400_000);
+    const daysBehind = localCalendarDayDiff(new Date(rangeStartMs), cursor);
     const steps = Math.floor(daysBehind / interval) * interval;
     cursor = addLocalDays(anchor, steps);
     if (cursor.getTime() > rangeStartMs) {
@@ -111,6 +111,14 @@ function localCalendarDayDiff(later: Date, earlier: Date): number {
   const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
   const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
   return Math.round((utcA - utcB) / 86_400_000);
+}
+
+/** Monday-start week key so biweekly + multi-BYDAY matches RFC 5545 week intervals. */
+function startOfWeekMonday(d: Date): Date {
+  const day = startOfLocalDay(d);
+  const dow = day.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  return addLocalDays(day, offset);
 }
 
 function expandWeekly(
@@ -150,7 +158,9 @@ function expandWeekly(
     if (start.getTime() >= rangeEndMs) break;
 
     if (start.getTime() >= anchor.getTime() && weekDays.includes(weekdayFromDate(start))) {
-      const weekIndex = Math.floor(localCalendarDayDiff(start, anchorDay) / 7);
+      const weekIndex = Math.floor(
+        localCalendarDayDiff(startOfWeekMonday(start), startOfWeekMonday(anchorDay)) / 7,
+      );
       if (weekIndex >= 0 && weekIndex % interval === 0 && overlapsRange(start, end, rangeStartMs, rangeEndMs)) {
         out.push(toOccurrence(event, calendar, start, durationMs));
       }

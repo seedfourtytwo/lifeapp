@@ -16,7 +16,6 @@ export const DashboardItemSchema = z.object({
   id: z.string().uuid(),
   elementId: z.string().uuid(),
   sortOrder: z.number().int(),
-  overrides: z.record(z.unknown()).optional(),
 });
 
 export type DashboardItem = z.infer<typeof DashboardItemSchema>;

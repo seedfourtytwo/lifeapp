@@ -6,9 +6,24 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { getActiveHabits, activeHabitIdsKey } from '../utils/dashboardElements';
+import { getActiveHabits } from '../utils/dashboardElements';
 
-/** Loads settings, elements, habit state, and warms timer sounds at app start. */
+/**
+ * Identity of active habits that should reload streaks / warm sounds.
+ * Includes config so target/schedule edits refresh streaks without renaming thrashing
+ * day-state (focus refresh owns today's completion map).
+ */
+function activeHabitBootstrapKey(
+  elements: ReturnType<typeof useElementStore.getState>['elements'],
+  dashboard: ReturnType<typeof useElementStore.getState>['dashboard'],
+): string {
+  return getActiveHabits(elements, dashboard)
+    .map((habit) => `${habit.id}:${JSON.stringify(habit.config)}`)
+    .sort()
+    .join('|');
+}
+
+/** Loads settings, elements, habit streaks, and warms timer sounds at app start. */
 export function useAppBootstrap(): void {
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const loadSettings = useSettingsStore((s) => s.load);
@@ -16,11 +31,10 @@ export function useAppBootstrap(): void {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const elementsLoading = useElementStore((s) => s.isLoading);
-  const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
   const loadHabitStreaks = useEventStore((s) => s.loadHabitStreaks);
 
-  const activeHabitKey = useMemo(
-    () => activeHabitIdsKey(elements, dashboard),
+  const bootstrapKey = useMemo(
+    () => activeHabitBootstrapKey(elements, dashboard),
     [elements, dashboard],
   );
 
@@ -37,23 +51,15 @@ export function useAppBootstrap(): void {
   }, [loadElements, settingsLoaded]);
 
   useEffect(() => {
-    if (!settingsLoaded || elementsLoading || !activeHabitKey) return;
+    if (!settingsLoaded || elementsLoading) return;
 
-    const habitElements = getActiveHabits(elements, dashboard);
+    const { elements: latestElements, dashboard: latestDashboard } = useElementStore.getState();
+    const habitElements = getActiveHabits(latestElements, latestDashboard);
+    if (habitElements.length === 0) return;
+
     const inputs = habitStreakInputsFromElements(habitElements);
-    if (inputs.length > 0) {
-      void loadHabitDayState(inputs);
-      void loadHabitStreaks(inputs);
-    }
-
+    // Day-state is loaded on Habits focus — avoid a duplicate cold-start query.
+    void loadHabitStreaks(inputs);
     void preloadConfiguredHabitSounds(habitElements);
-  }, [
-    dashboard,
-    elements,
-    elementsLoading,
-    loadHabitDayState,
-    loadHabitStreaks,
-    activeHabitKey,
-    settingsLoaded,
-  ]);
+  }, [bootstrapKey, elementsLoading, loadHabitStreaks, settingsLoaded]);
 }

@@ -103,17 +103,12 @@ export {
 } from './activeTimerSession';
 export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
 export {
-  DAILY_VIEW_FILTERS,
-  DAILY_ARRANGE_MODES,
-  isDailyViewFilter,
-  isDailyArrangeMode,
-  migrateDailyViewFilter,
   filterHabitsDueToday,
   orderHabitsList,
   habitTimeHintLabel,
   isHabitDueToday,
 } from './habitsList';
-export type { DailyViewFilter, DailyArrangeMode, HabitListFilterContext } from './habitsList';
+export type { HabitListFilterContext } from './habitsList';
 export type {
   HabitConfig,
   HabitEventMeta,

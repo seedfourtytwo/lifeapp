@@ -7,6 +7,8 @@ import { timeToMinutes } from '../utils/time';
 
 const REMINDER_PREFIX = 'habit-reminder-';
 const END_OF_DAY_REMINDER_ID = `${REMINDER_PREFIX}eod`;
+let habitReminderSyncGeneration = 0;
+let habitReminderSyncChain: Promise<void> = Promise.resolve();
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -158,36 +160,48 @@ export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
 ): Promise<void> {
-  if (!isNotificationsNativeAvailable()) {
-    return;
-  }
-
-  const Notifications = await getNotifications();
-  if (!Notifications) return;
-
-  await cancelHabitStartRemindersWith(Notifications);
-
-  if (!enabled) {
-    return;
-  }
-
-  const granted = await requestNotificationPermissions();
-  if (!granted) return;
-
-  const habits = elements.filter(
-    (element) => element.kind === 'habit' && !isElementArchived(element),
-  );
-
-  for (const element of habits) {
-    const config = HabitConfigSchema.parse(element.config);
-    if (!canScheduleStartReminder(config)) continue;
-
-    if (config.schedule.type === 'weekdays') {
-      await scheduleWeekdayReminders(Notifications, element, config);
-    } else {
-      await scheduleDailyReminder(Notifications, element, config);
+  const run = async (): Promise<void> => {
+    if (!isNotificationsNativeAvailable()) {
+      return;
     }
-  }
+
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
+
+    const generation = ++habitReminderSyncGeneration;
+    await cancelHabitStartRemindersWith(Notifications);
+    if (generation !== habitReminderSyncGeneration) return;
+
+    if (!enabled) {
+      return;
+    }
+
+    const granted = await requestNotificationPermissions();
+    if (!granted || generation !== habitReminderSyncGeneration) return;
+
+    const habits = elements.filter(
+      (element) => element.kind === 'habit' && !isElementArchived(element),
+    );
+
+    for (const element of habits) {
+      if (generation !== habitReminderSyncGeneration) return;
+      const config = HabitConfigSchema.parse(element.config);
+      if (!canScheduleStartReminder(config)) continue;
+
+      if (config.schedule.type === 'weekdays') {
+        await scheduleWeekdayReminders(Notifications, element, config);
+      } else {
+        await scheduleDailyReminder(Notifications, element, config);
+      }
+    }
+  };
+
+  const next = habitReminderSyncChain.then(run, run);
+  habitReminderSyncChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  await next;
 }
 
 export async function scheduleEndOfDayReminder(

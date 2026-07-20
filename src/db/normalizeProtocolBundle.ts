@@ -127,6 +127,15 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
       )
     : bundle.elements;
 
+  const dashboard = Array.isArray(bundle.dashboard)
+    ? bundle.dashboard.map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        const row = item as Record<string, unknown>;
+        const { overrides: _overrides, ...dashRest } = row;
+        return dashRest;
+      })
+    : bundle.dashboard;
+
   const { soundLibrary: _removed, ...rest } = bundle;
-  return { ...rest, elements };
+  return { ...rest, elements, dashboard };
 }

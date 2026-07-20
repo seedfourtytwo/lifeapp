@@ -282,6 +282,10 @@ export async function deleteOccurrenceClearsForEvent(
   await db.runAsync('DELETE FROM calendar_occurrence_clears WHERE event_id = ?', eventId);
 }
 
+/**
+ * Insert calendar backup rows. Caller must already own the SQLite transaction
+ * (e.g. importProtocolBundle) — do not wrap in another BEGIN.
+ */
 export async function importCalendarData(
   db: SQLiteDatabase,
   data: {
@@ -291,18 +295,16 @@ export async function importCalendarData(
     clearedOccurrences?: CalendarOccurrenceClear[];
   },
 ): Promise<void> {
-  await db.withTransactionAsync(async () => {
-    for (const calendar of data.calendars) {
-      await insertCalendar(db, calendar);
-    }
-    for (const event of data.events) {
-      await insertEvent(db, event);
-    }
-    for (const reminder of data.reminders) {
-      await insertReminder(db, reminder);
-    }
-    for (const clear of data.clearedOccurrences ?? []) {
-      await upsertOccurrenceClear(db, clear);
-    }
-  });
+  for (const calendar of data.calendars) {
+    await insertCalendar(db, calendar);
+  }
+  for (const event of data.events) {
+    await insertEvent(db, event);
+  }
+  for (const reminder of data.reminders) {
+    await insertReminder(db, reminder);
+  }
+  for (const clear of data.clearedOccurrences ?? []) {
+    await upsertOccurrenceClear(db, clear);
+  }
 }

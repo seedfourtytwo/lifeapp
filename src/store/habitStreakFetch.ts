@@ -15,6 +15,13 @@ import {
 export interface HabitStreakInput {
   id: string;
   config: HabitConfig;
+  /** ISO datetime or YYYY-MM-DD — streaks ignore days before this. */
+  createdAt?: string | null;
+}
+
+function createdOnDate(createdAt?: string | null): string | null {
+  if (!createdAt) return null;
+  return createdAt.slice(0, 10);
 }
 
 export interface HabitStreakMaps {
@@ -43,10 +50,12 @@ export async function loadHabitStreakMaps(
       totalHabits.map((h) => h.id),
       since,
     );
-    for (const { id, config } of totalHabits) {
+    for (const { id, config, createdAt } of totalHabits) {
       const result = computeHabitStreaksFromDailyTotals(
         totalsByElement.get(id) ?? [],
         config,
+        undefined,
+        createdOnDate(createdAt),
       );
       streaks[id] = result.streak;
       failureStreaks[id] = result.failureStreak;
@@ -59,8 +68,13 @@ export async function loadHabitStreakMaps(
       metaHabits.map((h) => h.id),
       since,
     );
-    for (const { id, config } of metaHabits) {
-      const result = computeHabitStreaksFromEvents(eventsByElement.get(id) ?? [], config);
+    for (const { id, config, createdAt } of metaHabits) {
+      const result = computeHabitStreaksFromEvents(
+        eventsByElement.get(id) ?? [],
+        config,
+        undefined,
+        createdOnDate(createdAt),
+      );
       streaks[id] = result.streak;
       failureStreaks[id] = result.failureStreak;
     }
@@ -81,8 +95,24 @@ async function fetchHabitStreakEvents(
 export async function loadHabitStreakForElement(
   elementId: string,
   config: HabitConfig,
+  createdAt?: string | null,
 ): Promise<{ streak: number; failureStreak: number }> {
-  const maps = await loadHabitStreakMaps([{ id: elementId, config }]);
+  let resolvedCreatedAt = createdAt;
+  if (resolvedCreatedAt === undefined) {
+    try {
+      const db = await getDatabase();
+      const row = await db.getFirstAsync<{ created_at: string }>(
+        'SELECT created_at FROM elements WHERE id = ?',
+        elementId,
+      );
+      resolvedCreatedAt = row?.created_at ?? null;
+    } catch {
+      resolvedCreatedAt = null;
+    }
+  }
+  const maps = await loadHabitStreakMaps([
+    { id: elementId, config, createdAt: resolvedCreatedAt },
+  ]);
   return {
     streak: maps.streaks[elementId] ?? 0,
     failureStreak: maps.failureStreaks[elementId] ?? 0,

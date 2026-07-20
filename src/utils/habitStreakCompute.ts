@@ -12,11 +12,12 @@ function streaksFromCompleted(
   completed: string[],
   config: HabitConfig,
   today: string,
+  createdOn?: string | null,
 ): { streak: number; failureStreak: number } {
   const isScheduled = (date: string) => isHabitScheduledOnDate(config, date);
   return {
-    streak: computeStreak(completed, today, isScheduled),
-    failureStreak: computeFailureStreak(completed, today, isScheduled),
+    streak: computeStreak(completed, today, isScheduled, 365, createdOn),
+    failureStreak: computeFailureStreak(completed, today, isScheduled, 365, createdOn),
   };
 }
 
@@ -25,8 +26,14 @@ export function computeHabitStreaksFromEvents(
   events: readonly LifeEvent[],
   config: HabitConfig,
   today = toDateString(new Date()),
+  createdOn?: string | null,
 ): { streak: number; failureStreak: number } {
-  return streaksFromCompleted(completedDatesFromHabitEvents(events, config), config, today);
+  return streaksFromCompleted(
+    completedDatesFromHabitEvents(events, config),
+    config,
+    today,
+    createdOn,
+  );
 }
 
 /** Derive streaks from daily SUM totals (no per-event meta). */
@@ -34,6 +41,12 @@ export function computeHabitStreaksFromDailyTotals(
   dailyTotals: readonly { date: string; total: number }[],
   config: HabitConfig,
   today = toDateString(new Date()),
+  createdOn?: string | null,
 ): { streak: number; failureStreak: number } {
-  return streaksFromCompleted(completedDatesFromDailyTotals(dailyTotals, config), config, today);
+  return streaksFromCompleted(
+    completedDatesFromDailyTotals(dailyTotals, config),
+    config,
+    today,
+    createdOn,
+  );
 }

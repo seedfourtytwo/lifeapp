@@ -19,11 +19,11 @@ export async function refreshAllDailyData(): Promise<void> {
   ]);
 }
 
-/** Clear in-memory day state before reloading after the calendar day changes. */
+/** Clear in-memory day maps before reloading after the calendar day changes. */
 export function resetInMemoryDailyState(): void {
   useEventStore.setState({
     dailyTotals: {},
     habitDoneToday: {},
-    activeTimerSessions: {},
+    dayStateReady: false,
   });
 }

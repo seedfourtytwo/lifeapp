@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ATTENTION_LIST_LIMIT, ATTENTION_WITHIN_DAYS } from '../calendar/attention';
 import { formatDayHeading, formatOccurrenceTime } from '../calendar/format';
 import { toDateString } from '../calendar/dates';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -14,9 +15,6 @@ interface Props {
   visible: boolean;
   onClose: () => void;
 }
-
-const PEEK_LIMIT = 8;
-const PEEK_WITHIN_DAYS = 60;
 
 /** Attention list only — cleared occurrences drop off (silence). Full history stays on Calendar. */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
@@ -36,7 +34,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
     void events;
     void calendars;
     void clearedByKey;
-    return attentionOccurrences(PEEK_LIMIT, PEEK_WITHIN_DAYS);
+    return attentionOccurrences(ATTENTION_LIST_LIMIT, ATTENTION_WITHIN_DAYS);
   }, [attentionOccurrences, calendars, clearedByKey, events, visible]);
 
   if (!visible) return null;

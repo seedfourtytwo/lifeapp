@@ -7,8 +7,6 @@ interface ElementRow {
   id: string;
   kind: string;
   name: string;
-  category: string;
-  parent_id: string | null;
   config_json: string;
   protocol_version: number;
   created_at: string;
@@ -34,7 +32,18 @@ export async function getAllElements(db: SQLiteDatabase): Promise<ElementDefinit
   const rows = await db.getAllAsync<ElementRow>(
     'SELECT * FROM elements ORDER BY created_at ASC',
   );
-  return rows.map(rowToElement);
+  const elements: ElementDefinition[] = [];
+  for (const row of rows) {
+    try {
+      elements.push(rowToElement(row));
+    } catch (error) {
+      console.warn(
+        `Skipping corrupt element ${row.id} (${row.kind}):`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  return elements;
 }
 
 export async function getElementById(
@@ -45,7 +54,16 @@ export async function getElementById(
     'SELECT * FROM elements WHERE id = ?',
     id,
   );
-  return row ? rowToElement(row) : null;
+  if (!row) return null;
+  try {
+    return rowToElement(row);
+  } catch (error) {
+    console.warn(
+      `Skipping corrupt element ${row.id} (${row.kind}):`,
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }
 
 export async function insertElement(
@@ -55,13 +73,11 @@ export async function insertElement(
   validateElementConfig(element.kind, element.config);
 
   await db.runAsync(
-    `INSERT INTO elements (id, kind, name, category, parent_id, config_json, protocol_version, created_at, archived_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO elements (id, kind, name, config_json, protocol_version, created_at, archived_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     element.id,
     element.kind,
     element.name,
-    '',
-    null,
     JSON.stringify(element.config),
     element.protocolVersion,
     element.createdAt,

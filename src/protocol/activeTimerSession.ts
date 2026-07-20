@@ -1,9 +1,12 @@
 import { z } from 'zod';
+import { toDateString } from './event';
 
 export const ActiveTimerSessionSchema = z.object({
   startedAt: z.string().datetime(),
   pausedAt: z.string().datetime().nullable().default(null),
   pauseOffsetMs: z.number().int().nonnegative().default(0),
+  /** Local calendar day the session belongs to (captured at start for midnight-safe finalize). */
+  calendarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 export type ActiveTimerSession = z.infer<typeof ActiveTimerSessionSchema>;
@@ -13,6 +16,7 @@ export function createActiveTimerSession(now = new Date()): ActiveTimerSession {
     startedAt: now.toISOString(),
     pausedAt: null,
     pauseOffsetMs: 0,
+    calendarDate: toDateString(now),
   };
 }
 

@@ -2,7 +2,6 @@ import {
   filterHabitsDueToday,
   habitTimeHintLabel,
   isHabitDueToday,
-  migrateDailyViewFilter,
   orderHabitsList,
   PROTOCOL_VERSION,
   type ElementDefinition,
@@ -36,15 +35,6 @@ describe('isHabitDueToday', () => {
 
     expect(isHabitDueToday(config, { now: monday, today: '2025-06-30' })).toBe(true);
     expect(isHabitDueToday(config, { now: tuesday, today: '2025-07-01' })).toBe(false);
-  });
-});
-
-describe('migrateDailyViewFilter', () => {
-  it('maps legacy filter ids', () => {
-    expect(migrateDailyViewFilter('all_due')).toBe('all');
-    expect(migrateDailyViewFilter('undone')).toBe('remaining');
-    expect(migrateDailyViewFilter('starting_soon')).toBe('remaining');
-    expect(migrateDailyViewFilter('remaining')).toBe('remaining');
   });
 });
 

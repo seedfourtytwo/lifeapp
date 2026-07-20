@@ -4,10 +4,7 @@ import { stopHabitSound } from '../audio/habitTimerSound';
 import { parseHabitConfig } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import {
-  refreshAllDailyData,
-  resetInMemoryDailyState,
-} from './refreshAllDailyData';
+import { refreshAllDailyData, resetInMemoryDailyState } from './refreshAllDailyData';
 import {
   currentAppCalendarDate,
   hasAppCalendarDayChanged,
@@ -24,18 +21,24 @@ async function finalizeTimersForPreviousDay(previousDate: string): Promise<void>
   const stopHabitTimer = useEventStore.getState().stopHabitTimer;
   const discardHabitTimer = useEventStore.getState().discardHabitTimer;
 
+  const failures: string[] = [];
   for (const elementId of ids) {
     const element = elements.find((item) => item.id === elementId);
     if (element?.kind === 'habit') {
       try {
+        // Session.calendarDate is the persist day; previousDate is for logging/context.
         await stopHabitTimer(elementId, parseHabitConfig(element.config), previousDate);
       } catch (error) {
         console.warn('Failed to finalize timer on day rollover', error);
-        discardHabitTimer(elementId);
+        failures.push(elementId);
       }
     } else {
       discardHabitTimer(elementId);
     }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Failed to finalize ${failures.length} timer(s) on day rollover`);
   }
 }
 
@@ -58,9 +61,12 @@ export function useDayRolloverRefresh(): void {
       }
       inFlightRef.current = true;
       const previousDate = dateRef.current;
-      dateRef.current = currentAppCalendarDate();
       try {
         await refreshForNewCalendarDay(previousDate);
+        // Only advance after success so AppState active can retry a failed rollover.
+        dateRef.current = currentAppCalendarDate();
+      } catch (error) {
+        console.warn('Day rollover refresh failed; will retry on next active', error);
       } finally {
         inFlightRef.current = false;
       }

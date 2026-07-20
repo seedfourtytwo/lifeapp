@@ -97,7 +97,7 @@ describe('protocol backup settings', () => {
     });
   });
 
-  it('accepts older backups that still carry daily filter settings', () => {
+  it('strips unknown legacy settings keys', () => {
     const legacy = {
       protocolVersion: PROTOCOL_VERSION,
       exportedAt: '2025-01-01T00:00:00.000Z',
@@ -106,12 +106,12 @@ describe('protocol backup settings', () => {
       events: [],
       settings: {
         themeMode: 'light' as const,
-        dailyViewFilter: 'remaining' as const,
-        dailyArrangeMode: 'order' as const,
+        dailyViewFilter: 'remaining',
+        dailyArrangeMode: 'order',
       },
     };
 
-    expect(parseProtocolBundle(legacy).settings).toEqual(legacy.settings);
+    expect(parseProtocolBundle(legacy).settings).toEqual({ themeMode: 'light' });
   });
 
   it('accepts older backups without settings', () => {

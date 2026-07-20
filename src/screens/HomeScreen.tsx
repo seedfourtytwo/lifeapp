@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AppState, type AppStateStatus, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +18,10 @@ type HomeTab = 'habits' | 'counters';
 
 type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
+/** Throttle GPS refresh so foregrounding doesn't spam location. */
+const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
+let lastGpsRefreshAt = 0;
+
 const TABS: { value: HomeTab; label: string; icon: DockIconName }[] = [
   { value: 'habits', label: 'Habits', icon: 'calendar-check' },
   { value: 'counters', label: 'Counters', icon: 'counter' },
@@ -31,6 +35,7 @@ export default function HomeScreen() {
   const [tab, setTab] = useState<HomeTab>('habits');
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
+  const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
   useDayRolloverRefresh();
@@ -39,6 +44,26 @@ export default function HomeScreen() {
     if (!weatherWidgetEnabled) return;
     void refreshWeather({ force: false });
   }, [weatherWidgetEnabled, refreshWeather]);
+
+  useEffect(() => {
+    if (!weatherWidgetEnabled || weatherLocationMode !== 'device') return;
+
+    const refreshGpsIfDue = () => {
+      const now = Date.now();
+      if (now - lastGpsRefreshAt < GPS_REFRESH_MIN_MS) {
+        void refreshWeather({ force: false });
+        return;
+      }
+      lastGpsRefreshAt = now;
+      void refreshWeather({ force: true, refreshGps: true });
+    };
+
+    refreshGpsIfDue();
+    const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') refreshGpsIfDue();
+    });
+    return () => sub.remove();
+  }, [weatherWidgetEnabled, weatherLocationMode, refreshWeather]);
 
   const showChrome = weatherWidgetEnabled || calendarWidgetEnabled;
   const activeColor = isCartoon

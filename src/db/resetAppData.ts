@@ -1,13 +1,16 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import * as weatherRepo from './repositories/weatherRepository';
 import * as calendarRepo from './repositories/calendarRepository';
 import * as eventRepo from './repositories/eventRepository';
+import * as settingsRepo from './repositories/settingsRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
   type ClearAppDataOptions,
 } from './clearDataPlan';
+import { withDbWriteLock } from './writeLock';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
 export {
@@ -47,28 +50,34 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     resolveActivityDeleteBeforeDate(options.activityPeriod);
   }
 
-  const db = await getDatabase();
-  await db.withTransactionAsync(async () => {
-    if (options.definitions) {
-      await clearProtocolDefinitions(db);
-    } else if (options.activityHistory) {
-      const before = resolveActivityDeleteBeforeDate(options.activityPeriod);
-      if (before == null) {
-        await eventRepo.deleteAllEvents(db);
-      } else {
-        await eventRepo.deleteEventsBeforeDate(db, before);
+  await withDbWriteLock(async () => {
+    const db = await getDatabase();
+    await db.withTransactionAsync(async () => {
+      if (options.definitions) {
+        await clearProtocolDefinitions(db);
+      } else if (options.activityHistory) {
+        const before = resolveActivityDeleteBeforeDate(options.activityPeriod);
+        if (before == null) {
+          await eventRepo.deleteAllEvents(db);
+        } else {
+          await eventRepo.deleteEventsBeforeDate(db, before);
+        }
       }
-    }
 
-    if (options.calendar) {
-      await calendarRepo.clearCalendarData(db);
-    }
-    if (options.weather) {
-      await weatherRepo.clearWeatherDaily(db);
-    }
-    if (options.preferences) {
-      await clearAppSettings(db);
-    }
+      if (options.calendar) {
+        await calendarRepo.clearCalendarData(db);
+      }
+      if (options.weather) {
+        await weatherRepo.clearWeatherDaily(db);
+        // Forecast JSON lives in app_settings; drop it even when prefs are kept.
+        if (!options.preferences) {
+          await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
+        }
+      }
+      if (options.preferences) {
+        await clearAppSettings(db);
+      }
+    });
   });
 }
 

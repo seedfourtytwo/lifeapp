@@ -95,7 +95,12 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
           streakHistorySinceDate(),
         );
         const { streak: currentStreak, failureStreak: currentFailureStreak } =
-          computeHabitStreaksFromEvents(yearRows, config);
+          computeHabitStreaksFromEvents(
+            yearRows,
+            config,
+            undefined,
+            loaded.createdAt?.slice(0, 10) ?? null,
+          );
         setStreak(currentStreak);
         setFailureStreak(currentFailureStreak);
       } else {

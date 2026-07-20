@@ -58,7 +58,8 @@ export default function HabitCard({ habit, config }: Props) {
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
       onTimerFinish={() =>
-        handleFinishTimer(habit.id, config).catch((error) => {
+        // Manual Done asserts completion (including play-once habits without a seconds target).
+        handleFinishTimer(habit.id, config, true).catch((error) => {
           Alert.alert(
             'Could not finish timer',
             error instanceof Error ? error.message : 'Something went wrong',

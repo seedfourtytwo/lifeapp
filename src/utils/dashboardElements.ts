@@ -54,7 +54,7 @@ export function getActiveCounters(
   );
 }
 
-/** Stable key for active habit identity — avoids redundant bootstrap when unrelated fields change. */
+/** Stable key for active habit ids — use when only membership matters (not rename/config). */
 export function activeHabitIdsKey(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],

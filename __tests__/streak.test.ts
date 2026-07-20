@@ -59,4 +59,16 @@ describe('computeFailureStreak', () => {
     );
     expect(failureStreak).toBe(1);
   });
+
+  it('ignores misses before createdOn', () => {
+    const failureStreak = computeFailureStreak(
+      [],
+      '2025-01-10',
+      () => true,
+      365,
+      '2025-01-08',
+    );
+    // Jan 8 and 9 missed; days before creation ignored.
+    expect(failureStreak).toBe(2);
+  });
 });

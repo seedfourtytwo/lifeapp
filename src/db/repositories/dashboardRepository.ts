@@ -5,7 +5,6 @@ interface DashboardRow {
   id: string;
   element_id: string;
   sort_order: number;
-  overrides_json: string | null;
 }
 
 function rowToDashboardItem(row: DashboardRow): DashboardItem {
@@ -13,9 +12,6 @@ function rowToDashboardItem(row: DashboardRow): DashboardItem {
     id: row.id,
     elementId: row.element_id,
     sortOrder: row.sort_order,
-    overrides: row.overrides_json
-      ? (JSON.parse(row.overrides_json) as Record<string, unknown>)
-      : undefined,
   };
 }
 
@@ -31,12 +27,11 @@ export async function insertDashboardItem(
   item: DashboardItem,
 ): Promise<void> {
   await db.runAsync(
-    `INSERT INTO dashboard_items (id, element_id, sort_order, overrides_json)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO dashboard_items (id, element_id, sort_order)
+     VALUES (?, ?, ?)`,
     item.id,
     item.elementId,
     item.sortOrder,
-    item.overrides ? JSON.stringify(item.overrides) : null,
   );
 }
 
@@ -45,6 +40,28 @@ export async function deleteDashboardItem(
   id: string,
 ): Promise<void> {
   await db.runAsync('DELETE FROM dashboard_items WHERE id = ?', id);
+}
+
+export async function deleteDashboardItemForElement(
+  db: SQLiteDatabase,
+  elementId: string,
+): Promise<void> {
+  await db.runAsync('DELETE FROM dashboard_items WHERE element_id = ?', elementId);
+}
+
+/** Idempotent pin insert — safe under heal races with concurrent create. */
+export async function insertDashboardItemIfAbsent(
+  db: SQLiteDatabase,
+  item: DashboardItem,
+): Promise<boolean> {
+  const result = await db.runAsync(
+    `INSERT OR IGNORE INTO dashboard_items (id, element_id, sort_order)
+     VALUES (?, ?, ?)`,
+    item.id,
+    item.elementId,
+    item.sortOrder,
+  );
+  return (result.changes ?? 0) > 0;
 }
 
 export async function isElementOnDashboard(
@@ -70,11 +87,14 @@ export async function setDashboardSortOrders(
   db: SQLiteDatabase,
   orders: { id: string; sortOrder: number }[],
 ): Promise<void> {
-  for (const item of orders) {
-    await db.runAsync(
-      'UPDATE dashboard_items SET sort_order = ? WHERE id = ?',
-      item.sortOrder,
-      item.id,
-    );
-  }
+  if (orders.length === 0) return;
+  await db.withTransactionAsync(async () => {
+    for (const item of orders) {
+      await db.runAsync(
+        'UPDATE dashboard_items SET sort_order = ? WHERE id = ?',
+        item.sortOrder,
+        item.id,
+      );
+    }
+  });
 }

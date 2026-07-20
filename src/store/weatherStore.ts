@@ -8,7 +8,6 @@ import {
   weatherErrorMessage,
 } from '../weather/errors';
 import {
-  clearCachedForecast,
   loadCachedForecast,
   saveCachedForecast,
 } from '../weather/forecastCache';
@@ -110,7 +109,6 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       offline: false,
       lastFetchAt: null,
     });
-    void clearCachedForecast();
   },
 
   hydrateFromCache: async () => {

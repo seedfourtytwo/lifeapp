@@ -273,7 +273,10 @@ export async function pauseHabitSound(): Promise<void> {
   }
 }
 
-export async function resumeHabitSound(sound?: HabitTimerSound): Promise<boolean> {
+export async function resumeHabitSound(
+  sound?: HabitTimerSound,
+  options?: HabitSoundPlaybackOptions,
+): Promise<boolean> {
   if (!sound) return false;
 
   userPausedPlayback = false;
@@ -281,6 +284,8 @@ export async function resumeHabitSound(sound?: HabitTimerSound): Promise<boolean
   if (activeSound) {
     const status = await activeSound.getStatusAsync();
     if (status.isLoaded && !status.isPlaying) {
+      const loop = getHabitTimerPlaybackMode(sound) === 'loop';
+      attachEndedHandler(activeSound, loop, options?.onEnded);
       await activeSound.playAsync();
       return true;
     }
@@ -291,7 +296,7 @@ export async function resumeHabitSound(sound?: HabitTimerSound): Promise<boolean
   if (!source || isPlaybackStale(requestEpoch)) return false;
 
   const loop = getHabitTimerPlaybackMode(sound) === 'loop';
-  return playSource(source, loop, undefined, requestEpoch, true);
+  return playSource(source, loop, options?.onEnded, requestEpoch, true);
 }
 
 export async function stopHabitSound(): Promise<void> {
@@ -309,6 +314,7 @@ export async function stopHabitSound(): Promise<void> {
   activeLooping = true;
 
   try {
+    sound.setOnPlaybackStatusUpdate(null);
     await pauseSound(sound, true);
   } catch {
     // Sound may already be unloaded.

@@ -20,29 +20,29 @@ function parseNorm(value: string | null): number | undefined {
 }
 
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
-  const [
-    themeMode,
-    habitRemindersEnabled,
-    weatherWidgetEnabled,
-    calendarWidgetEnabled,
-    weatherLocationMode,
-    weatherPlaceName,
-    weatherLat,
-    weatherLon,
-    weatherBubbleX,
-    weatherBubbleY,
-  ] = await Promise.all([
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.habitRemindersEnabled),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherWidgetEnabled),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.calendarWidgetEnabled),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLocationMode),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherPlaceName),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLon),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleX),
-    settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleY),
-  ]);
+  // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+  const themeMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
+  const habitRemindersEnabled = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.habitRemindersEnabled,
+  );
+  const weatherWidgetEnabled = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.weatherWidgetEnabled,
+  );
+  const calendarWidgetEnabled = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.calendarWidgetEnabled,
+  );
+  const weatherLocationMode = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.weatherLocationMode,
+  );
+  const weatherPlaceName = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherPlaceName);
+  const weatherLat = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat);
+  const weatherLon = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLon);
+  const weatherBubbleX = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleX);
+  const weatherBubbleY = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleY);
 
   const settings: AppSettings = {};
 

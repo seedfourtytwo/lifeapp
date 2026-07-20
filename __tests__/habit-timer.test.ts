@@ -40,7 +40,12 @@ describe('liveTimerTotalSeconds', () => {
   it('adds active session elapsed time to logged total', () => {
     const total = liveTimerTotalSeconds(
       60,
-      { startedAt: '2025-01-01T10:00:00.000Z', pausedAt: null, pauseOffsetMs: 0 },
+      {
+        startedAt: '2025-01-01T10:00:00.000Z',
+        pausedAt: null,
+        pauseOffsetMs: 0,
+        calendarDate: '2025-01-01',
+      },
       new Date('2025-01-01T10:01:30.000Z').getTime(),
     );
     expect(total).toBe(150);
@@ -53,6 +58,7 @@ describe('liveTimerTotalSeconds', () => {
         startedAt: '2025-01-01T10:00:00.000Z',
         pausedAt: '2025-01-01T10:01:00.000Z',
         pauseOffsetMs: 0,
+        calendarDate: '2025-01-01',
       },
       new Date('2025-01-01T10:02:00.000Z').getTime(),
     );
@@ -64,7 +70,12 @@ describe('liveTimerTotalSeconds', () => {
     const endedAt = new Date('2025-01-01T10:01:30.500Z');
     const liveTotal = liveTimerTotalSeconds(
       0,
-      { startedAt: startedAt.toISOString(), pausedAt: null, pauseOffsetMs: 0 },
+      {
+        startedAt: startedAt.toISOString(),
+        pausedAt: null,
+        pauseOffsetMs: 0,
+        calendarDate: '2025-01-01',
+      },
       endedAt.getTime(),
     );
     const sessionSeconds = timerSessionDurationSeconds(startedAt, endedAt);

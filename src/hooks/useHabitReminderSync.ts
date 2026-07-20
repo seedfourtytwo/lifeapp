@@ -15,6 +15,7 @@ export function useHabitReminderSync(): void {
   const elements = useElementStore((s) => s.elements);
   const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
+  const dayStateReady = useEventStore((s) => s.dayStateReady);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function useHabitReminderSync(): void {
   }, [elements, habitRemindersEnabled, settingsLoaded]);
 
   useEffect(() => {
-    if (!settingsLoaded || !isNotificationsNativeAvailable()) {
+    if (!settingsLoaded || !isNotificationsNativeAvailable() || !dayStateReady) {
       return;
     }
 
@@ -57,5 +58,5 @@ export function useHabitReminderSync(): void {
     void scheduleEndOfDayReminder(true, undoneCount).catch((error) => {
       console.warn('End-of-day reminder sync skipped', error);
     });
-  }, [elements, habitDoneToday, habitRemindersEnabled, settingsLoaded]);
+  }, [dayStateReady, elements, habitDoneToday, habitRemindersEnabled, settingsLoaded]);
 }

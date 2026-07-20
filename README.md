@@ -4,10 +4,11 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 
 > Previous activity-timer codebase is preserved at git tag `legacy-v1`.
 
-## What ships in v1.1
+## What ships in v1.2
 
 | Feature | Description |
 |---------|-------------|
+| **Clean SQLite schema** | Dropped unused columns (`category`, `parent_id`, `overrides`); schema v12 **wipes local data** on upgrade |
 | **Home** | Dashboard with Habits / Counters tabs; ambient weather + calendar bubble |
 | **Habits** | Today's check-offs or timers — remaining progress, sort, reorder |
 | **Counters** | Quick +buttons, undo, edit total, reorder, 14-day history; totals reset daily |
@@ -16,7 +17,7 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 | **Trackers** | Create, edit, archive/restore, or delete habits and counters |
 | **Settings → Data** | JSON export/import; granular **Clear data…** (history by period, calendar, cache, prefs, or definitions) |
 | **Offline SQLite** | All data on device — no account, no cloud |
-| **Life Protocol v1** | Zod-validated elements + append-only events |
+| **Life Protocol v1** | Zod-validated elements + events (day aggregates may replace prior events for the same date) |
 
 **Primary target:** Android phone (Expo dev client). Web is dev-only.
 

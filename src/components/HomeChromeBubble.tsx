@@ -24,11 +24,10 @@ import { conditionIconName, conditionLabel } from '../weather/codes';
 import { formatTempC } from '../weather/format';
 import CalendarPeekSheet from './CalendarPeekSheet';
 import WeatherForecastSheet from './WeatherForecastSheet';
+import { ATTENTION_WITHIN_DAYS } from '../calendar/attention';
 
 const DOCK_RESERVE = 72;
 const TAP_SLOP = 8;
-/** Badge looks ahead this many days for “needs attention” count. */
-const BADGE_WITHIN_DAYS = 14;
 
 type SheetKind = 'weather' | 'calendar' | null;
 
@@ -50,7 +49,7 @@ export default function HomeChromeBubble() {
   const weatherOffline = useWeatherStore((s) => s.offline);
   const weatherLoading = useWeatherStore((s) => s.loading);
 
-  // Primitive selector — re-runs when calendar store data or local clock tick changes.
+  // Clock tick so “needs attention” can advance without waiting for a store mutation.
   const [badgeNow, setBadgeNow] = useState(() => Date.now());
   useEffect(() => {
     if (!calendarEnabled) return;
@@ -58,11 +57,14 @@ export default function HomeChromeBubble() {
     return () => clearInterval(timer);
   }, [calendarEnabled]);
 
-  const badgeCount = useCalendarStore((s) => {
-    if (!calendarEnabled || s.events.length === 0) return 0;
+  const events = useCalendarStore((s) => s.events);
+  const calendars = useCalendarStore((s) => s.calendars);
+  const clearedByKey = useCalendarStore((s) => s.clearedByKey);
+  const badgeCount = useMemo(() => {
+    if (!calendarEnabled || events.length === 0) return 0;
     void badgeNow;
-    return s.attentionOccurrences(50, BADGE_WITHIN_DAYS).length;
-  });
+    return useCalendarStore.getState().attentionOccurrences(50, ATTENTION_WITHIN_DAYS).length;
+  }, [calendarEnabled, events, calendars, clearedByKey, badgeNow]);
 
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [fanOpen, setFanOpen] = useState(false);

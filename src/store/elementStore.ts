@@ -18,6 +18,7 @@ import {
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 import { useEventStore } from './eventStore';
+import { clearWriteEpoch } from './writeEpoch';
 
 async function persistKindOrder(
   kind: 'habit' | 'counter',
@@ -36,7 +37,13 @@ async function persistKindOrder(
 
   const db = await getDatabase();
   await dashboardRepo.setDashboardSortOrders(db, updates);
-  set({ dashboard: nextDashboard });
+  // Drop pins for elements archived while reorder was in flight.
+  const activeIds = new Set(
+    elements.filter((element) => element.archivedAt == null).map((element) => element.id),
+  );
+  set({
+    dashboard: nextDashboard.filter((item) => activeIds.has(item.elementId)),
+  });
 }
 
 async function insertActiveElement(
@@ -48,8 +55,10 @@ async function insertActiveElement(
     elementId: element.id,
     sortOrder: await dashboardRepo.getNextSortOrder(db),
   };
-  await elementRepo.insertElement(db, element);
-  await dashboardRepo.insertDashboardItem(db, dashboardItem);
+  await db.withTransactionAsync(async () => {
+    await elementRepo.insertElement(db, element);
+    await dashboardRepo.insertDashboardItem(db, dashboardItem);
+  });
   return dashboardItem;
 }
 
@@ -62,13 +71,24 @@ function clearHabitRuntime(elementId: string): void {
   }
 }
 
-/** Ensure every active element has a dashboard sort row. */
-async function healMissingDashboardPlacements(
+/** Drop pins for archived elements; ensure every active element has a sort row. */
+async function reconcileDashboardPlacements(
   db: SQLiteDatabase,
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
 ): Promise<DashboardItem[]> {
-  const placed = new Set(dashboard.map((item) => item.elementId));
+  const byId = new Map(elements.map((element) => [element.id, element]));
+  let next = dashboard.filter((item) => {
+    const element = byId.get(item.elementId);
+    return element != null && element.archivedAt == null;
+  });
+
+  const stale = dashboard.filter((item) => !next.includes(item));
+  for (const item of stale) {
+    await dashboardRepo.deleteDashboardItem(db, item.id);
+  }
+
+  const placed = new Set(next.map((item) => item.elementId));
   let sortOrder = await dashboardRepo.getNextSortOrder(db);
   const added: DashboardItem[] = [];
 
@@ -79,12 +99,24 @@ async function healMissingDashboardPlacements(
       elementId: element.id,
       sortOrder,
     };
-    await dashboardRepo.insertDashboardItem(db, item);
-    added.push(item);
-    sortOrder += 1;
+    const inserted = await dashboardRepo.insertDashboardItemIfAbsent(db, item);
+    if (inserted) {
+      added.push(item);
+      placed.add(element.id);
+      sortOrder += 1;
+    } else {
+      // Another writer won the UNIQUE race — adopt the existing pin.
+      const existing = (await dashboardRepo.getDashboardItems(db)).find(
+        (row) => row.elementId === element.id,
+      );
+      if (existing && !placed.has(element.id)) {
+        added.push(existing);
+        placed.add(element.id);
+      }
+    }
   }
 
-  return added.length === 0 ? dashboard : [...dashboard, ...added];
+  return added.length === 0 ? next : [...next, ...added];
 }
 
 function applyElementMutation(
@@ -133,11 +165,10 @@ export const useElementStore = create<ElementState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const db = await getDatabase();
-      const [elements, dashboardRows] = await Promise.all([
-        elementRepo.getAllElements(db),
-        dashboardRepo.getDashboardItems(db),
-      ]);
-      const dashboard = await healMissingDashboardPlacements(db, elements, dashboardRows);
+      // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+      const elements = await elementRepo.getAllElements(db);
+      const dashboardRows = await dashboardRepo.getDashboardItems(db);
+      const dashboard = await reconcileDashboardPlacements(db, elements, dashboardRows);
       set({ elements, dashboard, isLoading: false });
     } catch (error) {
       set({
@@ -248,17 +279,12 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt != null) return;
 
-    clearHabitRuntime(elementId);
-
     const archivedAt = new Date().toISOString();
-    const dashboardItem = get().dashboard.find((item) => item.elementId === elementId);
 
     try {
       await db.withTransactionAsync(async () => {
         await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
-        if (dashboardItem) {
-          await dashboardRepo.deleteDashboardItem(db, dashboardItem.id);
-        }
+        await dashboardRepo.deleteDashboardItemForElement(db, elementId);
       });
     } catch (error) {
       throw new Error(
@@ -266,6 +292,8 @@ export const useElementStore = create<ElementState>((set, get) => ({
       );
     }
 
+    clearHabitRuntime(elementId);
+    clearWriteEpoch(elementId);
     set({
       elements: get().elements.map((element) =>
         element.id === elementId ? { ...element, archivedAt } : element,
@@ -315,8 +343,9 @@ export const useElementStore = create<ElementState>((set, get) => ({
     if (!existing) {
       throw new Error('Element not found');
     }
-    clearHabitRuntime(id);
     await elementRepo.deleteElement(db, id);
+    clearHabitRuntime(id);
+    clearWriteEpoch(id);
     set({
       elements: get().elements.filter((element) => element.id !== id),
       dashboard: get().dashboard.filter((item) => item.elementId !== id),

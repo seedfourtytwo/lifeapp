@@ -81,7 +81,15 @@ export function useProtocolBackup() {
     try {
       await stopHabitSound();
       await clearAppData(options);
-      await reloadStoresAfterImport();
+      await reloadStoresAfterImport({
+        cleared: {
+          calendar: options.calendar,
+          weather: options.weather,
+          preferences: options.preferences,
+          definitions: options.definitions,
+          activityHistory: options.activityHistory,
+        },
+      });
       setClearSheetVisible(false);
       const lines = describeClearPlan(options);
       Alert.alert(

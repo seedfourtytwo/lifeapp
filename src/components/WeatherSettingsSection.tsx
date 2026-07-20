@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { Button, List, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
@@ -23,11 +23,24 @@ export default function WeatherSettingsSection() {
   const refreshWeather = useWeatherStore((s) => s.refresh);
   const clearWeather = useWeatherStore((s) => s.clear);
 
-  const [placeQuery, setPlaceQuery] = useState(weatherPlaceName ?? '');
+  const [placeQuery, setPlaceQuery] = useState(
+    weatherLocationMode === 'manual' ? (weatherPlaceName ?? '') : '',
+  );
   const [placeBusy, setPlaceBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [placeHits, setPlaceHits] = useState<GeocodeHit[]>([]);
   const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const deviceLocationAvailable = isDeviceLocationAvailable();
+
+  const deviceLocationDescription = !deviceLocationAvailable
+    ? 'Needs a fresh Android build — use a city below'
+    : locating
+      ? 'Getting location…'
+      : weatherLocationMode === 'device' && weatherPlaceName
+        ? weatherPlaceName
+        : weatherLocationMode === 'device'
+          ? 'Using device GPS'
+          : 'Prefer GPS when permitted';
 
   const handleWeatherToggle = async (enabled: boolean) => {
     await setWeatherWidgetEnabled(enabled);
@@ -39,6 +52,7 @@ export default function WeatherSettingsSection() {
   };
 
   const handleUseDeviceLocation = async () => {
+    if (locating) return;
     if (!deviceLocationAvailable) {
       Alert.alert(
         'Rebuild required',
@@ -46,15 +60,16 @@ export default function WeatherSettingsSection() {
       );
       return;
     }
-    const granted = await requestDeviceLocationPermission();
-    if (!granted) {
-      Alert.alert(
-        'Location blocked',
-        'Enable location permission in system settings, or set a city manually.',
-      );
-      return;
-    }
+    setLocating(true);
     try {
+      const granted = await requestDeviceLocationPermission();
+      if (!granted) {
+        Alert.alert(
+          'Location blocked',
+          'Enable location permission in system settings, or set a city manually.',
+        );
+        return;
+      }
       const coords = await getDeviceCoords();
       if (!coords) {
         Alert.alert(
@@ -70,7 +85,10 @@ export default function WeatherSettingsSection() {
         lat: coords.lat,
         lon: coords.lon,
       });
-      setPlaceQuery(placeName);
+      // Keep city search empty — GPS place is shown under this row only.
+      setPlaceQuery('');
+      setPlaceHits([]);
+      setPlaceSearchError(null);
       void refreshWeather({ force: true, refreshGps: true });
     } catch (error) {
       const kind = classifyWeatherFetchError(error);
@@ -80,6 +98,8 @@ export default function WeatherSettingsSection() {
           ? 'No connection while resolving location. Try again online, or search a city.'
           : 'Could not read device location. Try a city name instead.',
       );
+    } finally {
+      setLocating(false);
     }
   };
 
@@ -146,17 +166,24 @@ export default function WeatherSettingsSection() {
         <>
           <List.Item
             title="Use phone location"
-            description={
-              !deviceLocationAvailable
-                ? 'Needs a fresh Android build — use a city below'
-                : weatherLocationMode === 'device' && weatherPlaceName
-                  ? weatherPlaceName
-                  : weatherLocationMode === 'device'
-                    ? 'Using device GPS'
-                    : 'Prefer GPS when permitted'
-            }
+            description={deviceLocationDescription}
             left={(props) => <List.Icon {...props} icon="crosshairs-gps" />}
+            right={() =>
+              locating ? (
+                <ActivityIndicator
+                  style={styles.locatingSpinner}
+                  color={theme.colors.primary}
+                  accessibilityLabel="Getting location"
+                />
+              ) : null
+            }
+            disabled={locating}
             onPress={() => void handleUseDeviceLocation()}
+            accessibilityHint={
+              weatherLocationMode === 'device' && weatherPlaceName
+                ? 'Tap again to refresh phone location'
+                : undefined
+            }
           />
           <View style={styles.placeBlock}>
             <Text variant="bodySmall" style={styles.placeHint}>
@@ -231,5 +258,9 @@ const styles = StyleSheet.create({
   placeHit: {
     paddingHorizontal: 0,
     marginHorizontal: -8,
+  },
+  locatingSpinner: {
+    alignSelf: 'center',
+    marginRight: 8,
   },
 });

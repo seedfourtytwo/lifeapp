@@ -9,21 +9,20 @@ import * as calendarRepo from '../db/repositories/calendarRepository';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
+import { withDbWriteLock } from './writeLock';
 import { newId } from '../utils/id';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
   const db = await getDatabase();
-  const [elements, dashboard, events, settings, calendars, calendarEvents, reminders, clears] =
-    await Promise.all([
-      elementRepo.getAllElements(db),
-      dashboardRepo.getDashboardItems(db),
-      eventRepo.getAllEvents(db),
-      readAppSettings(db),
-      calendarRepo.getAllCalendars(db),
-      calendarRepo.getAllEvents(db),
-      calendarRepo.getAllReminders(db),
-      calendarRepo.getAllOccurrenceClears(db),
-    ]);
+  // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+  const elements = await elementRepo.getAllElements(db);
+  const dashboard = await dashboardRepo.getDashboardItems(db);
+  const events = await eventRepo.getAllEvents(db);
+  const settings = await readAppSettings(db);
+  const calendars = await calendarRepo.getAllCalendars(db);
+  const calendarEvents = await calendarRepo.getAllEvents(db);
+  const reminders = await calendarRepo.getAllReminders(db);
+  const clears = await calendarRepo.getAllOccurrenceClears(db);
 
   return createProtocolBundle({
     elements,
@@ -46,59 +45,62 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
 export async function importProtocolBundle(raw: unknown): Promise<void> {
   const normalized = normalizeProtocolBundleInput(raw);
   const bundle = parseProtocolBundle(normalized);
-  const db = await getDatabase();
 
-  await db.withTransactionAsync(async () => {
-    await clearDataForImport(db);
+  await withDbWriteLock(async () => {
+    const db = await getDatabase();
 
-    for (const element of bundle.elements) {
-      await elementRepo.insertElement(db, element);
-    }
+    await db.withTransactionAsync(async () => {
+      await clearDataForImport(db);
 
-    const activeElementIds = new Set(
-      bundle.elements
-        .filter((element) => element.archivedAt == null)
-        .map((element) => element.id),
-    );
-    const placedElementIds = new Set<string>();
-    let sortOrder = 0;
-    for (const item of bundle.dashboard) {
-      if (!activeElementIds.has(item.elementId)) continue;
-      await dashboardRepo.insertDashboardItem(db, item);
-      placedElementIds.add(item.elementId);
-      sortOrder = Math.max(sortOrder, item.sortOrder + 1);
-    }
-    for (const element of bundle.elements) {
-      if (element.archivedAt != null || placedElementIds.has(element.id)) continue;
-      await dashboardRepo.insertDashboardItem(db, {
-        id: newId(),
-        elementId: element.id,
-        sortOrder,
-      });
-      sortOrder += 1;
-    }
-    for (const event of bundle.events) {
-      await eventRepo.insertEvent(db, event);
-    }
-    await writeAppSettings(db, bundle.settings);
+      for (const element of bundle.elements) {
+        await elementRepo.insertElement(db, element);
+      }
 
-    if (bundle.calendar) {
-      const calendarIds = new Set(bundle.calendar.calendars.map((c) => c.id));
-      const events = bundle.calendar.events.filter((e) => calendarIds.has(e.calendarId));
-      const eventIds = new Set(events.map((e) => e.id));
-      const reminders = bundle.calendar.reminders.filter((r) => eventIds.has(r.eventId));
-      const clearedOccurrences = (bundle.calendar.clearedOccurrences ?? []).filter((c) =>
-        eventIds.has(c.eventId),
+      const activeElementIds = new Set(
+        bundle.elements
+          .filter((element) => element.archivedAt == null)
+          .map((element) => element.id),
       );
-      await calendarRepo.importCalendarData(db, {
-        calendars: bundle.calendar.calendars,
-        events,
-        reminders,
-        clearedOccurrences,
-      });
-    }
+      const placedElementIds = new Set<string>();
+      let sortOrder = 0;
+      for (const item of bundle.dashboard) {
+        if (!activeElementIds.has(item.elementId)) continue;
+        await dashboardRepo.insertDashboardItem(db, item);
+        placedElementIds.add(item.elementId);
+        sortOrder = Math.max(sortOrder, item.sortOrder + 1);
+      }
+      for (const element of bundle.elements) {
+        if (element.archivedAt != null || placedElementIds.has(element.id)) continue;
+        await dashboardRepo.insertDashboardItem(db, {
+          id: newId(),
+          elementId: element.id,
+          sortOrder,
+        });
+        sortOrder += 1;
+      }
+      for (const event of bundle.events) {
+        await eventRepo.insertEvent(db, event);
+      }
+      await writeAppSettings(db, bundle.settings);
 
-    await calendarRepo.ensureDefaultCalendar(db);
+      if (bundle.calendar) {
+        const calendarIds = new Set(bundle.calendar.calendars.map((c) => c.id));
+        const events = bundle.calendar.events.filter((e) => calendarIds.has(e.calendarId));
+        const eventIds = new Set(events.map((e) => e.id));
+        const reminders = bundle.calendar.reminders.filter((r) => eventIds.has(r.eventId));
+        const clearedOccurrences = (bundle.calendar.clearedOccurrences ?? []).filter((c) =>
+          eventIds.has(c.eventId),
+        );
+        await calendarRepo.importCalendarData(db, {
+          calendars: bundle.calendar.calendars,
+          events,
+          reminders,
+          clearedOccurrences,
+        });
+      }
+
+      await calendarRepo.ensureDefaultCalendar(db);
+    });
   });
 }
 
