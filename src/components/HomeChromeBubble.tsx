@@ -62,7 +62,10 @@ export default function HomeChromeBubble() {
   const clearedByKey = useCalendarStore((s) => s.clearedByKey);
   const badgeCount = useMemo(() => {
     if (!calendarEnabled || events.length === 0) return 0;
+    // Recompute when calendar mirror or minute tick changes (attentionOccurrences reads store).
     void badgeNow;
+    void calendars;
+    void clearedByKey;
     return useCalendarStore.getState().attentionOccurrences(50, ATTENTION_WITHIN_DAYS).length;
   }, [calendarEnabled, events, calendars, clearedByKey, badgeNow]);
 

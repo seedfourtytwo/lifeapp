@@ -109,7 +109,7 @@ async function reconcileDashboardPlacements(
   dashboard: DashboardItem[],
 ): Promise<DashboardItem[]> {
   const byId = new Map(elements.map((element) => [element.id, element]));
-  let next = dashboard.filter((item) => {
+  const next = dashboard.filter((item) => {
     const element = byId.get(item.elementId);
     return element != null && element.archivedAt == null;
   });

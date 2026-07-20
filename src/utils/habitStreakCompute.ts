@@ -2,7 +2,6 @@ import type { HabitConfig, LifeEvent } from '../protocol';
 import {
   completedDatesFromDailyTotals,
   completedDatesFromHabitEvents,
-  habitNeedsEventMetaForCompletion,
   isHabitScheduledOnDate,
   toDateString,
 } from '../protocol';
