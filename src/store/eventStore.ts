@@ -13,6 +13,7 @@ import {
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
 import { sumEventValues } from '../utils/events';
 import { shouldPlayHabitCompletionChime } from '../utils/habitCompletionChime';
+import { playHabitCompleteHaptic } from '../utils/habitHaptics';
 import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 import {
@@ -184,6 +185,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         meta: { source: 'habit_tick' },
         protocolVersion: PROTOCOL_VERSION,
       });
+      void playHabitCompleteHaptic();
     }
 
     const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
@@ -257,6 +259,9 @@ export const useEventStore = create<EventState>((set, get) => ({
     const existingEvents = await eventRepo.getEventsForElementOnDate(db, elementId, date);
     const optimisticEvents = [...existingEvents, { value, meta }];
 
+    const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
+    const isComplete = isHabitDayComplete(optimisticTotal, config, optimisticEvents);
+
     if (
       shouldPlayHabitCompletionChime(
         config,
@@ -269,6 +274,10 @@ export const useEventStore = create<EventState>((set, get) => ({
     ) {
       void playHabitCompleteChime();
     }
+    // Haptic only when the day newly becomes complete (not every track end).
+    if (!wasComplete && isComplete) {
+      void playHabitCompleteHaptic();
+    }
 
     set({
       activeTimerSessions: nextSessions,
@@ -278,7 +287,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       },
       habitDoneToday: {
         ...get().habitDoneToday,
-        [elementId]: isHabitDayComplete(optimisticTotal, config, optimisticEvents),
+        [elementId]: isComplete,
       },
     });
 

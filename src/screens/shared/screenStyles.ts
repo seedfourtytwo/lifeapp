@@ -49,4 +49,7 @@ export const homeTabScreenStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  dimmedCard: {
+    opacity: 0.62,
+  },
 });

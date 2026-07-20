@@ -14,6 +14,7 @@ import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
 import ReorderControls from './shared/ReorderControls';
+import EmptyTabState from './shared/EmptyTabState';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 export default function CountersScreen() {
@@ -98,11 +99,13 @@ export default function CountersScreen() {
       ) : null}
 
       {counters.length === 0 ? (
-        <Text variant="bodyLarge" style={styles.empty}>
-          {elements.some((e) => e.kind === 'counter')
-            ? 'No active counters. Open Settings → Elements to restore something from Archive.'
-            : 'No counters yet. Open Settings to add one.'}
-        </Text>
+        <EmptyTabState
+          message={
+            elements.some((e) => e.kind === 'counter')
+              ? 'No active counters. Restore something from Archive in Elements.'
+              : 'No counters yet. Add one to track water, steps, or anything countable.'
+          }
+        />
       ) : (
         counters.map((element, index) => {
           const handler = getKindHandler(element.kind);

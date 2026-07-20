@@ -9,6 +9,8 @@ type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
   reordering: boolean;
+  /** Quieter presentation for completed habits in All today. */
+  dimmed?: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onMoveUp: () => void;
@@ -19,6 +21,7 @@ export default function HabitDailyRow({
   habit,
   config,
   reordering,
+  dimmed = false,
   canMoveUp,
   canMoveDown,
   onMoveUp,
@@ -35,7 +38,7 @@ export default function HabitDailyRow({
           accessibilityNoun="habit"
         />
       ) : null}
-      <View style={styles.reorderCard}>
+      <View style={[styles.reorderCard, dimmed ? styles.dimmedCard : null]}>
         <HabitDailyCard habit={habit} config={config} />
       </View>
     </View>

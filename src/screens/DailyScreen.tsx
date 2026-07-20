@@ -19,6 +19,7 @@ import { useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 import HabitDailyRow from './daily/HabitDailyRow';
+import EmptyTabState from './shared/EmptyTabState';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 export default function DailyScreen() {
@@ -115,10 +116,13 @@ export default function DailyScreen() {
         : `${doneCount} of ${dueTodayHabits.length}`;
 
   let emptyMessage: string | null = null;
+  let emptyWithCta = false;
   if (totalHabitCount === 0) {
-    emptyMessage = 'No habits yet. Open Settings to add one.';
+    emptyMessage = 'No habits yet. Add one to start your daily list.';
+    emptyWithCta = true;
   } else if (allHabits.length === 0) {
-    emptyMessage = 'No active habits. Open Settings → Elements to restore something from Archive.';
+    emptyMessage = 'No active habits. Restore something from Archive in Elements.';
+    emptyWithCta = true;
   } else if (habits.length === 0) {
     emptyMessage = 'Nothing to show for this view.';
   }
@@ -211,9 +215,13 @@ export default function DailyScreen() {
       </View>
 
       {emptyMessage ? (
-        <Text variant="bodyLarge" style={styles.empty}>
-          {emptyMessage}
-        </Text>
+        emptyWithCta ? (
+          <EmptyTabState message={emptyMessage} />
+        ) : (
+          <Text variant="bodyLarge" style={styles.empty}>
+            {emptyMessage}
+          </Text>
+        )
       ) : (
         sections.map(({ slot, items }) => (
           <View key={slot ?? 'flat'} style={styles.section}>
@@ -231,12 +239,15 @@ export default function DailyScreen() {
             {items.map((habit, index) => {
               const config = habitConfigs.get(habit.id);
               if (!config) return null;
+              const isDone = habitDoneToday[habit.id] ?? false;
+              const dimmed = isDone && !reordering && activeFilter === 'all';
               return (
                 <HabitDailyRow
                   key={habit.id}
                   habit={habit}
                   config={config}
                   reordering={reordering}
+                  dimmed={dimmed}
                   canMoveUp={reordering && index > 0}
                   canMoveDown={reordering && index < items.length - 1}
                   onMoveUp={() => void reorderHabitInSlot(habit.id, 'up')}

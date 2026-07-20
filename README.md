@@ -94,6 +94,7 @@ Open the dev client and enter `http://<laptop-ip>:8081`.
 | Backup **import** (`expo-document-picker`) | | ✓ |
 | Background timer audio, habit reminders | | ✓ |
 | Weather phone location (`expo-location`) | | ✓ |
+| Habit complete haptics (`expo-haptics`) | | ✓ |
 
 After installing a new APK, reconnect to Metro for day-to-day JS changes.
 
