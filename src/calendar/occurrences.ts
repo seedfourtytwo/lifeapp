@@ -117,13 +117,10 @@ function expandWeekly(
 ): CalendarOccurrence[] {
   const out: CalendarOccurrence[] = [];
   const anchorDay = startOfLocalDay(anchor);
-  // Walk day-by-day from the later of (anchor, rangeStart - duration)
-  let cursor = new Date(Math.min(anchorDay.getTime(), rangeStartMs));
-  if (cursor.getTime() < anchorDay.getTime()) {
-    cursor = new Date(anchorDay);
-  }
-  // Include possible overlap from previous day for long all-day spans
-  cursor = addLocalDays(startOfLocalDay(cursor), -Math.ceil(durationMs / 86_400_000));
+  // Jump near the requested window so old series (years of history) still expand.
+  // Walking from the anchor day-by-day hits MAX_OCCURRENCES_PER_EVENT before today.
+  let cursor = startOfLocalDay(new Date(rangeStartMs));
+  cursor = addLocalDays(cursor, -Math.ceil(durationMs / 86_400_000));
   if (cursor.getTime() < anchorDay.getTime()) {
     cursor = new Date(anchorDay);
   }

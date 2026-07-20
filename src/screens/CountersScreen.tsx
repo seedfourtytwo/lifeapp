@@ -3,6 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useShallow } from 'zustand/react/shallow';
 import { CounterConfigSchema } from '../protocol';
 import {
   refreshAllCounterData,
@@ -25,7 +26,13 @@ export default function CountersScreen() {
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const reorderCounter = useElementStore((s) => s.reorderCounter);
-  const { dailyTotals, logEvent, setDailyTotal } = useEventStore();
+  const { dailyTotals, logEvent, setDailyTotal } = useEventStore(
+    useShallow((s) => ({
+      dailyTotals: s.dailyTotals,
+      logEvent: s.logEvent,
+      setDailyTotal: s.setDailyTotal,
+    })),
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [reordering, setReordering] = useState(false);
 

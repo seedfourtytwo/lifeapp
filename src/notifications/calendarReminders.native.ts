@@ -16,6 +16,8 @@ const REMINDER_PREFIX = 'cal-reminder-';
 const SCHEDULE_HORIZON_MS = 90 * 24 * 60 * 60 * 1000;
 /** Cap scheduled notifications to stay under OS limits. */
 const MAX_SCHEDULED = 64;
+/** Bumped on each sync so overlapping runs don't restore stale schedules. */
+let reminderSyncGeneration = 0;
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -91,13 +93,16 @@ export async function syncCalendarReminders(input: {
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
+  const generation = ++reminderSyncGeneration;
+
   await cancelCalendarRemindersWith(Notifications);
+  if (generation !== reminderSyncGeneration) return;
 
   const enabledReminders = input.reminders.filter((r) => r.enabled);
   if (enabledReminders.length === 0 || input.events.length === 0) return;
 
   const granted = await requestNotificationPermissions();
-  if (!granted) return;
+  if (!granted || generation !== reminderSyncGeneration) return;
 
   const now = Date.now();
   const rangeStart = new Date(now - 24 * 60 * 60 * 1000);
@@ -138,6 +143,7 @@ export async function syncCalendarReminders(input: {
   const toSchedule = fires.slice(0, MAX_SCHEDULED);
 
   for (const fire of toSchedule) {
+    if (generation !== reminderSyncGeneration) return;
     await Notifications.scheduleNotificationAsync({
       identifier: fire.id,
       content: {

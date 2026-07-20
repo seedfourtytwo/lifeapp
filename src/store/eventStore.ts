@@ -81,13 +81,11 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     const db = await getDatabase();
     const today = todayDate();
+    const totals = await eventRepo.getDailyTotalsForElementsOnDate(db, elementIds, today);
     const todayTotals: Record<string, number> = {};
-
-    await Promise.all(
-      elementIds.map(async (id) => {
-        todayTotals[id] = await eventRepo.getDailyTotal(db, id, today);
-      }),
-    );
+    for (const [id, total] of totals) {
+      todayTotals[id] = total;
+    }
 
     set({
       dailyTotals: { ...get().dailyTotals, ...todayTotals },
@@ -150,20 +148,22 @@ export const useEventStore = create<EventState>((set, get) => ({
     }
 
     const db = await getDatabase();
-    await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+    await db.withTransactionAsync(async () => {
+      await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
 
-    if (total > 0) {
-      const now = new Date();
-      await eventRepo.insertEvent(db, {
-        id: newId(),
-        elementId,
-        timestamp: now.toISOString(),
-        date,
-        value: total,
-        meta: { source: 'manual' },
-        protocolVersion: PROTOCOL_VERSION,
-      });
-    }
+      if (total > 0) {
+        const now = new Date();
+        await eventRepo.insertEvent(db, {
+          id: newId(),
+          elementId,
+          timestamp: now.toISOString(),
+          date,
+          value: total,
+          meta: { source: 'manual' },
+          protocolVersion: PROTOCOL_VERSION,
+        });
+      }
+    });
 
     await refreshTotal(elementId, date, set, get);
   },

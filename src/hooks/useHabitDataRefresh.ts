@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveHabits } from '../utils/dashboardElements';
-import { refreshAllDailyData } from './refreshAllDailyData';
 import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useElementStore } from '../store/elementStore';
 
@@ -16,7 +15,7 @@ export function useActiveHabitInputs() {
   }, [elements, dashboard]);
 }
 
-/** Refresh today's completion state when the Habits tab gains focus. */
+/** Refresh today's completion state when Home gains focus. */
 export function useRefreshHabitDayOnFocus(): void {
   const inputs = useActiveHabitInputs();
   const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
@@ -30,7 +29,16 @@ export function useRefreshHabitDayOnFocus(): void {
   );
 }
 
-/** Pull-to-refresh: reload elements, today's state, and streak history. */
+/** Pull-to-refresh: reload elements, today's habit state, and streaks (not counters). */
 export async function refreshAllHabitData(): Promise<void> {
-  await refreshAllDailyData();
+  const loadElements = useElementStore.getState().load;
+  await loadElements();
+
+  const { elements, dashboard } = useElementStore.getState();
+  const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
+  const { loadHabitDayState, loadHabitStreaks } = useEventStore.getState();
+  await Promise.all([
+    habitInputs.length > 0 ? loadHabitDayState(habitInputs) : Promise.resolve(),
+    habitInputs.length > 0 ? loadHabitStreaks(habitInputs) : Promise.resolve(),
+  ]);
 }

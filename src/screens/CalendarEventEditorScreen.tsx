@@ -183,7 +183,17 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
     const dates = buildDates();
     if (!dates) return;
 
-    const recurrence: RecurrenceRule = { freq, interval: 1, byWeekDays: [] };
+    const recurrence: RecurrenceRule = (() => {
+      const previous = existing ? parseRrule(existing.rrule) : null;
+      if (previous && previous.freq === freq) {
+        return {
+          freq,
+          interval: previous.interval,
+          byWeekDays: freq === 'weekly' ? previous.byWeekDays : [],
+        };
+      }
+      return { freq, interval: 1, byWeekDays: [] };
+    })();
 
     setSaving(true);
     try {

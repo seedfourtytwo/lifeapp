@@ -19,14 +19,20 @@ async function refreshForNewCalendarDay(): Promise<void> {
 export function useDayRolloverRefresh(): void {
   const dateRef = useRef(currentAppCalendarDate());
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     const handlePotentialRollover = async () => {
-      if (!hasAppCalendarDayChanged(dateRef.current)) {
+      if (!hasAppCalendarDayChanged(dateRef.current) || inFlightRef.current) {
         return;
       }
+      inFlightRef.current = true;
       dateRef.current = currentAppCalendarDate();
-      await refreshForNewCalendarDay();
+      try {
+        await refreshForNewCalendarDay();
+      } finally {
+        inFlightRef.current = false;
+      }
     };
 
     const scheduleNextDayRefresh = () => {
@@ -34,16 +40,13 @@ export function useDayRolloverRefresh(): void {
         clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = setTimeout(() => {
-        void handlePotentialRollover();
-        scheduleNextDayRefresh();
+        void handlePotentialRollover().finally(() => {
+          scheduleNextDayRefresh();
+        });
       }, msUntilNextAppDay());
     };
 
     scheduleNextDayRefresh();
-
-    const interval = setInterval(() => {
-      void handlePotentialRollover();
-    }, 60_000);
 
     const subscription = AppState.addEventListener('change', (state: AppStateStatus) => {
       if (state === 'active') {
@@ -55,7 +58,6 @@ export function useDayRolloverRefresh(): void {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      clearInterval(interval);
       subscription.remove();
     };
   }, []);

@@ -163,6 +163,33 @@ export async function getDailyTotal(
   return row?.total ?? 0;
 }
 
+/** Batched today's totals for many counters — one query instead of N. */
+export async function getDailyTotalsForElementsOnDate(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  date: string,
+): Promise<Map<string, number>> {
+  const totals = new Map<string, number>();
+  for (const id of elementIds) {
+    totals.set(id, 0);
+  }
+  if (elementIds.length === 0) return totals;
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ element_id: string; total: number }>(
+    `SELECT element_id, COALESCE(SUM(value), 0) as total
+     FROM events
+     WHERE date = ? AND element_id IN (${placeholders})
+     GROUP BY element_id`,
+    date,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    totals.set(row.element_id, row.total);
+  }
+  return totals;
+}
+
 export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {
   const rows = await db.getAllAsync<EventRow>(
     'SELECT * FROM events ORDER BY timestamp ASC',

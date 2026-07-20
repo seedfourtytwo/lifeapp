@@ -50,9 +50,17 @@ export default function HomeChromeBubble() {
   const weatherOffline = useWeatherStore((s) => s.offline);
   const weatherLoading = useWeatherStore((s) => s.loading);
 
-  // Primitive selector — re-runs when calendar store data changes; avoids array identity thrash.
+  // Primitive selector — re-runs when calendar store data or local clock tick changes.
+  const [badgeNow, setBadgeNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!calendarEnabled) return;
+    const timer = setInterval(() => setBadgeNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, [calendarEnabled]);
+
   const badgeCount = useCalendarStore((s) => {
     if (!calendarEnabled || s.events.length === 0) return 0;
+    void badgeNow;
     return s.attentionOccurrences(50, BADGE_WITHIN_DAYS).length;
   });
 

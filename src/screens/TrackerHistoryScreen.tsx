@@ -1,6 +1,6 @@
 import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { DailyBarChart } from '../components/DailyBarChart';
@@ -56,9 +56,11 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [streak, setStreak] = useState(0);
   const [failureStreak, setFailureStreak] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const db = await getDatabase();
       const loaded = await elementRepo.getElementById(db, elementId);
@@ -100,6 +102,8 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setStreak(0);
         setFailureStreak(0);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load history');
     } finally {
       setLoading(false);
     }
@@ -121,6 +125,19 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text variant="bodyLarge" style={{ color: theme.colors.error, marginBottom: 12 }}>
+          {error}
+        </Text>
+        <Button mode="outlined" onPress={() => void load()}>
+          Retry
+        </Button>
       </View>
     );
   }

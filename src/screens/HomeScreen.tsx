@@ -49,7 +49,22 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.content, { paddingTop: insets.top }]}>
-        {tab === 'habits' ? <HabitsScreen /> : <CountersScreen />}
+        <View
+          style={[styles.tabPane, tab !== 'habits' && styles.tabPaneHidden]}
+          pointerEvents={tab === 'habits' ? 'auto' : 'none'}
+          accessibilityElementsHidden={tab !== 'habits'}
+          importantForAccessibility={tab === 'habits' ? 'auto' : 'no-hide-descendants'}
+        >
+          <HabitsScreen />
+        </View>
+        <View
+          style={[styles.tabPane, tab !== 'counters' && styles.tabPaneHidden]}
+          pointerEvents={tab === 'counters' ? 'auto' : 'none'}
+          accessibilityElementsHidden={tab !== 'counters'}
+          importantForAccessibility={tab === 'counters' ? 'auto' : 'no-hide-descendants'}
+        >
+          <CountersScreen />
+        </View>
       </View>
 
       {showChrome ? <HomeChromeBubble /> : null}
@@ -121,6 +136,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  tabPane: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  tabPaneHidden: {
+    opacity: 0,
+    zIndex: -1,
   },
   dock: {
     flexDirection: 'row',

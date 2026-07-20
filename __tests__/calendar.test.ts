@@ -117,6 +117,22 @@ describe('expandOccurrences', () => {
     expect(occ.map((o) => o.start.getDate())).toEqual([20, 22]);
   });
 
+  it('expands old weekly series into a near-term range', () => {
+    const event = allDayEvent({
+      id: '550e8400-e29b-41d4-a716-446655440015',
+      title: 'Team sync',
+      startAt: '2020-01-06', // Monday
+      endAt: '2020-01-06',
+      rrule: 'FREQ=WEEKLY;BYDAY=MO',
+    });
+    const rangeStart = new Date(2026, 6, 1);
+    const rangeEnd = new Date(2026, 7, 1);
+    const occ = expandOccurrences([event], calendars, rangeStart, rangeEnd);
+    expect(occ.length).toBeGreaterThan(0);
+    expect(occ.every((o) => o.start.getDay() === 1)).toBe(true);
+    expect(occ[0]?.start.getFullYear()).toBe(2026);
+  });
+
   it('expands timed events with duration', () => {
     const start = new Date(2026, 6, 20, 15, 0, 0);
     const end = new Date(2026, 6, 20, 16, 0, 0);
