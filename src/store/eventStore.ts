@@ -18,6 +18,10 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 import {
+  loadPersistedActiveTimerSessions,
+  persistActiveTimerSessions,
+} from '../db/repositories/activeTimerRepository';
+import {
   loadHabitStreakForElement,
   loadHabitStreakMaps,
   type HabitStreakInput,
@@ -32,6 +36,43 @@ import { withDbWriteLock } from '../db/writeLock';
 
 export type { HabitStreakInput };
 
+let persistTimersChain: Promise<void> = Promise.resolve();
+
+/** Production waits for bootstrap hydrate; tests start ready so unit tests don't hang. */
+let activeTimersReady = process.env.NODE_ENV === 'test';
+let activeTimersReadyWaiters: (() => void)[] = [];
+
+function markActiveTimersReady(): void {
+  activeTimersReady = true;
+  const waiters = activeTimersReadyWaiters;
+  activeTimersReadyWaiters = [];
+  for (const wake of waiters) wake();
+}
+
+/** Resolves after bootstrap finishes timer hydrate + day-state (or immediately in tests). */
+export function whenActiveTimersReady(): Promise<void> {
+  if (activeTimersReady) return Promise.resolve();
+  return new Promise((resolve) => {
+    activeTimersReadyWaiters.push(resolve);
+  });
+}
+
+/** Called from bootstrap after hydrate/day-state, or on element-load failure. */
+export function releaseActiveTimersReady(): void {
+  markActiveTimersReady();
+}
+
+function schedulePersistActiveTimers(
+  sessions: Record<string, ActiveTimerSession>,
+): void {
+  persistTimersChain = persistTimersChain
+    .catch(() => undefined)
+    .then(() => persistActiveTimerSessions(sessions))
+    .catch((error) => {
+      console.warn('Failed to persist active timer sessions', error);
+    });
+}
+
 interface EventState {
   dailyTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
@@ -42,6 +83,8 @@ interface EventState {
   dayStateReady: boolean;
   /** True after at least one successful counter totals load this process. */
   counterTotalsReady: boolean;
+  /** Restore in-progress timers after process death (call once at bootstrap). */
+  hydrateActiveTimerSessions: () => Promise<void>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;
@@ -215,6 +258,80 @@ export const useEventStore = create<EventState>((set, get) => ({
   activeTimerSessions: {},
   dayStateReady: false,
   counterTotalsReady: false,
+
+  hydrateActiveTimerSessions: async () => {
+    const sessions = await loadPersistedActiveTimerSessions();
+    if (Object.keys(sessions).length === 0) return;
+    // Do not clobber a timer started before hydration finished.
+    if (Object.keys(get().activeTimerSessions).length > 0) return;
+
+    const { useElementStore } = await import('./elementStore');
+    const elements = useElementStore.getState().elements;
+    const habitsById = new Map(
+      elements.filter((el) => el.kind === 'habit').map((el) => [el.id, el]),
+    );
+    const today = todayDate();
+    const kept: Record<string, ActiveTimerSession> = {};
+
+    for (const [id, session] of Object.entries(sessions)) {
+      const element = habitsById.get(id);
+      if (!element) {
+        // Habit gone — drop orphaned persistence without inventing an event.
+        console.warn('Dropping persisted timer for missing habit', id);
+        continue;
+      }
+
+      if (session.calendarDate !== today) {
+        // Cold start after midnight — finalize onto the day the timer belonged to.
+        set({
+          activeTimerSessions: {
+            ...get().activeTimerSessions,
+            [id]: session,
+          },
+        });
+        try {
+          await get().stopHabitTimer(id, parseHabitConfig(element.config));
+        } catch (error) {
+          console.warn('Failed to finalize stale timer on hydrate', error);
+          get().discardHabitTimer(id);
+        }
+        continue;
+      }
+
+      kept[id] = session;
+    }
+
+    // Keep at most one session (matches runtime single-timer rule).
+    // Finalize extras so their elapsed time is logged instead of dropped.
+    const keptIds = Object.keys(kept);
+    for (const id of keptIds.slice(1)) {
+      const element = habitsById.get(id);
+      if (!element) continue;
+      set({
+        activeTimerSessions: {
+          ...get().activeTimerSessions,
+          [id]: kept[id],
+        },
+      });
+      try {
+        await get().stopHabitTimer(id, parseHabitConfig(element.config));
+      } catch (error) {
+        console.warn('Failed to finalize extra timer on hydrate', error);
+        get().discardHabitTimer(id);
+      }
+      delete kept[id];
+    }
+
+    const firstId = Object.keys(kept)[0];
+    // User may have started a timer while we finalized persisted rows — never clobber.
+    if (Object.keys(get().activeTimerSessions).length > 0) {
+      schedulePersistActiveTimers(get().activeTimerSessions);
+      return;
+    }
+    const activeTimerSessions = firstId ? { [firstId]: kept[firstId] } : {};
+    set({ activeTimerSessions });
+    schedulePersistActiveTimers(activeTimerSessions);
+  },
 
   loadCounterTotals: async (elementIds) => {
     if (elementIds.length === 0) {
@@ -468,27 +585,27 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   startHabitTimer: (elementId) => {
     if (get().activeTimerSessions[elementId]) return;
-    set({
-      activeTimerSessions: {
-        ...get().activeTimerSessions,
-        [elementId]: createActiveTimerSession(),
-      },
-    });
+    const activeTimerSessions = {
+      ...get().activeTimerSessions,
+      [elementId]: createActiveTimerSession(),
+    };
+    set({ activeTimerSessions });
+    schedulePersistActiveTimers(activeTimerSessions);
   },
 
   pauseHabitTimer: (elementId) => {
     const session = get().activeTimerSessions[elementId];
     if (!session || session.pausedAt) return;
 
-    set({
-      activeTimerSessions: {
-        ...get().activeTimerSessions,
-        [elementId]: {
-          ...session,
-          pausedAt: new Date().toISOString(),
-        },
+    const activeTimerSessions = {
+      ...get().activeTimerSessions,
+      [elementId]: {
+        ...session,
+        pausedAt: new Date().toISOString(),
       },
-    });
+    };
+    set({ activeTimerSessions });
+    schedulePersistActiveTimers(activeTimerSessions);
   },
 
   resumeHabitTimer: (elementId) => {
@@ -496,16 +613,16 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (!session?.pausedAt) return;
 
     const pausedMs = Date.now() - new Date(session.pausedAt).getTime();
-    set({
-      activeTimerSessions: {
-        ...get().activeTimerSessions,
-        [elementId]: {
-          ...session,
-          pausedAt: null,
-          pauseOffsetMs: session.pauseOffsetMs + pausedMs,
-        },
+    const activeTimerSessions = {
+      ...get().activeTimerSessions,
+      [elementId]: {
+        ...session,
+        pausedAt: null,
+        pauseOffsetMs: session.pauseOffsetMs + pausedMs,
       },
-    });
+    };
+    set({ activeTimerSessions });
+    schedulePersistActiveTimers(activeTimerSessions);
   },
 
   stopHabitTimer: (elementId, config, _date, options) => {
@@ -537,6 +654,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       const nextSessions = { ...get().activeTimerSessions };
       delete nextSessions[elementId];
       set({ activeTimerSessions: nextSessions });
+      schedulePersistActiveTimers(nextSessions);
       applyTodayMaps(elementId, persistDate, { dailyTotal: nextTotal }, set, get);
 
       try {
@@ -607,12 +725,12 @@ export const useEventStore = create<EventState>((set, get) => ({
         ) {
           throw error;
         }
-        set({
-          activeTimerSessions: {
-            ...get().activeTimerSessions,
-            [elementId]: session,
-          },
-        });
+        const restored = {
+          ...get().activeTimerSessions,
+          [elementId]: session,
+        };
+        set({ activeTimerSessions: restored });
+        schedulePersistActiveTimers(restored);
         applyTodayMaps(elementId, persistDate, { dailyTotal: previousTotal }, set, get);
         throw error;
       }
@@ -632,6 +750,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     const nextSessions = { ...get().activeTimerSessions };
     delete nextSessions[elementId];
     set({ activeTimerSessions: nextSessions });
+    schedulePersistActiveTimers(nextSessions);
   },
 
   resetHabitToday: async (elementId, config, date = todayDate()) => {
@@ -671,6 +790,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       const nextSessions = { ...get().activeTimerSessions };
       delete nextSessions[elementId];
       set({ activeTimerSessions: nextSessions });
+      schedulePersistActiveTimers(nextSessions);
       applyTodayMaps(elementId, date, { dailyTotal: 0, habitDone: false }, set, get);
 
       try {

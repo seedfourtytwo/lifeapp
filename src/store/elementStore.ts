@@ -164,6 +164,8 @@ interface ElementState {
   elements: ElementDefinition[];
   dashboard: DashboardItem[];
   isLoading: boolean;
+  /** True after the first successful `load()` this process. */
+  isLoaded: boolean;
   error: string | null;
   load: () => Promise<void>;
   createCounter: (input: CounterInput) => Promise<void>;
@@ -190,6 +192,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
   elements: [],
   dashboard: [],
   isLoading: false,
+  isLoaded: false,
   error: null,
 
   load: async () => {
@@ -204,7 +207,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
         const dashboardRows = await dashboardRepo.getDashboardItems(db);
         const dashboard = await reconcileDashboardPlacements(db, elements, dashboardRows);
         if (generation !== elementLoadGeneration) return;
-        set({ elements, dashboard, isLoading: false });
+        set({ elements, dashboard, isLoading: false, isLoaded: true });
       });
     } catch (error) {
       if (generation !== elementLoadGeneration) return;

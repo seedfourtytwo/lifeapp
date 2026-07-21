@@ -9,6 +9,9 @@ const BUNDLED_SOUND_ASSETS: Record<string, number> = {
   wimhofEvening: require('../../assets/sounds/wimhofEvening.mp3'),
 };
 
+/** Muted loop so timers without a habit track still own the OS media session. */
+export const TIMER_KEEPALIVE_SOUND_MODULE = require('../../assets/sounds/timerKeepalive.mp3');
+
 export function getBundledHabitSoundModule(trackId: string): number | undefined {
   return BUNDLED_SOUND_ASSETS[trackId];
 }

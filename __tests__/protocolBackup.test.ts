@@ -34,6 +34,7 @@ jest.mock('../src/db/repositories/eventRepository', () => ({
 jest.mock('../src/db/repositories/settingsRepository', () => ({
   getSetting: jest.fn(),
   setSetting: jest.fn(),
+  deleteSetting: jest.fn(),
 }));
 
 jest.mock('../src/db/repositories/calendarRepository', () => ({

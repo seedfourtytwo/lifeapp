@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { stopHabitSound } from '../audio/habitTimerSound';
+import { stopHabitTimerLockScreenTicker } from '../habits/habitTimerLockScreen';
 import { parseHabitConfig } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
@@ -16,6 +17,7 @@ async function finalizeTimersForPreviousDay(previousDate: string): Promise<void>
   const ids = Object.keys(sessions);
   if (ids.length === 0) return;
 
+  stopHabitTimerLockScreenTicker();
   await stopHabitSound();
   const elements = useElementStore.getState().elements;
   const stopHabitTimer = useEventStore.getState().stopHabitTimer;

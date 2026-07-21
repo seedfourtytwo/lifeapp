@@ -16,4 +16,6 @@ Example:
 
 Current tracks: `meditation15min`, `meditation30min`, `wimhofMorning`, `wimhofEvening`.
 
+Internal (not in catalog): `timerKeepalive.mp3` — muted 2s loop used so timers without a habit sound still own the OS media session / lock-screen controls.
+
 Completion feedback: `habitComplete.wav` — soft ~2.4s singing-bowl style chime (bundled; reload Metro to pick up asset changes).

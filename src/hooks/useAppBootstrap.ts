@@ -1,10 +1,18 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  installHabitTimerRemoteControls,
+  restoreHabitTimerPlaybackAfterHydration,
+} from '../habits/habitTimerRemote';
 import { warmupHabitSoundPlayback } from '../audio/habitTimerSound';
 import { warmupHabitCompleteChime } from '../audio/habitCompleteSound';
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
-import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
+import {
+  habitStreakInputsFromElements,
+  releaseActiveTimersReady,
+  useEventStore,
+} from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 
@@ -31,7 +39,12 @@ export function useAppBootstrap(): void {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const elementsLoading = useElementStore((s) => s.isLoading);
+  const elementsLoaded = useElementStore((s) => s.isLoaded);
+  const elementsError = useElementStore((s) => s.error);
   const loadHabitStreaks = useEventStore((s) => s.loadHabitStreaks);
+  const hydrateActiveTimerSessions = useEventStore((s) => s.hydrateActiveTimerSessions);
+  const didRestoreTimersRef = useRef(false);
+  const didReleaseTimersReadyRef = useRef(false);
 
   const bootstrapKey = useMemo(
     () => activeHabitBootstrapKey(elements, dashboard),
@@ -39,6 +52,7 @@ export function useAppBootstrap(): void {
   );
 
   useEffect(() => {
+    installHabitTimerRemoteControls();
     void loadSettings();
     void warmupHabitSoundPlayback();
     void warmupHabitCompleteChime();
@@ -49,6 +63,13 @@ export function useAppBootstrap(): void {
     void loadElements();
     void useCalendarStore.getState().load();
   }, [loadElements, settingsLoaded]);
+
+  // Element load failed — don't leave timer starts hanging forever.
+  useEffect(() => {
+    if (!settingsLoaded || !elementsError || didReleaseTimersReadyRef.current) return;
+    didReleaseTimersReadyRef.current = true;
+    releaseActiveTimersReady();
+  }, [elementsError, settingsLoaded]);
 
   useEffect(() => {
     if (!settingsLoaded || elementsLoading) return;
@@ -62,4 +83,36 @@ export function useAppBootstrap(): void {
     void loadHabitStreaks(inputs);
     void preloadConfiguredHabitSounds(habitElements);
   }, [bootstrapKey, elementsLoading, loadHabitStreaks, settingsLoaded]);
+
+  useEffect(() => {
+    if (!settingsLoaded || !elementsLoaded || elementsLoading || didRestoreTimersRef.current) {
+      return;
+    }
+    didRestoreTimersRef.current = true;
+    void (async () => {
+      try {
+        await hydrateActiveTimerSessions();
+        const sessionsAfterHydrate = {
+          ...useEventStore.getState().activeTimerSessions,
+        };
+        // Day totals must be warm before lock-screen Done can update completion correctly.
+        const { elements: latestElements, dashboard: latestDashboard } =
+          useElementStore.getState();
+        const habitElements = getActiveHabits(latestElements, latestDashboard);
+        if (habitElements.length > 0) {
+          await useEventStore
+            .getState()
+            .loadHabitDayState(habitStreakInputsFromElements(habitElements));
+        }
+        // If the user started/changed a timer during day-state load, don't reset audio.
+        const sessionsNow = useEventStore.getState().activeTimerSessions;
+        if (JSON.stringify(sessionsNow) === JSON.stringify(sessionsAfterHydrate)) {
+          await restoreHabitTimerPlaybackAfterHydration();
+        }
+      } finally {
+        didReleaseTimersReadyRef.current = true;
+        releaseActiveTimersReady();
+      }
+    })();
+  }, [elementsLoaded, elementsLoading, hydrateActiveTimerSessions, settingsLoaded]);
 }

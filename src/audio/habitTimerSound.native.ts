@@ -1,32 +1,76 @@
-import { AppState, type AppStateStatus } from 'react-native';
 import type { HabitTimerSound } from '../protocol/habitSound';
 import { getHabitTimerPlaybackMode } from '../protocol/habitSound';
-import { getBundledHabitSoundModule } from './bundledHabitSoundAssets';
+import { AppState, type AppStateStatus } from 'react-native';
+import {
+  getBundledHabitSoundModule,
+  TIMER_KEEPALIVE_SOUND_MODULE,
+} from './bundledHabitSoundAssets';
 import {
   resolveHabitTimerPlaybackSource,
   type HabitTimerPlaybackSource,
 } from './habitTimerPlayback';
+import { detectLockScreenSeekSkip, isLockScreenLoopWrap } from './lockScreenSeekDetect';
 
-type AvSound = import('expo-av').Audio.Sound;
-type AvAudio = typeof import('expo-av').Audio;
+type ExpoAudioModule = typeof import('expo-audio');
+type AudioPlayer = import('expo-audio').AudioPlayer;
+type AudioMetadata = import('expo-audio').AudioMetadata;
+type AudioStatus = import('expo-audio').AudioStatus;
+
+export type HabitTimerLockScreenMeta = AudioMetadata;
 
 export type HabitSoundPlaybackOptions = {
   onEnded?: () => void;
+  /** Shown on the OS lock-screen / media notification while the timer runs. */
+  lockScreen?: HabitTimerLockScreenMeta;
 };
 
-let activeSound: AvSound | null = null;
-let activeSourceKey: string | null = null;
-let activeLooping = true;
-let audioModule: AvAudio | null = null;
+const KEEPALIVE_SOURCE = TIMER_KEEPALIVE_SOUND_MODULE;
+
+let audioModule: ExpoAudioModule | null = null;
 let audioUnavailable = false;
-let audioModeReady = false;
-let backgroundPlaybackEnabled = false;
+let player: AudioPlayer | null = null;
+let statusSub: { remove: () => void } | null = null;
+let activeSourceKey: string | null = null;
 let userPausedPlayback = false;
 let playbackEpoch = 0;
+/** When true, status updates are from our own pause/play — ignore for remote sync. */
+let ignoreRemoteStatus = false;
+let onRemotePlayingChange: ((playing: boolean) => void) | null = null;
+let onRemoteSkip: ((direction: 'next' | 'prev') => void) | null = null;
+let onTrackEnded: (() => void) | null = null;
+const preloadedSourceKeys = new Set<string>();
+/** Seek-detection baseline — reset after local seeks/replaces to avoid false skips. */
+let seekBaselineTime = 0;
+let seekBaselineAtMs = Date.now();
+/** Last playing flag reported to remote handlers — edge-trigger only. */
+let lastReportedPlaying: boolean | null = null;
+
+function resetSeekBaseline(currentTime = 0): void {
+  seekBaselineTime = currentTime;
+  seekBaselineAtMs = Date.now();
+}
+
 let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
 
-const loadedSounds = new Map<string, AvSound>();
-const loadingSounds = new Map<string, Promise<AvSound | null>>();
+function ensureAppStateResumeListener(): void {
+  if (appStateSubscription) return;
+  appStateSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
+    if (state === 'active') {
+      void resumeActiveSoundIfInterrupted();
+    }
+  });
+}
+
+async function resumeActiveSoundIfInterrupted(): Promise<void> {
+  if (!player || userPausedPlayback) return;
+  try {
+    if (!player.playing) {
+      player.play();
+    }
+  } catch {
+    // Playback may have been torn down by the OS.
+  }
+}
 
 function sourceKey(source: HabitTimerPlaybackSource): string {
   return `bundled:${source.moduleId}`;
@@ -36,195 +80,223 @@ function isPlaybackStale(epoch: number): boolean {
   return epoch !== playbackEpoch;
 }
 
-async function getAudio(): Promise<AvAudio | null> {
-  if (audioUnavailable) {
-    return null;
-  }
-  if (audioModule) {
-    return audioModule;
-  }
-
+async function getAudio(): Promise<ExpoAudioModule | null> {
+  if (audioUnavailable) return null;
+  if (audioModule) return audioModule;
   try {
-    const { Audio } = await import('expo-av');
-    audioModule = Audio;
+    audioModule = await import('expo-audio');
     return audioModule;
   } catch (error) {
     audioUnavailable = true;
     console.warn(
-      'expo-av is unavailable; timer sounds disabled until you rebuild the dev client.',
+      'expo-audio is unavailable; timer sounds and lock-screen controls disabled until you rebuild the dev client.',
       error,
     );
     return null;
   }
 }
 
-async function ensureAudioMode(Audio: AvAudio, forBackgroundPlayback: boolean): Promise<void> {
-  if (audioModeReady && backgroundPlaybackEnabled === forBackgroundPlayback) {
-    return;
-  }
-
+async function ensureAudioMode(
+  Audio: ExpoAudioModule,
+  forBackgroundPlayback: boolean,
+): Promise<void> {
   await Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: forBackgroundPlayback,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
-  });
-
-  audioModeReady = true;
-  backgroundPlaybackEnabled = forBackgroundPlayback;
-}
-
-function ensureAppStateResumeListener(): void {
-  if (appStateSubscription) return;
-
-  appStateSubscription = AppState.addEventListener('change', (state: AppStateStatus) => {
-    if (state === 'active') {
-      void resumeActiveSoundIfInterrupted();
-    }
+    playsInSilentMode: true,
+    shouldPlayInBackground: forBackgroundPlayback,
+    interruptionMode: forBackgroundPlayback ? 'doNotMix' : 'mixWithOthers',
+    allowsRecording: false,
+    shouldRouteThroughEarpiece: false,
   });
 }
 
-async function resumeActiveSoundIfInterrupted(): Promise<void> {
-  if (!activeSound || userPausedPlayback) return;
-
-  try {
-    const status = await activeSound.getStatusAsync();
-    if (status.isLoaded && !status.isPlaying && status.positionMillis > 0) {
-      await activeSound.playAsync();
-    }
-  } catch {
-    // Playback may have been torn down by the OS.
-  }
+function detachStatusListener(): void {
+  statusSub?.remove();
+  statusSub = null;
 }
 
-async function releaseBackgroundAudioMode(): Promise<void> {
-  const Audio = await getAudio();
-  if (!Audio || !backgroundPlaybackEnabled) return;
+function attachStatusListener(activePlayer: AudioPlayer): void {
+  detachStatusListener();
+  statusSub = activePlayer.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+    if (ignoreRemoteStatus) return;
 
-  await ensureAudioMode(Audio, false);
-}
-
-async function loadSoundIntoCache(source: HabitTimerPlaybackSource): Promise<AvSound | null> {
-  const key = sourceKey(source);
-  const cached = loadedSounds.get(key);
-  if (cached) return cached;
-
-  const inFlight = loadingSounds.get(key);
-  if (inFlight) return inFlight;
-
-  const loadPromise = (async () => {
-    const Audio = await getAudio();
-    if (!Audio) return null;
-
-    await ensureAudioMode(Audio, false);
-
-    const { sound } = await Audio.Sound.createAsync(source.moduleId, {
-      shouldPlay: false,
-      volume: 1,
-    });
-    loadedSounds.set(key, sound);
-    return sound;
-  })();
-
-  loadingSounds.set(key, loadPromise);
-  try {
-    return await loadPromise;
-  } finally {
-    loadingSounds.delete(key);
-  }
-}
-
-function attachEndedHandler(sound: AvSound, loop: boolean, onEnded?: () => void): void {
-  sound.setOnPlaybackStatusUpdate(null);
-  if (loop || !onEnded) return;
-
-  sound.setOnPlaybackStatusUpdate((status) => {
-    if (!status.isLoaded || !status.didJustFinish || status.isLooping) {
+    if (status.didJustFinish && !status.loop) {
+      const ended = onTrackEnded;
+      onTrackEnded = null;
+      ended?.();
       return;
     }
-    void stopHabitSound();
-    onEnded();
+
+    if (!status.isLoaded) return;
+
+    const nowMs = Date.now();
+    const wallDeltaMs = nowMs - seekBaselineAtMs;
+
+    if (
+      isLockScreenLoopWrap({
+        currentTime: status.currentTime,
+        lastCurrentTime: seekBaselineTime,
+        duration: status.duration,
+        loop: status.loop,
+      })
+    ) {
+      resetSeekBaseline(status.currentTime);
+      if (lastReportedPlaying !== status.playing) {
+        lastReportedPlaying = status.playing;
+        onRemotePlayingChange?.(status.playing);
+      }
+      return;
+    }
+
+    const skip = detectLockScreenSeekSkip({
+      currentTime: status.currentTime,
+      lastCurrentTime: seekBaselineTime,
+      duration: status.duration,
+      loop: status.loop,
+      wallDeltaMs,
+    });
+    if (skip) {
+      const restoreTo = Math.max(0, seekBaselineTime);
+      void withLocalControl(async () => {
+        try {
+          await activePlayer.seekTo(restoreTo);
+          resetSeekBaseline(restoreTo);
+        } catch {
+          // Player may have been replaced.
+        }
+      });
+      onRemoteSkip?.(skip);
+      return;
+    }
+
+    resetSeekBaseline(status.currentTime);
+    if (lastReportedPlaying !== status.playing) {
+      lastReportedPlaying = status.playing;
+      onRemotePlayingChange?.(status.playing);
+    }
   });
 }
 
-async function pauseSound(sound: AvSound, resetPosition: boolean): Promise<void> {
-  const status = await sound.getStatusAsync();
-  if (status.isLoaded && status.isPlaying) {
-    await sound.pauseAsync();
+async function ensurePlayer(Audio: ExpoAudioModule): Promise<AudioPlayer> {
+  if (player) return player;
+  player = Audio.createAudioPlayer(KEEPALIVE_SOURCE, { updateInterval: 1000 });
+  attachStatusListener(player);
+  return player;
+}
+
+async function withLocalControl(work: () => void | Promise<void>): Promise<void> {
+  ignoreRemoteStatus = true;
+  try {
+    await work();
+  } finally {
+    // Resync baseline + playing edge so the next remote status can fire correctly
+    // after local play/pause/replace (e.g. Ready state ends paused).
+    try {
+      const playing = player?.playing ?? false;
+      lastReportedPlaying = playing;
+      resetSeekBaseline(player?.currentTime ?? 0);
+    } catch {
+      lastReportedPlaying = false;
+      resetSeekBaseline(0);
+    }
+    setTimeout(() => {
+      ignoreRemoteStatus = false;
+      try {
+        lastReportedPlaying = player?.playing ?? lastReportedPlaying;
+        resetSeekBaseline(player?.currentTime ?? seekBaselineTime);
+      } catch {
+        // Player may already be released.
+      }
+    }, 250);
   }
-  if (resetPosition && status.isLoaded) {
-    await sound.setPositionAsync(0);
+}
+
+/**
+ * Register callbacks for lock-screen / headset transport.
+ * `onPlayingChange` fires when the OS pauses or resumes playback (not when we do).
+ * `onSkip` fires when seek ±10s buttons are used (mapped to next/prev habit).
+ */
+export function setHabitTimerRemoteHandlers(handlers: {
+  onPlayingChange?: ((playing: boolean) => void) | null;
+  onSkip?: ((direction: 'next' | 'prev') => void) | null;
+}): void {
+  onRemotePlayingChange = handlers.onPlayingChange ?? null;
+  onRemoteSkip = handlers.onSkip ?? null;
+}
+
+export function updateHabitTimerLockScreen(metadata: HabitTimerLockScreenMeta): void {
+  if (!player) return;
+  try {
+    player.updateLockScreenMetadata(metadata);
+  } catch {
+    // Lock screen may already be cleared.
   }
+}
+
+export function clearHabitTimerLockScreen(): void {
+  if (!player) return;
+  try {
+    player.clearLockScreenControls();
+  } catch {
+    // Already cleared.
+  }
+}
+
+function activateLockScreen(metadata?: HabitTimerLockScreenMeta): void {
+  if (!player || !metadata) return;
+  try {
+    player.setActiveForLockScreen(true, metadata, {
+      // Repurposed as next / previous habit (see seek detection in status listener).
+      showSeekForward: true,
+      showSeekBackward: true,
+    });
+  } catch (error) {
+    console.warn('Failed to activate lock screen controls', error);
+  }
+}
+
+function hasResolvableSound(sound: HabitTimerSound): boolean {
+  const trackId = sound.trackId?.trim();
+  if (!trackId) return false;
+  return getBundledHabitSoundModule(trackId) !== undefined;
 }
 
 async function playSource(
-  source: HabitTimerPlaybackSource,
+  moduleId: number,
+  key: string,
   loop: boolean,
   onEnded: (() => void) | undefined,
   requestEpoch: number,
-  resumeIfPaused = true,
+  lockScreen?: HabitTimerLockScreenMeta,
+  muted = false,
 ): Promise<boolean> {
   if (isPlaybackStale(requestEpoch)) return false;
 
-  const sound = await loadSoundIntoCache(source);
-  if (!sound || isPlaybackStale(requestEpoch)) return false;
-
-  const key = sourceKey(source);
-  const status = await sound.getStatusAsync();
-  if (
-    resumeIfPaused &&
-    activeSourceKey === key &&
-    activeSound === sound &&
-    activeLooping === loop &&
-    status.isLoaded &&
-    !status.isPlaying &&
-    status.positionMillis > 0
-  ) {
-    await sound.playAsync();
-    return true;
-  }
-
-  if (activeSourceKey === key && activeSound === sound && activeLooping === loop) {
-    if (status.isLoaded && status.isPlaying) {
-      return true;
-    }
-  }
-
-  if (activeSound && activeSound !== sound) {
-    try {
-      await pauseSound(activeSound, true);
-    } catch {
-      // Sound may already be unloaded.
-    }
-    activeSound = null;
-    activeSourceKey = null;
-    activeLooping = true;
-  }
-
-  if (isPlaybackStale(requestEpoch)) return false;
-
   const Audio = await getAudio();
-  if (!Audio) return false;
+  if (!Audio || isPlaybackStale(requestEpoch)) return false;
 
   await ensureAudioMode(Audio, true);
   ensureAppStateResumeListener();
-
-  await sound.setIsLoopingAsync(loop);
-  attachEndedHandler(sound, loop, onEnded);
-  await sound.setPositionAsync(0);
+  const activePlayer = await ensurePlayer(Audio);
   if (isPlaybackStale(requestEpoch)) return false;
 
-  await sound.playAsync();
-  if (isPlaybackStale(requestEpoch)) {
-    await pauseSound(sound, true);
-    return false;
-  }
+  onTrackEnded = loop ? null : onEnded ?? null;
 
-  activeSound = sound;
-  activeSourceKey = key;
-  activeLooping = loop;
-  return true;
+  await withLocalControl(async () => {
+    if (activeSourceKey !== key) {
+      activePlayer.replace(moduleId);
+      activeSourceKey = key;
+    }
+    preloadedSourceKeys.add(key);
+    activePlayer.loop = loop;
+    activePlayer.muted = muted;
+    await activePlayer.seekTo(0);
+    resetSeekBaseline(0);
+    if (isPlaybackStale(requestEpoch)) return;
+    activePlayer.play();
+    activateLockScreen(lockScreen);
+  });
+
+  return !isPlaybackStale(requestEpoch);
 }
 
 export async function warmupHabitSoundPlayback(): Promise<void> {
@@ -234,91 +306,151 @@ export async function warmupHabitSoundPlayback(): Promise<void> {
 }
 
 export async function preloadHabitSound(sound?: HabitTimerSound): Promise<boolean> {
-  if (!sound) return false;
+  if (!sound || !hasResolvableSound(sound)) return false;
   const source = await resolveHabitTimerPlaybackSource(sound);
   if (!source) return false;
-  return Boolean(await loadSoundIntoCache(source));
+
+  const key = sourceKey(source);
+  if (preloadedSourceKeys.has(key)) return true;
+
+  const Audio = await getAudio();
+  if (!Audio) return false;
+
+  try {
+    const warmPlayer = Audio.createAudioPlayer(source.moduleId, { updateInterval: 1000 });
+    // Give the native player a moment to start decoding, then release.
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    warmPlayer.remove();
+    preloadedSourceKeys.add(key);
+    return true;
+  } catch (error) {
+    console.warn('Failed to preload habit timer sound', error);
+    return false;
+  }
 }
 
 export function isHabitSoundCached(sound?: HabitTimerSound): boolean {
-  const trackId = sound?.trackId?.trim();
+  if (!sound || !hasResolvableSound(sound)) return false;
+  const trackId = sound.trackId?.trim();
   if (!trackId) return false;
   const moduleId = getBundledHabitSoundModule(trackId);
   if (moduleId === undefined) return false;
-  return loadedSounds.has(`bundled:${moduleId}`);
+  return preloadedSourceKeys.has(`bundled:${moduleId}`);
 }
 
+/**
+ * Start (or keep) timer audio. When no habit sound is configured, plays a muted
+ * keepalive loop so Android/iOS still expose lock-screen media controls.
+ */
 export async function playHabitSound(
   sound?: HabitTimerSound,
   options?: HabitSoundPlaybackOptions,
 ): Promise<boolean> {
-  if (!sound) return false;
-
   const requestEpoch = ++playbackEpoch;
-  const source = await resolveHabitTimerPlaybackSource(sound);
-  if (!source || isPlaybackStale(requestEpoch)) return false;
-
-  const loop = getHabitTimerPlaybackMode(sound) === 'loop';
   userPausedPlayback = false;
-  return playSource(source, loop, options?.onEnded, requestEpoch, true);
+
+  if (sound && hasResolvableSound(sound)) {
+    const source = await resolveHabitTimerPlaybackSource(sound);
+    if (!source || isPlaybackStale(requestEpoch)) return false;
+    const loop = getHabitTimerPlaybackMode(sound) === 'loop';
+    return playSource(
+      source.moduleId,
+      sourceKey(source),
+      loop,
+      options?.onEnded,
+      requestEpoch,
+      options?.lockScreen,
+      false,
+    );
+  }
+
+  return playSource(
+    KEEPALIVE_SOURCE,
+    'keepalive',
+    true,
+    undefined,
+    requestEpoch,
+    options?.lockScreen,
+    true,
+  );
 }
 
 export async function pauseHabitSound(): Promise<void> {
   userPausedPlayback = true;
-  if (!activeSound) return;
-  try {
-    await pauseSound(activeSound, false);
-  } catch {
-    // Sound may already be unloaded.
-  }
+  if (!player) return;
+  await withLocalControl(() => {
+    player?.pause();
+  });
 }
 
 export async function resumeHabitSound(
   sound?: HabitTimerSound,
   options?: HabitSoundPlaybackOptions,
 ): Promise<boolean> {
-  if (!sound) return false;
-
   userPausedPlayback = false;
 
-  if (activeSound) {
-    const status = await activeSound.getStatusAsync();
-    if (status.isLoaded && !status.isPlaying) {
-      const loop = getHabitTimerPlaybackMode(sound) === 'loop';
-      attachEndedHandler(activeSound, loop, options?.onEnded);
-      await activeSound.playAsync();
+  if (player && activeSourceKey) {
+    const wantKeepalive = !sound || !hasResolvableSound(sound);
+    const isKeepalive = activeSourceKey === 'keepalive';
+    const sameKind =
+      wantKeepalive === isKeepalive ||
+      (!wantKeepalive && activeSourceKey.startsWith('bundled:'));
+
+    if (sameKind) {
+      await withLocalControl(() => {
+        if (!player) return;
+        if (options?.lockScreen) {
+          activateLockScreen(options.lockScreen);
+        }
+        if (wantKeepalive) {
+          player.muted = true;
+          player.loop = true;
+          onTrackEnded = null;
+        } else if (sound) {
+          const loop = getHabitTimerPlaybackMode(sound) === 'loop';
+          player.loop = loop;
+          onTrackEnded = loop ? null : options?.onEnded ?? null;
+          player.muted = false;
+        }
+        player.play();
+      });
       return true;
     }
   }
 
-  const requestEpoch = ++playbackEpoch;
-  const source = await resolveHabitTimerPlaybackSource(sound);
-  if (!source || isPlaybackStale(requestEpoch)) return false;
-
-  const loop = getHabitTimerPlaybackMode(sound) === 'loop';
-  return playSource(source, loop, options?.onEnded, requestEpoch, true);
+  return playHabitSound(sound, options);
 }
 
 export async function stopHabitSound(): Promise<void> {
   playbackEpoch += 1;
   userPausedPlayback = false;
+  onTrackEnded = null;
 
-  if (!activeSound) {
+  if (!player) {
     activeSourceKey = null;
     return;
   }
 
-  const sound = activeSound;
-  activeSound = null;
+  await withLocalControl(() => {
+    try {
+      player?.pause();
+      player?.clearLockScreenControls();
+    } catch {
+      // Player may already be released.
+    }
+  });
+
   activeSourceKey = null;
-  activeLooping = true;
 
+  const Audio = await getAudio();
+  if (!Audio) return;
   try {
-    sound.setOnPlaybackStatusUpdate(null);
-    await pauseSound(sound, true);
+    await ensureAudioMode(Audio, false);
   } catch {
-    // Sound may already be unloaded.
+    // Mode reset is best-effort.
   }
+}
 
-  await releaseBackgroundAudioMode();
+export function isHabitTimerSoundUserPaused(): boolean {
+  return userPausedPlayback;
 }

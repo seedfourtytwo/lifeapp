@@ -1,10 +1,13 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { stopHabitSound } from '../audio/habitTimerSound';
+import { stopHabitTimerLockScreenTicker } from '../habits/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import * as weatherRepo from './repositories/weatherRepository';
 import * as calendarRepo from './repositories/calendarRepository';
 import * as eventRepo from './repositories/eventRepository';
 import * as settingsRepo from './repositories/settingsRepository';
+import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
@@ -14,7 +17,6 @@ import { withDbWriteLock } from './writeLock';
 import { awaitPendingEventWrites, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
 import { bumpCalendarDataEpoch } from '../store/calendarStore';
 import { bumpWeatherDataEpoch } from '../weather/weatherEpoch';
-import { stopHabitSound } from '../audio/habitTimerSound';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
 export {
@@ -66,9 +68,11 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     bumpEventDataEpoch();
   }
   if (touchesActivity) {
+    stopHabitTimerLockScreenTicker();
     await stopHabitSound();
     await awaitPendingEventWrites();
     useEventStore.setState({ activeTimerSessions: {} });
+    await clearPersistedActiveTimerSessions();
   }
   if (options.calendar) {
     bumpCalendarDataEpoch();
@@ -107,7 +111,17 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
         }
       }
       if (options.preferences) {
+        const liveSessions = useEventStore.getState().activeTimerSessions;
         await clearAppSettings(db);
+        // Preference wipe clears all app_settings rows; re-write ephemeral timer state
+        // so a theme/settings clear does not orphan a running lock-screen session.
+        if (Object.keys(liveSessions).length > 0) {
+          await settingsRepo.setSetting(
+            db,
+            ACTIVE_TIMER_SESSIONS_KEY,
+            JSON.stringify(liveSessions),
+          );
+        }
       }
     });
 
