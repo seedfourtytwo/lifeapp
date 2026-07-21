@@ -43,6 +43,19 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_element_date ON events(element_id, date);
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 
+CREATE TABLE IF NOT EXISTS day_notes (
+  id TEXT PRIMARY KEY NOT NULL,
+  element_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  body TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  protocol_version INTEGER NOT NULL,
+  FOREIGN KEY (element_id) REFERENCES elements(id) ON DELETE CASCADE,
+  UNIQUE (element_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_day_notes_element_date ON day_notes(element_id, date);
+
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL

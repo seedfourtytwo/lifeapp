@@ -17,6 +17,7 @@ type Props = {
   metaLines: string[];
   archived?: boolean;
   onEdit: () => void;
+  onHistory?: () => void;
   onDelete: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
@@ -34,6 +35,7 @@ export default function TrackerLibraryCard({
   metaLines,
   archived = false,
   onEdit,
+  onHistory,
   onDelete,
   onArchive,
   onRestore,
@@ -120,6 +122,17 @@ export default function TrackerLibraryCard({
         <Button mode="contained-tonal" compact onPress={onEdit} style={styles.actionButton}>
           Edit
         </Button>
+        {onHistory ? (
+          <Button
+            mode="outlined"
+            compact
+            icon="chart-box-outline"
+            onPress={onHistory}
+            style={styles.actionButton}
+          >
+            History
+          </Button>
+        ) : null}
         {archived ? (
           <Button mode="outlined" compact icon="archive-arrow-up-outline" onPress={onRestore} style={styles.actionButton}>
             Restore

@@ -4,6 +4,7 @@ import { getDatabase } from './client';
 import * as weatherRepo from './repositories/weatherRepository';
 import * as calendarRepo from './repositories/calendarRepository';
 import * as eventRepo from './repositories/eventRepository';
+import * as dayNoteRepo from './repositories/dayNoteRepository';
 import * as settingsRepo from './repositories/settingsRepository';
 import {
   clearOptionsAreEmpty,
@@ -25,7 +26,8 @@ export {
 } from './clearDataPlan';
 
 async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
-  // events + dashboard_items cascade from elements, but clear explicitly for clarity.
+  // events + dashboard_items + day_notes cascade from elements, but clear explicitly for clarity.
+  await db.runAsync('DELETE FROM day_notes');
   await db.runAsync('DELETE FROM events');
   await db.runAsync('DELETE FROM dashboard_items');
   await db.runAsync('DELETE FROM elements');
@@ -91,8 +93,10 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
         const before = resolveActivityDeleteBeforeDate(options.activityPeriod);
         if (before == null) {
           await eventRepo.deleteAllEvents(db);
+          await dayNoteRepo.deleteAllNotes(db);
         } else {
           await eventRepo.deleteEventsBeforeDate(db, before);
+          await dayNoteRepo.deleteNotesBeforeDate(db, before);
         }
       }
 

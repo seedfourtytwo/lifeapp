@@ -51,6 +51,13 @@
         {
           "locationWhenInUsePermission": "Show local weather on your Home screen."
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Life Dashboard to use the microphone to dictate notes.",
+          "speechRecognitionPermission": "Allow Life Dashboard to transcribe dictated notes."
+        }
       ]
     ],
     "extra": {

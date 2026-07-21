@@ -43,7 +43,7 @@ export function useProtocolBackup() {
       if (!imported) return;
 
       await reloadStoresAfterImport();
-      Alert.alert('Import complete', 'Your habits, counters, history, and preferences were restored.');
+      Alert.alert('Import complete', 'Your habits, counters, history, day notes, and preferences were restored.');
     } catch (error) {
       Alert.alert(
         'Import failed',
@@ -65,7 +65,7 @@ export function useProtocolBackup() {
 
     Alert.alert(
       'Import backup?',
-      'This replaces all habits, counters, history, and preferences on this device.',
+      'This replaces all habits, counters, history, day notes, and preferences on this device.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Import', style: 'destructive', onPress: () => void runImport() },

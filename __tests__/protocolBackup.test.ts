@@ -31,6 +31,13 @@ jest.mock('../src/db/repositories/eventRepository', () => ({
   insertEvent: jest.fn(),
 }));
 
+jest.mock('../src/db/repositories/dayNoteRepository', () => ({
+  getAllNotes: jest.fn(async () => []),
+  insertNote: jest.fn(async () => undefined),
+  deleteAllNotes: jest.fn(async () => undefined),
+  deleteNotesBeforeDate: jest.fn(async () => undefined),
+}));
+
 jest.mock('../src/db/repositories/settingsRepository', () => ({
   getSetting: jest.fn(),
   setSetting: jest.fn(),
@@ -177,9 +184,34 @@ describe('protocol backup settings', () => {
     expect(elementRepo.insertElement).toHaveBeenCalledWith(db, habitElement);
   });
 
+  it('imports day notes with protocol data', async () => {
+    const dayNoteRepo = jest.requireMock('../src/db/repositories/dayNoteRepository') as {
+      insertNote: jest.Mock;
+    };
+    const note = {
+      id: '550e8400-e29b-41d4-a716-446655440030',
+      elementId: habitElement.id,
+      date: '2025-01-02',
+      body: 'Felt focused',
+      updatedAt: '2025-01-02T18:00:00.000Z',
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const bundle = createProtocolBundle({
+      elements: [habitElement],
+      dashboard: [],
+      events: [],
+      dayNotes: [note],
+    });
+
+    await importProtocolBundle(bundle);
+
+    expect(dayNoteRepo.insertNote).toHaveBeenCalledWith(db, note);
+  });
+
   it('clears protocol tables, calendar, and app settings', async () => {
     await clearAllAppData();
 
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM day_notes');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM events');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM dashboard_items');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM elements');

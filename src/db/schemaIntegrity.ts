@@ -79,3 +79,26 @@ export async function ensureCalendarSchema(db: SQLiteDatabase): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_calendar_occurrence_clears_event ON calendar_occurrence_clears(event_id);
   `);
 }
+
+/** Ensure day_notes exists — repairs hot-reload / skipped migration cases. */
+export async function ensureDayNotesSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS day_notes (
+      id TEXT PRIMARY KEY NOT NULL,
+      element_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      body TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      protocol_version INTEGER NOT NULL,
+      FOREIGN KEY (element_id) REFERENCES elements(id) ON DELETE CASCADE,
+      UNIQUE (element_id, date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_day_notes_element_date ON day_notes(element_id, date);
+  `);
+
+  // Drop orphans left behind if foreign_keys were off during an older wipe.
+  await db.runAsync(
+    'DELETE FROM day_notes WHERE element_id NOT IN (SELECT id FROM elements)',
+  );
+}

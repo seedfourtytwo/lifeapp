@@ -188,7 +188,7 @@ export default function ClearDataSheet({
 
           <ScopeRow
             label="Activity history"
-            description="Check-offs, timers, and counter logs"
+            description="Check-offs, timers, counter logs, and day notes"
             checked={options.activityHistory || options.definitions}
             disabled={options.definitions}
             onToggle={(v) => toggle('activityHistory', v)}
