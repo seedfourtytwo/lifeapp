@@ -7,7 +7,7 @@ export type ActivityClearPeriod =
   | { kind: 'beforeDate'; date: string };
 
 export interface ClearAppDataOptions {
-  /** Habit check-offs, timer sessions, counter logs. */
+  /** Habit check-offs, timer sessions, counter logs, day notes. */
   activityHistory: boolean;
   activityPeriod: ActivityClearPeriod;
   calendar: boolean;
@@ -67,21 +67,21 @@ export function describeClearPlan(
 
   if (options.definitions) {
     lines.push('Habits, counters, and their Home order');
-    lines.push('All activity history (required when removing definitions)');
-    } else if (options.activityHistory) {
+    lines.push('All activity history and day notes (required when removing definitions)');
+  } else if (options.activityHistory) {
     if (options.activityPeriod.kind === 'beforeDate') {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(options.activityPeriod.date)) {
-        lines.push('Activity before a chosen date (enter YYYY-MM-DD)');
+        lines.push('Activity and day notes before a chosen date (enter YYYY-MM-DD)');
       } else {
-        lines.push(`Activity before ${options.activityPeriod.date}`);
+        lines.push(`Activity and day notes before ${options.activityPeriod.date}`);
       }
     } else if (options.activityPeriod.kind === 'keepLastDays') {
       const cutoff = resolveActivityDeleteBeforeDate(options.activityPeriod, today);
       lines.push(
-        `Activity older than the last ${options.activityPeriod.days} days (before ${cutoff})`,
+        `Activity and day notes older than the last ${options.activityPeriod.days} days (before ${cutoff})`,
       );
     } else {
-      lines.push('All activity history (check-offs, timers, counter logs)');
+      lines.push('All activity history (check-offs, timers, counter logs, day notes)');
     }
   }
 

@@ -5,6 +5,7 @@ import { getDatabase } from '../db/client';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as calendarRepo from '../db/repositories/calendarRepository';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
@@ -23,11 +24,15 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     const elements = await elementRepo.getAllElements(db);
     const dashboard = await dashboardRepo.getDashboardItems(db);
     const events = await eventRepo.getAllEvents(db);
+    const dayNotesRaw = await dayNoteRepo.getAllNotes(db);
     const settings = await readAppSettings(db);
     const calendars = await calendarRepo.getAllCalendars(db);
     const calendarEvents = await calendarRepo.getAllEvents(db);
     const reminders = await calendarRepo.getAllReminders(db);
     const clears = await calendarRepo.getAllOccurrenceClears(db);
+
+    const elementIds = new Set(elements.map((element) => element.id));
+    const dayNotes = dayNotesRaw.filter((note) => elementIds.has(note.elementId));
 
     return createProtocolBundle({
       elements,
@@ -36,6 +41,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
         return element != null && element.archivedAt == null;
       }),
       events,
+      dayNotes,
       settings,
       calendar: {
         schemaVersion: CALENDAR_BACKUP_VERSION,
@@ -96,6 +102,11 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       }
       for (const event of bundle.events) {
         await eventRepo.insertEvent(db, event);
+      }
+      const elementIds = new Set(bundle.elements.map((element) => element.id));
+      for (const note of bundle.dayNotes ?? []) {
+        if (!elementIds.has(note.elementId)) continue;
+        await dayNoteRepo.insertNote(db, note);
       }
       await writeAppSettings(db, bundle.settings);
 

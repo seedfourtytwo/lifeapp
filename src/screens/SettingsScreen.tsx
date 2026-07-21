@@ -95,7 +95,7 @@ export default function SettingsScreen() {
         <List.Subheader>Data</List.Subheader>
         <List.Item
           title="Export backup"
-          description="Save habits, counters, calendar, history, and preferences as JSON"
+          description="Save habits, counters, calendar, day notes, history, and preferences as JSON"
           left={(props) => <List.Icon {...props} icon="export" />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : () => void handleExport()}

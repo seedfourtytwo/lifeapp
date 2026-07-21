@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import TrackerEditorDialog from '../components/TrackerEditorDialog';
 import TrackerLibraryCard, {
   type TrackerLibraryBadge,
@@ -14,6 +16,7 @@ import {
   type TrackerEditorSession,
 } from '../components/trackerEditor';
 import { useAppTheme } from '../hooks/useAppTheme';
+import type { RootStackParamList } from '../navigation/types';
 import {
   CounterConfigSchema,
   HabitConfigSchema,
@@ -51,6 +54,7 @@ function confirmArchive(
 }
 
 export default function TrackersScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { themeMode } = useAppTheme();
   const counterAccent = getTrackerKindAccent(themeMode, 'counter').color;
   const habitAccent = getTrackerKindAccent(themeMode, 'habit').color;
@@ -89,7 +93,7 @@ export default function TrackersScreen() {
     (elementId: string, elementName: string, kindLabel: string) => {
       Alert.alert(
         `Delete ${kindLabel}?`,
-        `"${elementName}" and all its history will be removed permanently.`,
+        `"${elementName}" and all its history and day notes will be removed permanently.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -160,6 +164,7 @@ export default function TrackersScreen() {
           metaLines={metaLines}
           archived={archived}
           onEdit={openEditor}
+          onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
           onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
           onArchive={
             archived
@@ -174,7 +179,7 @@ export default function TrackersScreen() {
         />
       );
     },
-    [archiveElement, confirmDelete, counterAccent, habitAccent, restoreElement],
+    [archiveElement, confirmDelete, counterAccent, habitAccent, navigation, restoreElement],
   );
 
   const handleSave = async (data: TrackerEditorSaveData) => {
@@ -220,7 +225,7 @@ export default function TrackersScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text variant="bodyMedium" style={styles.intro}>
           Active habits and counters appear on Home. Archive items to hide them without losing
-          history — restore anytime from Archive below.
+          history or day notes — restore anytime from Archive below.
         </Text>
 
         <TrackersCollapsibleSection
