@@ -72,8 +72,16 @@ export function formatScheduleDescription(schedule: HabitSchedule): string {
   switch (schedule.type) {
     case 'daily':
       return 'Every day';
-    case 'weekdays':
-      return schedule.days.map((day) => WEEKDAY_LABELS[day]).join(', ');
+    case 'weekdays': {
+      const days = [...schedule.days].sort();
+      if (days.length === 5 && days.join(',') === '1,2,3,4,5') {
+        return 'Weekdays';
+      }
+      if (days.length === 2 && days.join(',') === '0,6') {
+        return 'Weekends';
+      }
+      return days.map((day) => WEEKDAY_LABELS[day]).join(', ');
+    }
     case 'every_n_days':
       return schedule.interval === 1
         ? 'Every day'

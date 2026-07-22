@@ -1,6 +1,5 @@
 import {
   filterHabitsDueToday,
-  habitTimeHintLabel,
   isHabitDueToday,
   orderHabitsList,
   PROTOCOL_VERSION,
@@ -73,14 +72,5 @@ describe('orderHabitsList', () => {
     const habits = [habit('a'), habit('b'), habit('c')];
     const ordered = orderHabitsList(habits, { a: true, c: false });
     expect(ordered.map((item) => item.id)).toEqual(['b', 'c', 'a']);
-  });
-});
-
-describe('habitTimeHintLabel', () => {
-  it('maps slots to quiet cues', () => {
-    expect(habitTimeHintLabel('morning')).toBe('AM');
-    expect(habitTimeHintLabel('afternoon')).toBe('Lunch');
-    expect(habitTimeHintLabel('evening')).toBe('PM');
-    expect(habitTimeHintLabel('anytime')).toBeNull();
   });
 });

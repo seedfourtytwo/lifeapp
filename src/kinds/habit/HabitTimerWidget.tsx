@@ -16,7 +16,6 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
 import type { WidgetProps } from '../types';
 import { HabitStreakBadge } from './HabitStreakBadge';
-import { HabitTimeHint } from './HabitTimeHint';
 import { habitWidgetStyles as styles } from './habitWidgetStyles';
 
 export function HabitTimerWidget({
@@ -41,12 +40,16 @@ export function HabitTimerWidget({
   const dailyTarget = config.dailyTargetSeconds;
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
 
+  const todayTotalRef = useRef(todayTotal);
+  todayTotalRef.current = todayTotal;
+
+  // Only reset on a new session (startedAt). Pause/resume mutates the session
+  // object and must not re-arm the completion chime.
   useEffect(() => {
-    if (activeTimerSession) {
-      loggedTotalAtSessionStart.current = todayTotal;
-      chimePlayedRef.current = false;
-    }
-  }, [activeTimerSession?.startedAt, todayTotal, activeTimerSession]);
+    if (!activeTimerSession?.startedAt) return;
+    loggedTotalAtSessionStart.current = todayTotalRef.current;
+    chimePlayedRef.current = false;
+  }, [activeTimerSession?.startedAt]);
 
   useEffect(() => {
     if (!isRunning || isPaused) return;
@@ -58,7 +61,9 @@ export function HabitTimerWidget({
   const isComplete = isHabitDayComplete(displayTotal, config);
 
   useEffect(() => {
-    if (!hasTarget || !isRunning || chimePlayedRef.current) return;
+    // Chime only while the timer is actively running past the target — not on
+    // Pause/Done (Done clears the session; Pause must not re-fire).
+    if (!hasTarget || !isRunning || isPaused || chimePlayedRef.current) return;
     const previousTotal = loggedTotalAtSessionStart.current;
     if (
       shouldPlayHabitCompletionChime(
@@ -72,7 +77,7 @@ export function HabitTimerWidget({
       chimePlayedRef.current = true;
       void playHabitCompleteChime();
     }
-  }, [config, displayTotal, hasTarget, isRunning]);
+  }, [config, displayTotal, hasTarget, isPaused, isRunning]);
 
   const progress = hasTarget ? Math.min(1, displayTotal / dailyTarget) : 0;
   const canResetToday = isRunning || displayTotal > 0;
@@ -120,7 +125,6 @@ export function HabitTimerWidget({
               >
                 {element.name}
               </Text>
-              <HabitTimeHint timeSlot={config.timeSlot} />
             </View>
             <HabitStreakBadge config={config} streak={streak} failureStreak={failureStreak} />
           </Pressable>

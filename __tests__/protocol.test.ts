@@ -52,7 +52,13 @@ describe('CounterConfigSchema', () => {
 });
 
 describe('HabitConfigSchema', () => {
-  it('accepts habit with target label and time slot', () => {
+  it('defaults timeSlot to anytime when omitted', () => {
+    const result = HabitConfigSchema.parse({});
+    expect(result.timeSlot).toBe('anytime');
+    expect(result.schedule).toEqual({ type: 'daily' });
+  });
+
+  it('accepts habit with target label and legacy time slot', () => {
     const result = HabitConfigSchema.parse({
       timeSlot: 'morning',
       targetLabel: '15 min',

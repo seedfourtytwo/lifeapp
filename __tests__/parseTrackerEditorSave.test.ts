@@ -11,7 +11,6 @@ const habitSaveData = (
   habitDailyGoalMinutes: '',
   habitSoundTrackId: '',
   habitSoundPlaybackMode: 'play_once' as const,
-  timeSlot: 'morning',
   useTimeRange: false,
   timeRangeStart: '',
   timeRangeEnd: '',
@@ -72,6 +71,13 @@ describe('parseTrackerEditorSave', () => {
     expect(result.kind).toBe('habit');
     if (result.kind !== 'habit') return;
     expect(result.input.showStreakOnCard).toBe(true);
+  });
+
+  it('always saves timeSlot as anytime (slot filters removed)', () => {
+    const result = parseTrackerEditorSave(habitSaveData());
+    expect(result.kind).toBe('habit');
+    if (result.kind !== 'habit') return;
+    expect(result.input.timeSlot).toBe('anytime');
   });
 
   it('parses timer streak display option', () => {

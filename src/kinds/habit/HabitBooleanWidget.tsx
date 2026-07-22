@@ -5,7 +5,6 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { formatHabitDescription, type HabitConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
 import { HabitStreakBadge } from './HabitStreakBadge';
-import { HabitTimeHint } from './HabitTimeHint';
 import { habitWidgetStyles as styles } from './habitWidgetStyles';
 
 export function HabitBooleanWidget({
@@ -49,16 +48,17 @@ export function HabitBooleanWidget({
             ]}
           >
             <View style={styles.titleRow}>
-              <View style={styles.titleLeading}>
-                <Text
-                  variant="titleSmall"
-                  numberOfLines={1}
-                  style={[styles.name, isCartoon && { color: theme.colors.onSurface }]}
-                >
-                  {element.name}
-                </Text>
-                <HabitTimeHint timeSlot={config.timeSlot} />
-              </View>
+              <Text
+                variant="titleSmall"
+                numberOfLines={1}
+                style={[
+                  styles.name,
+                  { flex: 1, minWidth: 0 },
+                  isCartoon && { color: theme.colors.onSurface },
+                ]}
+              >
+                {element.name}
+              </Text>
               <HabitStreakBadge config={config} streak={streak} failureStreak={failureStreak} />
             </View>
             {description ? (

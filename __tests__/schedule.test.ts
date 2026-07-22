@@ -45,6 +45,18 @@ describe('formatScheduleDescription', () => {
     ).toBe('Mon, Fri');
   });
 
+  it('summarizes Mon–Fri as Weekdays', () => {
+    expect(
+      formatScheduleDescription({ type: 'weekdays', days: [1, 2, 3, 4, 5] }),
+    ).toBe('Weekdays');
+  });
+
+  it('summarizes Sat–Sun as Weekends', () => {
+    expect(
+      formatScheduleDescription({ type: 'weekdays', days: [0, 6] }),
+    ).toBe('Weekends');
+  });
+
   it('describes every N days', () => {
     expect(
       formatScheduleDescription({

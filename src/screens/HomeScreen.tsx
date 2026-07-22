@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { AppState, type AppStateStatus, Pressable, StyleSheet, View } from 'react-native';
+import {
+  AppState,
+  type AppStateStatus,
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -70,12 +78,21 @@ export default function HomeScreen() {
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
   const quietColor = theme.colors.onSurfaceVariant;
+  // Absolute-fill tab panes ignore parent padding; inset must live on the panes.
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0,
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.content, { paddingTop: insets.top }]}>
+      <View style={styles.content}>
         <View
-          style={[styles.tabPane, tab !== 'habits' && styles.tabPaneHidden]}
+          style={[
+            styles.tabPane,
+            { paddingTop: topInset },
+            tab !== 'habits' && styles.tabPaneHidden,
+          ]}
           pointerEvents={tab === 'habits' ? 'auto' : 'none'}
           accessibilityElementsHidden={tab !== 'habits'}
           importantForAccessibility={tab === 'habits' ? 'auto' : 'no-hide-descendants'}
@@ -83,7 +100,11 @@ export default function HomeScreen() {
           <HabitsScreen />
         </View>
         <View
-          style={[styles.tabPane, tab !== 'counters' && styles.tabPaneHidden]}
+          style={[
+            styles.tabPane,
+            { paddingTop: topInset },
+            tab !== 'counters' && styles.tabPaneHidden,
+          ]}
           pointerEvents={tab === 'counters' ? 'auto' : 'none'}
           accessibilityElementsHidden={tab !== 'counters'}
           importantForAccessibility={tab === 'counters' ? 'auto' : 'no-hide-descendants'}
