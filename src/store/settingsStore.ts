@@ -5,8 +5,10 @@ import * as settingsRepo from '../db/repositories/settingsRepository';
 import { i18n } from '../i18n';
 import {
   APP_SETTING_KEYS,
+  DEFAULT_EVENING_CHECK_IN_TIME,
   isAppLanguage,
   isWeatherLocationMode,
+  parseEveningCheckInTime,
   type AppLanguage,
   type WeatherLocationMode,
 } from '../protocol/appSettings';
@@ -54,7 +56,8 @@ function parseNorm(value: string | null, fallback: number): number {
 interface SettingsState {
   themeMode: ThemeMode;
   appLanguage: AppLanguage;
-  habitRemindersEnabled: boolean;
+  eveningCheckInEnabled: boolean;
+  eveningCheckInTime: string;
   weatherWidgetEnabled: boolean;
   calendarWidgetEnabled: boolean;
   weatherLocationMode: WeatherLocationMode;
@@ -67,7 +70,8 @@ interface SettingsState {
   load: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setAppLanguage: (language: AppLanguage) => Promise<void>;
-  setHabitRemindersEnabled: (enabled: boolean) => Promise<void>;
+  setEveningCheckInEnabled: (enabled: boolean) => Promise<void>;
+  setEveningCheckInTime: (time: string) => Promise<void>;
   setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
   setCalendarWidgetEnabled: (enabled: boolean) => Promise<void>;
   setWeatherLocationMode: (mode: WeatherLocationMode) => Promise<void>;
@@ -82,7 +86,8 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
   appLanguage: 'system',
-  habitRemindersEnabled: false,
+  eveningCheckInEnabled: false,
+  eveningCheckInTime: DEFAULT_EVENING_CHECK_IN_TIME,
   weatherWidgetEnabled: false,
   calendarWidgetEnabled: false,
   weatherLocationMode: 'manual',
@@ -100,7 +105,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       // Sequential reads — concurrent prepareAsync on the same DB can release statements early.
       const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
       const storedLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
-      const storedReminders = await settingsRepo.getSetting(
+      const storedEveningEnabled = await settingsRepo.getSetting(
+        db,
+        APP_SETTING_KEYS.eveningCheckInEnabled,
+      );
+      const storedEveningTime = await settingsRepo.getSetting(
+        db,
+        APP_SETTING_KEYS.eveningCheckInTime,
+      );
+      const storedLegacyReminders = await settingsRepo.getSetting(
         db,
         APP_SETTING_KEYS.habitRemindersEnabled,
       );
@@ -141,12 +154,36 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           ? storedLocationMode
           : 'manual';
 
+      const eveningCheckInEnabled =
+        storedEveningEnabled != null
+          ? parseBool(storedEveningEnabled)
+          : parseBool(storedLegacyReminders);
+      const eveningCheckInTime =
+        parseEveningCheckInTime(storedEveningTime) ?? DEFAULT_EVENING_CHECK_IN_TIME;
+
+      // One-time migrate legacy habit_reminders_enabled → evening_check_in_enabled.
+      if (storedEveningEnabled == null && storedLegacyReminders != null) {
+        await settingsRepo.setSetting(
+          db,
+          APP_SETTING_KEYS.eveningCheckInEnabled,
+          eveningCheckInEnabled ? 'true' : 'false',
+        );
+      }
+      if (storedEveningTime == null) {
+        await settingsRepo.setSetting(
+          db,
+          APP_SETTING_KEYS.eveningCheckInTime,
+          eveningCheckInTime,
+        );
+      }
+
       if (generation !== settingsLoadGeneration) return;
 
       set({
         themeMode,
         appLanguage,
-        habitRemindersEnabled: parseBool(storedReminders),
+        eveningCheckInEnabled,
+        eveningCheckInTime,
         weatherWidgetEnabled: parseBool(storedWeatherEnabled),
         calendarWidgetEnabled: parseBool(storedCalendarEnabled),
         weatherLocationMode,
@@ -180,15 +217,25 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     });
   },
 
-  setHabitRemindersEnabled: async (enabled) => {
+  setEveningCheckInEnabled: async (enabled) => {
     await withGuardedSettingsWrite(async () => {
       const db = await getDatabase();
       await settingsRepo.setSetting(
         db,
-        APP_SETTING_KEYS.habitRemindersEnabled,
+        APP_SETTING_KEYS.eveningCheckInEnabled,
         enabled ? 'true' : 'false',
       );
-      set({ habitRemindersEnabled: enabled });
+      set({ eveningCheckInEnabled: enabled });
+    });
+  },
+
+  setEveningCheckInTime: async (time) => {
+    const parsed = parseEveningCheckInTime(time);
+    if (!parsed) return;
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.eveningCheckInTime, parsed);
+      set({ eveningCheckInTime: parsed });
     });
   },
 

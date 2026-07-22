@@ -3,10 +3,11 @@
     "title": "Rappel d'habitude",
     "body": "C'est l'heure pour {{name}}"
   },
-  "endOfDayReminder": {
-    "title": "Habitudes restantes aujourd'hui",
-    "bodyOne": "1 habitude encore à faire",
-    "bodyMany": "{{count}} habitudes encore à faire"
+  "eveningCheckIn": {
+    "title": "Point du soir",
+    "bodyGeneric": "Vérifiez les habitudes et objectifs de compteurs non terminés",
+    "bodyOne": "1 suivi encore à faire aujourd'hui",
+    "bodyMany": "{{count}} suivis encore à faire aujourd'hui"
   },
   "calendarReminder": {
     "title": "Calendrier",
@@ -19,8 +20,8 @@
   },
   "permissions": {
     "rebuildRequiredTitle": "Reconstruction nécessaire",
-    "habitRemindersRebuildBody": "Les rappels d'habitudes nécessitent une nouvelle build de développement. Exécutez : npx expo run:android",
+    "eveningCheckInRebuildBody": "Le point du soir nécessite une nouvelle build de développement avec notifications. Exécutez : eas build --platform android --profile development",
     "blockedTitle": "Notifications bloquées",
-    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir les rappels d'habitudes."
+    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir le point du soir et les rappels d'habitudes."
   }
 }

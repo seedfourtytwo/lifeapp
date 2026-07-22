@@ -364,7 +364,10 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   loadHabitDayState: async (habits, date = todayDate()) => {
-    if (habits.length === 0) return;
+    if (habits.length === 0) {
+      set({ dayStateReady: true });
+      return;
+    }
 
     const generation = ++habitDayLoadGeneration;
     const epochs = captureWriteEpochs(habits.map((h) => h.id));

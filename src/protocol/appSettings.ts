@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseTimeHHmm } from '../utils/time';
 
 export const APP_LANGUAGES = ['system', 'en', 'fr'] as const;
 
@@ -24,9 +25,19 @@ export function isWeatherLocationMode(value: string): value is WeatherLocationMo
   return (WEATHER_LOCATION_MODES as readonly string[]).includes(value);
 }
 
-export const AppSettingsSchema = z.object({
+/** Default local time for the evening unfinished-trackers digest. */
+export const DEFAULT_EVENING_CHECK_IN_TIME = '20:00';
+
+const EveningCheckInTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Expected HH:mm');
+
+const AppSettingsObjectSchema = z.object({
   themeMode: z.enum(THEME_MODES).optional(),
   appLanguage: z.enum(APP_LANGUAGES).optional(),
+  eveningCheckInEnabled: z.boolean().optional(),
+  eveningCheckInTime: EveningCheckInTimeSchema.optional(),
+  /** @deprecated Prefer eveningCheckInEnabled — kept for backup import. */
   habitRemindersEnabled: z.boolean().optional(),
   weatherWidgetEnabled: z.boolean().optional(),
   calendarWidgetEnabled: z.boolean().optional(),
@@ -38,11 +49,24 @@ export const AppSettingsSchema = z.object({
   weatherBubbleY: z.number().min(0).max(1).optional(),
 });
 
-export type AppSettings = z.infer<typeof AppSettingsSchema>;
+/** Normalize legacy habitRemindersEnabled into eveningCheckInEnabled. */
+export const AppSettingsSchema = AppSettingsObjectSchema.transform((settings) => {
+  const { habitRemindersEnabled, eveningCheckInEnabled, ...rest } = settings;
+  const enabled = eveningCheckInEnabled ?? habitRemindersEnabled;
+  return {
+    ...rest,
+    ...(enabled !== undefined ? { eveningCheckInEnabled: enabled } : {}),
+  };
+});
+
+export type AppSettings = z.output<typeof AppSettingsSchema>;
 
 export const APP_SETTING_KEYS = {
   themeMode: 'theme_mode',
   appLanguage: 'app_language',
+  eveningCheckInEnabled: 'evening_check_in_enabled',
+  eveningCheckInTime: 'evening_check_in_time',
+  /** Legacy key — read for migration only. */
   habitRemindersEnabled: 'habit_reminders_enabled',
   weatherWidgetEnabled: 'weather_widget_enabled',
   calendarWidgetEnabled: 'calendar_widget_enabled',
@@ -53,3 +77,9 @@ export const APP_SETTING_KEYS = {
   weatherBubbleX: 'weather_bubble_x',
   weatherBubbleY: 'weather_bubble_y',
 } as const;
+
+/** Accepts flexible input (8:00, 800, 08:00) and returns strict HH:mm. */
+export function parseEveningCheckInTime(value: string | null | undefined): string | null {
+  if (value == null || value === '') return null;
+  return parseTimeHHmm(value);
+}

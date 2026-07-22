@@ -101,14 +101,35 @@ describe('protocol backup settings', () => {
       events: [],
       settings: {
         themeMode: 'cartoon',
-        habitRemindersEnabled: true,
+        eveningCheckInEnabled: true,
+        eveningCheckInTime: '21:30',
       },
     });
 
     expect(parseProtocolBundle(bundle)).toEqual(bundle);
     expect(JSON.parse(serializeBundle(bundle)).settings).toEqual({
       themeMode: 'cartoon',
-      habitRemindersEnabled: true,
+      eveningCheckInEnabled: true,
+      eveningCheckInTime: '21:30',
+    });
+  });
+
+  it('maps legacy habitRemindersEnabled on import parse', () => {
+    const legacy = {
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [habitElement],
+      dashboard: [],
+      events: [],
+      settings: {
+        themeMode: 'light' as const,
+        habitRemindersEnabled: true,
+      },
+    };
+
+    expect(parseProtocolBundle(legacy).settings).toEqual({
+      themeMode: 'light',
+      eveningCheckInEnabled: true,
     });
   });
 
@@ -141,7 +162,24 @@ describe('protocol backup settings', () => {
     expect(parseProtocolBundle(legacy).settings).toBeUndefined();
   });
 
-  it('reads theme and reminder settings from SQLite', async () => {
+  it('reads theme and evening check-in settings from SQLite', async () => {
+    (settingsRepo.getSetting as jest.Mock).mockImplementation(
+      async (_db: unknown, key: string) => {
+        if (key === 'theme_mode') return 'dark';
+        if (key === 'evening_check_in_enabled') return 'true';
+        if (key === 'evening_check_in_time') return '19:45';
+        return null;
+      },
+    );
+
+    await expect(readAppSettings(db as never)).resolves.toEqual({
+      themeMode: 'dark',
+      eveningCheckInEnabled: true,
+      eveningCheckInTime: '19:45',
+    });
+  });
+
+  it('falls back to legacy habit_reminders_enabled when reading settings', async () => {
     (settingsRepo.getSetting as jest.Mock).mockImplementation(
       async (_db: unknown, key: string) => {
         if (key === 'theme_mode') return 'dark';
@@ -152,21 +190,27 @@ describe('protocol backup settings', () => {
 
     await expect(readAppSettings(db as never)).resolves.toEqual({
       themeMode: 'dark',
-      habitRemindersEnabled: true,
+      eveningCheckInEnabled: true,
     });
   });
 
   it('writes settings during import', async () => {
     await writeAppSettings(db as never, {
       themeMode: 'light',
-      habitRemindersEnabled: false,
+      eveningCheckInEnabled: false,
+      eveningCheckInTime: '20:00',
     });
 
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(db, 'theme_mode', 'light');
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(
       db,
-      'habit_reminders_enabled',
+      'evening_check_in_enabled',
       'false',
+    );
+    expect(settingsRepo.setSetting).toHaveBeenCalledWith(
+      db,
+      'evening_check_in_time',
+      '20:00',
     );
   });
 
@@ -177,7 +221,8 @@ describe('protocol backup settings', () => {
       events: [],
       settings: {
         themeMode: 'dark',
-        habitRemindersEnabled: true,
+        eveningCheckInEnabled: true,
+        eveningCheckInTime: '21:00',
       },
     });
 
@@ -186,8 +231,13 @@ describe('protocol backup settings', () => {
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(db, 'theme_mode', 'dark');
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(
       db,
-      'habit_reminders_enabled',
+      'evening_check_in_enabled',
       'true',
+    );
+    expect(settingsRepo.setSetting).toHaveBeenCalledWith(
+      db,
+      'evening_check_in_time',
+      '21:00',
     );
     expect(elementRepo.insertElement).toHaveBeenCalledWith(db, habitElement);
   });

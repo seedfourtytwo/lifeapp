@@ -12,10 +12,11 @@ export async function refreshAllDailyData(): Promise<void> {
   const counterIds = getActiveCounters(elements, dashboard).map((element) => element.id);
 
   const { loadHabitDayState, loadHabitStreaks, loadCounterTotals } = useEventStore.getState();
+  // Always call loaders — empty inputs still mark *Ready flags true.
   await Promise.all([
-    habitInputs.length > 0 ? loadHabitDayState(habitInputs) : Promise.resolve(),
+    loadHabitDayState(habitInputs),
     habitInputs.length > 0 ? loadHabitStreaks(habitInputs) : Promise.resolve(),
-    counterIds.length > 0 ? loadCounterTotals(counterIds) : Promise.resolve(),
+    loadCounterTotals(counterIds),
   ]);
 }
 

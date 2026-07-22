@@ -31,11 +31,15 @@
   },
   "notifications": {
     "sectionTitle": "Notifications",
-    "habitRemindersTitle": "Habit reminders",
-    "habitRemindersDescription": "Remind before scheduled habits and at 8 PM if habits remain",
-    "rebuildRequiredBody": "Habit reminders need a fresh dev build. Run: npx expo run:android",
+    "eveningCheckInTitle": "Evening check-in",
+    "eveningCheckInDescription": "Remind about unfinished habits and counter goals, and allow reminders before timed habits",
+    "eveningCheckInTimeLabel": "Check-in time",
+    "eveningCheckInTimePlaceholder": "20:00",
+    "invalidTimeTitle": "Invalid time",
+    "invalidTimeBody": "Use 24-hour time as HH:mm (for example 20:00).",
+    "rebuildRequiredBody": "Evening check-in needs a fresh dev build with notifications. Run: eas build --platform android --profile development",
     "blockedTitle": "Notifications blocked",
-    "blockedBody": "Enable notifications in system settings to get habit reminders."
+    "blockedBody": "Enable notifications in system settings to get evening check-in and habit reminders."
   },
   "data": {
     "sectionTitle": "Data",

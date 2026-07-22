@@ -31,11 +31,15 @@
   },
   "notifications": {
     "sectionTitle": "Notifications",
-    "habitRemindersTitle": "Rappels d'habitudes",
-    "habitRemindersDescription": "Rappel avant les habitudes programmées et à 20h s'il en reste",
-    "rebuildRequiredBody": "Les rappels d'habitudes nécessitent une nouvelle build de développement. Exécutez : npx expo run:android",
+    "eveningCheckInTitle": "Point du soir",
+    "eveningCheckInDescription": "Rappel pour les habitudes et objectifs de compteurs non terminés, et rappels avant les habitudes à horaire",
+    "eveningCheckInTimeLabel": "Heure du point",
+    "eveningCheckInTimePlaceholder": "20:00",
+    "invalidTimeTitle": "Heure invalide",
+    "invalidTimeBody": "Utilisez l'heure sur 24 h au format HH:mm (par exemple 20:00).",
+    "rebuildRequiredBody": "Le point du soir nécessite une nouvelle build de développement avec notifications. Exécutez : eas build --platform android --profile development",
     "blockedTitle": "Notifications bloquées",
-    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir les rappels d'habitudes."
+    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir le point du soir et les rappels d'habitudes."
   },
   "data": {
     "sectionTitle": "Données",

@@ -2,9 +2,10 @@ import { NativeModules } from 'react-native';
 import { i18n } from '../i18n';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
-import { isScheduleSupportedForReminders, toExpoWeekday } from '../protocol/schedule';
+import { DEFAULT_EVENING_CHECK_IN_TIME, parseEveningCheckInTime } from '../protocol/appSettings';
+import { isScheduleSupportedForReminders } from '../protocol/schedule';
 import { isElementArchived } from '../utils/dashboardElements';
-import { timeToMinutes } from '../utils/time';
+import { collectStartReminderFires } from './habitStartReminderTimes';
 
 const REMINDER_PREFIX = 'habit-reminder-';
 const END_OF_DAY_REMINDER_ID = `${REMINDER_PREFIX}eod`;
@@ -54,23 +55,11 @@ async function getNotifications(): Promise<NotificationsModule | null> {
   } catch (error) {
     notificationsUnavailable = true;
     console.warn(
-      'expo-notifications is unavailable; habit reminders disabled until you rebuild the dev client.',
+      'expo-notifications is unavailable; tracker reminders disabled until you rebuild the dev client.',
       error,
     );
     return null;
   }
-}
-
-function reminderTimeFromRange(
-  start: string,
-  remindMinutesBefore: number,
-): { hour: number; minute: number } {
-  const startMinutes = timeToMinutes(start);
-  const total = Math.max(0, startMinutes - remindMinutesBefore);
-  return {
-    hour: Math.floor(total / 60),
-    minute: total % 60,
-  };
 }
 
 function canScheduleStartReminder(config: HabitConfig): boolean {
@@ -80,6 +69,12 @@ function canScheduleStartReminder(config: HabitConfig): boolean {
     config.remindMinutesBefore >= 0 &&
     isScheduleSupportedForReminders(config.schedule)
   );
+}
+
+function parseCheckInHourMinute(timeHHmm: string): { hour: number; minute: number } {
+  const parsed = parseEveningCheckInTime(timeHHmm) ?? DEFAULT_EVENING_CHECK_IN_TIME;
+  const [hour, minute] = parsed.split(':').map(Number);
+  return { hour, minute };
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
@@ -108,58 +103,25 @@ export async function cancelHabitStartReminders(): Promise<void> {
   await cancelHabitStartRemindersWith(Notifications);
 }
 
-async function scheduleDailyReminder(
+async function scheduleStartRemindersForHabit(
   notifications: NotificationsModule,
   element: ElementDefinition,
   config: HabitConfig,
+  doneToday: boolean,
 ): Promise<void> {
-  if (!config.timeRange || config.remindMinutesBefore === undefined) return;
-
-  const { hour, minute } = reminderTimeFromRange(
-    config.timeRange.start,
-    config.remindMinutesBefore,
-  );
-
-  await notifications.scheduleNotificationAsync({
-    identifier: `${REMINDER_PREFIX}${element.id}`,
-    content: {
-      title: i18n.t('notifications:habitReminder.title'),
-      body: i18n.t('notifications:habitReminder.body', { name: element.name }),
-    },
-    trigger: {
-      type: notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-    },
-  });
-}
-
-async function scheduleWeekdayReminders(
-  notifications: NotificationsModule,
-  element: ElementDefinition,
-  config: HabitConfig,
-): Promise<void> {
-  if (!config.timeRange || config.remindMinutesBefore === undefined) return;
-  if (config.schedule.type !== 'weekdays') return;
-
-  const { hour, minute } = reminderTimeFromRange(
-    config.timeRange.start,
-    config.remindMinutesBefore,
-  );
+  const fires = collectStartReminderFires(config, { doneToday });
 
   await Promise.all(
-    config.schedule.days.map((day) =>
+    fires.map((fire) =>
       notifications.scheduleNotificationAsync({
-        identifier: `${REMINDER_PREFIX}${element.id}-${day}`,
+        identifier: `${REMINDER_PREFIX}${element.id}-${fire.dateStr}`,
         content: {
           title: i18n.t('notifications:habitReminder.title'),
           body: i18n.t('notifications:habitReminder.body', { name: element.name }),
         },
         trigger: {
-          type: notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: toExpoWeekday(day),
-          hour,
-          minute,
+          type: notifications.SchedulableTriggerInputTypes.DATE,
+          date: fire.when,
         },
       }),
     ),
@@ -169,6 +131,7 @@ async function scheduleWeekdayReminders(
 export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
+  habitDoneToday: Record<string, boolean> = {},
 ): Promise<void> {
   const run = async (): Promise<void> => {
     if (!isNotificationsNativeAvailable()) {
@@ -195,14 +158,16 @@ export async function syncHabitReminders(
 
     for (const element of habits) {
       if (generation !== habitReminderSyncGeneration) return;
+
       const config = HabitConfigSchema.parse(element.config);
       if (!canScheduleStartReminder(config)) continue;
 
-      if (config.schedule.type === 'weekdays') {
-        await scheduleWeekdayReminders(Notifications, element, config);
-      } else {
-        await scheduleDailyReminder(Notifications, element, config);
-      }
+      await scheduleStartRemindersForHabit(
+        Notifications,
+        element,
+        config,
+        habitDoneToday[element.id] ?? false,
+      );
     }
   };
 
@@ -210,9 +175,16 @@ export async function syncHabitReminders(
   await next;
 }
 
+/**
+ * Schedule the recurring evening check-in.
+ * Always schedules when enabled — local DAILY triggers cannot reliably mean
+ * "only if unfinished" without cancelling tomorrow's fire. Body uses a live
+ * unfinished count when provided (> 0); otherwise a generic prompt.
+ */
 export async function scheduleEndOfDayReminder(
   enabled: boolean,
-  undoneCount: number,
+  timeHHmm: string = DEFAULT_EVENING_CHECK_IN_TIME,
+  unfinishedCount?: number,
 ): Promise<void> {
   await enqueueHabitReminderWork(async () => {
     if (!isNotificationsNativeAvailable()) {
@@ -226,28 +198,33 @@ export async function scheduleEndOfDayReminder(
     await Notifications.cancelScheduledNotificationAsync(END_OF_DAY_REMINDER_ID);
     if (generation !== habitReminderSyncGeneration) return;
 
-    if (!enabled || undoneCount <= 0) {
+    if (!enabled) {
       return;
     }
 
     const granted = await requestNotificationPermissions();
     if (!granted || generation !== habitReminderSyncGeneration) return;
 
+    const { hour, minute } = parseCheckInHourMinute(timeHHmm);
+    const hasCount = unfinishedCount !== undefined && unfinishedCount > 0;
+
     await Notifications.scheduleNotificationAsync({
       identifier: END_OF_DAY_REMINDER_ID,
       content: {
-        title: i18n.t('notifications:endOfDayReminder.title'),
-        body: i18n.t(
-          undoneCount === 1
-            ? 'notifications:endOfDayReminder.bodyOne'
-            : 'notifications:endOfDayReminder.bodyMany',
-          { count: undoneCount },
-        ),
+        title: i18n.t('notifications:eveningCheckIn.title'),
+        body: hasCount
+          ? i18n.t(
+              unfinishedCount === 1
+                ? 'notifications:eveningCheckIn.bodyOne'
+                : 'notifications:eveningCheckIn.bodyMany',
+              { count: unfinishedCount },
+            )
+          : i18n.t('notifications:eveningCheckIn.bodyGeneric'),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: 20,
-        minute: 0,
+        hour,
+        minute,
       },
     });
   });

@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, List, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import ClearDataSheet from '../components/ClearDataSheet';
 import WeatherSettingsSection from '../components/WeatherSettingsSection';
 import CalendarSettingsSection from '../components/CalendarSettingsSection';
 import { useProtocolBackup } from '../hooks/useProtocolBackup';
 import type { AppLanguage } from '../protocol/appSettings';
+import { parseEveningCheckInTime } from '../protocol/appSettings';
 import { applyAppLanguage } from '../i18n';
 import {
   requestNotificationPermissions,
@@ -24,8 +25,11 @@ export default function SettingsScreen() {
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
   const appLanguage = useSettingsStore((s) => s.appLanguage);
   const setAppLanguage = useSettingsStore((s) => s.setAppLanguage);
-  const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
-  const setHabitRemindersEnabled = useSettingsStore((s) => s.setHabitRemindersEnabled);
+  const eveningCheckInEnabled = useSettingsStore((s) => s.eveningCheckInEnabled);
+  const eveningCheckInTime = useSettingsStore((s) => s.eveningCheckInTime);
+  const setEveningCheckInEnabled = useSettingsStore((s) => s.setEveningCheckInEnabled);
+  const setEveningCheckInTime = useSettingsStore((s) => s.setEveningCheckInTime);
+  const [timeDraft, setTimeDraft] = useState(eveningCheckInTime);
   const {
     busy,
     importAvailable,
@@ -37,12 +41,16 @@ export default function SettingsScreen() {
     handleClearConfirm,
   } = useProtocolBackup();
 
+  useEffect(() => {
+    setTimeDraft(eveningCheckInTime);
+  }, [eveningCheckInTime]);
+
   const handleLanguageChange = async (language: AppLanguage) => {
     await setAppLanguage(language);
     await applyAppLanguage(language);
   };
 
-  const handleRemindersToggle = async (enabled: boolean) => {
+  const handleEveningCheckInToggle = async (enabled: boolean) => {
     if (enabled && !isNotificationsNativeAvailable()) {
       Alert.alert(
         t('appearance.rebuildRequiredTitle'),
@@ -57,7 +65,24 @@ export default function SettingsScreen() {
         return;
       }
     }
-    await setHabitRemindersEnabled(enabled);
+    await setEveningCheckInEnabled(enabled);
+  };
+
+  const commitEveningCheckInTime = () => {
+    const parsed = parseEveningCheckInTime(timeDraft);
+    if (!parsed) {
+      setTimeDraft(eveningCheckInTime);
+      Alert.alert(
+        t('notifications.invalidTimeTitle'),
+        t('notifications.invalidTimeBody'),
+      );
+      return;
+    }
+    if (parsed !== eveningCheckInTime) {
+      void setEveningCheckInTime(parsed);
+    } else {
+      setTimeDraft(parsed);
+    }
   };
 
   return (
@@ -105,16 +130,31 @@ export default function SettingsScreen() {
       <List.Section>
         <List.Subheader>{t('notifications.sectionTitle')}</List.Subheader>
         <List.Item
-          title={t('notifications.habitRemindersTitle')}
-          description={t('notifications.habitRemindersDescription')}
+          title={t('notifications.eveningCheckInTitle')}
+          description={t('notifications.eveningCheckInDescription')}
           left={(props) => <List.Icon {...props} icon="bell-outline" />}
           right={() => (
             <Switch
-              value={habitRemindersEnabled}
-              onValueChange={(value) => void handleRemindersToggle(value)}
+              value={eveningCheckInEnabled}
+              onValueChange={(value) => void handleEveningCheckInToggle(value)}
             />
           )}
         />
+        {eveningCheckInEnabled ? (
+          <View style={styles.timeFieldWrap}>
+            <TextInput
+              label={t('notifications.eveningCheckInTimeLabel')}
+              placeholder={t('notifications.eveningCheckInTimePlaceholder')}
+              value={timeDraft}
+              onChangeText={setTimeDraft}
+              onBlur={commitEveningCheckInTime}
+              onSubmitEditing={commitEveningCheckInTime}
+              keyboardType="numbers-and-punctuation"
+              mode="outlined"
+              dense
+            />
+          </View>
+        ) : null}
       </List.Section>
 
       <List.Section>
@@ -176,6 +216,10 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 8,
     flexGrow: 1,
+  },
+  timeFieldWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   note: {
     paddingHorizontal: 16,

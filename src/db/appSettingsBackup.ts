@@ -1,9 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   APP_SETTING_KEYS,
+  DEFAULT_EVENING_CHECK_IN_TIME,
   isAppLanguage,
   isThemeMode,
   isWeatherLocationMode,
+  parseEveningCheckInTime,
   type AppSettings,
 } from '../protocol/appSettings';
 import * as settingsRepo from './repositories/settingsRepository';
@@ -20,11 +22,25 @@ function parseNorm(value: string | null): number | undefined {
   return Math.min(1, Math.max(0, n));
 }
 
+function parseStoredBool(value: string | null): boolean | undefined {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
+
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
   // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
   const themeMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
   const appLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
-  const habitRemindersEnabled = await settingsRepo.getSetting(
+  const eveningCheckInEnabled = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.eveningCheckInEnabled,
+  );
+  const eveningCheckInTime = await settingsRepo.getSetting(
+    db,
+    APP_SETTING_KEYS.eveningCheckInTime,
+  );
+  const legacyHabitReminders = await settingsRepo.getSetting(
     db,
     APP_SETTING_KEYS.habitRemindersEnabled,
   );
@@ -54,8 +70,14 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
   if (appLanguage && isAppLanguage(appLanguage)) {
     settings.appLanguage = appLanguage;
   }
-  if (habitRemindersEnabled === 'true' || habitRemindersEnabled === 'false') {
-    settings.habitRemindersEnabled = habitRemindersEnabled === 'true';
+  const eveningEnabled =
+    parseStoredBool(eveningCheckInEnabled) ?? parseStoredBool(legacyHabitReminders);
+  if (eveningEnabled !== undefined) {
+    settings.eveningCheckInEnabled = eveningEnabled;
+  }
+  const parsedTime = parseEveningCheckInTime(eveningCheckInTime);
+  if (parsedTime) {
+    settings.eveningCheckInTime = parsedTime;
   }
   if (weatherWidgetEnabled === 'true' || weatherWidgetEnabled === 'false') {
     settings.weatherWidgetEnabled = weatherWidgetEnabled === 'true';
@@ -93,11 +115,18 @@ export async function writeAppSettings(
   if (settings.appLanguage) {
     await settingsRepo.setSetting(db, APP_SETTING_KEYS.appLanguage, settings.appLanguage);
   }
-  if (settings.habitRemindersEnabled !== undefined) {
+  if (settings.eveningCheckInEnabled !== undefined) {
     await settingsRepo.setSetting(
       db,
-      APP_SETTING_KEYS.habitRemindersEnabled,
-      settings.habitRemindersEnabled ? 'true' : 'false',
+      APP_SETTING_KEYS.eveningCheckInEnabled,
+      settings.eveningCheckInEnabled ? 'true' : 'false',
+    );
+  }
+  if (settings.eveningCheckInTime !== undefined) {
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.eveningCheckInTime,
+      settings.eveningCheckInTime || DEFAULT_EVENING_CHECK_IN_TIME,
     );
   }
   if (settings.weatherWidgetEnabled !== undefined) {

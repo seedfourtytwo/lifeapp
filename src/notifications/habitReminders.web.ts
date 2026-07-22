@@ -12,11 +12,13 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function syncHabitReminders(
   _elements: ElementDefinition[],
   _enabled: boolean,
+  _habitDoneToday?: Record<string, boolean>,
 ): Promise<void> {}
 
 export async function scheduleEndOfDayReminder(
   _enabled: boolean,
-  _undoneCount: number,
+  _timeHHmm?: string,
+  _unfinishedCount?: number,
 ): Promise<void> {}
 
 export async function cancelAllHabitReminders(): Promise<void> {}

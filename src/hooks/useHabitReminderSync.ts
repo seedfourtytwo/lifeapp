@@ -1,69 +1,109 @@
 import { useEffect } from 'react';
-import { isHabitDueToday, parseHabitConfig, toDateString } from '../protocol';
 import {
   cancelAllHabitReminders,
   isNotificationsNativeAvailable,
   scheduleEndOfDayReminder,
   syncHabitReminders,
 } from '../notifications/habitReminders';
+import { countUnfinishedTrackersToday } from '../notifications/unfinishedTrackers';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
+import { habitStreakInputsFromElements, useEventStore } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { isElementArchived } from '../utils/dashboardElements';
+import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 
 export function useHabitReminderSync(): void {
   const elements = useElementStore((s) => s.elements);
-  const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
+  const dashboard = useElementStore((s) => s.dashboard);
+  const elementsLoaded = useElementStore((s) => s.isLoaded);
+  const eveningCheckInEnabled = useSettingsStore((s) => s.eveningCheckInEnabled);
+  const eveningCheckInTime = useSettingsStore((s) => s.eveningCheckInTime);
   const appLanguage = useSettingsStore((s) => s.appLanguage);
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
+  const counterTotalsReady = useEventStore((s) => s.counterTotalsReady);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
+  const dailyTotals = useEventStore((s) => s.dailyTotals);
+  const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
+  const loadCounterTotals = useEventStore((s) => s.loadCounterTotals);
+
+  // Warm day/counter maps when evening check-in is on so digests don't wait on tab focus.
+  useEffect(() => {
+    if (!settingsLoaded || !elementsLoaded || !eveningCheckInEnabled) {
+      return;
+    }
+
+    const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
+    const counterIds = getActiveCounters(elements, dashboard).map((element) => element.id);
+    void loadHabitDayState(habitInputs);
+    void loadCounterTotals(counterIds);
+  }, [
+    elements,
+    dashboard,
+    elementsLoaded,
+    eveningCheckInEnabled,
+    settingsLoaded,
+    loadHabitDayState,
+    loadCounterTotals,
+  ]);
 
   useEffect(() => {
     if (!settingsLoaded || !isNotificationsNativeAvailable()) {
       return;
     }
 
-    if (!habitRemindersEnabled) {
+    if (!eveningCheckInEnabled) {
       void cancelAllHabitReminders().catch((error) => {
-        console.warn('Habit reminder cancel skipped', error);
+        console.warn('Tracker reminder cancel skipped', error);
       });
       return;
     }
 
-    void syncHabitReminders(elements, true).catch((error) => {
-      console.warn('Habit reminder sync skipped', error);
+    // If day state is not warm yet, schedule as if nothing is done; resync when ready.
+    const doneMap = dayStateReady ? habitDoneToday : {};
+
+    void syncHabitReminders(elements, true, doneMap).catch((error) => {
+      console.warn('Habit start reminder sync skipped', error);
     });
-  }, [elements, habitRemindersEnabled, appLanguage, settingsLoaded]);
+  }, [
+    elements,
+    eveningCheckInEnabled,
+    habitDoneToday,
+    dayStateReady,
+    appLanguage,
+    settingsLoaded,
+  ]);
 
   useEffect(() => {
-    if (!settingsLoaded || !isNotificationsNativeAvailable() || !dayStateReady) {
+    if (!settingsLoaded || !isNotificationsNativeAvailable()) {
       return;
     }
 
-    if (!habitRemindersEnabled) {
+    if (!eveningCheckInEnabled) {
       return;
     }
 
-    const now = new Date();
-    const today = toDateString(now);
-    const habitElements = elements.filter(
-      (element) => element.kind === 'habit' && !isElementArchived(element),
-    );
-    const undoneCount = habitElements.filter((habit) => {
-      const config = parseHabitConfig(habit.config);
-      if (!isHabitDueToday(config, { now, today })) return false;
-      return !(habitDoneToday[habit.id] ?? false);
-    }).length;
+    // Always schedule when enabled. Live count is best-effort when both maps are warm;
+    // otherwise use the generic body so we never cancel tomorrow's check-in.
+    const totalsReady = dayStateReady && counterTotalsReady;
+    const unfinishedCount = totalsReady
+      ? countUnfinishedTrackersToday({
+          elements,
+          habitDoneToday,
+          dailyTotals,
+        }).total
+      : undefined;
 
-    void scheduleEndOfDayReminder(true, undoneCount).catch((error) => {
-      console.warn('End-of-day reminder sync skipped', error);
+    void scheduleEndOfDayReminder(true, eveningCheckInTime, unfinishedCount).catch((error) => {
+      console.warn('Evening check-in sync skipped', error);
     });
   }, [
     dayStateReady,
+    counterTotalsReady,
     elements,
     habitDoneToday,
-    habitRemindersEnabled,
+    dailyTotals,
+    eveningCheckInEnabled,
+    eveningCheckInTime,
     appLanguage,
     settingsLoaded,
   ]);

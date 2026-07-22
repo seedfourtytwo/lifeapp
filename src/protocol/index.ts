@@ -25,10 +25,12 @@ export type { DailyJournal } from './dailyJournal';
 export {
   AppSettingsSchema,
   APP_SETTING_KEYS,
+  DEFAULT_EVENING_CHECK_IN_TIME,
   THEME_MODES,
   WEATHER_LOCATION_MODES,
   isThemeMode,
   isWeatherLocationMode,
+  parseEveningCheckInTime,
 } from './appSettings';
 export type { AppSettings, ThemeMode, WeatherLocationMode } from './appSettings';
 
