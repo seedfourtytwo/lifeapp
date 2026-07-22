@@ -74,6 +74,24 @@ export async function getWeatherDaily(
   return row ? rowToSnapshot(row) : null;
 }
 
+/** Inclusive range of cached daily weather snapshots. */
+export async function getWeatherDailyInRange(
+  db: SQLiteDatabase,
+  sinceDate: string,
+  untilDate: string,
+): Promise<WeatherDailySnapshot[]> {
+  const rows = await db.getAllAsync<WeatherDailyRow>(
+    `SELECT date, temp_c, temp_min_c, temp_max_c, weather_code, condition,
+            precip_probability, lat, lon, fetched_at
+     FROM weather_daily
+     WHERE date >= ? AND date <= ?
+     ORDER BY date ASC`,
+    sinceDate,
+    untilDate,
+  );
+  return rows.map(rowToSnapshot);
+}
+
 export async function clearWeatherDaily(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM weather_daily');
 }

@@ -36,3 +36,14 @@ export async function playHabitCompleteHaptic(): Promise<void> {
     // Ignore — haptics must never break habit logging
   }
 }
+
+/** Soft selection feedback for chart day taps. */
+export async function playChartSelectHaptic(): Promise<void> {
+  const Haptics = await getHaptics();
+  if (!Haptics) return;
+  try {
+    await Haptics.selectionAsync();
+  } catch {
+    // Ignore
+  }
+}
