@@ -102,7 +102,7 @@ interface EventState {
     elementId: string,
     config: HabitConfig,
     date?: string,
-    options?: { trackCompleted?: boolean },
+    options?: { trackCompleted?: boolean; playChime?: boolean },
   ) => Promise<void>;
   /** Drop an in-progress timer without writing an event (archive/delete). */
   discardHabitTimer: (elementId: string) => void;
@@ -125,7 +125,10 @@ const counterWriteChains = new Map<string, Promise<void>>();
 /** Joinable stop promises — rollover/Done await the same in-flight stop. */
 const habitTimerStopPromises = new Map<string, Promise<void>>();
 /** Merged options for joiners (e.g. trackCompleted from natural end after Done started). */
-const habitTimerStopOptions = new Map<string, { trackCompleted?: boolean }>();
+const habitTimerStopOptions = new Map<
+  string,
+  { trackCompleted?: boolean; playChime?: boolean }
+>;
 /** Stops that must not restore the session on failure (archive/delete in flight). */
 const habitTimerStopAbortRestore = new Set<string>();
 
@@ -627,13 +630,20 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   stopHabitTimer: (elementId, config, _date, options) => {
     const existing = habitTimerStopPromises.get(elementId);
-    if (options?.trackCompleted) {
+    if (options?.trackCompleted || options?.playChime) {
       const merged = habitTimerStopOptions.get(elementId) ?? {};
-      habitTimerStopOptions.set(elementId, { ...merged, trackCompleted: true });
+      habitTimerStopOptions.set(elementId, {
+        ...merged,
+        ...(options.trackCompleted ? { trackCompleted: true } : {}),
+        ...(options.playChime ? { playChime: true } : {}),
+      });
     }
     if (existing) return existing;
 
-    habitTimerStopOptions.set(elementId, { trackCompleted: options?.trackCompleted });
+    habitTimerStopOptions.set(elementId, {
+      trackCompleted: options?.trackCompleted,
+      playChime: options?.playChime,
+    });
 
     const promise = (async () => {
       const session = get().activeTimerSessions[elementId];
@@ -700,8 +710,9 @@ export const useEventStore = create<EventState>((set, get) => ({
             return;
           }
 
-          // Target-crossing chime plays live in HabitTimerWidget; only chime here for play-once end.
-          if (stopOpts?.trackCompleted) {
+          // Target-crossing chime plays live in HabitTimerWidget.
+          // Natural play-once end sets playChime; manual Done must not chime.
+          if (stopOpts?.playChime) {
             void playHabitCompleteChime();
           }
           if (!wasComplete && isComplete) {

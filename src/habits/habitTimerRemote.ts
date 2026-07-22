@@ -165,7 +165,9 @@ export async function restoreHabitTimerPlaybackAfterHydration(): Promise<void> {
     await playHabitSound(undefined, { lockScreen });
   } else {
     await playSoundForConfig(element.id, config, (id, cfg, trackCompleted) => {
-      void finishHabitTimer(id, cfg, trackCompleted).catch((error) => {
+      void finishHabitTimer(id, cfg, trackCompleted, {
+        playChime: trackCompleted === true,
+      }).catch((error) => {
         Alert.alert(
           'Could not finish timer',
           error instanceof Error ? error.message : 'Something went wrong',

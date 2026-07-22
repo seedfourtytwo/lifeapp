@@ -89,12 +89,15 @@ export async function finishHabitTimer(
   elementId: string,
   config: HabitConfig,
   trackCompleted = false,
-  options?: { advance?: boolean },
+  options?: { advance?: boolean; playChime?: boolean },
 ): Promise<void> {
   const date = currentAppCalendarDate();
   stopHabitTimerLockScreenTicker();
   await stopHabitSound();
-  await useEventStore.getState().stopHabitTimer(elementId, config, date, { trackCompleted });
+  await useEventStore.getState().stopHabitTimer(elementId, config, date, {
+    trackCompleted,
+    playChime: options?.playChime,
+  });
 
   if (options?.advance === false) {
     return;
@@ -126,7 +129,9 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
       setFocusedHabitId(elementId);
       useEventStore.getState().startHabitTimer(elementId);
       playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
-        void finishHabitTimer(id, cfg, trackCompleted).catch((error) => {
+        void finishHabitTimer(id, cfg, trackCompleted, {
+          playChime: trackCompleted === true,
+        }).catch((error) => {
           Alert.alert(
             'Could not finish timer',
             error instanceof Error ? error.message : 'Something went wrong',
@@ -158,18 +163,22 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
       onEnded:
         playbackMode === 'play_once'
           ? () => {
-              void finishHabitTimer(elementId, config, true).catch((error) => {
-                Alert.alert(
-                  'Could not finish timer',
-                  error instanceof Error ? error.message : 'Something went wrong',
-                );
-              });
+              void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
+                (error) => {
+                  Alert.alert(
+                    'Could not finish timer',
+                    error instanceof Error ? error.message : 'Something went wrong',
+                  );
+                },
+              );
             }
           : undefined,
     }).then(() => refreshLockScreenTicker());
   } else {
     playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
-      void finishHabitTimer(id, cfg, trackCompleted).catch((error) => {
+      void finishHabitTimer(id, cfg, trackCompleted, {
+        playChime: trackCompleted === true,
+      }).catch((error) => {
         Alert.alert(
           'Could not finish timer',
           error instanceof Error ? error.message : 'Something went wrong',

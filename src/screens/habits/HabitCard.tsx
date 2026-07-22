@@ -58,7 +58,8 @@ export default function HabitCard({ habit, config }: Props) {
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
       onTimerFinish={() =>
-        // Manual Done asserts completion (including play-once habits without a seconds target).
+        // Manual Done marks play-once complete in meta, but must not play the goal chime
+        // (chime is for live target-crossing or natural track end only).
         handleFinishTimer(habit.id, config, true).catch((error) => {
           Alert.alert(
             'Could not finish timer',

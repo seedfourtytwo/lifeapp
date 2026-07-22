@@ -120,6 +120,10 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
     if (ignoreRemoteStatus) return;
 
     if (status.didJustFinish && !status.loop) {
+      if (userPausedPlayback) {
+        onTrackEnded = null;
+        return;
+      }
       const ended = onTrackEnded;
       onTrackEnded = null;
       ended?.();
@@ -377,6 +381,8 @@ export async function playHabitSound(
 
 export async function pauseHabitSound(): Promise<void> {
   userPausedPlayback = true;
+  // Pause must not look like a natural play-once finish (that would chime + Done).
+  onTrackEnded = null;
   if (!player) return;
   await withLocalControl(() => {
     player?.pause();
