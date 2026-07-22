@@ -10,24 +10,21 @@ import {
 } from 'react-native';
 import {
   Button,
-  Card,
   Divider,
   IconButton,
   Modal,
   Portal,
-  ProgressBar,
   Text,
   TextInput,
   useTheme,
 } from 'react-native-paper';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { type CounterConfig, formatCounterUnit } from '../../protocol';
-import {
-  getCounterProgressBarColors,
-} from '../../utils/color';
-import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
+import { getCounterProgressBarColors } from '../../utils/color';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
+import TrackerCard from '../TrackerCard';
+import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
 
 export function CounterWidget({
   element,
@@ -51,21 +48,17 @@ export function CounterWidget({
 
   const dailyTarget = config.dailyTarget;
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
-  const progress = hasTarget ? Math.min(1, todayTotal / dailyTarget) : 0;
+  const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
-
   const progressBarColors = getCounterProgressBarColors(themeMode);
-  const cardBackground = getTargetProgressCardBackground({
-    themeMode,
-    progress,
-    hasTarget,
-    isCartoon,
-    fallbackColor: theme.colors.surface,
-  });
 
   const countText = hasTarget
     ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)}`
     : `${todayTotal} ${formatCounterUnit(todayTotal, config.unit)}`;
+
+  const metaColor = isCartoon
+    ? theme.colors.onSecondaryContainer
+    : theme.colors.onSurfaceVariant;
 
   const closeEdit = () => {
     if (saving) return;
@@ -90,7 +83,7 @@ export function CounterWidget({
     } catch (error) {
       Alert.alert(
         'Could not update',
-        error instanceof Error ? error.message : 'Try again',
+        error instanceof Error ? error.message : 'Something went wrong',
       );
     } finally {
       setSaving(false);
@@ -99,102 +92,82 @@ export function CounterWidget({
 
   return (
     <>
-      <Card
-        style={[
-          styles.card,
-          {
-            borderRadius: deco.radius.md,
-            borderWidth: isCartoon ? deco.cardBorderWidth : 0,
-            borderColor: theme.colors.outline,
-            backgroundColor: cardBackground ?? theme.colors.surface,
-          },
-        ]}
+      <TrackerCard
+        progress={
+          hasTarget
+            ? {
+                value: progress,
+                color: isComplete
+                  ? progressBarColors.complete
+                  : progressBarColors.active,
+                trackColor: theme.colors.surfaceVariant,
+                height: deco.progressHeight,
+              }
+            : null
+        }
       >
-        <Card.Content style={styles.cardContent}>
-          <View style={styles.headerRow}>
-            <Pressable
-              onPress={onOpenDetails}
-              disabled={!onOpenDetails}
-              style={({ pressed }) => [
-                styles.namePress,
-                pressed && onOpenDetails && styles.namePressed,
-              ]}
+        <View style={cardStyles.headerRow}>
+          <Pressable
+            onPress={onOpenDetails}
+            disabled={!onOpenDetails}
+            style={({ pressed }) => [
+              cardStyles.titlePress,
+              pressed && onOpenDetails && cardStyles.pressed,
+            ]}
+          >
+            <Text
+              variant="titleMedium"
+              numberOfLines={1}
+              style={[cardStyles.name, { color: theme.colors.onSurface }]}
             >
-              <Text
-                variant="titleSmall"
-                numberOfLines={1}
-                style={[styles.name, isCartoon && { color: theme.colors.onSurface }]}
-              >
-                {element.name}
-              </Text>
-            </Pressable>
-            <View style={styles.countCluster}>
-              <Text
-                variant="bodyMedium"
-                numberOfLines={1}
-                style={[
-                  styles.countText,
-                  {
-                    color: isCartoon
-                      ? theme.colors.onSecondaryContainer
-                      : theme.colors.onSurfaceVariant,
-                  },
-                ]}
-              >
-                {countText}
-              </Text>
-              {onSetDailyTotal ? (
-                <IconButton
-                  icon="pencil-outline"
-                  size={16}
-                  onPress={openEdit}
-                  accessibilityLabel="Edit today's total"
-                  style={styles.editButton}
-                  hitSlop={8}
-                />
-              ) : null}
-              {onDictateNote ? (
-                <NoteIconButton
-                  hasNote={Boolean(hasTodayNote)}
-                  onPress={onDictateNote}
-                  onLongPress={onEditNote}
-                  size={16}
-                />
-              ) : null}
-            </View>
+              {element.name}
+            </Text>
+          </Pressable>
+          <View style={cardStyles.metaCluster}>
+            <Text
+              variant="bodyMedium"
+              numberOfLines={1}
+              style={[cardStyles.metaText, { color: metaColor }]}
+            >
+              {countText}
+            </Text>
+            {onSetDailyTotal ? (
+              <IconButton
+                icon="pencil-outline"
+                size={16}
+                onPress={openEdit}
+                accessibilityLabel="Edit today's total"
+                style={cardStyles.iconButton}
+                hitSlop={8}
+              />
+            ) : null}
+            {onDictateNote ? (
+              <NoteIconButton
+                hasNote={Boolean(hasTodayNote)}
+                onPress={onDictateNote}
+                onLongPress={onEditNote}
+                size={16}
+              />
+            ) : null}
           </View>
+        </View>
 
-          <View style={styles.incrementRow}>
-            {config.quickIncrements.map((increment) => (
-              <Button
-                key={increment}
-                mode="contained"
-                onPress={() => onLog?.(increment, { source: 'quick_button', increment })}
-                style={[styles.incButton, { borderRadius: deco.buttonRadius }]}
-                labelStyle={styles.incLabel}
-                contentStyle={styles.incContent}
-                buttonColor={isCartoon ? theme.colors.primary : undefined}
-              >
-                +{increment}
-              </Button>
-            ))}
-          </View>
-
-          {hasTarget ? (
-            <ProgressBar
-              progress={progress}
-              color={isComplete ? progressBarColors.complete : progressBarColors.active}
-              style={[
-                styles.progressBar,
-                {
-                  height: deco.progressHeight,
-                  borderRadius: deco.progressHeight / 2,
-                },
-              ]}
-            />
-          ) : null}
-        </Card.Content>
-      </Card>
+        <View style={cardStyles.actionRow}>
+          {config.quickIncrements.map((increment) => (
+            <Button
+              key={increment}
+              mode="contained"
+              onPress={() => onLog?.(increment, { source: 'quick_button', increment })}
+              style={[cardStyles.primaryButton, { borderRadius: deco.buttonRadius }]}
+              labelStyle={[cardStyles.primaryButtonLabel, styles.incLabel]}
+              contentStyle={[cardStyles.primaryButtonContent, styles.incContent]}
+              buttonColor={isCartoon ? theme.colors.primary : undefined}
+            >
+              +{increment}
+            </Button>
+          ))}
+        </View>
+      </TrackerCard>
 
       <Portal>
         <Modal
@@ -222,7 +195,7 @@ export function CounterWidget({
               <View style={styles.sheetHeader}>
                 <Text
                   variant="titleLarge"
-                  style={[styles.sheetTitle, isCartoon && { color: theme.colors.onSurface }]}
+                  style={[styles.sheetTitle, { color: theme.colors.onSurface }]}
                 >
                   Edit today&apos;s total
                 </Text>
@@ -278,68 +251,11 @@ export function CounterWidget({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 6,
-  },
-  cardContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  name: {
-    fontWeight: '700',
-  },
-  namePress: {
-    flex: 1,
-    minWidth: 0,
-  },
-  namePressed: {
-    opacity: 0.7,
-  },
-  countCluster: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    maxWidth: '58%',
-    gap: 0,
-  },
-  countText: {
-    flexShrink: 1,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
-  },
-  editButton: {
-    margin: 0,
-    width: 32,
-    height: 32,
-  },
-  incrementRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 6,
-  },
-  incButton: {
-    flex: 1,
-    margin: 0,
-  },
   incContent: {
-    minHeight: 40,
     paddingHorizontal: 4,
   },
   incLabel: {
     fontSize: 14,
-    fontWeight: '700',
-    marginVertical: 0,
-    marginHorizontal: 0,
-  },
-  progressBar: {
-    marginTop: 2,
   },
   modalContainer: {
     alignSelf: 'center',

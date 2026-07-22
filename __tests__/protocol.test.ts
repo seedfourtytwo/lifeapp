@@ -125,6 +125,21 @@ describe('HabitConfigSchema', () => {
     });
     expect(result.showStreakOnCard).toBe(true);
   });
+
+  it('defaults streak display on when omitted', () => {
+    const result = buildHabitConfig({
+      timeSlot: 'anytime',
+    });
+    expect(result.showStreakOnCard).toBe(true);
+  });
+
+  it('can opt out of streak display on the card', () => {
+    const result = buildHabitConfig({
+      timeSlot: 'anytime',
+      showStreakOnCard: false,
+    });
+    expect(result.showStreakOnCard).toBe(false);
+  });
 });
 
 describe('HabitEventMetaSchema', () => {

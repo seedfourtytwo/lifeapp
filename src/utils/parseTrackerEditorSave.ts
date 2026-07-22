@@ -131,7 +131,7 @@ export function parseTrackerEditorSave(
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,
       remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
-      showStreakOnCard: data.showStreakOnCard ? true : undefined,
+      showStreakOnCard: data.showStreakOnCard,
     },
   };
 }

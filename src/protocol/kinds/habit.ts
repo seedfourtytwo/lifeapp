@@ -115,7 +115,8 @@ export type HabitInput = {
 };
 
 export function shouldShowHabitStreakOnCard(config: HabitConfig): boolean {
-  return config.showStreakOnCard === true;
+  // Default on — seeing a streak before check-off motivates “one more.” Opt out with false.
+  return config.showStreakOnCard !== false;
 }
 
 export function buildHabitConfig(
@@ -137,7 +138,9 @@ export function buildHabitConfig(
     ...(input.remindMinutesBefore !== undefined && input.remindMinutesBefore >= 0
       ? { remindMinutesBefore: input.remindMinutesBefore }
       : {}),
-    ...(input.showStreakOnCard ? { showStreakOnCard: true } : {}),
+    ...(input.showStreakOnCard === false
+      ? { showStreakOnCard: false }
+      : { showStreakOnCard: true }),
   };
 }
 

@@ -117,7 +117,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
       <FormSection
         title="Streak"
-        description="Optional streak badge on the habit card."
+        description="Shown under the habit name — motivating before you check off."
         collapsible
         defaultCollapsed={!state.showStreakOnCard}
       >
@@ -125,7 +125,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
           <View style={styles.switchLabel}>
             <Text variant="bodyMedium">Show streak on card</Text>
             <Text variant="bodySmall" style={styles.hint}>
-              Success or missed-day streak for check-off and timer habits
+              Success streak under the name — shown even before today&apos;s check-off
             </Text>
           </View>
           <Switch

@@ -29,7 +29,6 @@ export default function HabitCard({
     todayTotal,
     isDone,
     streak,
-    failureStreak,
     activeTimerSession,
     toggleHabit,
   } = useEventStore(
@@ -37,7 +36,6 @@ export default function HabitCard({
       todayTotal: state.dailyTotals[habit.id] ?? 0,
       isDone: state.habitDoneToday[habit.id] ?? false,
       streak: state.habitStreaks[habit.id] ?? 0,
-      failureStreak: state.habitFailureStreaks[habit.id] ?? 0,
       activeTimerSession: state.activeTimerSessions[habit.id] ?? null,
       toggleHabit: state.toggleHabit,
     })),
@@ -55,7 +53,6 @@ export default function HabitCard({
       todayTotal={todayTotal}
       isDone={isDone}
       streak={streak}
-      failureStreak={failureStreak}
       activeTimerSession={activeTimerSession}
       hasTodayNote={hasTodayNote}
       onDictateNote={onDictateNote}

@@ -15,17 +15,19 @@ export function useActiveHabitInputs() {
   }, [elements, dashboard]);
 }
 
-/** Refresh today's completion state when Home gains focus. */
+/** Refresh today's completion and streaks when Home gains focus. */
 export function useRefreshHabitDayOnFocus(): void {
   const inputs = useActiveHabitInputs();
   const loadHabitDayState = useEventStore((s) => s.loadHabitDayState);
+  const loadHabitStreaks = useEventStore((s) => s.loadHabitStreaks);
 
   useFocusEffect(
     useCallback(() => {
-      if (inputs.length > 0) {
-        void loadHabitDayState(inputs);
-      }
-    }, [inputs, loadHabitDayState]),
+      if (inputs.length === 0) return;
+      // Day state alone is not enough — streaks must refresh so incomplete
+      // habits still show the run they're protecting (through yesterday).
+      void Promise.all([loadHabitDayState(inputs), loadHabitStreaks(inputs)]);
+    }, [inputs, loadHabitDayState, loadHabitStreaks]),
   );
 }
 

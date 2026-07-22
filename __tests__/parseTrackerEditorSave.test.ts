@@ -73,6 +73,18 @@ describe('parseTrackerEditorSave', () => {
     expect(result.input.showStreakOnCard).toBe(true);
   });
 
+  it('persists streak display off when toggled off', () => {
+    const result = parseTrackerEditorSave(
+      habitSaveData({
+        showStreakOnCard: false,
+      }),
+    );
+
+    expect(result.kind).toBe('habit');
+    if (result.kind !== 'habit') return;
+    expect(result.input.showStreakOnCard).toBe(false);
+  });
+
   it('always saves timeSlot as anytime (slot filters removed)', () => {
     const result = parseTrackerEditorSave(habitSaveData());
     expect(result.kind).toBe('habit');
