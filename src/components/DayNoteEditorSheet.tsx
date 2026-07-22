@@ -54,6 +54,7 @@ export default function DayNoteEditorSheet({
   const [fieldSeed, setFieldSeed] = useState(initialBody);
   const [fieldEpoch, setFieldEpoch] = useState(0);
   const [dictationHint, setDictationHint] = useState<string | null>(null);
+  const [dictationError, setDictationError] = useState<string | null>(null);
   const seededSessionKeyRef = useRef<string | null>(null);
   const limitAlertShownRef = useRef(false);
   const draftRef = useRef(draft);
@@ -76,11 +77,13 @@ export default function DayNoteEditorSheet({
         limitAlertShownRef.current = false;
       }
       setDictationHint(null);
+      setDictationError(null);
       return;
     }
     if (seededSessionKeyRef.current === sessionKey) return;
     remountField(initialBody);
     setDictationHint(null);
+    setDictationError(null);
     limitAlertShownRef.current = initialBody.length >= NOTE_BODY_MAX_LENGTH;
     seededSessionKeyRef.current = sessionKey;
   }, [visible, date, sessionKey, initialBody]);
@@ -175,6 +178,13 @@ export default function DayNoteEditorSheet({
                 {titleDate ? ` · ${titleDate}` : ''}
               </Text>
             </View>
+            <DayNoteDictationButton
+              compact
+              active={visible}
+              disabled={saving || !visible || atLimit}
+              onTranscript={handleTranscript}
+              onError={setDictationError}
+            />
             <IconButton
               icon="close"
               onPress={requestDismiss}
@@ -182,6 +192,16 @@ export default function DayNoteEditorSheet({
               accessibilityLabel={isJournal ? 'Close journal' : 'Close note'}
             />
           </View>
+
+          {dictationError ? (
+            <Text
+              variant="bodySmall"
+              accessibilityLiveRegion="polite"
+              style={{ color: theme.colors.error, marginBottom: 4 }}
+            >
+              {dictationError}
+            </Text>
+          ) : null}
 
           <TextInput
             key={`${sessionKey ?? 'closed'}-${fieldEpoch}`}
@@ -223,22 +243,15 @@ export default function DayNoteEditorSheet({
             </Text>
           ) : null}
 
-          <View style={styles.dictation}>
-            <DayNoteDictationButton
-              active={visible}
-              disabled={saving || !visible}
-              onTranscript={handleTranscript}
-            />
-            {dictationHint ? (
-              <Text
-                variant="bodySmall"
-                accessibilityLiveRegion="polite"
-                style={{ color: theme.colors.error, marginTop: 4 }}
-              >
-                {dictationHint}
-              </Text>
-            ) : null}
-          </View>
+          {dictationHint ? (
+            <Text
+              variant="bodySmall"
+              accessibilityLiveRegion="polite"
+              style={{ color: theme.colors.error, marginTop: 4 }}
+            >
+              {dictationHint}
+            </Text>
+          ) : null}
 
           <View style={styles.actions}>
             {showClear ? (
@@ -300,9 +313,6 @@ const styles = StyleSheet.create({
   inputContent: {
     paddingTop: 12,
     paddingBottom: 12,
-  },
-  dictation: {
-    marginTop: 8,
   },
   actions: {
     flexDirection: 'row',

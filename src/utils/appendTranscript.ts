@@ -5,6 +5,14 @@ export type AppendTranscriptResult = {
   truncated: boolean;
 };
 
+/** Join finalized speech segments from one dictation session. */
+export function joinDictationParts(parts: readonly string[]): string {
+  return parts
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(' ');
+}
+
 /** Append a dictated phrase into the note body with a single separating space. */
 export function appendTranscript(
   existing: string,

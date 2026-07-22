@@ -6,11 +6,17 @@ import {
   PROTOCOL_VERSION,
   validateBundleDayNoteLinks,
 } from '../src/protocol';
-import { appendTranscript } from '../src/utils/appendTranscript';
+import { appendTranscript, joinDictationParts } from '../src/utils/appendTranscript';
+import { polishDictationTranscript } from '../src/utils/polishDictationTranscript';
 import {
+  localeIsInstalledForOffline,
   normalizeSpeechLocaleTag,
   speechRecognitionLocale,
 } from '../src/utils/speechRecognitionLocale';
+import {
+  bestRecognitionTranscript,
+  buildLocalNoteDictationOptions,
+} from '../src/utils/speechRecognitionOptions';
 import { truncateNotePreview } from '../src/utils/trackerHistoryFormat';
 
 const habitElement = {
@@ -148,6 +154,11 @@ describe('appendTranscript', () => {
     });
   });
 
+  it('joins finalized dictation segments', () => {
+    expect(joinDictationParts(['Hello', 'world'])).toBe('Hello world');
+    expect(joinDictationParts(['  one  ', '', 'two'])).toBe('one two');
+  });
+
   it('leaves body unchanged for empty transcript', () => {
     expect(appendTranscript('keep', '   ')).toEqual({
       text: 'keep',
@@ -160,6 +171,59 @@ describe('appendTranscript', () => {
     const result = appendTranscript(almostFull, 'more text here');
     expect(result.text.length).toBe(4000);
     expect(result.truncated).toBe(true);
+  });
+});
+
+describe('polishDictationTranscript', () => {
+  it('removes common vocal fillers in English', () => {
+    expect(polishDictationTranscript('um I went uh to the store you know')).toBe(
+      'I went to the store',
+    );
+  });
+
+  it('keeps meaningful words that resemble fillers', () => {
+    expect(polishDictationTranscript('I like this just fine')).toBe(
+      'I like this just fine',
+    );
+  });
+
+  it('skips filler cleanup for non-English locales', () => {
+    expect(polishDictationTranscript('um bonjour', 'fr-FR')).toBe('Um bonjour');
+  });
+  it('collapses simple stutter duplicates', () => {
+    expect(polishDictationTranscript('the the cat and and dog')).toBe(
+      'The cat and dog',
+    );
+  });
+});
+
+describe('localeIsInstalledForOffline', () => {
+  it('matches exact and language-prefix locale tags', () => {
+    expect(localeIsInstalledForOffline('en-US', ['en-US'])).toBe(true);
+    expect(localeIsInstalledForOffline('en-GB', ['en-US'])).toBe(true);
+    expect(localeIsInstalledForOffline('fr-FR', ['en-US'])).toBe(false);
+  });
+});
+
+describe('bestRecognitionTranscript', () => {
+  it('prefers the highest-confidence alternative', () => {
+    expect(
+      bestRecognitionTranscript([
+        { transcript: 'weak', confidence: 0.2 },
+        { transcript: 'strong', confidence: 0.9 },
+      ]),
+    ).toBe('strong');
+  });
+});
+
+describe('buildLocalNoteDictationOptions', () => {
+  it('forces on-device recognition with punctuation and dictation hint', () => {
+    const options = buildLocalNoteDictationOptions('en-US');
+    expect(options.requiresOnDeviceRecognition).toBe(true);
+    expect(options.addsPunctuation).toBe(true);
+    expect(options.maxAlternatives).toBe(5);
+    expect(options.iosTaskHint).toBe('dictation');
+    expect(options.lang).toBe('en-US');
   });
 });
 

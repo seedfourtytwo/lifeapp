@@ -65,7 +65,8 @@
         "expo-speech-recognition",
         {
           "microphonePermission": "Allow Life Dashboard to use the microphone to dictate notes.",
-          "speechRecognitionPermission": "Allow Life Dashboard to transcribe dictated notes."
+          "speechRecognitionPermission": "Allow Life Dashboard to transcribe dictated notes.",
+          "androidSpeechServicePackages": ["com.google.android.as"]
         }
       ],
       "expo-asset"

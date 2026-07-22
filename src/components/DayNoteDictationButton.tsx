@@ -1,17 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import { IconButton, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, useTheme } from 'react-native-paper';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
+import { joinDictationParts } from '../utils/appendTranscript';
+import { polishDictationTranscript } from '../utils/polishDictationTranscript';
+import {
+  bestRecognitionTranscript,
+  buildLocalNoteDictationOptions,
+} from '../utils/speechRecognitionOptions';
+import { ensureLocalDictationReady } from '../utils/speechRecognitionLocal';
 import { speechRecognitionLocale } from '../utils/speechRecognitionLocale';
 
 interface Props {
   disabled?: boolean;
   /** When false, abort any in-progress recognition (e.g. note sheet closed). */
   active?: boolean;
+  /** Header layout: mic icon, Done while dictating. */
+  compact?: boolean;
   onTranscript: (text: string) => void;
+  onError?: (message: string | null) => void;
 }
 
 function speechModuleAvailable(): boolean {
@@ -32,25 +42,56 @@ function abortRecognitionQuietly(): void {
 }
 
 /**
- * Press-to-talk mic for note dictation. Appends final transcripts only;
- * never records or stores audio files.
+ * Mic dictation for notes — transcript only, no audio files stored.
+ * Tap mic to record, Done to stop and append text.
  */
 export default function DayNoteDictationButton({
   disabled,
   active = true,
+  compact = false,
   onTranscript,
+  onError,
 }: Props) {
   const theme = useTheme();
   const [available, setAvailable] = useState(() => speechModuleAvailable());
   const [listening, setListening] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /** Mic session open until the user taps Done (or the sheet closes). */
+  const [sessionOpen, setSessionOpen] = useState(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
   const activeRef = useRef(active);
   activeRef.current = active;
   const blockedRef = useRef(Boolean(disabled || !active));
   blockedRef.current = Boolean(disabled || !active);
+  const sessionPartsRef = useRef<string[]>([]);
+  const finishingRef = useRef(false);
+
+  const setError = useCallback((message: string | null) => {
+    onErrorRef.current?.(message);
+  }, []);
+
+  const resetSession = useCallback(() => {
+    sessionPartsRef.current = [];
+    finishingRef.current = false;
+    setSessionOpen(false);
+    setListening(false);
+    setStarting(false);
+  }, []);
+
+  const flushSession = useCallback(() => {
+    const locale = speechRecognitionLocale();
+    const raw = joinDictationParts(sessionPartsRef.current);
+    const text = polishDictationTranscript(raw, locale);
+    sessionPartsRef.current = [];
+    finishingRef.current = false;
+    setSessionOpen(false);
+    setListening(false);
+    setStarting(false);
+    if (text) onTranscriptRef.current(text);
+  }, []);
 
   useEffect(() => {
     setAvailable(speechModuleAvailable());
@@ -62,10 +103,9 @@ export default function DayNoteDictationButton({
   useEffect(() => {
     if (!active || disabled) {
       abortRecognitionQuietly();
-      setListening(false);
-      setStarting(false);
+      resetSession();
     }
-  }, [active, disabled]);
+  }, [active, disabled, resetSession]);
 
   useSpeechRecognitionEvent('start', () => {
     if (blockedRef.current) {
@@ -74,21 +114,24 @@ export default function DayNoteDictationButton({
     }
     setStarting(false);
     setListening(true);
+    setSessionOpen(true);
     setError(null);
   });
   useSpeechRecognitionEvent('end', () => {
     setListening(false);
     setStarting(false);
+    if (finishingRef.current) {
+      flushSession();
+    }
   });
   useSpeechRecognitionEvent('result', (event) => {
     if (blockedRef.current || !activeRef.current) return;
     if (!event.isFinal) return;
-    const text = event.results[0]?.transcript?.trim();
-    if (text) onTranscriptRef.current(text);
+    const text = bestRecognitionTranscript(event.results);
+    if (text) sessionPartsRef.current.push(text);
   });
   useSpeechRecognitionEvent('error', (event) => {
-    setListening(false);
-    setStarting(false);
+    resetSession();
     if (blockedRef.current || !activeRef.current) return;
     if (event.error === 'aborted' || event.error === 'no-speech') {
       setError(null);
@@ -101,84 +144,124 @@ export default function DayNoteDictationButton({
     setError(event.message || 'Could not transcribe');
   });
 
-  const toggle = useCallback(async () => {
-    if (listening) {
-      try {
-        ExpoSpeechRecognitionModule.stop();
-      } catch {
-        setListening(false);
-      }
-      return;
-    }
-    if (starting) return;
+  const start = useCallback(async () => {
+    if (sessionOpen || listening || starting) return;
 
     setError(null);
     setStarting(true);
+    sessionPartsRef.current = [];
+    finishingRef.current = false;
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      // Sheet may have closed while the permission dialog was open.
       if (blockedRef.current || !activeRef.current) {
-        setStarting(false);
+        resetSession();
         return;
       }
       if (!permission.granted) {
         setError('Microphone permission needed');
-        setStarting(false);
+        resetSession();
         return;
       }
       if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
         setError('Speech recognition unavailable');
-        setStarting(false);
+        resetSession();
         return;
       }
+      const locale = speechRecognitionLocale();
+      const prep = await ensureLocalDictationReady(locale);
       if (blockedRef.current || !activeRef.current) {
-        setStarting(false);
+        resetSession();
         return;
       }
-      // No recording options — transcript only, discard audio.
-      ExpoSpeechRecognitionModule.start({
-        lang: speechRecognitionLocale(),
-        interimResults: false,
-        continuous: false,
-      });
+      if (!prep.ready) {
+        setError(prep.message);
+        resetSession();
+        return;
+      }
+      ExpoSpeechRecognitionModule.start(
+        buildLocalNoteDictationOptions(prep.locale, prep.androidPackage),
+      );
     } catch {
-      setStarting(false);
       if (!blockedRef.current) {
         setError('Speech recognition unavailable');
       }
+      resetSession();
     }
-  }, [listening, starting]);
+  }, [listening, resetSession, sessionOpen, setError, starting]);
+
+  const finish = useCallback(() => {
+    if (!sessionOpen) return;
+    finishingRef.current = true;
+    setError(null);
+    if (listening) {
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch {
+        flushSession();
+      }
+      return;
+    }
+    flushSession();
+  }, [flushSession, listening, sessionOpen, setError]);
 
   if (!available) {
     return null;
   }
 
   const busy = disabled || !active || starting;
+  const showDone = sessionOpen;
+
+  if (compact) {
+    return (
+      <View style={styles.compactRow}>
+        {showDone ? (
+          <Button
+            mode="contained-tonal"
+            compact
+            onPress={finish}
+            disabled={starting}
+            accessibilityLabel="Finish dictation"
+          >
+            Done
+          </Button>
+        ) : null}
+        <IconButton
+          icon={listening ? 'microphone' : 'microphone-outline'}
+          size={20}
+          mode={listening ? 'contained' : undefined}
+          iconColor={listening ? theme.colors.onPrimary : theme.colors.onSurfaceVariant}
+          containerColor={listening ? theme.colors.primary : undefined}
+          onPress={() => void start()}
+          disabled={busy || sessionOpen || starting}
+          accessibilityLabel="Dictate with microphone"
+          style={styles.compactMic}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.row}>
-      <IconButton
-        icon={listening ? 'microphone' : 'microphone-outline'}
-        mode={listening ? 'contained' : 'outlined'}
-        iconColor={listening ? theme.colors.onPrimary : theme.colors.primary}
-        containerColor={listening ? theme.colors.primary : undefined}
-        onPress={() => void toggle()}
-        disabled={busy && !listening}
-        accessibilityLabel={listening ? 'Stop dictation' : 'Dictate note'}
-      />
-      <Text
-        variant="bodySmall"
-        accessibilityLiveRegion="polite"
-        style={{ color: error ? theme.colors.error : theme.colors.onSurfaceVariant, flex: 1 }}
-      >
-        {error
-          ? error
-          : starting
-            ? 'Starting mic…'
-            : listening
-              ? 'Listening… tap mic to stop'
-              : 'Tap mic to dictate (text only)'}
-      </Text>
+      {showDone ? (
+        <Button
+          mode="contained-tonal"
+          compact
+          onPress={finish}
+          disabled={starting}
+          accessibilityLabel="Finish dictation"
+        >
+          Done
+        </Button>
+      ) : (
+        <IconButton
+          icon="microphone-outline"
+          mode="outlined"
+          iconColor={theme.colors.primary}
+          onPress={() => void start()}
+          disabled={busy}
+          accessibilityLabel="Dictate with microphone"
+        />
+      )}
     </View>
   );
 }
@@ -187,5 +270,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  compactMic: {
+    margin: 0,
   },
 });
