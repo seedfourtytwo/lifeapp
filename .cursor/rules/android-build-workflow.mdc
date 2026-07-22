@@ -1,0 +1,12 @@
+---
+description: Android builds use Expo.dev EAS cloud, not local SDK
+alwaysApply: true
+---
+
+# Android build workflow
+
+- **Default:** Build Android APKs on **Expo.dev (EAS)** — not local Gradle/SDK.
+- **Dev/testing:** Use `eas build --platform android --profile development` (dev client APK).
+- **Do not** run `expo run:android`, `./gradlew`, or local SDK rebuilds unless the user explicitly asks for a local native build.
+- App runs on a physical phone via the dev client; cloud build produces the installable APK.
+- Invoke EAS via `npx eas-cli` if `eas` is not on PATH.
