@@ -16,6 +16,7 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
 import type { WidgetProps } from '../types';
 import { HabitStreakBadge } from './HabitStreakBadge';
+import { NoteIconButton } from '../../notes/NoteIconButton';
 import { habitWidgetStyles as styles } from './habitWidgetStyles';
 
 export function HabitTimerWidget({
@@ -29,6 +30,8 @@ export function HabitTimerWidget({
   onTimerFinish,
   onResetToday,
   onOpenDetails,
+  onOpenNote,
+  hasTodayNote,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { themeMode, decorations: deco, isCartoon } = useAppTheme();
@@ -143,18 +146,21 @@ export function HabitTimerWidget({
             >
               {totalLabel}
             </Text>
-            {onResetToday ? (
+            {onResetToday && canResetToday ? (
               <IconButton
                 icon="backup-restore"
                 size={16}
                 onPress={() => void onResetToday()}
-                disabled={!canResetToday}
                 accessibilityLabel="Reset today"
-                style={[
-                  styles.resetButton,
-                  !canResetToday && styles.resetButtonHidden,
-                ]}
+                style={styles.resetButton}
                 hitSlop={8}
+              />
+            ) : null}
+            {onOpenNote ? (
+              <NoteIconButton
+                hasNote={Boolean(hasTodayNote)}
+                onPress={onOpenNote}
+                size={16}
               />
             ) : null}
           </View>

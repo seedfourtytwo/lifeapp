@@ -64,12 +64,8 @@ export const habitWidgetStyles = StyleSheet.create({
   },
   resetButton: {
     margin: 0,
-    marginRight: -8,
     width: 32,
     height: 32,
-  },
-  resetButtonHidden: {
-    opacity: 0,
   },
   timerButton: {
     flex: 1,

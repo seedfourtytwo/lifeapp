@@ -15,6 +15,8 @@ type Props = {
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  hasTodayNote?: boolean;
+  onOpenNote?: () => void;
 };
 
 export default function HabitRow({
@@ -26,6 +28,8 @@ export default function HabitRow({
   canMoveDown,
   onMoveUp,
   onMoveDown,
+  hasTodayNote,
+  onOpenNote,
 }: Props) {
   return (
     <View style={styles.reorderRow}>
@@ -39,7 +43,12 @@ export default function HabitRow({
         />
       ) : null}
       <View style={[styles.reorderCard, dimmed ? styles.dimmedCard : null]}>
-        <HabitCard habit={habit} config={config} />
+        <HabitCard
+          habit={habit}
+          config={config}
+          hasTodayNote={hasTodayNote}
+          onOpenNote={onOpenNote}
+        />
       </View>
     </View>
   );

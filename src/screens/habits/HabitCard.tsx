@@ -11,9 +11,11 @@ import { useEventStore } from '../../store/eventStore';
 type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
+  hasTodayNote?: boolean;
+  onOpenNote?: () => void;
 };
 
-export default function HabitCard({ habit, config }: Props) {
+export default function HabitCard({ habit, config, hasTodayNote, onOpenNote }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { handleTimerPress, handleFinishTimer, handleResetToday } = useHabitTimerControls();
   const {
@@ -48,6 +50,8 @@ export default function HabitCard({ habit, config }: Props) {
       streak={streak}
       failureStreak={failureStreak}
       activeTimerSession={activeTimerSession}
+      hasTodayNote={hasTodayNote}
+      onOpenNote={onOpenNote}
       onToggle={() =>
         toggleHabit(habit.id, config).catch((error) => {
           Alert.alert(

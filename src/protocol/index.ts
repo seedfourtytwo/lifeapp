@@ -16,6 +16,13 @@ export { DayNoteSchema, DAY_NOTE_BODY_MAX_LENGTH, validateBundleDayNoteLinks } f
 export type { DayNote } from './dayNote';
 
 export {
+  DailyJournalSchema,
+  DAILY_JOURNAL_BODY_MAX_LENGTH,
+  validateBundleDailyJournals,
+} from './dailyJournal';
+export type { DailyJournal } from './dailyJournal';
+
+export {
   AppSettingsSchema,
   APP_SETTING_KEYS,
   THEME_MODES,

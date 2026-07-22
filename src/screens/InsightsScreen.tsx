@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,13 +16,13 @@ import {
 } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
-import DayNoteEditorSheet from '../components/DayNoteEditorSheet';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
-import { withDbWriteLock } from '../db/writeLock';
+import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import {
   isHabitDayComplete,
   parseHabitConfig,
@@ -72,14 +71,29 @@ export default function InsightsScreen() {
   );
   const [showWeather, setShowWeather] = useState(false);
   const [notesByElement, setNotesByElement] = useState<Map<string, string>>(new Map());
+  const [journalBody, setJournalBody] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ elementId: string; date: string } | null>(
-    null,
-  );
-  const [noteSaving, setNoteSaving] = useState(false);
   const loadGenerationRef = useRef(0);
-  const noteSavingRef = useRef(false);
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+  const noteEditor = useNoteEditorSession({
+    onSaved: (date, body, target) => {
+      if (selectedDateRef.current !== date) return;
+      if (target.kind === 'journal') {
+        setJournalBody(body);
+        return;
+      }
+      setNotesByElement((prev) => {
+        const next = new Map(prev);
+        if (body == null || body.length === 0) next.delete(target.elementId);
+        else next.set(target.elementId, body);
+        return next;
+      });
+    },
+  });
+  const editingRef = useRef(false);
+  editingRef.current = noteEditor.session != null;
 
   const dates = useMemo(() => lastNDates(rangeDays), [rangeDays]);
 
@@ -141,31 +155,38 @@ export default function InsightsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (editingRef.current) return;
       void load();
     }, [load]),
   );
 
-  // Load notes when the selected day or series change
+  // Load journal + tracker notes for the selected day (skip while a sheet is open).
   useEffect(() => {
-    if (!selectedDate || selectedIds.length === 0) {
+    if (!selectedDate) {
+      setJournalBody(null);
       setNotesByElement(new Map());
       return;
     }
+    if (editingRef.current) return;
     let cancelled = false;
     void (async () => {
       try {
         const db = await getDatabase();
-        const notes = await dayNoteRepo.getNotesForElementsOnDate(
-          db,
-          selectedIds,
-          selectedDate,
-        );
+        const journal = await dailyJournalRepo.getJournal(db, selectedDate);
+        const notes =
+          selectedIds.length > 0
+            ? await dayNoteRepo.getNotesForElementsOnDate(db, selectedIds, selectedDate)
+            : new Map();
         if (cancelled) return;
+        setJournalBody(journal?.body ?? null);
         const map = new Map<string, string>();
         for (const [id, note] of notes) map.set(id, note.body);
         setNotesByElement(map);
       } catch {
-        if (!cancelled) setNotesByElement(new Map());
+        if (!cancelled) {
+          setJournalBody(null);
+          setNotesByElement(new Map());
+        }
       }
     })();
     return () => {
@@ -214,70 +235,56 @@ export default function InsightsScreen() {
     void playChartSelectHaptic();
   };
 
-  const editingElement = editing
-    ? elements.find((e) => e.id === editing.elementId) ?? null
-    : null;
-
-  const handleSaveNote = async (body: string) => {
-    if (!editing || noteSavingRef.current) return;
-    noteSavingRef.current = true;
-    setNoteSaving(true);
-    const trimmed = body.trim();
-    try {
-      await withDbWriteLock(async () => {
-        const db = await getDatabase();
-        await dayNoteRepo.upsertNote(db, {
-          elementId: editing.elementId,
-          date: editing.date,
-          body,
-        });
-      });
-      setNotesByElement((prev) => {
-        const next = new Map(prev);
-        if (trimmed.length === 0) next.delete(editing.elementId);
-        else next.set(editing.elementId, trimmed);
-        return next;
-      });
-      setEditing(null);
-    } catch (err) {
-      Alert.alert(
-        'Could not save note',
-        err instanceof Error ? err.message : 'Something went wrong. Try again.',
-      );
-    } finally {
-      noteSavingRef.current = false;
-      setNoteSaving(false);
-    }
+  const openTrackerNote = (element: ElementDefinition, date: string) => {
+    void noteEditor.open(
+      { kind: 'tracker', elementId: element.id, label: element.name },
+      date,
+    );
   };
+
+  const openJournal = (date: string) => {
+    void noteEditor.open({ kind: 'journal' }, date);
+  };
+
+  const editorHost = <NoteEditorHost session={noteEditor} />;
 
   if (loading && elements.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
+      <>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+        </View>
+        {editorHost}
+      </>
     );
   }
 
   if (error && elements.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text variant="bodyLarge" style={{ color: theme.colors.error }}>
-          {error}
-        </Text>
-      </View>
+      <>
+        <View style={styles.centered}>
+          <Text variant="bodyLarge" style={{ color: theme.colors.error }}>
+            {error}
+          </Text>
+        </View>
+        {editorHost}
+      </>
     );
   }
 
   if (elements.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text variant="bodyLarge" style={styles.emptyTitle}>
-          No trackers yet
-        </Text>
-        <Text variant="bodyMedium" style={styles.emptyBody}>
-          Add habits or counters, then compare them here.
-        </Text>
-      </View>
+      <>
+        <View style={styles.centered}>
+          <Text variant="bodyLarge" style={styles.emptyTitle}>
+            No trackers yet
+          </Text>
+          <Text variant="bodyMedium" style={styles.emptyBody}>
+            Add habits or counters, then compare them here.
+          </Text>
+        </View>
+        {editorHost}
+      </>
     );
   }
 
@@ -376,7 +383,7 @@ export default function InsightsScreen() {
           </Card.Content>
         </Card>
 
-        {selectedDate && selectedElements.length > 0 ? (
+        {selectedDate ? (
           <View
             style={[
               styles.dayPanel,
@@ -391,6 +398,40 @@ export default function InsightsScreen() {
             <Text variant="titleSmall" style={styles.dayTitle}>
               {formatFullDate(selectedDate)}
             </Text>
+
+            <Pressable
+              onPress={() => openJournal(selectedDate)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                journalBody
+                  ? `Edit journal for ${formatFullDate(selectedDate)}`
+                  : `Add journal for ${formatFullDate(selectedDate)}`
+              }
+              style={styles.journalRow}
+            >
+              <MaterialCommunityIcons
+                name={journalBody ? 'notebook' : 'notebook-outline'}
+                size={16}
+                color={journalBody ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                style={styles.noteIcon}
+              />
+              <View style={styles.journalText}>
+                <Text variant="labelMedium">Journal</Text>
+                <Text
+                  variant="bodySmall"
+                  numberOfLines={2}
+                  style={{ color: theme.colors.onSurfaceVariant }}
+                >
+                  {journalBody ? truncateNotePreview(journalBody, 120) : 'Add journal'}
+                </Text>
+              </View>
+            </Pressable>
+
+            {selectedElements.length === 0 ? (
+              <Text variant="bodySmall" style={styles.emptyChart}>
+                Tick trackers above to compare values and notes.
+              </Text>
+            ) : null}
 
             {selectedElements.map((el, i) => {
               const total = totalsByElement.get(el.id)?.get(selectedDate) ?? 0;
@@ -411,7 +452,7 @@ export default function InsightsScreen() {
                     </Text>
                   </View>
                   <Pressable
-                    onPress={() => setEditing({ elementId: el.id, date: selectedDate })}
+                    onPress={() => openTrackerNote(el, selectedDate)}
                     accessibilityRole="button"
                     style={styles.noteRow}
                   >
@@ -456,20 +497,7 @@ export default function InsightsScreen() {
         ) : null}
       </ScrollView>
 
-      <DayNoteEditorSheet
-        visible={editing != null && editingElement != null}
-        date={editing?.date ?? null}
-        trackerName={editingElement?.name ?? ''}
-        initialBody={
-          editing ? (notesByElement.get(editing.elementId) ?? '') : ''
-        }
-        saving={noteSaving}
-        onDismiss={() => {
-          if (noteSaving) return;
-          setEditing(null);
-        }}
-        onSave={(body) => void handleSaveNote(body)}
-      />
+      {editorHost}
     </>
   );
 }
@@ -533,6 +561,19 @@ const styles = StyleSheet.create({
   },
   dayTitle: {
     marginBottom: 10,
+  },
+  journalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#00000022',
+  },
+  journalText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   seriesDayBlock: {
     marginBottom: 12,

@@ -95,7 +95,7 @@ export default function SettingsScreen() {
         <List.Subheader>Data</List.Subheader>
         <List.Item
           title="Export backup"
-          description="Save habits, counters, calendar, day notes, history, and preferences as JSON"
+          description="Save habits, counters, calendar, notes, journals, history, and preferences as JSON"
           left={(props) => <List.Icon {...props} icon="export" />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : () => void handleExport()}
@@ -131,8 +131,9 @@ export default function SettingsScreen() {
 
       <View style={styles.note}>
         <Text variant="bodySmall" style={styles.noteText}>
-          Backups are JSON files you can move between installs. Import replaces all local data.
-          Clear data can keep habits and counters while wiping activity only.
+          Backups are JSON files you can move between installs. Import replaces all local data
+          (including tracker notes and journals). Clear data can keep habits and counters while
+          wiping activity only.
         </Text>
       </View>
 

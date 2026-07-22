@@ -26,6 +26,7 @@ import {
   getCounterProgressBarColors,
 } from '../../utils/color';
 import { getTargetProgressCardBackground } from '../../utils/progressCardStyle';
+import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
 
 export function CounterWidget({
@@ -35,6 +36,8 @@ export function CounterWidget({
   onLog,
   onSetDailyTotal,
   onOpenDetails,
+  onOpenNote,
+  hasTodayNote,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -147,6 +150,13 @@ export function CounterWidget({
                   accessibilityLabel="Edit today's total"
                   style={styles.editButton}
                   hitSlop={8}
+                />
+              ) : null}
+              {onOpenNote ? (
+                <NoteIconButton
+                  hasNote={Boolean(hasTodayNote)}
+                  onPress={onOpenNote}
+                  size={16}
                 />
               ) : null}
             </View>
@@ -304,7 +314,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     margin: 0,
-    marginRight: -4,
     width: 32,
     height: 32,
   },

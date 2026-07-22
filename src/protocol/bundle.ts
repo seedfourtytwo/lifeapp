@@ -4,6 +4,7 @@ import { AppSettingsSchema } from './appSettings';
 import { ElementDefinitionSchema } from './element';
 import { EventSchema } from './event';
 import { DayNoteSchema, validateBundleDayNoteLinks, type DayNote } from './dayNote';
+import { DailyJournalSchema, validateBundleDailyJournals, type DailyJournal } from './dailyJournal';
 import { validateBundleEventLinks } from './eventMeta';
 import { CalendarBackupSchema, type CalendarBackup } from '../calendar/types';
 import type { AppSettings } from './appSettings';
@@ -29,6 +30,8 @@ export const ProtocolBundleSchema = z.object({
   events: z.array(EventSchema),
   /** Per-tracker per-day notes — optional for older backups. */
   dayNotes: z.array(DayNoteSchema).optional(),
+  /** Whole-day journals — optional for older backups. */
+  dailyJournals: z.array(DailyJournalSchema).optional(),
   settings: AppSettingsSchema.optional(),
   /** Ambient calendar data — optional for older backups. */
   calendar: CalendarBackupSchema.optional(),
@@ -42,6 +45,9 @@ export function parseProtocolBundle(raw: unknown): ProtocolBundle {
   if (bundle.dayNotes) {
     validateBundleDayNoteLinks(bundle.elements, bundle.dayNotes);
   }
+  if (bundle.dailyJournals) {
+    validateBundleDailyJournals(bundle.dailyJournals);
+  }
   return bundle;
 }
 
@@ -50,6 +56,7 @@ export function createProtocolBundle(input: {
   dashboard: z.infer<typeof DashboardItemSchema>[];
   events: LifeEvent[];
   dayNotes?: DayNote[];
+  dailyJournals?: DailyJournal[];
   settings?: AppSettings;
   calendar?: CalendarBackup;
 }): ProtocolBundle {
@@ -60,12 +67,18 @@ export function createProtocolBundle(input: {
     dashboard: input.dashboard,
     events: input.events,
     ...(input.dayNotes && input.dayNotes.length > 0 ? { dayNotes: input.dayNotes } : {}),
+    ...(input.dailyJournals && input.dailyJournals.length > 0
+      ? { dailyJournals: input.dailyJournals }
+      : {}),
     ...(input.settings ? { settings: input.settings } : {}),
     ...(input.calendar ? { calendar: input.calendar } : {}),
   };
   validateBundleEventLinks(bundle.elements, bundle.events);
   if (bundle.dayNotes) {
     validateBundleDayNoteLinks(bundle.elements, bundle.dayNotes);
+  }
+  if (bundle.dailyJournals) {
+    validateBundleDailyJournals(bundle.dailyJournals);
   }
   return bundle;
 }

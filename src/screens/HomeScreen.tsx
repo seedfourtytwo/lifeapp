@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   AppState,
   type AppStateStatus,
@@ -10,15 +10,20 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeChromeBubble from '../components/HomeChromeBubble';
+import { getDatabase } from '../db/client';
+import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
+import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 import CountersScreen from './CountersScreen';
 import HabitsScreen from './HabitsScreen';
 
@@ -41,12 +46,43 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [tab, setTab] = useState<HomeTab>('habits');
+  const [hasTodayJournal, setHasTodayJournal] = useState(false);
+  const now = useAppCalendarNow();
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
+  const noteEditor = useNoteEditorSession({
+    onSaved: (date, body, target) => {
+      if (target.kind !== 'journal') return;
+      if (date !== currentAppCalendarDate(now)) return;
+      setHasTodayJournal(body != null && body.length > 0);
+    },
+  });
+
   useDayRolloverRefresh();
+
+  const reloadTodayJournal = useCallback(async () => {
+    const today = currentAppCalendarDate(now);
+    try {
+      const db = await getDatabase();
+      const journal = await dailyJournalRepo.getJournal(db, today);
+      setHasTodayJournal((journal?.body.length ?? 0) > 0);
+    } catch {
+      // Non-fatal — icon stays empty until next focus.
+    }
+  }, [now]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadTodayJournal();
+    }, [reloadTodayJournal]),
+  );
+
+  useEffect(() => {
+    void reloadTodayJournal();
+  }, [reloadTodayJournal]);
 
   useEffect(() => {
     if (!weatherWidgetEnabled) return;
@@ -57,12 +93,12 @@ export default function HomeScreen() {
     if (!weatherWidgetEnabled || weatherLocationMode !== 'device') return;
 
     const refreshGpsIfDue = () => {
-      const now = Date.now();
-      if (now - lastGpsRefreshAt < GPS_REFRESH_MIN_MS) {
+      const nowMs = Date.now();
+      if (nowMs - lastGpsRefreshAt < GPS_REFRESH_MIN_MS) {
         void refreshWeather({ force: false });
         return;
       }
-      lastGpsRefreshAt = now;
+      lastGpsRefreshAt = nowMs;
       void refreshWeather({ force: true, refreshGps: true });
     };
 
@@ -87,6 +123,10 @@ export default function HomeScreen() {
         ? (StatusBar.currentHeight ?? 28)
         : 0;
 
+  const openTodayJournal = () => {
+    void noteEditor.open({ kind: 'journal' }, currentAppCalendarDate(now));
+  };
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
@@ -100,7 +140,12 @@ export default function HomeScreen() {
           accessibilityElementsHidden={tab !== 'habits'}
           importantForAccessibility={tab === 'habits' ? 'auto' : 'no-hide-descendants'}
         >
-          <HabitsScreen />
+          <HabitsScreen
+            hasTodayJournal={hasTodayJournal}
+            onOpenJournal={openTodayJournal}
+            journalOpen={noteEditor.session != null}
+            onBeforeOpenTrackerNote={noteEditor.dismiss}
+          />
         </View>
         <View
           style={[
@@ -112,7 +157,12 @@ export default function HomeScreen() {
           accessibilityElementsHidden={tab !== 'counters'}
           importantForAccessibility={tab === 'counters' ? 'auto' : 'no-hide-descendants'}
         >
-          <CountersScreen />
+          <CountersScreen
+            hasTodayJournal={hasTodayJournal}
+            onOpenJournal={openTodayJournal}
+            journalOpen={noteEditor.session != null}
+            onBeforeOpenTrackerNote={noteEditor.dismiss}
+          />
         </View>
       </View>
 
@@ -160,9 +210,9 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate('SettingsMenu')}
           style={styles.dockItem}
           accessibilityRole="button"
-          accessibilityLabel="Settings"
+          accessibilityLabel="More"
         >
-          <MaterialCommunityIcons name="cog-outline" size={22} color={quietColor} />
+          <MaterialCommunityIcons name="dots-horizontal" size={22} color={quietColor} />
           <Text
             variant="labelSmall"
             style={{
@@ -171,10 +221,12 @@ export default function HomeScreen() {
               marginTop: 2,
             }}
           >
-            Settings
+            More
           </Text>
         </Pressable>
       </View>
+
+      <NoteEditorHost session={noteEditor} />
     </View>
   );
 }

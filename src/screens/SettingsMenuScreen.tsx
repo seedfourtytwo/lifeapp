@@ -12,18 +12,18 @@ export default function SettingsMenuScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <List.Section>
         <List.Item
-          title="Trackers"
-          description="Manage, archive, and restore habits and counters"
-          left={(props) => <List.Icon {...props} icon="shape-plus" />}
-          right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          onPress={() => navigation.navigate('Trackers')}
-        />
-        <List.Item
           title="Insights"
           description="Compare habits, counters, and weather"
           left={(props) => <List.Icon {...props} icon="chart-timeline-variant" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Insights')}
+        />
+        <List.Item
+          title="Journal"
+          description="Review daily journals and tracker notes by day"
+          left={(props) => <List.Icon {...props} icon="notebook-outline" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => navigation.navigate('Journal')}
         />
         <List.Item
           title="Calendar"
@@ -32,9 +32,19 @@ export default function SettingsMenuScreen() {
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Calendar')}
         />
+      </List.Section>
+
+      <List.Section title="Settings">
+        <List.Item
+          title="Trackers"
+          description="Manage, archive, and restore habits and counters"
+          left={(props) => <List.Icon {...props} icon="shape-plus" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => navigation.navigate('Trackers')}
+        />
         <List.Item
           title="App settings"
-          description="About and preferences"
+          description="Theme, backup, widgets, and preferences"
           left={(props) => <List.Icon {...props} icon="tune" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('AppSettings')}

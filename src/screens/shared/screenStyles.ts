@@ -39,6 +39,15 @@ export const homeTabScreenStyles = StyleSheet.create({
     minWidth: 0,
     opacity: 0.85,
   },
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 0,
+  },
+  metaIconButton: {
+    margin: 0,
+  },
   reorderRow: {
     flexDirection: 'row',
     alignItems: 'center',

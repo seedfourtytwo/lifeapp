@@ -1,24 +1,41 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShallow } from 'zustand/react/shallow';
 import { CounterConfigSchema, type CounterConfig } from '../protocol';
+import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import {
   refreshAllCounterData,
   useRefreshCounterTotalsOnFocus,
 } from '../hooks/useCounterDataRefresh';
+import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
 import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
+import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 import ReorderControls from './shared/ReorderControls';
 import EmptyTabState from './shared/EmptyTabState';
+import HomeTabMetaRow from './shared/HomeTabMetaRow';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
-export default function CountersScreen() {
+type Props = {
+  hasTodayJournal: boolean;
+  onOpenJournal: () => void;
+  journalOpen?: boolean;
+  onBeforeOpenTrackerNote?: () => void;
+};
+
+export default function CountersScreen({
+  hasTodayJournal,
+  onOpenJournal,
+  journalOpen = false,
+  onBeforeOpenTrackerNote,
+}: Props) {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dashboard = useElementStore((s) => s.dashboard);
@@ -36,6 +53,7 @@ export default function CountersScreen() {
   );
   const [refreshing, setRefreshing] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const now = useAppCalendarNow();
 
   useRefreshCounterTotalsOnFocus();
 
@@ -43,6 +61,20 @@ export default function CountersScreen() {
     () => getActiveCounters(elements, dashboard),
     [elements, dashboard],
   );
+
+  const counterIds = useMemo(() => counters.map((c) => c.id), [counters]);
+  const { notesToday, reloadNotesToday, applySaved } = useTodayTrackerNotes(counterIds, now);
+
+  const noteEditor = useNoteEditorSession({
+    onSaved: (date, body, target) => {
+      if (target.kind !== 'tracker') return;
+      applySaved(date, target.elementId, body);
+    },
+  });
+
+  useEffect(() => {
+    if (journalOpen) noteEditor.dismiss();
+  }, [journalOpen, noteEditor.dismiss]);
 
   const counterConfigs = useMemo(() => {
     const configs = new Map<string, CounterConfig>();
@@ -56,135 +88,184 @@ export default function CountersScreen() {
     setRefreshing(true);
     try {
       await refreshAllCounterData();
+      await reloadNotesToday();
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [reloadNotesToday]);
+
+  const editorHost = <NoteEditorHost session={noteEditor} />;
+  const journalMeta = (
+    <HomeTabMetaRow
+      hasTodayJournal={hasTodayJournal}
+      onOpenJournal={onOpenJournal}
+    />
+  );
 
   if (isLoading && elements.length === 0 && !error) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
+      <>
+        <View style={styles.loadingPane}>
+          {journalMeta}
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" />
+          </View>
+        </View>
+        {editorHost}
+      </>
     );
   }
 
   if (counters.length > 0 && !counterTotalsReady && !error) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
+      <>
+        <View style={styles.loadingPane}>
+          {journalMeta}
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" />
+          </View>
+        </View>
+        {editorHost}
+      </>
     );
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => void onRefresh()}
-          enabled={!reordering}
-        />
-      }
-    >
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
-          <Button mode="outlined" onPress={() => void onRefresh()}>
-            Retry
-          </Button>
-        </View>
-      ) : null}
-
-      {counters.length > 0 ? (
-        <View style={styles.metaRow}>
-          <Text variant="bodyMedium" style={styles.metaStatus} numberOfLines={1}>
-            {reordering
-              ? 'Move with arrows'
-              : 'Today · resets at midnight'}
-          </Text>
-          {reordering ? (
-            <Button compact mode="text" onPress={() => setReordering(false)}>
-              Done
+    <>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            enabled={!reordering}
+          />
+        }
+      >
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
+            <Button mode="outlined" onPress={() => void onRefresh()}>
+              Retry
             </Button>
-          ) : (
-            <Button
-              mode="text"
-              compact
-              icon="sort"
-              disabled={counters.length < 2}
-              onPress={() => setReordering(true)}
-            >
-              Sort
-            </Button>
-          )}
-        </View>
-      ) : null}
+          </View>
+        ) : null}
 
-      {counters.length === 0 ? (
-        <EmptyTabState
-          message={
-            elements.some((e) => e.kind === 'counter')
-              ? 'No active counters. Restore something from Archive in Trackers.'
-              : 'No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.'
+        <HomeTabMetaRow
+          hasTodayJournal={hasTodayJournal}
+          onOpenJournal={onOpenJournal}
+          leading={
+            counters.length > 0 ? (
+              <Text variant="bodyMedium" numberOfLines={1}>
+                {reordering
+                  ? 'Move with arrows'
+                  : 'Today · resets at midnight'}
+              </Text>
+            ) : null
+          }
+          trailing={
+            counters.length > 0 ? (
+              reordering ? (
+                <Button compact mode="text" onPress={() => setReordering(false)}>
+                  Done
+                </Button>
+              ) : (
+                <Button
+                  mode="text"
+                  compact
+                  icon="sort"
+                  disabled={counters.length < 2}
+                  onPress={() => setReordering(true)}
+                >
+                  Sort
+                </Button>
+              )
+            ) : null
           }
         />
-      ) : (
-        counters.map((element, index) => {
-          const handler = getKindHandler(element.kind);
-          if (!handler) return null;
 
-          const Widget = handler.DashboardWidget;
-          const config = counterConfigs.get(element.id);
-          if (!config) return null;
+        {counters.length === 0 ? (
+          <EmptyTabState
+            message={
+              elements.some((e) => e.kind === 'counter')
+                ? 'No active counters. Restore something from Archive in Trackers.'
+                : 'No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.'
+            }
+          />
+        ) : (
+          counters.map((element, index) => {
+            const handler = getKindHandler(element.kind);
+            if (!handler) return null;
 
-          return (
-            <View key={element.id} style={styles.reorderRow}>
-              {reordering ? (
-                <ReorderControls
-                  canMoveUp={index > 0}
-                  canMoveDown={index < counters.length - 1}
-                  onMoveUp={() => void reorderCounter(element.id, 'up')}
-                  onMoveDown={() => void reorderCounter(element.id, 'down')}
-                  accessibilityNoun="counter"
-                />
-              ) : null}
-              <View style={styles.reorderCard}>
-                <Widget
-                  element={element}
-                  config={config}
-                  todayTotal={dailyTotals[element.id] ?? 0}
-                  onLog={(value, meta) =>
-                    logEvent(element.id, value, meta).catch((err) => {
-                      Alert.alert(
-                        'Could not log',
-                        err instanceof Error ? err.message : 'Something went wrong',
-                      );
-                    })
-                  }
-                  onSetDailyTotal={async (total) => {
-                    try {
-                      await setDailyTotal(element.id, total);
-                    } catch (err) {
-                      Alert.alert(
-                        'Could not update total',
-                        err instanceof Error ? err.message : 'Something went wrong',
-                      );
-                      throw err;
+            const Widget = handler.DashboardWidget;
+            const config = counterConfigs.get(element.id);
+            if (!config) return null;
+
+            return (
+              <View key={element.id} style={styles.reorderRow}>
+                {reordering ? (
+                  <ReorderControls
+                    canMoveUp={index > 0}
+                    canMoveDown={index < counters.length - 1}
+                    onMoveUp={() => void reorderCounter(element.id, 'up')}
+                    onMoveDown={() => void reorderCounter(element.id, 'down')}
+                    accessibilityNoun="counter"
+                  />
+                ) : null}
+                <View style={styles.reorderCard}>
+                  <Widget
+                    element={element}
+                    config={config}
+                    todayTotal={dailyTotals[element.id] ?? 0}
+                    onLog={(value, meta) =>
+                      logEvent(element.id, value, meta).catch((err) => {
+                        Alert.alert(
+                          'Could not log',
+                          err instanceof Error ? err.message : 'Something went wrong',
+                        );
+                      })
                     }
-                  }}
-                  onOpenDetails={() =>
-                    navigation.navigate('TrackerHistory', { elementId: element.id })
-                  }
-                />
+                    onSetDailyTotal={async (total) => {
+                      try {
+                        await setDailyTotal(element.id, total);
+                      } catch (err) {
+                        Alert.alert(
+                          'Could not update total',
+                          err instanceof Error ? err.message : 'Something went wrong',
+                        );
+                        throw err;
+                      }
+                    }}
+                    onOpenDetails={() =>
+                      navigation.navigate('TrackerHistory', { elementId: element.id })
+                    }
+                    hasTodayNote={notesToday.has(element.id)}
+                    onOpenNote={() => {
+                      onBeforeOpenTrackerNote?.();
+                      void noteEditor.open(
+                        { kind: 'tracker', elementId: element.id, label: element.name },
+                        currentAppCalendarDate(now),
+                      );
+                    }}
+                  />
+                </View>
               </View>
-            </View>
-          );
-        })
-      )}
-    </ScrollView>
+            );
+          })
+        )}
+      </ScrollView>
+      {editorHost}
+    </>
   );
 }
 
-const styles = homeTabScreenStyles;
+const styles = {
+  ...homeTabScreenStyles,
+  ...StyleSheet.create({
+    loadingPane: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+  }),
+};

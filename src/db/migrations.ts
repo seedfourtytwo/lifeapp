@@ -10,12 +10,13 @@ import * as settingsRepo from './repositories/settingsRepository';
 import { SCHEMA_SQL } from './schema';
 import {
   ensureCalendarSchema,
+  ensureDailyJournalsSchema,
   ensureDayNotesSchema,
   ensureElementsSchema,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 13;
+const CURRENT_SCHEMA_VERSION = 14;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -23,6 +24,7 @@ const CURRENT_SCHEMA_VERSION = 13;
 /** v11: per-occurrence calendar clears (silence badge/alerts for one instance only). */
 /** v12: destructive clean slate — drop unused columns; wipe local data. */
 /** v13: per-tracker per-day notes (day_notes). */
+/** v14: daily journals (daily_journals) — one general note per calendar day. */
 
 interface HabitElementRow {
   id: string;
@@ -169,6 +171,7 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
     // User opted out of preserving on-device / backup continuity.
     await db.execAsync(`
       PRAGMA foreign_keys = OFF;
+      DROP TABLE IF EXISTS daily_journals;
       DROP TABLE IF EXISTS day_notes;
       DROP TABLE IF EXISTS events;
       DROP TABLE IF EXISTS dashboard_items;
@@ -186,6 +189,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   13: async (db) => {
     await ensureDayNotesSchema(db);
   },
+  14: async (db) => {
+    await ensureDailyJournalsSchema(db);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -201,6 +207,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await ensureWeatherDailySchema(db);
     await ensureCalendarSchema(db);
     await ensureDayNotesSchema(db);
+    await ensureDailyJournalsSchema(db);
     return;
   }
 
@@ -219,4 +226,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await ensureWeatherDailySchema(db);
   await ensureCalendarSchema(db);
   await ensureDayNotesSchema(db);
+  await ensureDailyJournalsSchema(db);
 }

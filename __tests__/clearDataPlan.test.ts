@@ -57,6 +57,12 @@ describe('clearDataPlan', () => {
     expect(lines.some((line) => line.includes('2026-07-14'))).toBe(true);
   });
 
+  it('describes activity as including notes and journals', () => {
+    const lines = describeClearPlan(DEFAULT_CLEAR_OPTIONS, today);
+    expect(lines.join(' ')).toMatch(/day notes/i);
+    expect(lines.join(' ')).toMatch(/journals/i);
+  });
+
   it('describes definitions as wiping activity too', () => {
     const lines = describeClearPlan({
       ...DEFAULT_CLEAR_OPTIONS,

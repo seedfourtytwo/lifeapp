@@ -8,6 +8,8 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   onLog?: (value: number, meta?: Record<string, unknown>) => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
   onOpenDetails?: () => void;
+  onOpenNote?: () => void;
+  hasTodayNote?: boolean;
   isDone?: boolean;
   onToggle?: () => Promise<void>;
   streak?: number;

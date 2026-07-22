@@ -102,3 +102,18 @@ export async function ensureDayNotesSchema(db: SQLiteDatabase): Promise<void> {
     'DELETE FROM day_notes WHERE element_id NOT IN (SELECT id FROM elements)',
   );
 }
+
+/** Ensure daily_journals exists — repairs hot-reload / skipped migration cases. */
+export async function ensureDailyJournalsSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS daily_journals (
+      id TEXT PRIMARY KEY NOT NULL,
+      date TEXT NOT NULL UNIQUE,
+      body TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      protocol_version INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
+  `);
+}

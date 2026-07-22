@@ -1,17 +1,16 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Card, Chip, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
-import DayNoteEditorSheet from '../components/DayNoteEditorSheet';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
-import { withDbWriteLock } from '../db/writeLock';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import type { RootStackParamList } from '../navigation/types';
 import {
   CounterConfigSchema,
@@ -62,12 +61,20 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notesByDate, setNotesByDate] = useState<Map<string, string>>(new Map());
-  const [editingDate, setEditingDate] = useState<string | null>(null);
-  const [noteSaving, setNoteSaving] = useState(false);
   const loadGenerationRef = useRef(0);
-  const noteSavingRef = useRef(false);
+  const noteEditor = useNoteEditorSession({
+    onSaved: (date, body) => {
+      setNotesByDate((prev) => {
+        const next = new Map(prev);
+        if (body == null || body.length === 0) next.delete(date);
+        else next.set(date, body);
+        return next;
+      });
+      void load({ silent: true });
+    },
+  });
   const editingDateRef = useRef<string | null>(null);
-  editingDateRef.current = editingDate;
+  editingDateRef.current = noteEditor.session?.date ?? null;
 
   const load = useCallback(async (opts?: { silent?: boolean }): Promise<boolean> => {
     const generation = ++loadGenerationRef.current;
@@ -162,39 +169,12 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     }
   }, [element?.name, navigation]);
 
-  const handleSaveNote = async (body: string) => {
-    const date = editingDate;
-    if (!date || noteSavingRef.current) return;
-    noteSavingRef.current = true;
-    setNoteSaving(true);
-    const trimmed = body.trim();
-    try {
-      await withDbWriteLock(async () => {
-        const db = await getDatabase();
-        await dayNoteRepo.upsertNote(db, {
-          elementId,
-          date,
-          body,
-        });
-      });
-
-      setNotesByDate((prev) => {
-        const next = new Map(prev);
-        if (trimmed.length === 0) next.delete(date);
-        else next.set(date, trimmed);
-        return next;
-      });
-      setEditingDate(null);
-      void load({ silent: true });
-    } catch (err) {
-      Alert.alert(
-        'Could not save note',
-        err instanceof Error ? err.message : 'Something went wrong. Try again.',
-      );
-    } finally {
-      noteSavingRef.current = false;
-      setNoteSaving(false);
-    }
+  const openNoteForDate = (date: string) => {
+    if (!element) return;
+    void noteEditor.open(
+      { kind: 'tracker', elementId, label: element.name },
+      date,
+    );
   };
 
   const handleSelectDay = (date: string) => {
@@ -247,22 +227,28 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
+      <>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+        </View>
+        <NoteEditorHost session={noteEditor} />
+      </>
     );
   }
 
   if (error && !element) {
     return (
-      <View style={styles.centered}>
-        <Text variant="bodyLarge" style={{ color: theme.colors.error, marginBottom: 12 }}>
-          {error}
-        </Text>
-        <Button mode="outlined" onPress={() => void load()}>
-          Retry
-        </Button>
-      </View>
+      <>
+        <View style={styles.centered}>
+          <Text variant="bodyLarge" style={{ color: theme.colors.error, marginBottom: 12 }}>
+            {error}
+          </Text>
+          <Button mode="outlined" onPress={() => void load()}>
+            Retry
+          </Button>
+        </View>
+        <NoteEditorHost session={noteEditor} />
+      </>
     );
   }
 
@@ -364,7 +350,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
         {selected ? (
           <Pressable
-            onPress={() => setEditingDate(selected.date)}
+            onPress={() => openNoteForDate(selected.date)}
             accessibilityRole="button"
             accessibilityLabel={
               selectedNote
@@ -411,18 +397,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         )}
       </ScrollView>
 
-      <DayNoteEditorSheet
-        visible={editingDate != null}
-        date={editingDate}
-        trackerName={element.name}
-        initialBody={editingDate ? (notesByDate.get(editingDate) ?? '') : ''}
-        saving={noteSaving}
-        onDismiss={() => {
-          if (noteSaving) return;
-          setEditingDate(null);
-        }}
-        onSave={(body) => void handleSaveNote(body)}
-      />
+      <NoteEditorHost session={noteEditor} />
     </>
   );
 }

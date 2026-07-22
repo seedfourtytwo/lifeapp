@@ -9,6 +9,7 @@ import TrackersScreen from '../screens/TrackersScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+import JournalScreen from '../screens/JournalScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 
@@ -46,7 +47,7 @@ export default function AppNavigator() {
       <Stack.Screen
         name="SettingsMenu"
         component={SettingsMenuScreen}
-        options={{ title: 'Settings' }}
+        options={{ title: 'More' }}
       />
       <Stack.Screen
         name="Trackers"
@@ -56,7 +57,7 @@ export default function AppNavigator() {
       <Stack.Screen
         name="AppSettings"
         component={SettingsScreen}
-        options={{ title: 'App settings' }}
+        options={{ title: 'Settings' }}
       />
       <Stack.Screen
         name="TrackerHistory"
@@ -67,6 +68,11 @@ export default function AppNavigator() {
         name="Insights"
         component={InsightsScreen}
         options={{ title: 'Insights' }}
+      />
+      <Stack.Screen
+        name="Journal"
+        component={JournalScreen}
+        options={{ title: 'Journal' }}
       />
       <Stack.Screen
         name="Calendar"

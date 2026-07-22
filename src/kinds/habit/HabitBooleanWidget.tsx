@@ -5,6 +5,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { formatHabitDescription, type HabitConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
 import { HabitStreakBadge } from './HabitStreakBadge';
+import { NoteIconButton } from '../../notes/NoteIconButton';
 import { habitWidgetStyles as styles } from './habitWidgetStyles';
 
 export function HabitBooleanWidget({
@@ -13,6 +14,8 @@ export function HabitBooleanWidget({
   isDone,
   onToggle,
   onOpenDetails,
+  onOpenNote,
+  hasTodayNote,
   streak,
   failureStreak,
 }: WidgetProps<HabitConfig>) {
@@ -67,6 +70,13 @@ export function HabitBooleanWidget({
               </Text>
             ) : null}
           </Pressable>
+          {onOpenNote ? (
+            <NoteIconButton
+              hasNote={Boolean(hasTodayNote)}
+              onPress={onOpenNote}
+              size={16}
+            />
+          ) : null}
         </View>
       </Card.Content>
     </Card>

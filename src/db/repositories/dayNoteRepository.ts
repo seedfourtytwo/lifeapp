@@ -92,6 +92,33 @@ export async function getNotesForElementsOnDate(
   return byElement;
 }
 
+/**
+ * Past dates that have tracker notes but no daily journal.
+ * Scoped to `elementIds` (e.g. active trackers only) and excludes `excludeDate` (usually today).
+ */
+export async function getDatesWithTrackerNotesOnly(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  excludeDate: string,
+): Promise<string[]> {
+  if (elementIds.length === 0) return [];
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ date: string }>(
+    `SELECT DISTINCT dn.date AS date
+     FROM day_notes dn
+     WHERE dn.element_id IN (${placeholders})
+       AND dn.date != ?
+       AND NOT EXISTS (
+         SELECT 1 FROM daily_journals dj WHERE dj.date = dn.date
+       )
+     ORDER BY dn.date DESC`,
+    ...elementIds,
+    excludeDate,
+  );
+  return rows.map((row) => row.date);
+}
+
 export async function getAllNotes(db: SQLiteDatabase): Promise<DayNote[]> {
   const rows = await db.getAllAsync<DayNoteRow>(
     'SELECT * FROM day_notes ORDER BY date ASC, updated_at ASC',

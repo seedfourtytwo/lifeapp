@@ -38,6 +38,13 @@ jest.mock('../src/db/repositories/dayNoteRepository', () => ({
   deleteNotesBeforeDate: jest.fn(async () => undefined),
 }));
 
+jest.mock('../src/db/repositories/dailyJournalRepository', () => ({
+  getAllJournals: jest.fn(async () => []),
+  insertJournal: jest.fn(async () => undefined),
+  deleteAllJournals: jest.fn(async () => undefined),
+  deleteJournalsBeforeDate: jest.fn(async () => undefined),
+}));
+
 jest.mock('../src/db/repositories/settingsRepository', () => ({
   getSetting: jest.fn(),
   setSetting: jest.fn(),
@@ -209,9 +216,35 @@ describe('protocol backup settings', () => {
     expect(dayNoteRepo.insertNote).toHaveBeenCalledWith(db, note);
   });
 
+  it('imports daily journals with protocol data', async () => {
+    const dailyJournalRepo = jest.requireMock(
+      '../src/db/repositories/dailyJournalRepository',
+    ) as {
+      insertJournal: jest.Mock;
+    };
+    const journal = {
+      id: '550e8400-e29b-41d4-a716-446655440040',
+      date: '2025-01-02',
+      body: 'Quiet morning',
+      updatedAt: '2025-01-02T21:00:00.000Z',
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const bundle = createProtocolBundle({
+      elements: [],
+      dashboard: [],
+      events: [],
+      dailyJournals: [journal],
+    });
+
+    await importProtocolBundle(bundle);
+
+    expect(dailyJournalRepo.insertJournal).toHaveBeenCalledWith(db, journal);
+  });
+
   it('clears protocol tables, calendar, and app settings', async () => {
     await clearAllAppData();
 
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM daily_journals');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM day_notes');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM events');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM dashboard_items');
