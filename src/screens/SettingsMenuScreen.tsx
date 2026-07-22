@@ -3,48 +3,50 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { List } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function SettingsMenuScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation('settings');
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <List.Section>
         <List.Item
-          title="Insights"
-          description="Compare habits, counters, and weather"
+          title={t('menu.insightsTitle')}
+          description={t('menu.insightsDescription')}
           left={(props) => <List.Icon {...props} icon="chart-timeline-variant" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Insights')}
         />
         <List.Item
-          title="Journal"
-          description="Review daily journals and tracker notes by day"
+          title={t('menu.journalTitle')}
+          description={t('menu.journalDescription')}
           left={(props) => <List.Icon {...props} icon="notebook-outline" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Journal')}
         />
         <List.Item
-          title="Calendar"
-          description="Birthdays, appointments, and reminders"
+          title={t('menu.calendarTitle')}
+          description={t('menu.calendarDescription')}
           left={(props) => <List.Icon {...props} icon="calendar-month" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Calendar')}
         />
       </List.Section>
 
-      <List.Section title="Settings">
+      <List.Section title={t('menu.settingsSectionTitle')}>
         <List.Item
-          title="Trackers"
-          description="Manage, archive, and restore habits and counters"
+          title={t('menu.trackersTitle')}
+          description={t('menu.trackersDescription')}
           left={(props) => <List.Icon {...props} icon="shape-plus" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('Trackers')}
         />
         <List.Item
-          title="App settings"
-          description="Theme, backup, widgets, and preferences"
+          title={t('menu.appSettingsTitle')}
+          description={t('menu.appSettingsDescription')}
           left={(props) => <List.Icon {...props} icon="tune" />}
           right={(props) => <List.Icon {...props} icon="chevron-right" />}
           onPress={() => navigation.navigate('AppSettings')}

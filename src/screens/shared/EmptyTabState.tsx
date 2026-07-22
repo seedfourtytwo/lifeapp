@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../navigation/types';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 /** Empty Habits/Counters tab with a single CTA into Trackers. */
 export default function EmptyTabState({ message }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation('home');
 
   return (
     <View style={styles.wrap}>
@@ -19,7 +21,7 @@ export default function EmptyTabState({ message }: Props) {
         {message}
       </Text>
       <Button mode="contained-tonal" onPress={() => navigation.navigate('Trackers')}>
-        Open Trackers
+        {t('emptyTabState.openTrackers')}
       </Button>
     </View>
   );

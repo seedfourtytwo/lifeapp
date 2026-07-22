@@ -4,6 +4,7 @@ import {
   stopHabitSound,
   updateHabitTimerLockScreen,
 } from '../audio/habitTimerSound';
+import { i18n } from '../i18n';
 import type { HabitConfig } from '../protocol';
 import { useEventStore } from '../store/eventStore';
 import {
@@ -21,7 +22,7 @@ export function habitNameFor(elementId: string): string {
   const focused = resolveFocusedHabit();
   if (focused?.element.id === elementId) return focused.element.name;
   const queue = getLockScreenHabitQueue();
-  return queue.find((el) => el.id === elementId)?.name ?? 'Habit';
+  return queue.find((el) => el.id === elementId)?.name ?? i18n.t('trackers:lockScreen.fallbackHabitName');
 }
 
 export function positionLabelFor(elementId: string): string | undefined {

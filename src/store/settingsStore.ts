@@ -2,9 +2,12 @@ import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import { withDbWriteLock } from '../db/writeLock';
 import * as settingsRepo from '../db/repositories/settingsRepository';
+import { i18n } from '../i18n';
 import {
   APP_SETTING_KEYS,
+  isAppLanguage,
   isWeatherLocationMode,
+  type AppLanguage,
   type WeatherLocationMode,
 } from '../protocol/appSettings';
 import { isThemeMode, type ThemeMode } from '../theme/types';
@@ -24,7 +27,7 @@ async function withGuardedSettingsWrite<T>(fn: () => Promise<T>): Promise<T> {
   const epochAtStart = getEventDataEpoch();
   return withDbWriteLock(async () => {
     if (epochAtStart !== getEventDataEpoch()) {
-      throw new Error('Data was replaced; try again');
+      throw new Error(i18n.t('common:errors.dataReplacedTryAgain'));
     }
     const result = await fn();
     invalidateSettingsLoads();
@@ -50,6 +53,7 @@ function parseNorm(value: string | null, fallback: number): number {
 
 interface SettingsState {
   themeMode: ThemeMode;
+  appLanguage: AppLanguage;
   habitRemindersEnabled: boolean;
   weatherWidgetEnabled: boolean;
   calendarWidgetEnabled: boolean;
@@ -62,6 +66,7 @@ interface SettingsState {
   isLoaded: boolean;
   load: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
+  setAppLanguage: (language: AppLanguage) => Promise<void>;
   setHabitRemindersEnabled: (enabled: boolean) => Promise<void>;
   setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
   setCalendarWidgetEnabled: (enabled: boolean) => Promise<void>;
@@ -76,6 +81,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
+  appLanguage: 'system',
   habitRemindersEnabled: false,
   weatherWidgetEnabled: false,
   calendarWidgetEnabled: false,
@@ -93,6 +99,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const db = await getDatabase();
       // Sequential reads — concurrent prepareAsync on the same DB can release statements early.
       const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
+      const storedLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
       const storedReminders = await settingsRepo.getSetting(
         db,
         APP_SETTING_KEYS.habitRemindersEnabled,
@@ -126,6 +133,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         themeMode = legacyDark === 'true' ? 'dark' : 'light';
       }
 
+      const appLanguage: AppLanguage =
+        storedLanguage && isAppLanguage(storedLanguage) ? storedLanguage : 'system';
+
       const weatherLocationMode =
         storedLocationMode && isWeatherLocationMode(storedLocationMode)
           ? storedLocationMode
@@ -135,6 +145,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
       set({
         themeMode,
+        appLanguage,
         habitRemindersEnabled: parseBool(storedReminders),
         weatherWidgetEnabled: parseBool(storedWeatherEnabled),
         calendarWidgetEnabled: parseBool(storedCalendarEnabled),
@@ -158,6 +169,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const db = await getDatabase();
       await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, mode);
       set({ themeMode: mode });
+    });
+  },
+
+  setAppLanguage: async (language) => {
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(db, APP_SETTING_KEYS.appLanguage, language);
+      set({ appLanguage: language });
     });
   },
 

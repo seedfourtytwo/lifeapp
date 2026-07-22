@@ -15,6 +15,7 @@ export default function NoteEditorHost({ session }: Props) {
       date={sheet.date}
       sessionKey={sheet.sessionKey}
       heading={sheet.heading}
+      kind={sheet.kind}
       trackerName={sheet.trackerName}
       initialBody={sheet.initialBody}
       autoStartDictation={sheet.autoStartDictation}

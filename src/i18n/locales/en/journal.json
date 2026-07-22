@@ -1,0 +1,37 @@
+{
+  "screen": {
+    "today": "Today",
+    "journalLabel": "Journal",
+    "tapToWriteJournal": "Tap to write journal",
+    "trackerNotesLabel": "Tracker notes",
+    "noTrackerNotes": "No tracker notes this day.",
+    "daysLabel": "Days",
+    "noJournalYet": "No journal yet",
+    "trackerNotesOnly": "Tracker notes only",
+    "emptyHint": "Write from Home or here — pick a day above to review notes.",
+    "retry": "Retry",
+    "viewDayA11y": "View {{title}}",
+    "editJournalForA11y": "Edit journal for {{date}}",
+    "addJournalForA11y": "Add journal for {{date}}",
+    "editNoteForA11y": "Edit note for {{name}}",
+    "couldNotLoadJournalsFallback": "Could not load journals"
+  },
+  "editorSheet": {
+    "noteHeading": "Note",
+    "journalHeading": "Journal",
+    "previewPlaceholderNote": "Tap the mic to dictate a note",
+    "previewPlaceholderJournal": "Tap the mic to dictate today's journal",
+    "clear": "Clear",
+    "editText": "Edit text",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "noteIconButton": {
+    "dictateNote": "Dictate note",
+    "dictateNewNote": "Dictate new note",
+    "dictateJournal": "Dictate journal",
+    "dictateNewJournal": "Dictate new journal",
+    "longPressHint": "Long press to open and edit without dictating"
+  }
+}

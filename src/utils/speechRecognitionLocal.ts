@@ -1,13 +1,14 @@
 import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import { getSpeechLocaleCandidates } from '../i18n';
 import {
   androidPackageUsesAsiOfflineApis,
   pickAndroidRecognitionPackage,
 } from './speechRecognitionAndroid';
 import { SPEECH_MSG } from './speechRecognitionErrors';
 import {
-  localeIsInstalledForOffline,
   normalizeSpeechLocaleTag,
+  pickInstalledSpeechLocale,
 } from './speechRecognitionLocale';
 
 export type LocalDictationPrep =
@@ -44,12 +45,12 @@ export function clearAndroidRecognitionPackageCache(): void {
 
 /** Google TTS / sandboxed Play — voice packs live in that app’s settings. */
 function prepGoogleTtsDictation(
-  normalized: string,
+  locale: string,
   androidPackage: string,
 ): LocalDictationPrep {
   return {
     ready: true,
-    locale: normalized,
+    locale,
     androidPackage,
     // ASI offline-download APIs do not apply; may use local packs or network.
     requiresOnDeviceRecognition: false,
@@ -57,31 +58,34 @@ function prepGoogleTtsDictation(
 }
 
 async function prepAsiOfflineDictation(
-  normalized: string,
+  candidates: readonly string[],
   androidPackage: string,
 ): Promise<LocalDictationPrep> {
+  const downloadLocale = normalizeSpeechLocaleTag(candidates[0] ?? 'en-US');
+
   try {
     const { installedLocales } = await ExpoSpeechRecognitionModule.getSupportedLocales({
       androidRecognitionServicePackage: androidPackage,
     });
 
-    if (localeIsInstalledForOffline(normalized, installedLocales)) {
+    const installed = pickInstalledSpeechLocale(candidates, installedLocales);
+    if (installed) {
       return {
         ready: true,
-        locale: normalized,
+        locale: installed,
         androidPackage,
         requiresOnDeviceRecognition: true,
       };
     }
 
     const download = await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
-      locale: normalized,
+      locale: downloadLocale,
     });
 
     if (download.status === 'download_success') {
       return {
         ready: true,
-        locale: normalized,
+        locale: downloadLocale,
         androidPackage,
         requiresOnDeviceRecognition: true,
       };
@@ -96,7 +100,7 @@ async function prepAsiOfflineDictation(
     // ASI prep can throw on non-stock ROMs — still attempt on-device start.
     return {
       ready: true,
-      locale: normalized,
+      locale: downloadLocale,
       androidPackage,
       requiresOnDeviceRecognition: true,
     };
@@ -104,13 +108,14 @@ async function prepAsiOfflineDictation(
 }
 
 async function prepareAndroidDictation(
-  normalized: string,
+  candidates: readonly string[],
   androidPackage: string,
 ): Promise<LocalDictationPrep> {
+  const preferred = normalizeSpeechLocaleTag(candidates[0] ?? 'en-US');
   if (!androidPackageUsesAsiOfflineApis(androidPackage)) {
-    return prepGoogleTtsDictation(normalized, androidPackage);
+    return prepGoogleTtsDictation(preferred, androidPackage);
   }
-  return prepAsiOfflineDictation(normalized, androidPackage);
+  return prepAsiOfflineDictation(candidates, androidPackage);
 }
 
 /**
@@ -118,15 +123,22 @@ async function prepareAndroidDictation(
  * Prefers Android System Intelligence; falls back to Google TTS (GrapheneOS).
  */
 export async function ensureLocalDictationReady(
-  locale: string,
+  locale?: string,
 ): Promise<LocalDictationPrep> {
-  const normalized = normalizeSpeechLocaleTag(locale);
+  const candidates = locale
+    ? [normalizeSpeechLocaleTag(locale), ...getSpeechLocaleCandidates()]
+    : getSpeechLocaleCandidates();
+  const uniqueCandidates = [...new Set(candidates.map((tag) => normalizeSpeechLocaleTag(tag)))];
 
   if (Platform.OS === 'ios') {
     if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
       return { ready: false, message: SPEECH_MSG.iosOnDevice };
     }
-    return { ready: true, locale: normalized, requiresOnDeviceRecognition: true };
+    return {
+      ready: true,
+      locale: uniqueCandidates[0] ?? 'en-US',
+      requiresOnDeviceRecognition: true,
+    };
   }
 
   if (Platform.OS !== 'android') {
@@ -135,7 +147,7 @@ export async function ensureLocalDictationReady(
 
   const androidPackage = resolveAndroidRecognitionPackage();
   if (androidPackage) {
-    return prepareAndroidDictation(normalized, androidPackage);
+    return prepareAndroidDictation(uniqueCandidates, androidPackage);
   }
 
   return { ready: false, message: SPEECH_MSG.installTts };

@@ -14,6 +14,7 @@ import { isElementArchived } from '../utils/dashboardElements';
 export function useHabitReminderSync(): void {
   const elements = useElementStore((s) => s.elements);
   const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
+  const appLanguage = useSettingsStore((s) => s.appLanguage);
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
@@ -33,7 +34,7 @@ export function useHabitReminderSync(): void {
     void syncHabitReminders(elements, true).catch((error) => {
       console.warn('Habit reminder sync skipped', error);
     });
-  }, [elements, habitRemindersEnabled, settingsLoaded]);
+  }, [elements, habitRemindersEnabled, appLanguage, settingsLoaded]);
 
   useEffect(() => {
     if (!settingsLoaded || !isNotificationsNativeAvailable() || !dayStateReady) {
@@ -58,5 +59,12 @@ export function useHabitReminderSync(): void {
     void scheduleEndOfDayReminder(true, undoneCount).catch((error) => {
       console.warn('End-of-day reminder sync skipped', error);
     });
-  }, [dayStateReady, elements, habitDoneToday, habitRemindersEnabled, settingsLoaded]);
+  }, [
+    dayStateReady,
+    elements,
+    habitDoneToday,
+    habitRemindersEnabled,
+    appLanguage,
+    settingsLoaded,
+  ]);
 }

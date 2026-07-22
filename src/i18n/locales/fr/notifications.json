@@ -1,0 +1,26 @@
+{
+  "habitReminder": {
+    "title": "Rappel d'habitude",
+    "body": "C'est l'heure pour {{name}}"
+  },
+  "endOfDayReminder": {
+    "title": "Habitudes restantes aujourd'hui",
+    "bodyOne": "1 habitude encore à faire",
+    "bodyMany": "{{count}} habitudes encore à faire"
+  },
+  "calendarReminder": {
+    "title": "Calendrier",
+    "atStart": "{{title}}",
+    "inMinutes": "{{title}} dans {{count}} min",
+    "inHoursOne": "{{title}} dans {{count}} heure",
+    "inHoursMany": "{{title}} dans {{count}} heures",
+    "inDaysOne": "{{title}} dans {{count}} jour",
+    "inDaysMany": "{{title}} dans {{count}} jours"
+  },
+  "permissions": {
+    "rebuildRequiredTitle": "Reconstruction nécessaire",
+    "habitRemindersRebuildBody": "Les rappels d'habitudes nécessitent une nouvelle build de développement. Exécutez : npx expo run:android",
+    "blockedTitle": "Notifications bloquées",
+    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir les rappels d'habitudes."
+  }
+}

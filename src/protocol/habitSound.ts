@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { i18n } from '../i18n';
 import {
   getBundledHabitSoundLabel,
   isBundledHabitSoundId,
@@ -37,7 +38,11 @@ export function formatHabitTimerSoundSummary(sound: HabitTimerSound | undefined)
   if (trackId) {
     parts.push(getBundledHabitSoundLabel(trackId) ?? trackId);
   }
-  parts.push(getHabitTimerPlaybackMode(sound) === 'loop' ? 'Loops' : 'Track length');
+  parts.push(
+    getHabitTimerPlaybackMode(sound) === 'loop'
+      ? i18n.t('trackers:habitSoundFields.loopsSummary')
+      : i18n.t('trackers:habitSoundFields.trackLength'),
+  );
   return parts.join(' · ');
 }
 

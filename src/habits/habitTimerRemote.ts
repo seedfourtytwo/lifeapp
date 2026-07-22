@@ -5,6 +5,7 @@ import {
   setHabitTimerRemoteHandlers,
   stopHabitSound,
 } from '../audio/habitTimerSound';
+import { i18n } from '../i18n';
 import { getHabitTimerPlaybackMode, isActiveTimerPaused } from '../protocol';
 import { useEventStore, whenActiveTimersReady } from '../store/eventStore';
 import {
@@ -64,8 +65,8 @@ async function startOrToggleFocusedHabit(): Promise<void> {
     await presentFocusedHabitReady();
   } catch (error) {
     Alert.alert(
-      'Could not update habit',
-      error instanceof Error ? error.message : 'Something went wrong',
+      i18n.t('trackers:habitWidget.couldNotUpdateTitle'),
+      error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
     );
   }
 }
@@ -84,8 +85,8 @@ async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
       await finishHabitTimer(current.element.id, current.config, false, { advance: false });
     } catch (error) {
       Alert.alert(
-        'Could not finish timer',
-        error instanceof Error ? error.message : 'Something went wrong',
+        i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+        error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
       );
       return;
     }
@@ -169,8 +170,8 @@ export async function restoreHabitTimerPlaybackAfterHydration(): Promise<void> {
         playChime: trackCompleted === true,
       }).catch((error) => {
         Alert.alert(
-          'Could not finish timer',
-          error instanceof Error ? error.message : 'Something went wrong',
+          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
         );
       });
     });

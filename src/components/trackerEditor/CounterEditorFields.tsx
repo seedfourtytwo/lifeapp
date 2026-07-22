@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { Button, Chip, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 
 const PRESET_INCREMENTS = [1, 5, 10, 25, 50, 100] as const;
@@ -34,6 +35,7 @@ export default function CounterEditorFields({
   onIncrementsChange,
   onDailyTargetChange,
 }: Props) {
+  const { t } = useTranslation('trackers');
   const [customValue, setCustomValue] = useState('');
   const values = parseIncrementList(increments);
 
@@ -67,11 +69,11 @@ export default function CounterEditorFields({
 
   return (
     <FormSection
-      title="Counter settings"
-      description="Quick buttons add to today's total (resets at midnight). Daily target is optional."
+      title={t('counterFields.sectionTitle')}
+      description={t('counterFields.sectionDescription')}
     >
       <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
-        Quick buttons
+        {t('counterFields.quickButtonsLabel')}
       </Text>
       {values.length > 0 ? (
         <View style={[styles.chipRow, styles.field]}>
@@ -88,12 +90,12 @@ export default function CounterEditorFields({
         </View>
       ) : (
         <Text variant="bodySmall" style={[styles.hint, styles.field]}>
-          Add at least one button below.
+          {t('counterFields.quickButtonsEmptyHint')}
         </Text>
       )}
 
       <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
-        Tap to add
+        {t('counterFields.tapToAddLabel')}
       </Text>
       <View style={[styles.chipRow, styles.field]}>
         {PRESET_INCREMENTS.map((preset) => (
@@ -111,8 +113,8 @@ export default function CounterEditorFields({
 
       <View style={[styles.timeRow, styles.field]}>
         <TextInput
-          label="Custom"
-          placeholder="e.g. 3"
+          label={t('counterFields.customLabel')}
+          placeholder={t('counterFields.customPlaceholder')}
           value={customValue}
           onChangeText={setCustomValue}
           keyboardType="number-pad"
@@ -127,13 +129,13 @@ export default function CounterEditorFields({
           disabled={!customValue.trim()}
           style={{ alignSelf: 'center' }}
         >
-          Add
+          {t('counterFields.add')}
         </Button>
       </View>
 
       <TextInput
-        label="Daily target (optional)"
-        placeholder="e.g. 50"
+        label={t('counterFields.dailyTargetLabel')}
+        placeholder={t('counterFields.dailyTargetPlaceholder')}
         value={dailyTarget}
         onChangeText={onDailyTargetChange}
         keyboardType="number-pad"

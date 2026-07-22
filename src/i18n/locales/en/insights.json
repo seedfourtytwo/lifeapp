@@ -1,0 +1,41 @@
+{
+  "screen": {
+    "emptyTitle": "No trackers yet",
+    "emptyBody": "Add habits or counters, then compare them here.",
+    "trackersLabel": "Trackers",
+    "capHint": "Up to {{count}} series at once — untick one to add another.",
+    "weatherLabel": "Weather (high °C)",
+    "compareTitle": "Compare · last {{count}} days",
+    "tickToPlot": "Tick at least one tracker to plot.",
+    "tickToCompare": "Tick trackers above to compare values and notes.",
+    "journalLabel": "Journal",
+    "addJournal": "Add journal",
+    "addNote": "Add note",
+    "editJournalForA11y": "Edit journal for {{date}}",
+    "addJournalForA11y": "Add journal for {{date}}",
+    "highTempCondition": "{{temp}} high · {{condition}}",
+    "rainChanceSuffix": " · {{percent}}% rain",
+    "noWeatherForDay": "No weather for this day",
+    "dayRangeChip": "{{count}}d",
+    "chartFooter": "Lines are normalized (0–max) so unlike units can share a scale",
+    "couldNotLoadFallback": "Could not load insights"
+  },
+  "history": {
+    "lastNDays": "Last {{count}} days",
+    "dayRangeChip": "{{count}}d",
+    "streakLabel": "Streak {{count}}d",
+    "missedLabel": "Missed {{count}}d",
+    "bestLabel": "Best {{count}}d",
+    "topLabel": "Top {{duration}}",
+    "avgLabel": "Avg {{duration}}",
+    "bestValueLabel": "Best {{value}}",
+    "avgValueLabel": "Avg {{value}} {{unit}}",
+    "chartFooter": "Daily total ({{unit}}) · dashed = {{window}}-day avg",
+    "editNoteForA11y": "{{date}}, {{value}}, edit note",
+    "addNoteForA11y": "{{date}}, {{value}}, add note",
+    "tapToAddNote": "Tap to add a note",
+    "tapDayHint": "Tap a day on the chart to inspect it.",
+    "trackerNotFound": "Tracker not found.",
+    "couldNotLoadFallback": "Could not load history"
+  }
+}

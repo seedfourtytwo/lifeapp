@@ -1,23 +1,29 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, List, Switch, Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import ClearDataSheet from '../components/ClearDataSheet';
 import WeatherSettingsSection from '../components/WeatherSettingsSection';
 import CalendarSettingsSection from '../components/CalendarSettingsSection';
 import { useProtocolBackup } from '../hooks/useProtocolBackup';
+import type { AppLanguage } from '../protocol/appSettings';
+import { applyAppLanguage } from '../i18n';
 import {
   requestNotificationPermissions,
   isNotificationsNativeAvailable,
 } from '../notifications/habitReminders';
 import { useSettingsStore } from '../store/settingsStore';
-import { THEME_MODE_OPTIONS } from '../theme';
+import { APP_LANGUAGE_OPTIONS, THEME_MODE_OPTIONS } from '../theme';
 
 const APP_VERSION = '1.0.0';
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const { t } = useTranslation('settings');
   const themeMode = useSettingsStore((s) => s.themeMode);
   const setThemeMode = useSettingsStore((s) => s.setThemeMode);
+  const appLanguage = useSettingsStore((s) => s.appLanguage);
+  const setAppLanguage = useSettingsStore((s) => s.setAppLanguage);
   const habitRemindersEnabled = useSettingsStore((s) => s.habitRemindersEnabled);
   const setHabitRemindersEnabled = useSettingsStore((s) => s.setHabitRemindersEnabled);
   const {
@@ -31,21 +37,23 @@ export default function SettingsScreen() {
     handleClearConfirm,
   } = useProtocolBackup();
 
+  const handleLanguageChange = async (language: AppLanguage) => {
+    await setAppLanguage(language);
+    await applyAppLanguage(language);
+  };
+
   const handleRemindersToggle = async (enabled: boolean) => {
     if (enabled && !isNotificationsNativeAvailable()) {
       Alert.alert(
-        'Rebuild required',
-        'Habit reminders need a fresh dev build. Run: npx expo run:android',
+        t('appearance.rebuildRequiredTitle'),
+        t('notifications.rebuildRequiredBody'),
       );
       return;
     }
     if (enabled) {
       const granted = await requestNotificationPermissions();
       if (!granted) {
-        Alert.alert(
-          'Notifications blocked',
-          'Enable notifications in system settings to get habit reminders.',
-        );
+        Alert.alert(t('notifications.blockedTitle'), t('notifications.blockedBody'));
         return;
       }
     }
@@ -55,16 +63,34 @@ export default function SettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <List.Section>
-        <List.Subheader>Appearance</List.Subheader>
+        <List.Subheader>{t('appearance.sectionTitle')}</List.Subheader>
         {THEME_MODE_OPTIONS.map((option) => (
           <List.Item
             key={option.value}
-            title={option.label}
-            description={option.description}
+            title={t(option.labelKey)}
+            description={t(option.descriptionKey)}
             left={(props) => <List.Icon {...props} icon={option.icon} />}
             onPress={() => void setThemeMode(option.value)}
             right={() =>
               themeMode === option.value ? (
+                <List.Icon icon="check-circle" color={theme.colors.primary} />
+              ) : null
+            }
+          />
+        ))}
+      </List.Section>
+
+      <List.Section>
+        <List.Subheader>{t('appearance.languageSectionTitle')}</List.Subheader>
+        {APP_LANGUAGE_OPTIONS.map((option) => (
+          <List.Item
+            key={option.value}
+            title={t(option.labelKey)}
+            description={t(option.descriptionKey)}
+            left={(props) => <List.Icon {...props} icon={option.icon} />}
+            onPress={() => void handleLanguageChange(option.value)}
+            right={() =>
+              appLanguage === option.value ? (
                 <List.Icon icon="check-circle" color={theme.colors.primary} />
               ) : null
             }
@@ -77,10 +103,10 @@ export default function SettingsScreen() {
       <CalendarSettingsSection />
 
       <List.Section>
-        <List.Subheader>Notifications</List.Subheader>
+        <List.Subheader>{t('notifications.sectionTitle')}</List.Subheader>
         <List.Item
-          title="Habit reminders"
-          description="Remind before scheduled habits and at 8 PM if habits remain"
+          title={t('notifications.habitRemindersTitle')}
+          description={t('notifications.habitRemindersDescription')}
           left={(props) => <List.Icon {...props} icon="bell-outline" />}
           right={() => (
             <Switch
@@ -92,28 +118,28 @@ export default function SettingsScreen() {
       </List.Section>
 
       <List.Section>
-        <List.Subheader>Data</List.Subheader>
+        <List.Subheader>{t('data.sectionTitle')}</List.Subheader>
         <List.Item
-          title="Export backup"
-          description="Save habits, counters, calendar, notes, journals, history, and preferences as JSON"
+          title={t('data.exportTitle')}
+          description={t('data.exportDescription')}
           left={(props) => <List.Icon {...props} icon="export" />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : () => void handleExport()}
         />
         <List.Item
-          title="Import backup"
+          title={t('data.importTitle')}
           description={
             importAvailable
-              ? 'Replace this device with a backup file'
-              : 'Needs dev client rebuild — export works now'
+              ? t('data.importDescriptionAvailable')
+              : t('data.importDescriptionUnavailable')
           }
           left={(props) => <List.Icon {...props} icon="import" />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : handleImport}
         />
         <List.Item
-          title="Clear data…"
-          description="Wipe history, calendar, cache, prefs — or habits/counters"
+          title={t('data.clearDataTitle')}
+          description={t('data.clearDataDescription')}
           left={(props) => <List.Icon {...props} icon="delete-forever" color={theme.colors.error} />}
           right={() => (busy ? <ActivityIndicator size={20} /> : null)}
           onPress={busy ? undefined : openClearSheet}
@@ -121,19 +147,17 @@ export default function SettingsScreen() {
       </List.Section>
 
       <List.Section>
-        <List.Subheader>About</List.Subheader>
+        <List.Subheader>{t('about.sectionTitle')}</List.Subheader>
         <List.Item
-          title="Life Dashboard"
-          description={`Version ${APP_VERSION}`}
+          title={t('about.title')}
+          description={t('about.version', { version: APP_VERSION })}
           left={(props) => <List.Icon {...props} icon="information-outline" />}
         />
       </List.Section>
 
       <View style={styles.note}>
         <Text variant="bodySmall" style={styles.noteText}>
-          Backups are JSON files you can move between installs. Import replaces all local data
-          (including tracker notes and journals). Clear data can keep habits and counters while
-          wiping activity only.
+          {t('about.note')}
         </Text>
       </View>
 

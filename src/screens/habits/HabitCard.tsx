@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import { getKindHandler } from '../../kinds/registry';
@@ -24,6 +25,8 @@ export default function HabitCard({
   onEditNote,
 }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const { handleTimerPress, handleFinishTimer, handleResetToday } = useHabitTimerControls();
   const {
     todayTotal,
@@ -60,8 +63,8 @@ export default function HabitCard({
       onToggle={() =>
         toggleHabit(habit.id, config).catch((error) => {
           Alert.alert(
-            'Could not update habit',
-            error instanceof Error ? error.message : 'Something went wrong',
+            t('habitWidget.couldNotUpdateTitle'),
+            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
           );
         })
       }
@@ -71,16 +74,16 @@ export default function HabitCard({
         // (chime is for live target-crossing or natural track end only).
         handleFinishTimer(habit.id, config, true).catch((error) => {
           Alert.alert(
-            'Could not finish timer',
-            error instanceof Error ? error.message : 'Something went wrong',
+            t('habitWidget.couldNotFinishTimerTitle'),
+            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
           );
         })
       }
       onResetToday={() =>
         handleResetToday(habit.id, config).catch((error) => {
           Alert.alert(
-            'Could not reset today',
-            error instanceof Error ? error.message : 'Something went wrong',
+            t('habitWidget.couldNotResetTodayTitle'),
+            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
           );
         })
       }

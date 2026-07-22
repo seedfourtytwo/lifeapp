@@ -1,0 +1,26 @@
+{
+  "habitReminder": {
+    "title": "Habit reminder",
+    "body": "Time for {{name}}"
+  },
+  "endOfDayReminder": {
+    "title": "Habits left today",
+    "bodyOne": "1 habit still to do",
+    "bodyMany": "{{count}} habits still to do"
+  },
+  "calendarReminder": {
+    "title": "Calendar",
+    "atStart": "{{title}}",
+    "inMinutes": "{{title}} in {{count}} min",
+    "inHoursOne": "{{title}} in {{count}} hour",
+    "inHoursMany": "{{title}} in {{count}} hours",
+    "inDaysOne": "{{title}} in {{count}} day",
+    "inDaysMany": "{{title}} in {{count}} days"
+  },
+  "permissions": {
+    "rebuildRequiredTitle": "Rebuild required",
+    "habitRemindersRebuildBody": "Habit reminders need a fresh dev build. Run: npx expo run:android",
+    "blockedTitle": "Notifications blocked",
+    "blockedBody": "Enable notifications in system settings to get habit reminders."
+  }
+}

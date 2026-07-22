@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import type { RecurrenceFreq, RecurrenceRule, Weekday } from './types';
 import { WEEKDAYS } from './types';
 
@@ -64,18 +65,28 @@ export function recurrenceToRrule(rule: RecurrenceRule): string | null {
 export function recurrenceLabel(rule: RecurrenceRule): string {
   switch (rule.freq) {
     case 'none':
-      return 'Does not repeat';
+      return i18n.t('calendar:repeatOptions.none');
     case 'daily':
-      return rule.interval === 1 ? 'Every day' : `Every ${rule.interval} days`;
+      return rule.interval === 1
+        ? i18n.t('calendar:repeatOptions.daily')
+        : i18n.t('calendar:repeatOptions.dailyInterval', { count: rule.interval });
     case 'weekly': {
       if (rule.byWeekDays.length === 0) {
-        return rule.interval === 1 ? 'Every week' : `Every ${rule.interval} weeks`;
+        return rule.interval === 1
+          ? i18n.t('calendar:repeatOptions.weekly')
+          : i18n.t('calendar:repeatOptions.weeklyInterval', { count: rule.interval });
       }
-      return `Weekly (${rule.byWeekDays.join(', ')})`;
+      return i18n.t('calendar:repeatOptions.weeklyOnDays', {
+        days: rule.byWeekDays.join(', '),
+      });
     }
     case 'monthly':
-      return rule.interval === 1 ? 'Every month' : `Every ${rule.interval} months`;
+      return rule.interval === 1
+        ? i18n.t('calendar:repeatOptions.monthly')
+        : i18n.t('calendar:repeatOptions.monthlyInterval', { count: rule.interval });
     case 'yearly':
-      return rule.interval === 1 ? 'Every year' : `Every ${rule.interval} years`;
+      return rule.interval === 1
+        ? i18n.t('calendar:repeatOptions.yearly')
+        : i18n.t('calendar:repeatOptions.yearlyInterval', { count: rule.interval });
   }
 }

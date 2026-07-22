@@ -2,6 +2,7 @@ import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSou
 import { stopHabitSound } from '../audio/habitTimerSound';
 import { cancelCalendarReminders } from '../notifications/calendarReminders';
 import type { ClearAppDataOptions } from '../db/clearDataPlan';
+import { applyAppLanguage } from '../i18n';
 import { clearCachedForecast } from '../weather/forecastCache';
 import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
@@ -91,6 +92,8 @@ export async function reloadStoresAfterImport(
   if (preferencesCleared || weatherCleared || full) {
     await useSettingsStore.getState().load();
   }
+
+  await applyAppLanguage(useSettingsStore.getState().appLanguage);
 
   if (calendarCleared) {
     await useCalendarStore.getState().load();

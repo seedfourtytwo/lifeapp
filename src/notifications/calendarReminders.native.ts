@@ -1,4 +1,5 @@
 import { NativeModules } from 'react-native';
+import { i18n } from '../i18n';
 import { expandOccurrences } from '../calendar/occurrences';
 import type { Calendar, CalendarEvent, CalendarReminder } from '../calendar/types';
 import {
@@ -74,14 +75,26 @@ export async function cancelCalendarReminders(): Promise<void> {
 }
 
 function reminderBody(title: string, offsetMinutes: number): string {
-  if (offsetMinutes === 0) return title;
-  if (offsetMinutes < 60) return `${title} in ${offsetMinutes} min`;
+  if (offsetMinutes === 0) return i18n.t('notifications:calendarReminder.atStart', { title });
+  if (offsetMinutes < 60) {
+    return i18n.t('notifications:calendarReminder.inMinutes', { title, count: offsetMinutes });
+  }
   if (offsetMinutes < 60 * 24) {
     const hours = Math.round(offsetMinutes / 60);
-    return `${title} in ${hours} hour${hours === 1 ? '' : 's'}`;
+    return i18n.t(
+      hours === 1
+        ? 'notifications:calendarReminder.inHoursOne'
+        : 'notifications:calendarReminder.inHoursMany',
+      { title, count: hours },
+    );
   }
   const days = Math.round(offsetMinutes / (60 * 24));
-  return `${title} in ${days} day${days === 1 ? '' : 's'}`;
+  return i18n.t(
+    days === 1
+      ? 'notifications:calendarReminder.inDaysOne'
+      : 'notifications:calendarReminder.inDaysMany',
+    { title, count: days },
+  );
 }
 
 export async function syncCalendarReminders(input: {
@@ -135,7 +148,7 @@ export async function syncCalendarReminders(input: {
         if (when.getTime() > now + SCHEDULE_HORIZON_MS) continue;
         fires.push({
           id: `${REMINDER_PREFIX}${occ.occurrenceKey}-${reminder.offsetMinutes}`,
-          title: 'Calendar',
+          title: i18n.t('notifications:calendarReminder.title'),
           body: reminderBody(occ.title, reminder.offsetMinutes),
           when,
         });

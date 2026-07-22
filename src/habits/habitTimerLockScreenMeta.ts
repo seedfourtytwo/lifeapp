@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import {
   activeTimerElapsedSeconds,
   formatHabitTimerDuration,
@@ -26,11 +27,13 @@ export function buildHabitTimerLockScreenMeta(
     target !== undefined && target > 0
       ? `${formatHabitTimerDuration(elapsed)} / ${formatHabitTimerDuration(target)}`
       : formatHabitTimerDuration(elapsed);
-  const stateLabel = isActiveTimerPaused(session) ? 'Paused' : 'Running';
+  const stateLabel = isActiveTimerPaused(session)
+    ? i18n.t('trackers:lockScreen.paused')
+    : i18n.t('trackers:lockScreen.running');
 
   return {
     title: habitName,
-    artist: 'Life Dashboard',
+    artist: i18n.t('common:appName'),
     albumTitle: `${stateLabel} · ${timeLabel}`,
   };
 }
@@ -42,10 +45,13 @@ export function buildHabitReadyLockScreenMeta(
   positionLabel?: string,
 ): HabitTimerLockScreenMeta {
   const action =
-    config.trackingMode === 'timer' ? 'Play to start' : 'Play to check off';
+    config.trackingMode === 'timer'
+      ? i18n.t('trackers:lockScreen.playToStart')
+      : i18n.t('trackers:lockScreen.playToCheckOff');
+  const ready = i18n.t('trackers:lockScreen.ready');
   return {
     title: habitName,
-    artist: 'Life Dashboard',
-    albumTitle: positionLabel ? `Ready · ${action} · ${positionLabel}` : `Ready · ${action}`,
+    artist: i18n.t('common:appName'),
+    albumTitle: positionLabel ? `${ready} · ${action} · ${positionLabel}` : `${ready} · ${action}`,
   };
 }

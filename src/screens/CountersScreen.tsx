@@ -4,6 +4,7 @@ import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from 'react-i18next';
 import { CounterConfigSchema, type CounterConfig } from '../protocol';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import {
@@ -42,6 +43,9 @@ export default function CountersScreen({
   onBeforeOpenTrackerNote,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('home');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tTrackers } = useTranslation('trackers');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dashboard = useElementStore((s) => s.dashboard);
   const elements = useElementStore((s) => s.elements);
@@ -151,9 +155,9 @@ export default function CountersScreen({
         {error ? (
           <View style={styles.errorBox}>
             <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
-            <Button mode="outlined" onPress={() => void onRefresh()}>
-              Retry
-            </Button>
+          <Button mode="outlined" onPress={() => void onRefresh()}>
+            {t('countersTab.retry')}
+          </Button>
           </View>
         ) : null}
 
@@ -165,8 +169,8 @@ export default function CountersScreen({
             counters.length > 0 ? (
               <Text variant="bodyMedium" numberOfLines={1}>
                 {reordering
-                  ? 'Move with arrows'
-                  : 'Today · resets at midnight'}
+                  ? t('countersTab.moveWithArrows')
+                  : t('countersTab.resetsAtMidnight')}
               </Text>
             ) : null
           }
@@ -174,7 +178,7 @@ export default function CountersScreen({
             counters.length > 0 ? (
               reordering ? (
                 <Button compact mode="text" onPress={() => setReordering(false)}>
-                  Done
+                  {t('countersTab.done')}
                 </Button>
               ) : (
                 <Button
@@ -184,7 +188,7 @@ export default function CountersScreen({
                   disabled={counters.length < 2}
                   onPress={() => setReordering(true)}
                 >
-                  Sort
+                  {t('countersTab.sort')}
                 </Button>
               )
             ) : null
@@ -195,8 +199,8 @@ export default function CountersScreen({
           <EmptyTabState
             message={
               elements.some((e) => e.kind === 'counter')
-                ? 'No active counters. Restore something from Archive in Trackers.'
-                : 'No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.'
+                ? t('countersTab.emptyNoActiveCounters')
+                : t('countersTab.emptyNoCounters')
             }
           />
         ) : (
@@ -216,7 +220,7 @@ export default function CountersScreen({
                     canMoveDown={index < counters.length - 1}
                     onMoveUp={() => void reorderCounter(element.id, 'up')}
                     onMoveDown={() => void reorderCounter(element.id, 'down')}
-                    accessibilityNoun="counter"
+                    accessibilityNoun={tTrackers('kindLabel.counter')}
                   />
                 ) : null}
                 <View style={styles.reorderCard}>
@@ -227,8 +231,8 @@ export default function CountersScreen({
                     onLog={(value, meta) =>
                       logEvent(element.id, value, meta).catch((err) => {
                         Alert.alert(
-                          'Could not log',
-                          err instanceof Error ? err.message : 'Something went wrong',
+                          tCommon('alerts.couldNotLog'),
+                          err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
                         );
                       })
                     }
@@ -237,8 +241,8 @@ export default function CountersScreen({
                         await setDailyTotal(element.id, total);
                       } catch (err) {
                         Alert.alert(
-                          'Could not update total',
-                          err instanceof Error ? err.message : 'Something went wrong',
+                          t('countersTab.couldNotUpdateTotalTitle'),
+                          err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
                         );
                         throw err;
                       }

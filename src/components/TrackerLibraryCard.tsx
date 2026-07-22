@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 export type TrackerLibraryBadge = {
@@ -41,6 +42,7 @@ export default function TrackerLibraryCard({
   onRestore,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
   const { decorations: deco, isCartoon } = useAppTheme();
 
   const badgeColors = (tone: TrackerLibraryBadge['tone']) => {
@@ -120,7 +122,7 @@ export default function TrackerLibraryCard({
         ]}
       >
         <Button mode="contained-tonal" compact onPress={onEdit} style={styles.actionButton}>
-          Edit
+          {t('card.edit')}
         </Button>
         {onHistory ? (
           <Button
@@ -130,16 +132,16 @@ export default function TrackerLibraryCard({
             onPress={onHistory}
             style={styles.actionButton}
           >
-            History
+            {t('card.history')}
           </Button>
         ) : null}
         {archived ? (
           <Button mode="outlined" compact icon="archive-arrow-up-outline" onPress={onRestore} style={styles.actionButton}>
-            Restore
+            {t('card.restore')}
           </Button>
         ) : (
           <Button mode="outlined" compact icon="archive-arrow-down-outline" onPress={onArchive} style={styles.actionButton}>
-            Archive
+            {t('card.archive')}
           </Button>
         )}
         <Button
@@ -157,7 +159,7 @@ export default function TrackerLibraryCard({
           ]}
           textColor={theme.colors.onErrorContainer}
         >
-          Delete
+          {t('card.delete')}
         </Button>
       </View>
     </View>

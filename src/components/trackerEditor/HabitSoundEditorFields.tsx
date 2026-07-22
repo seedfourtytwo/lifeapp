@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Chip, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import {
   playHabitSound,
   preloadHabitSound,
@@ -32,6 +33,8 @@ export default function HabitSoundEditorFields({
   onDailyGoalMinutesChange,
   onSoundChange,
 }: Props) {
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewSessionRef = useRef(0);
@@ -74,7 +77,7 @@ export default function HabitSoundEditorFields({
 
     const previewSound = buildPreviewSound();
     if (!previewSound) {
-      Alert.alert('No sound selected', 'Choose a sound track first.');
+      Alert.alert(t('habitSoundFields.noSoundSelectedTitle'), t('habitSoundFields.noSoundSelectedBody'));
       return;
     }
 
@@ -91,16 +94,17 @@ export default function HabitSoundEditorFields({
       if (session !== previewSessionRef.current) return;
       if (!started) {
         Alert.alert(
-          'Could not play sound',
-          'This track is missing from the app build. Reinstall the latest dev APK.',
+          t('habitSoundFields.couldNotPlaySoundTitle'),
+          t('habitSoundFields.couldNotPlaySoundMissingBody'),
         );
         return;
       }
       setPreviewPlaying(true);
     } catch (error) {
       if (session !== previewSessionRef.current) return;
-      const message = error instanceof Error ? error.message : 'Could not play sound';
-      Alert.alert('Could not play sound', message);
+      const message =
+        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong');
+      Alert.alert(t('habitSoundFields.couldNotPlaySoundTitle'), message);
     } finally {
       if (session === previewSessionRef.current) {
         setPreviewLoading(false);
@@ -129,8 +133,8 @@ export default function HabitSoundEditorFields({
   return (
     <View style={styles.sectionBody}>
       <TextInput
-        label="Daily goal (minutes)"
-        placeholder="e.g. 15"
+        label={t('habitSoundFields.dailyGoalLabel')}
+        placeholder={t('habitSoundFields.dailyGoalPlaceholder')}
         value={dailyGoalMinutes}
         onChangeText={onDailyGoalMinutesChange}
         keyboardType="number-pad"
@@ -138,15 +142,14 @@ export default function HabitSoundEditorFields({
         style={styles.field}
       />
       <Text variant="labelMedium" style={styles.inlineLabel}>
-        Sound while running
+        {t('habitSoundFields.soundWhileRunningLabel')}
       </Text>
       <Text variant="bodySmall" style={styles.hint}>
-        Choose a bundled meditation or focus track.
+        {t('habitSoundFields.soundHint')}
       </Text>
       {BUNDLED_HABIT_SOUND_CATALOG.length === 0 ? (
         <Text variant="bodySmall" style={styles.hint}>
-          No tracks bundled yet. Add MP3 files to assets/sounds/ in the project, then rebuild the
-          app.
+          {t('habitSoundFields.noTracksBundledHint')}
         </Text>
       ) : (
         <View style={[styles.chipRow, styles.sectionBody]}>
@@ -171,31 +174,35 @@ export default function HabitSoundEditorFields({
           onPress={() => void handlePreviewSound()}
           disabled={!hasSound || previewLoading}
         >
-          {previewLoading ? 'Loading…' : previewPlaying ? 'Stop preview' : 'Preview sound'}
+          {previewLoading
+            ? t('habitSoundFields.loading')
+            : previewPlaying
+              ? t('habitSoundFields.stopPreview')
+              : t('habitSoundFields.previewSound')}
         </Button>
         {hasSound ? (
           <Chip compact icon="close" onPress={clearSound}>
-            Clear sound
+            {t('habitSoundFields.clearSound')}
           </Chip>
         ) : null}
       </View>
       {hasSound ? (
         <>
           <Text variant="labelMedium" style={styles.inlineLabel}>
-            When timer runs
+            {t('habitSoundFields.whenTimerRunsLabel')}
           </Text>
           <SegmentedButtons
             value={sound.habitSoundPlaybackMode}
             onValueChange={setPlaybackMode}
             buttons={[
-              { value: 'play_once', label: 'Track length' },
-              { value: 'loop', label: 'Loop' },
+              { value: 'play_once', label: t('habitSoundFields.trackLength') },
+              { value: 'loop', label: t('habitSoundFields.loop') },
             ]}
           />
           <Text variant="bodySmall" style={styles.hint}>
             {sound.habitSoundPlaybackMode === 'play_once'
-              ? 'Timer stops and logs your session when the track ends — good for guided meditation.'
-              : 'Sound loops until you tap Stop.'}
+              ? t('habitSoundFields.playOnceHint')
+              : t('habitSoundFields.loopHint')}
           </Text>
         </>
       ) : null}

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
@@ -22,6 +23,7 @@ type TrackerNoteRow = {
 
 export default function JournalScreen() {
   const theme = useTheme();
+  const { t } = useTranslation('journal');
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const [journals, setJournals] = useState<DailyJournal[]>([]);
@@ -78,11 +80,11 @@ export default function JournalScreen() {
       setElements(active);
       setNoteOnlyDates(noteOnly);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load journals');
+      setError(err instanceof Error ? err.message : t('screen.couldNotLoadJournalsFallback'));
     } finally {
       setLoading(false);
     }
-  }, [today]);
+  }, [today, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -140,7 +142,7 @@ export default function JournalScreen() {
         ]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={`View ${title}`}
+        accessibilityLabel={t('screen.viewDayA11y', { title })}
       >
         <MaterialCommunityIcons
           name={hasJournalEntry ? 'notebook' : 'notebook-outline'}
@@ -181,7 +183,7 @@ export default function JournalScreen() {
           <View style={styles.errorBox}>
             <Text style={{ color: theme.colors.error }}>{error}</Text>
             <Button mode="outlined" onPress={() => void reload()}>
-              Retry
+              {t('screen.retry')}
             </Button>
           </View>
         ) : null}
@@ -196,7 +198,7 @@ export default function JournalScreen() {
           ]}
         >
           <Text variant="titleSmall" style={styles.dayTitle}>
-            {selectedDate === today ? 'Today' : formatFullDate(selectedDate)}
+            {selectedDate === today ? t('screen.today') : formatFullDate(selectedDate)}
           </Text>
 
           <Pressable
@@ -204,8 +206,8 @@ export default function JournalScreen() {
             accessibilityRole="button"
             accessibilityLabel={
               hasJournal
-                ? `Edit journal for ${formatFullDate(selectedDate)}`
-                : `Add journal for ${formatFullDate(selectedDate)}`
+                ? t('screen.editJournalForA11y', { date: formatFullDate(selectedDate) })
+                : t('screen.addJournalForA11y', { date: formatFullDate(selectedDate) })
             }
             style={styles.journalRow}
           >
@@ -216,7 +218,7 @@ export default function JournalScreen() {
               style={styles.noteIcon}
             />
             <View style={styles.journalText}>
-              <Text variant="labelMedium">Journal</Text>
+              <Text variant="labelMedium">{t('screen.journalLabel')}</Text>
               <Text
                 variant="bodySmall"
                 numberOfLines={3}
@@ -224,7 +226,7 @@ export default function JournalScreen() {
               >
                 {hasJournal
                   ? truncateNotePreview(journalForSelected?.body ?? '', 160)
-                  : 'Tap to write journal'}
+                  : t('screen.tapToWriteJournal')}
               </Text>
             </View>
           </Pressable>
@@ -232,14 +234,14 @@ export default function JournalScreen() {
           {trackerNotes.length > 0 ? (
             <View style={styles.trackerNotesSection}>
               <Text variant="labelMedium" style={styles.trackerNotesLabel}>
-                Tracker notes
+                {t('screen.trackerNotesLabel')}
               </Text>
               {trackerNotes.map((row) => (
                 <Pressable
                   key={row.elementId}
                   onPress={() => openTrackerNote(row, selectedDate)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Edit note for ${row.name}`}
+                  accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
                   style={styles.trackerNoteRow}
                 >
                   <MaterialCommunityIcons
@@ -263,27 +265,27 @@ export default function JournalScreen() {
             </View>
           ) : (
             <Text variant="bodySmall" style={styles.noTrackerNotes}>
-              No tracker notes this day.
+              {t('screen.noTrackerNotes')}
             </Text>
           )}
         </View>
 
         <Text variant="labelLarge" style={styles.sectionLabel}>
-          Days
+          {t('screen.daysLabel')}
         </Text>
 
         {renderDayPickerRow(
           today,
-          'Today',
+          t('screen.today'),
           todayJournal
             ? truncateNotePreview(todayJournal.body, 80)
-            : 'No journal yet',
+            : t('screen.noJournalYet'),
           todayJournal != null,
         )}
 
         {pastJournals.length === 0 && !todayJournal && noteOnlyDates.length === 0 ? (
           <Text variant="bodyMedium" style={styles.empty}>
-            Write from Home or here — pick a day above to review notes.
+            {t('screen.emptyHint')}
           </Text>
         ) : null}
 
@@ -297,7 +299,7 @@ export default function JournalScreen() {
         )}
 
         {noteOnlyDates.map((date) =>
-          renderDayPickerRow(date, formatFullDate(date), 'Tracker notes only', false),
+          renderDayPickerRow(date, formatFullDate(date), t('screen.trackerNotesOnly'), false),
         )}
       </ScrollView>
 

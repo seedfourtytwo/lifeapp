@@ -15,6 +15,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
@@ -58,6 +59,7 @@ function toPlotValue(element: ElementDefinition, total: number): number {
 
 export default function InsightsScreen() {
   const theme = useTheme();
+  const { t } = useTranslation('insights');
   const { decorations: deco, isCartoon } = useAppTheme();
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -147,11 +149,11 @@ export default function InsightsScreen() {
       })();
     } catch (err) {
       if (generation !== loadGenerationRef.current) return;
-      setError(err instanceof Error ? err.message : 'Could not load insights');
+      setError(err instanceof Error ? err.message : t('screen.couldNotLoadFallback'));
     } finally {
       if (generation === loadGenerationRef.current) setLoading(false);
     }
-  }, [dates]);
+  }, [dates, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -277,10 +279,10 @@ export default function InsightsScreen() {
       <>
         <View style={styles.centered}>
           <Text variant="bodyLarge" style={styles.emptyTitle}>
-            No trackers yet
+            {t('screen.emptyTitle')}
           </Text>
           <Text variant="bodyMedium" style={styles.emptyBody}>
-            Add habits or counters, then compare them here.
+            {t('screen.emptyBody')}
           </Text>
         </View>
         {editorHost}
@@ -302,13 +304,13 @@ export default function InsightsScreen() {
               selected={rangeDays === n}
               onPress={() => setRangeDays(n)}
             >
-              {n}d
+              {t('screen.dayRangeChip', { count: n })}
             </Chip>
           ))}
         </View>
 
         <Text variant="titleSmall" style={styles.sectionLabel}>
-          Trackers
+          {t('screen.trackersLabel')}
         </Text>
         <ScrollView
           horizontal
@@ -340,12 +342,12 @@ export default function InsightsScreen() {
         </ScrollView>
         {atCap ? (
           <Text variant="bodySmall" style={styles.capHint}>
-            Up to {INSIGHTS_MAX_SERIES} series at once — untick one to add another.
+            {t('screen.capHint', { count: INSIGHTS_MAX_SERIES })}
           </Text>
         ) : null}
 
         <View style={styles.weatherRow}>
-          <Text variant="bodyMedium">Weather (high °C)</Text>
+          <Text variant="bodyMedium">{t('screen.weatherLabel')}</Text>
           <Switch value={showWeather} onValueChange={setShowWeather} />
         </View>
 
@@ -361,10 +363,10 @@ export default function InsightsScreen() {
           ]}
         >
           <Card.Content>
-            <Text variant="titleMedium">Compare · last {rangeDays} days</Text>
+            <Text variant="titleMedium">{t('screen.compareTitle', { count: rangeDays })}</Text>
             {selectedElements.length === 0 ? (
               <Text variant="bodyMedium" style={styles.emptyChart}>
-                Tick at least one tracker to plot.
+                {t('screen.tickToPlot')}
               </Text>
             ) : (
               <InteractiveDailyChart
@@ -377,7 +379,7 @@ export default function InsightsScreen() {
                 onSelectDay={handleSelectDay}
                 weatherOverlay={weatherOverlay}
                 dense={rangeDays > 14}
-                footer="Lines are normalized (0–max) so unlike units can share a scale"
+                footer={t('screen.chartFooter')}
               />
             )}
           </Card.Content>
@@ -404,8 +406,8 @@ export default function InsightsScreen() {
               accessibilityRole="button"
               accessibilityLabel={
                 journalBody
-                  ? `Edit journal for ${formatFullDate(selectedDate)}`
-                  : `Add journal for ${formatFullDate(selectedDate)}`
+                  ? t('screen.editJournalForA11y', { date: formatFullDate(selectedDate) })
+                  : t('screen.addJournalForA11y', { date: formatFullDate(selectedDate) })
               }
               style={styles.journalRow}
             >
@@ -416,20 +418,20 @@ export default function InsightsScreen() {
                 style={styles.noteIcon}
               />
               <View style={styles.journalText}>
-                <Text variant="labelMedium">Journal</Text>
+                <Text variant="labelMedium">{t('screen.journalLabel')}</Text>
                 <Text
                   variant="bodySmall"
                   numberOfLines={2}
                   style={{ color: theme.colors.onSurfaceVariant }}
                 >
-                  {journalBody ? truncateNotePreview(journalBody, 120) : 'Add journal'}
+                  {journalBody ? truncateNotePreview(journalBody, 120) : t('screen.addJournal')}
                 </Text>
               </View>
             </Pressable>
 
             {selectedElements.length === 0 ? (
               <Text variant="bodySmall" style={styles.emptyChart}>
-                Tick trackers above to compare values and notes.
+                {t('screen.tickToCompare')}
               </Text>
             ) : null}
 
@@ -467,7 +469,7 @@ export default function InsightsScreen() {
                       numberOfLines={2}
                       style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}
                     >
-                      {note ? truncateNotePreview(note, 100) : 'Add note'}
+                      {note ? truncateNotePreview(note, 100) : t('screen.addNote')}
                     </Text>
                   </Pressable>
                 </View>
@@ -484,12 +486,16 @@ export default function InsightsScreen() {
                 />
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   {weatherForDay
-                    ? `${formatTempC(weatherForDay.tempMaxC)} high · ${conditionLabel(weatherForDay.condition)}${
-                        weatherForDay.precipProbabilityPct != null
-                          ? ` · ${weatherForDay.precipProbabilityPct}% rain`
-                          : ''
-                      }`
-                    : 'No weather for this day'}
+                    ? t('screen.highTempCondition', {
+                        temp: formatTempC(weatherForDay.tempMaxC),
+                        condition: conditionLabel(weatherForDay.condition),
+                      }) +
+                      (weatherForDay.precipProbabilityPct != null
+                        ? t('screen.rainChanceSuffix', {
+                            percent: weatherForDay.precipProbabilityPct,
+                          })
+                        : '')
+                    : t('screen.noWeatherForDay')}
                 </Text>
               </View>
             ) : null}

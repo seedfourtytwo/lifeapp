@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { IconButton } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   canMoveUp: boolean;
@@ -16,8 +17,10 @@ export default function ReorderControls({
   canMoveDown,
   onMoveUp,
   onMoveDown,
-  accessibilityNoun = 'item',
+  accessibilityNoun,
 }: Props) {
+  const { t } = useTranslation('common');
+  const noun = accessibilityNoun ?? t('actions.itemNoun');
   return (
     <View style={styles.controls}>
       <IconButton
@@ -25,14 +28,14 @@ export default function ReorderControls({
         size={22}
         disabled={!canMoveUp}
         onPress={onMoveUp}
-        accessibilityLabel={`Move ${accessibilityNoun} up`}
+        accessibilityLabel={t('actions.moveNounUp', { noun })}
       />
       <IconButton
         icon="chevron-down"
         size={22}
         disabled={!canMoveDown}
         onPress={onMoveDown}
-        accessibilityLabel={`Move ${accessibilityNoun} down`}
+        accessibilityLabel={t('actions.moveNounDown', { noun })}
       />
     </View>
   );

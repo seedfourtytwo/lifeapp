@@ -1,3 +1,5 @@
+import { i18n } from '../i18n';
+
 export type WeatherFetchFailureKind = 'offline' | 'http' | 'invalid' | 'unknown';
 
 export function classifyWeatherFetchError(error: unknown): WeatherFetchFailureKind {
@@ -29,12 +31,12 @@ export function classifyWeatherFetchError(error: unknown): WeatherFetchFailureKi
 export function weatherErrorMessage(kind: WeatherFetchFailureKind): string {
   switch (kind) {
     case 'offline':
-      return 'No connection';
+      return i18n.t('home:weatherErrors.offline');
     case 'http':
-      return 'Weather service unavailable';
+      return i18n.t('home:weatherErrors.http');
     case 'invalid':
-      return 'Weather data incomplete';
+      return i18n.t('home:weatherErrors.invalid');
     default:
-      return 'Weather unavailable';
+      return i18n.t('home:weatherErrors.unknown');
   }
 }

@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { loadNoteBody, saveNoteBody } from './noteSave';
 import {
   noteEditorHeading,
+  noteEditorKind,
   noteEditorLabel,
   type NoteEditorTarget,
 } from './types';
@@ -31,6 +33,7 @@ export type OpenNoteOptions = {
  * Pair with NoteEditorHost for the sheet UI.
  */
 export function useNoteEditorSession(options: Options = {}) {
+  const { t } = useTranslation('common');
   const onSavedRef = useRef(options.onSaved);
   onSavedRef.current = options.onSaved;
 
@@ -44,7 +47,9 @@ export function useNoteEditorSession(options: Options = {}) {
   const open = useCallback(
     async (target: NoteEditorTarget, date: string, openOptions?: OpenNoteOptions) => {
       const generation = ++openGenerationRef.current;
-      const noun = target.kind === 'journal' ? 'journal' : 'note';
+      const noun = t(
+        target.kind === 'journal' ? 'note.journalNoun' : 'note.noteNoun',
+      );
       const autoStartDictation = openOptions?.dictate === true;
       try {
         const body = await loadNoteBody(target, date);
@@ -53,12 +58,12 @@ export function useNoteEditorSession(options: Options = {}) {
       } catch (error) {
         if (generation !== openGenerationRef.current) return;
         Alert.alert(
-          `Could not open ${noun}`,
-          error instanceof Error ? error.message : 'Something went wrong',
+          t('note.couldNotOpenTitle', { noun }),
+          error instanceof Error ? error.message : t('errors.somethingWentWrong'),
         );
       }
     },
-    [],
+    [t],
   );
 
   const dismiss = useCallback(() => {
@@ -71,7 +76,9 @@ export function useNoteEditorSession(options: Options = {}) {
   const save = useCallback(async (body: string) => {
     const current = sessionRef.current;
     if (!current || savingRef.current) return;
-    const noun = current.target.kind === 'journal' ? 'journal' : 'note';
+    const noun = t(
+      current.target.kind === 'journal' ? 'note.journalNoun' : 'note.noteNoun',
+    );
     savingRef.current = true;
     setSaving(true);
     try {
@@ -81,14 +88,14 @@ export function useNoteEditorSession(options: Options = {}) {
       setSession(null);
     } catch (error) {
       Alert.alert(
-        `Could not save ${noun}`,
-        error instanceof Error ? error.message : 'Something went wrong. Try again.',
+        t('note.couldNotSaveTitle', { noun }),
+        error instanceof Error ? error.message : t('errors.somethingWentWrongRetry'),
       );
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, []);
+  }, [t]);
 
   return {
     session,
@@ -103,6 +110,7 @@ export function useNoteEditorSession(options: Options = {}) {
           date: session.date,
           sessionKey: noteEditorSessionKey(session.target, session.date),
           heading: noteEditorHeading(session.target),
+          kind: noteEditorKind(session.target),
           trackerName: noteEditorLabel(session.target),
           initialBody: session.initialBody,
           autoStartDictation: session.autoStartDictation === true,
@@ -112,7 +120,8 @@ export function useNoteEditorSession(options: Options = {}) {
           visible: false as const,
           date: null,
           sessionKey: null,
-          heading: 'Note',
+          heading: t('note.noteHeading'),
+          kind: 'note' as const,
           trackerName: '',
           initialBody: '',
           autoStartDictation: false,

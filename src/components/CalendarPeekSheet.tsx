@@ -5,6 +5,7 @@ import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { ATTENTION_LIST_LIMIT, ATTENTION_WITHIN_DAYS } from '../calendar/attention';
 import { formatDayHeading, formatOccurrenceTime } from '../calendar/format';
 import { toDateString } from '../calendar/dates';
@@ -20,6 +21,8 @@ interface Props {
 /** Attention list only — cleared occurrences drop off (silence). Full history stays on Calendar. */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('home');
+  const { t: tCommon } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const { decorations: deco, isCartoon } = useAppTheme();
   const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
@@ -82,13 +85,13 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
         onPress={openFullCalendar}
         style={styles.header}
         accessibilityRole="button"
-        accessibilityLabel="Open full calendar"
+        accessibilityLabel={t('calendarPeek.openFullCalendar')}
       >
         <Text
           variant="titleMedium"
           style={isCartoon ? { color: theme.colors.onSurface, fontWeight: '700' } : undefined}
         >
-          Calendar
+          {t('calendarPeek.title')}
         </Text>
         <MaterialCommunityIcons name="chevron-right" size={22} color={accent} />
       </Pressable>
@@ -96,9 +99,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
         variant="bodySmall"
         style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
       >
-        {isEmpty
-          ? 'No upcoming events in the next two weeks.'
-          : 'Upcoming · tap ✓ to silence this occurrence'}
+        {isEmpty ? t('calendarPeek.emptySubtitle') : t('calendarPeek.withListSubtitle')}
       </Text>
 
       {isEmpty ? (
@@ -113,7 +114,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16, textAlign: 'center' }}
           >
-            Nothing needing attention right now.
+            {t('calendarPeek.emptyBody')}
           </Text>
           <Button
             mode="contained-tonal"
@@ -122,7 +123,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
             style={{ borderRadius: deco.buttonRadius }}
             buttonColor={isCartoon ? theme.colors.secondaryContainer : undefined}
           >
-            Open calendar
+            {t('calendarPeek.openCalendar')}
           </Button>
         </View>
       ) : (
@@ -151,14 +152,16 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
                     onPress={() =>
                       void clearOccurrence(occ).catch((error) => {
                         Alert.alert(
-                          'Could not mark done',
-                          error instanceof Error ? error.message : 'Something went wrong',
+                          t('calendarPeek.couldNotMarkDoneTitle'),
+                          error instanceof Error
+                            ? error.message
+                            : tCommon('errors.somethingWentWrong'),
                         );
                       })
                     }
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel="Mark done for this occurrence"
+                    accessibilityLabel={t('calendarPeek.markDoneA11y')}
                     style={styles.checkHit}
                   >
                     <MaterialCommunityIcons
@@ -198,15 +201,15 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
       <View style={[styles.actions, isEmpty && styles.actionsEmpty]}>
         {!isEmpty ? (
           <Button mode="text" compact onPress={openFullCalendar} icon="calendar-month">
-            Full calendar
+            {t('calendarPeek.fullCalendar')}
           </Button>
         ) : null}
         <View style={styles.actionRight}>
           <Button mode="text" compact onPress={openAddEvent} icon="plus">
-            Add
+            {t('calendarPeek.add')}
           </Button>
           <Button mode="text" compact onPress={onClose}>
-            Close
+            {t('calendarPeek.close')}
           </Button>
         </View>
       </View>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, Divider, Surface, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 type Props = {
@@ -24,7 +25,7 @@ export default function TrackersCollapsibleSection({
   icon,
   accentColor,
   count,
-  addLabel = 'Add',
+  addLabel,
   showAddButton = true,
   defaultCollapsed = false,
   onAdd,
@@ -32,9 +33,12 @@ export default function TrackersCollapsibleSection({
   emptyMessage,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const { decorations: deco, isCartoon } = useAppTheme();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const isEmpty = count === 0;
+  const resolvedAddLabel = addLabel ?? tCommon('actions.add');
 
   return (
     <Surface
@@ -54,7 +58,7 @@ export default function TrackersCollapsibleSection({
         style={styles.header}
         accessibilityRole="button"
         accessibilityState={{ expanded: !collapsed }}
-        accessibilityLabel={`${title}, ${count} items`}
+        accessibilityLabel={t('card.itemsCountA11y', { title, count })}
       >
         <View style={[styles.iconWrap, { backgroundColor: `${accentColor}22` }]}>
           <MaterialCommunityIcons name={icon} size={22} color={accentColor} />
@@ -99,7 +103,7 @@ export default function TrackersCollapsibleSection({
                 style={styles.addButton}
                 contentStyle={styles.addButtonContent}
               >
-                {addLabel}
+                {resolvedAddLabel}
               </Button>
             ) : null}
           </View>

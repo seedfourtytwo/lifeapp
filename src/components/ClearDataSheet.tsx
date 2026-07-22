@@ -10,6 +10,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_CLEAR_OPTIONS,
   clearOptionsAreEmpty,
@@ -50,13 +51,6 @@ function choiceFromPeriod(period: ActivityClearPeriod): PeriodChoice {
   return 'all';
 }
 
-const PERIOD_OPTIONS: { id: PeriodChoice; label: string }[] = [
-  { id: 'all', label: 'All time' },
-  { id: 'keep7', label: 'Keep 7d' },
-  { id: 'keep30', label: 'Keep 30d' },
-  { id: 'before', label: 'Before…' },
-];
-
 export default function ClearDataSheet({
   visible,
   busy,
@@ -65,9 +59,17 @@ export default function ClearDataSheet({
   onExportFirst,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('settings');
   const { decorations: deco, isCartoon } = useAppTheme();
   const [options, setOptions] = useState<ClearAppDataOptions>(DEFAULT_CLEAR_OPTIONS);
   const [beforeDate, setBeforeDate] = useState('');
+
+  const periodOptions: { id: PeriodChoice; label: string }[] = [
+    { id: 'all', label: t('clearData.period.all') },
+    { id: 'keep7', label: t('clearData.period.keep7') },
+    { id: 'keep30', label: t('clearData.period.keep30') },
+    { id: 'before', label: t('clearData.period.before') },
+  ];
 
   useEffect(() => {
     if (!visible) return;
@@ -165,13 +167,13 @@ export default function ClearDataSheet({
             variant="titleMedium"
             style={[styles.title, isCartoon && { color: theme.colors.onSurface }]}
           >
-            Clear data
+            {t('clearData.title')}
           </Text>
           <Text
             variant="bodySmall"
             style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
           >
-            Choose what to remove. Export a backup first if you might need it.
+            {t('clearData.subtitle')}
           </Text>
 
           {onExportFirst ? (
@@ -182,13 +184,13 @@ export default function ClearDataSheet({
               disabled={busy}
               style={[styles.exportBtn, { borderRadius: deco.buttonRadius }]}
             >
-              Export backup first
+              {t('clearData.exportFirstButton')}
             </Button>
           ) : null}
 
           <ScopeRow
-            label="Activity history"
-            description="Check-offs, timers, counter logs, tracker notes, and journals"
+            label={t('clearData.activityHistory.label')}
+            description={t('clearData.activityHistory.description')}
             checked={options.activityHistory || options.definitions}
             disabled={options.definitions}
             onToggle={(v) => toggle('activityHistory', v)}
@@ -197,10 +199,10 @@ export default function ClearDataSheet({
           {activityEnabled ? (
             <View style={styles.periodBlock}>
               <Text variant="labelLarge" style={{ marginBottom: 8 }}>
-                Period
+                {t('clearData.period.label')}
               </Text>
               <View style={styles.chipRow}>
-                {PERIOD_OPTIONS.map((option) => {
+                {periodOptions.map((option) => {
                   const selected = periodChoice === option.id;
                   return (
                     <Pressable
@@ -236,12 +238,12 @@ export default function ClearDataSheet({
               </View>
               {periodChoice === 'before' ? (
                 <TextInput
-                  label="Before date"
+                  label={t('clearData.period.beforeDateLabel')}
                   value={beforeDate}
                   onChangeText={setBeforeDate}
                   mode="outlined"
                   dense
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('clearData.period.beforeDatePlaceholder')}
                   style={{ marginTop: 8 }}
                   error={beforeInvalid}
                 />
@@ -251,7 +253,7 @@ export default function ClearDataSheet({
                   variant="bodySmall"
                   style={{ color: theme.colors.onSurfaceVariant, marginTop: 6 }}
                 >
-                  Keeps recent activity; deletes older days only.
+                  {t('clearData.period.keepHint')}
                 </Text>
               ) : null}
             </View>
@@ -260,26 +262,26 @@ export default function ClearDataSheet({
           <Divider style={styles.divider} />
 
           <ScopeRow
-            label="Calendar"
-            description="Events, reminders, and occurrence clears"
+            label={t('clearData.calendar.label')}
+            description={t('clearData.calendar.description')}
             checked={options.calendar}
             onToggle={(v) => toggle('calendar', v)}
           />
           <ScopeRow
-            label="Weather cache"
-            description="Saved forecasts on this device"
+            label={t('clearData.weatherCache.label')}
+            description={t('clearData.weatherCache.description')}
             checked={options.weather}
             onToggle={(v) => toggle('weather', v)}
           />
           <ScopeRow
-            label="App preferences"
-            description="Theme, toggles, bubble position"
+            label={t('clearData.appPreferences.label')}
+            description={t('clearData.appPreferences.description')}
             checked={options.preferences}
             onToggle={(v) => toggle('preferences', v)}
           />
           <ScopeRow
-            label="Habits & counters"
-            description="Definitions and Home order — also wipes all activity"
+            label={t('clearData.habitsCounters.label')}
+            description={t('clearData.habitsCounters.description')}
             checked={options.definitions}
             danger
             onToggle={(v) => toggle('definitions', v)}
@@ -303,7 +305,7 @@ export default function ClearDataSheet({
                 variant="labelLarge"
                 style={{ color: theme.colors.onErrorContainer, marginBottom: 4 }}
               >
-                Will remove
+                {t('clearData.willRemoveTitle')}
               </Text>
               {summary.map((line) => (
                 <Text
@@ -319,7 +321,7 @@ export default function ClearDataSheet({
 
           <View style={styles.actions}>
             <Button mode="text" onPress={onDismiss} disabled={busy}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
             <Button
               mode="contained"
@@ -330,7 +332,7 @@ export default function ClearDataSheet({
               loading={busy}
               disabled={busy || nothingSelected || beforeInvalid}
             >
-              Clear selected
+              {t('clearData.confirmButton')}
             </Button>
           </View>
         </ScrollView>

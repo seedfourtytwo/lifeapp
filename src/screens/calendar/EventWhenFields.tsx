@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { List, Text, TextInput, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { parseDateOnlyLocal } from '../../calendar/dates';
 import { formatTime } from '../../calendar/format';
 import {
@@ -39,6 +40,7 @@ export default function EventWhenFields({
   onEndTimeChange,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('calendar');
 
   const startSummary = allDay
     ? formatFriendlyDate(startDate)
@@ -50,7 +52,7 @@ export default function EventWhenFields({
   return (
     <>
       <List.Item
-        title="Starts"
+        title={t('editor.starts')}
         description={startSummary}
         left={(props) => <List.Icon {...props} icon="clock-start" />}
         onPress={() => onToggleEditing('start')}
@@ -65,10 +67,10 @@ export default function EventWhenFields({
               }}
               style={styles.chip}
             >
-              <Text style={{ color: theme.colors.primary }}>−1 day</Text>
+              <Text style={{ color: theme.colors.primary }}>{t('editor.minusOneDay')}</Text>
             </Pressable>
             <TextInput
-              label="Date"
+              label={t('editor.dateLabel')}
               value={startDate}
               onChangeText={onStartDateChange}
               mode="outlined"
@@ -83,13 +85,13 @@ export default function EventWhenFields({
               }}
               style={styles.chip}
             >
-              <Text style={{ color: theme.colors.primary }}>+1 day</Text>
+              <Text style={{ color: theme.colors.primary }}>{t('editor.plusOneDay')}</Text>
             </Pressable>
           </View>
           {!allDay ? (
             <View style={styles.timeRow}>
               <TextInput
-                label="Hour"
+                label={t('editor.hourLabel')}
                 value={startTime.hour}
                 onChangeText={(hour) => onStartTimeChange({ ...startTime, hour })}
                 mode="outlined"
@@ -98,7 +100,7 @@ export default function EventWhenFields({
                 style={styles.flex}
               />
               <TextInput
-                label="Min"
+                label={t('editor.minuteLabel')}
                 value={startTime.minute}
                 onChangeText={(minute) => onStartTimeChange({ ...startTime, minute })}
                 mode="outlined"
@@ -112,7 +114,7 @@ export default function EventWhenFields({
       ) : null}
 
       <List.Item
-        title="Ends"
+        title={t('editor.ends')}
         description={endSummary}
         left={(props) => <List.Icon {...props} icon="clock-end" />}
         onPress={() => onToggleEditing('end')}
@@ -120,7 +122,7 @@ export default function EventWhenFields({
       {editingWhen === 'end' ? (
         <View style={styles.inlineEditor}>
           <TextInput
-            label="Date"
+            label={t('editor.dateLabel')}
             value={endDate}
             onChangeText={onEndDateChange}
             mode="outlined"
@@ -130,7 +132,7 @@ export default function EventWhenFields({
           {!allDay ? (
             <View style={styles.timeRow}>
               <TextInput
-                label="Hour"
+                label={t('editor.hourLabel')}
                 value={endTime.hour}
                 onChangeText={(hour) => onEndTimeChange({ ...endTime, hour })}
                 mode="outlined"
@@ -139,7 +141,7 @@ export default function EventWhenFields({
                 style={styles.flex}
               />
               <TextInput
-                label="Min"
+                label={t('editor.minuteLabel')}
                 value={endTime.minute}
                 onChangeText={(minute) => onEndTimeChange({ ...endTime, minute })}
                 mode="outlined"

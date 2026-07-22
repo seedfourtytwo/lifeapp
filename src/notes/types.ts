@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import { DAY_NOTE_BODY_MAX_LENGTH } from '../protocol';
 
 /** Max body length shared by tracker notes and daily journals. */
@@ -18,8 +19,14 @@ export type JournalNoteTarget = {
 
 export type NoteEditorTarget = TrackerNoteTarget | JournalNoteTarget;
 
+export function noteEditorKind(target: NoteEditorTarget): 'note' | 'journal' {
+  return target.kind === 'journal' ? 'journal' : 'note';
+}
+
 export function noteEditorHeading(target: NoteEditorTarget): string {
-  return target.kind === 'journal' ? 'Journal' : 'Note';
+  return target.kind === 'journal'
+    ? i18n.t('common:note.journalHeading')
+    : i18n.t('common:note.noteHeading');
 }
 
 export function noteEditorLabel(target: NoteEditorTarget): string {

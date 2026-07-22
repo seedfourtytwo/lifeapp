@@ -17,6 +17,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { NOTE_BODY_MAX_LENGTH } from '../notes/types';
 import { appendTranscript } from '../utils/appendTranscript';
@@ -26,8 +27,10 @@ import DayNoteDictationButton from './DayNoteDictationButton';
 export interface DayNoteEditorSheetProps {
   visible: boolean;
   date: string | null;
-  /** Primary sheet title — "Note" or "Journal". */
+  /** Primary sheet title — already localized ("Note" or "Journal"). */
   heading?: string;
+  /** Drives copy that differs between notes and journals. */
+  kind?: 'note' | 'journal';
   trackerName: string;
   initialBody: string;
   /** Stable id for draft seeding — changes when target or day changes. */
@@ -42,7 +45,8 @@ export interface DayNoteEditorSheetProps {
 export default function DayNoteEditorSheet({
   visible,
   date,
-  heading = 'Note',
+  heading,
+  kind = 'note',
   sessionKey = null,
   trackerName,
   initialBody,
@@ -52,6 +56,7 @@ export default function DayNoteEditorSheet({
   onSave,
 }: DayNoteEditorSheetProps) {
   const theme = useTheme();
+  const { t } = useTranslation('common');
   const { decorations: deco, isCartoon } = useAppTheme();
   /** Draft tracked for dirty/limit UI — not fed back as `value` (IME-safe). */
   const [draft, setDraft] = useState(initialBody);
@@ -66,8 +71,9 @@ export default function DayNoteEditorSheet({
   const limitAlertShownRef = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const isJournal = heading === 'Journal';
-  const noun = isJournal ? 'journal' : 'note';
+  const isJournal = kind === 'journal';
+  const noun = isJournal ? t('note.journalNoun') : t('note.noteNoun');
+  const displayHeading = heading ?? (isJournal ? t('note.journalHeading') : t('note.noteHeading'));
 
   const remountField = (text: string) => {
     draftRef.current = text;
@@ -121,8 +127,11 @@ export default function DayNoteEditorSheet({
     if (previousLength >= NOTE_BODY_MAX_LENGTH || limitAlertShownRef.current) return;
     limitAlertShownRef.current = true;
     Alert.alert(
-      'Character limit reached',
-      `This ${noun} can be at most ${NOTE_BODY_MAX_LENGTH.toLocaleString()} characters. Shorten some text to keep writing.`,
+      t('note.characterLimitTitle'),
+      t('note.characterLimitBody', {
+        noun,
+        max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
+      }),
     );
   };
 
@@ -160,8 +169,8 @@ export default function DayNoteEditorSheet({
     if (result.truncated) {
       setDictationHint(
         isJournal
-          ? 'Journal is at the character limit — some dictation was cut.'
-          : 'Note is at the character limit — some dictation was cut.',
+          ? t('note.dictationHintTruncatedJournal')
+          : t('note.dictationHintTruncatedNote'),
       );
       notifyIfReachedLimit(result.text.length, prev.length);
     }
@@ -182,8 +191,8 @@ export default function DayNoteEditorSheet({
   };
 
   const previewPlaceholder = isJournal
-    ? "Tap the mic to dictate today's journal"
-    : 'Tap the mic to dictate a note';
+    ? t('note.previewPlaceholderJournal')
+    : t('note.previewPlaceholderNote');
 
   return (
     <Portal>
@@ -207,7 +216,7 @@ export default function DayNoteEditorSheet({
         >
           <View style={styles.header}>
             <View style={styles.headerText}>
-              <Text variant="titleMedium">{heading}</Text>
+              <Text variant="titleMedium">{displayHeading}</Text>
               <Text
                 variant="bodySmall"
                 style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}
@@ -230,7 +239,9 @@ export default function DayNoteEditorSheet({
               icon="close"
               onPress={requestDismiss}
               disabled={saving}
-              accessibilityLabel={isJournal ? 'Close journal' : 'Close note'}
+              accessibilityLabel={
+                isJournal ? t('note.closeJournalAccessible') : t('note.closeNoteAccessible')
+              }
               style={styles.headerIcon}
             />
           </View>
@@ -279,10 +290,10 @@ export default function DayNoteEditorSheet({
               accessibilityRole="button"
               accessibilityLabel={
                 hasDraftText
-                  ? `Edit ${noun} text`
-                  : `Edit ${noun} — currently empty`
+                  ? t('note.editNoteAccessible', { noun })
+                  : t('note.editNoteEmptyAccessible', { noun })
               }
-              accessibilityHint="Opens the keyboard to type or correct text"
+              accessibilityHint={t('note.editNoteHint')}
               style={[
                 styles.preview,
                 isJournal && styles.journalPreview,
@@ -308,9 +319,17 @@ export default function DayNoteEditorSheet({
           <Text
             variant="labelSmall"
             accessibilityLiveRegion={nearLimit ? 'polite' : 'none'}
-            accessibilityLabel={`${draft.length.toLocaleString()} of ${NOTE_BODY_MAX_LENGTH.toLocaleString()} characters${
-              atLimit ? ', limit reached' : nearLimit ? ', approaching limit' : ''
-            }`}
+            accessibilityLabel={t(
+              atLimit
+                ? 'note.characterCountLimitReachedA11y'
+                : nearLimit
+                  ? 'note.characterCountApproachingLimitA11y'
+                  : 'note.characterCountA11y',
+              {
+                count: draft.length.toLocaleString(),
+                max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
+              },
+            )}
             style={{
               color: atLimit
                 ? theme.colors.error
@@ -323,7 +342,10 @@ export default function DayNoteEditorSheet({
               opacity: atLimit ? 1 : nearLimit ? 0.9 : 0.7,
             }}
           >
-            {`${draft.length.toLocaleString()} / ${NOTE_BODY_MAX_LENGTH.toLocaleString()}`}
+            {t('note.characterCount', {
+              count: draft.length.toLocaleString(),
+              max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
+            })}
           </Text>
 
           {dictationHint ? (
@@ -346,7 +368,7 @@ export default function DayNoteEditorSheet({
                   disabled={saving}
                   compact
                 >
-                  Clear
+                  {t('note.clear')}
                 </Button>
               ) : null}
               {!textEditing ? (
@@ -356,13 +378,13 @@ export default function DayNoteEditorSheet({
                   disabled={saving}
                   compact
                 >
-                  Edit text
+                  {t('note.editText')}
                 </Button>
               ) : null}
             </View>
             <View style={styles.actionsRight}>
               <Button mode="text" onPress={requestDismiss} disabled={saving}>
-                {autoStartDictation ? 'Close' : 'Cancel'}
+                {autoStartDictation ? t('note.close') : t('note.cancel')}
               </Button>
               {!autoStartDictation || textEditing || isDirty ? (
                 <Button
@@ -371,7 +393,7 @@ export default function DayNoteEditorSheet({
                   loading={saving}
                   disabled={saving || !canSave}
                 >
-                  Save
+                  {t('note.save')}
                 </Button>
               ) : null}
             </View>

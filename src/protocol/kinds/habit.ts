@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { i18n } from '../../i18n';
 import { isWithinTimeRange, formatTimeRange } from '../../utils/time';
 import { sumEventValues } from '../../utils/events';
 import {
@@ -236,7 +237,11 @@ export function formatHabitDescription(config: HabitConfig): string | undefined 
   }
   if (config.timeRange) {
     const range = formatTimeRange(config.timeRange.start, config.timeRange.end);
-    parts.push(config.visibleOnlyInTimeRange ? `${range} (scheduled)` : range);
+    parts.push(
+      config.visibleOnlyInTimeRange
+        ? i18n.t('trackers:metaLines.timeRangeScheduled', { range })
+        : range,
+    );
   }
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }

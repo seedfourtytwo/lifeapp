@@ -10,6 +10,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import {
   REPEAT_OPTIONS,
   YEARLY_EXTRA_REMINDER_MINUTES,
@@ -47,6 +48,7 @@ const NO_REMINDERS: CalendarReminder[] = [];
  */
 export default function CalendarEventEditorScreen({ navigation, route }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('calendar');
   const eventId = route.params?.eventId;
   const seedDate = route.params?.seedDate;
   const events = useCalendarStore((s) => s.events);
@@ -153,14 +155,14 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
 
   const buildDates = (): { start: Date; end: Date } | null => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-      Alert.alert('Invalid date', 'Use YYYY-MM-DD for dates.');
+      Alert.alert(t('editor.invalidDateTitle'), t('editor.invalidDateBody'));
       return null;
     }
     if (allDay) {
       const start = startOfLocalDay(parseDateOnlyLocal(startDate));
       const end = startOfLocalDay(parseDateOnlyLocal(endDate));
       if (end < start) {
-        Alert.alert('Invalid range', 'End date must be on or after the start date.');
+        Alert.alert(t('editor.invalidRangeTitle'), t('editor.invalidRangeBody'));
         return null;
       }
       return { start, end };
@@ -168,7 +170,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
     const start = applyTime(parseDateOnlyLocal(startDate), startTime.hour, startTime.minute);
     const end = applyTime(parseDateOnlyLocal(endDate), endTime.hour, endTime.minute);
     if (end.getTime() <= start.getTime()) {
-      Alert.alert('Invalid time', 'End must be after start.');
+      Alert.alert(t('editor.invalidTimeTitle'), t('editor.invalidTimeBody'));
       return null;
     }
     return { start, end };
@@ -177,7 +179,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
   const handleSave = async () => {
     const trimmed = title.trim();
     if (!trimmed) {
-      Alert.alert('Title required', 'Give this event a name.');
+      Alert.alert(t('editor.titleRequiredTitle'), t('editor.titleRequiredBody'));
       return;
     }
     const dates = buildDates();
@@ -211,7 +213,10 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
       else await createEvent(payload);
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Could not save', error instanceof Error ? error.message : 'Unknown error');
+      Alert.alert(
+        t('editor.couldNotSaveTitle'),
+        error instanceof Error ? error.message : t('common:errors.unknownError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -219,18 +224,18 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
 
   const handleDelete = () => {
     if (!eventId) return;
-    Alert.alert('Delete event?', 'This removes the event and its reminders.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('editor.deleteConfirmTitle'), t('editor.deleteConfirmBody'), [
+      { text: t('common:actions.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common:actions.delete'),
         style: 'destructive',
         onPress: () => {
           void deleteEvent(eventId)
             .then(() => navigation.goBack())
             .catch((error) => {
               Alert.alert(
-                'Could not delete',
-                error instanceof Error ? error.message : 'Unknown error',
+                t('editor.couldNotDeleteTitle'),
+                error instanceof Error ? error.message : t('common:errors.unknownError'),
               );
             });
         },
@@ -239,13 +244,14 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
   };
 
   const repeatLabel =
-    REPEAT_OPTIONS.find((o) => o.freq === freq)?.label ??
-    recurrenceLabel({ freq, interval: 1, byWeekDays: [] });
+    REPEAT_OPTIONS.find((o) => o.freq === freq) != null
+      ? t(REPEAT_OPTIONS.find((o) => o.freq === freq)!.labelKey)
+      : recurrenceLabel({ freq, interval: 1, byWeekDays: [] });
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <TextInput
-        placeholder="Add title"
+        placeholder={t('editor.titlePlaceholder')}
         value={title}
         onChangeText={setTitle}
         mode="flat"
@@ -257,7 +263,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
       <Divider style={styles.divider} />
 
       <List.Item
-        title="All-day"
+        title={t('editor.allDay')}
         left={(props) => <List.Icon {...props} icon="calendar-blank" />}
         right={() => <Switch value={allDay} onValueChange={onAllDayChange} />}
       />
@@ -283,7 +289,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         onDismiss={() => setRepeatMenuOpen(false)}
         anchor={
           <List.Item
-            title="Repeat"
+            title={t('editor.repeat')}
             description={repeatLabel}
             left={(props) => <List.Icon {...props} icon="repeat" />}
             right={(props) => <List.Icon {...props} icon="chevron-down" />}
@@ -295,7 +301,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
           <Menu.Item
             key={option.freq}
             onPress={() => setRepeat(option.freq)}
-            title={option.label}
+            title={t(option.labelKey)}
             leadingIcon={freq === option.freq ? 'check' : undefined}
           />
         ))}
@@ -320,7 +326,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
       <Divider style={styles.divider} />
 
       <TextInput
-        label="Notes"
+        label={t('editor.notesLabel')}
         value={notes}
         onChangeText={setNotes}
         mode="outlined"
@@ -330,11 +336,11 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
 
       <View style={styles.actions}>
         <Button mode="contained" onPress={() => void handleSave()} loading={saving} disabled={saving}>
-          Save
+          {t('editor.save')}
         </Button>
         {eventId ? (
           <Button mode="text" textColor={theme.colors.error} onPress={handleDelete}>
-            Delete event
+            {t('editor.deleteEvent')}
           </Button>
         ) : null}
       </View>

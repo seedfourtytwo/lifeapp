@@ -17,6 +17,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { stopHabitSound } from '../audio/habitTimerSound';
 import { useAppTheme } from '../hooks/useAppTheme';
 import CounterEditorFields from './trackerEditor/CounterEditorFields';
@@ -71,6 +72,8 @@ export default function TrackerEditorDialog({
   onDelete,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const { decorations: deco, isCartoon } = useAppTheme();
   const { width, height } = useWindowDimensions();
   const sheetWidth = Math.min(width - 24, 480);
@@ -114,10 +117,10 @@ export default function TrackerEditorDialog({
 
   const title = useMemo(() => {
     if (mode === 'counter') {
-      return editingId ? 'Edit counter' : 'New counter';
+      return editingId ? t('editor.editCounterTitle') : t('editor.newCounterTitle');
     }
-    return editingId ? 'Edit habit' : 'New habit';
-  }, [editingId, mode]);
+    return editingId ? t('editor.editHabitTitle') : t('editor.newHabitTitle');
+  }, [editingId, mode, t]);
 
   return (
     <Portal>
@@ -154,7 +157,11 @@ export default function TrackerEditorDialog({
               >
                 {title}
               </Text>
-              <IconButton icon="close" onPress={closeEditor} accessibilityLabel="Close" />
+              <IconButton
+                icon="close"
+                onPress={closeEditor}
+                accessibilityLabel={tCommon('actions.close')}
+              />
             </View>
 
             <ScrollView
@@ -163,9 +170,9 @@ export default function TrackerEditorDialog({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <FormSection title="Name">
+              <FormSection title={t('editor.nameSectionTitle')}>
                 <TextInput
-                  label="Name"
+                  label={t('editor.nameLabel')}
                   value={name}
                   onChangeText={setName}
                   mode="outlined"
@@ -205,14 +212,14 @@ export default function TrackerEditorDialog({
                   loading={deleting}
                   disabled={saving || deleting}
                 >
-                  Delete
+                  {t('editor.delete')}
                 </Button>
               ) : (
                 <View />
               )}
               <View style={styles.footerActions}>
                 <Button onPress={closeEditor} disabled={saving || deleting}>
-                  Cancel
+                  {t('editor.cancel')}
                 </Button>
                 <Button
                   mode="contained"
@@ -222,7 +229,7 @@ export default function TrackerEditorDialog({
                   buttonColor={isCartoon ? theme.colors.primary : undefined}
                   style={{ borderRadius: deco.buttonRadius }}
                 >
-                  Save
+                  {t('editor.save')}
                 </Button>
               </View>
             </View>

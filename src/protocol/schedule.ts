@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { i18n } from '../i18n';
 import { timeToMinutes } from '../utils/time';
 import type { HabitTimeRange } from './kinds/habit';
 
@@ -66,28 +67,30 @@ export function isTimeRangeStartingSoon(
   return start >= current && start <= windowEnd;
 }
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_SHORT_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
 export function formatScheduleDescription(schedule: HabitSchedule): string {
   switch (schedule.type) {
     case 'daily':
-      return 'Every day';
+      return i18n.t('trackers:habitFields.everyDay');
     case 'weekdays': {
       const days = [...schedule.days].sort();
       if (days.length === 5 && days.join(',') === '1,2,3,4,5') {
-        return 'Weekdays';
+        return i18n.t('trackers:schedule.weekdays');
       }
       if (days.length === 2 && days.join(',') === '0,6') {
-        return 'Weekends';
+        return i18n.t('trackers:schedule.weekends');
       }
-      return days.map((day) => WEEKDAY_LABELS[day]).join(', ');
+      return days
+        .map((day) => i18n.t(`common:weekdaysShort.${WEEKDAY_SHORT_KEYS[day]}`))
+        .join(', ');
     }
     case 'every_n_days':
       return schedule.interval === 1
-        ? 'Every day'
-        : `Every ${schedule.interval} days`;
+        ? i18n.t('trackers:habitFields.everyDay')
+        : i18n.t('trackers:schedule.everyNDays', { count: schedule.interval });
     default:
-      return 'Every day';
+      return i18n.t('trackers:habitFields.everyDay');
   }
 }
 

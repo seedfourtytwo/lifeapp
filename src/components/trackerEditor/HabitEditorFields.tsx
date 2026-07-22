@@ -1,46 +1,57 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Button, Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { getDateLocale } from '../../i18n';
 import { toDateString, type HabitTrackingMode } from '../../protocol';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
 import type { HabitEditorFieldState, HabitScheduleType } from './types';
 
-const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
-  { value: 0, label: 'Sun' },
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-];
+const WEEKDAY_KEYS = [
+  'weekdaySun',
+  'weekdayMon',
+  'weekdayTue',
+  'weekdayWed',
+  'weekdayThu',
+  'weekdayFri',
+  'weekdaySat',
+] as const;
 
 const INTERVAL_PRESETS = [2, 3, 7] as const;
 
-function formatAnchorLabel(dateStr: string): string {
+function formatAnchorLabel(dateStr: string, locale: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const date = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(date.getTime())) return dateStr;
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
 }
 
-function everyNDaysSummary(intervalRaw: string, anchorDate: string): string {
+function everyNDaysSummary(
+  intervalRaw: string,
+  anchorDate: string,
+  locale: string,
+  t: TFunction,
+): string {
   const interval = parseInt(intervalRaw.trim(), 10);
   if (Number.isNaN(interval) || interval < 1) {
-    return 'Enter how often this habit repeats.';
+    return t('habitFields.enterIntervalHint');
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(anchorDate)) {
-    return 'Set a first day (YYYY-MM-DD).';
+    return t('habitFields.setFirstDayHint');
   }
   if (interval === 1) {
-    return `Due every day from ${formatAnchorLabel(anchorDate)}.`;
+    return t('habitFields.dueEveryDayFromHint', { date: formatAnchorLabel(anchorDate, locale) });
   }
-  return `Due every ${interval} days from ${formatAnchorLabel(anchorDate)}.`;
+  return t('habitFields.dueEveryNDaysFromHint', {
+    count: interval,
+    date: formatAnchorLabel(anchorDate, locale),
+  });
 }
 
 type Props = {
@@ -49,6 +60,8 @@ type Props = {
 };
 
 export default function HabitEditorFields({ state, onChange }: Props) {
+  const { t } = useTranslation('trackers');
+  const locale = getDateLocale();
   const toggleWeekday = (day: number) => {
     const next = state.scheduleWeekdays.includes(day)
       ? state.scheduleWeekdays.filter((d) => d !== day)
@@ -78,15 +91,15 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
   return (
     <>
-      <FormSection title="Type">
+      <FormSection title={t('habitFields.typeSectionTitle')}>
         <SegmentedButtons
           value={state.habitTrackingMode}
           onValueChange={(value) => {
             if (value) onChange({ habitTrackingMode: value as HabitTrackingMode });
           }}
           buttons={[
-            { value: 'boolean', label: 'Check off' },
-            { value: 'timer', label: 'Timer' },
+            { value: 'boolean', label: t('habitFields.checkOff') },
+            { value: 'timer', label: t('habitFields.timer') },
           ]}
         />
         {state.habitTrackingMode === 'timer' ? (
@@ -103,8 +116,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
           />
         ) : (
           <TextInput
-            label="Note (optional)"
-            placeholder="e.g. 1 cup, stretch"
+            label={t('habitFields.noteLabel')}
+            placeholder={t('habitFields.notePlaceholder')}
             value={state.targetLabel}
             onChangeText={(targetLabel) => onChange({ targetLabel })}
             mode="outlined"
@@ -116,16 +129,16 @@ export default function HabitEditorFields({ state, onChange }: Props) {
       <Divider style={styles.divider} />
 
       <FormSection
-        title="Streak"
-        description="Shown under the habit name — motivating before you check off."
+        title={t('habitFields.streakSectionTitle')}
+        description={t('habitFields.streakSectionDescription')}
         collapsible
         defaultCollapsed={!state.showStreakOnCard}
       >
         <View style={styles.switchRow}>
           <View style={styles.switchLabel}>
-            <Text variant="bodyMedium">Show streak on card</Text>
+            <Text variant="bodyMedium">{t('habitFields.showStreakLabel')}</Text>
             <Text variant="bodySmall" style={styles.hint}>
-              Success streak under the name — shown even before today&apos;s check-off
+              {t('habitFields.showStreakHint')}
             </Text>
           </View>
           <Switch
@@ -138,8 +151,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
       <Divider style={styles.divider} />
 
       <FormSection
-        title="Repeat"
-        description="Which days this habit is due. Off days stay off the Habits list and do not break streaks."
+        title={t('habitFields.repeatSectionTitle')}
+        description={t('habitFields.repeatSectionDescription')}
         collapsible
         defaultCollapsed={state.scheduleType === 'daily'}
       >
@@ -149,8 +162,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
             if (value) setScheduleType(value as HabitScheduleType);
           }}
           buttons={[
-            { value: 'daily', label: 'Every day' },
-            { value: 'weekdays', label: 'Specific days' },
+            { value: 'daily', label: t('habitFields.everyDay') },
+            { value: 'weekdays', label: t('habitFields.specificDays') },
           ]}
           style={styles.field}
         />
@@ -159,19 +172,19 @@ export default function HabitEditorFields({ state, onChange }: Props) {
           onValueChange={(value) => {
             if (value) setScheduleType(value as HabitScheduleType);
           }}
-          buttons={[{ value: 'every_n_days', label: 'Every N days' }]}
+          buttons={[{ value: 'every_n_days', label: t('habitFields.everyNDays') }]}
         />
         {state.scheduleType === 'weekdays' ? (
           <View style={[styles.weekdayRow, styles.sectionBody]}>
-            {WEEKDAY_OPTIONS.map((option) => (
+            {WEEKDAY_KEYS.map((key, value) => (
               <Chip
-                key={option.value}
-                selected={state.scheduleWeekdays.includes(option.value)}
-                onPress={() => toggleWeekday(option.value)}
+                key={value}
+                selected={state.scheduleWeekdays.includes(value)}
+                onPress={() => toggleWeekday(value)}
                 compact
                 style={styles.weekdayChip}
               >
-                {option.label}
+                {t(`habitFields.${key}`)}
               </Chip>
             ))}
           </View>
@@ -179,7 +192,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
         {state.scheduleType === 'every_n_days' ? (
           <View style={styles.sectionBody}>
             <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
-              Interval
+              {t('habitFields.intervalLabel')}
             </Text>
             <View style={[styles.chipRow, styles.field]}>
               {INTERVAL_PRESETS.map((preset) => (
@@ -189,7 +202,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
                   onPress={() => onChange({ scheduleInterval: String(preset) })}
                   compact
                 >
-                  Every {preset}
+                  {t('habitFields.everyNPreset', { count: preset })}
                 </Chip>
               ))}
               <Chip
@@ -201,13 +214,13 @@ export default function HabitEditorFields({ state, onChange }: Props) {
                 }}
                 compact
               >
-                Custom
+                {t('habitFields.custom')}
               </Chip>
             </View>
             {knownPreset === 'custom' ? (
               <TextInput
-                label="Every N days"
-                placeholder="4"
+                label={t('habitFields.everyNDaysLabel')}
+                placeholder={t('habitFields.everyNDaysPlaceholder')}
                 value={state.scheduleInterval}
                 onChangeText={(scheduleInterval) => onChange({ scheduleInterval })}
                 keyboardType="number-pad"
@@ -217,9 +230,9 @@ export default function HabitEditorFields({ state, onChange }: Props) {
             ) : null}
             <View style={styles.switchRow}>
               <View style={styles.switchLabel}>
-                <Text variant="bodyMedium">First day</Text>
+                <Text variant="bodyMedium">{t('habitFields.firstDayLabel')}</Text>
                 <Text variant="bodySmall" style={styles.hint}>
-                  {formatAnchorLabel(state.scheduleAnchorDate || today)}
+                  {formatAnchorLabel(state.scheduleAnchorDate || today, locale)}
                 </Text>
               </View>
               <Button
@@ -228,11 +241,11 @@ export default function HabitEditorFields({ state, onChange }: Props) {
                 onPress={() => onChange({ scheduleAnchorDate: today })}
                 disabled={state.scheduleAnchorDate === today}
               >
-                Start today
+                {t('habitFields.startToday')}
               </Button>
             </View>
             <TextInput
-              label="First day (YYYY-MM-DD)"
+              label={t('habitFields.firstDayFieldLabel')}
               placeholder={today}
               value={state.scheduleAnchorDate}
               onChangeText={(scheduleAnchorDate) => onChange({ scheduleAnchorDate })}
@@ -242,7 +255,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
               style={styles.field}
             />
             <Text variant="bodySmall" style={styles.hint}>
-              {everyNDaysSummary(state.scheduleInterval, state.scheduleAnchorDate)}
+              {everyNDaysSummary(state.scheduleInterval, state.scheduleAnchorDate, locale, t)}
             </Text>
           </View>
         ) : null}
@@ -251,13 +264,13 @@ export default function HabitEditorFields({ state, onChange }: Props) {
       <Divider style={styles.divider} />
 
       <FormSection
-        title="Time window"
-        description="Optional. Limit when the habit shows on the Habits tab, and set a reminder before it starts."
+        title={t('habitFields.timeWindowSectionTitle')}
+        description={t('habitFields.timeWindowSectionDescription')}
         collapsible
         defaultCollapsed={!state.useTimeRange}
       >
         <View style={styles.switchRow}>
-          <Text variant="bodyMedium">Use a daily time range</Text>
+          <Text variant="bodyMedium">{t('habitFields.useTimeRangeLabel')}</Text>
           <Switch
             value={state.useTimeRange}
             onValueChange={(useTimeRange) => onChange({ useTimeRange })}
@@ -267,8 +280,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
           <View style={styles.sectionBody}>
             <View style={styles.timeRow}>
               <TextInput
-                label="From"
-                placeholder="06:00"
+                label={t('habitFields.fromLabel')}
+                placeholder={t('habitFields.fromPlaceholder')}
                 value={state.timeRangeStart}
                 onChangeText={(timeRangeStart) => onChange({ timeRangeStart })}
                 keyboardType="numbers-and-punctuation"
@@ -276,8 +289,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
                 style={styles.timeField}
               />
               <TextInput
-                label="To"
-                placeholder="09:00"
+                label={t('habitFields.toLabel')}
+                placeholder={t('habitFields.toPlaceholder')}
                 value={state.timeRangeEnd}
                 onChangeText={(timeRangeEnd) => onChange({ timeRangeEnd })}
                 keyboardType="numbers-and-punctuation"
@@ -287,9 +300,9 @@ export default function HabitEditorFields({ state, onChange }: Props) {
             </View>
             <View style={styles.switchRow}>
               <View style={styles.switchLabel}>
-                <Text variant="bodyMedium">Only show during this window</Text>
+                <Text variant="bodyMedium">{t('habitFields.onlyShowDuringWindowLabel')}</Text>
                 <Text variant="bodySmall" style={styles.hint}>
-                  Hidden outside this time on Habits
+                  {t('habitFields.onlyShowDuringWindowHint')}
                 </Text>
               </View>
               <Switch
@@ -299,12 +312,12 @@ export default function HabitEditorFields({ state, onChange }: Props) {
             </View>
             {state.scheduleType === 'every_n_days' ? (
               <Text variant="bodySmall" style={styles.hint}>
-                Reminders are not available for every-N-days schedules yet.
+                {t('habitFields.everyNDaysReminderUnavailableHint')}
               </Text>
             ) : (
               <>
                 <View style={styles.switchRow}>
-                  <Text variant="bodyMedium">Reminder before start</Text>
+                  <Text variant="bodyMedium">{t('habitFields.reminderBeforeStartLabel')}</Text>
                   <Switch
                     value={state.useReminder}
                     onValueChange={(useReminder) => onChange({ useReminder })}
@@ -312,8 +325,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
                 </View>
                 {state.useReminder ? (
                   <TextInput
-                    label="Minutes before"
-                    placeholder="15"
+                    label={t('habitFields.minutesBeforeLabel')}
+                    placeholder={t('habitFields.minutesBeforePlaceholder')}
                     value={state.remindMinutesBefore}
                     onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
                     keyboardType="number-pad"

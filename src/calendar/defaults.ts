@@ -12,23 +12,23 @@ export function defaultReminderOffsets(allDay: boolean): number[] {
 /** Extra offset suggested when the user picks yearly repeat. */
 export const YEARLY_EXTRA_REMINDER_MINUTES = 60 * 24 * 14;
 
-export const REMINDER_PRESET_OPTIONS: { label: string; offsetMinutes: number }[] = [
-  { label: 'At time of event', offsetMinutes: 0 },
-  { label: '15 minutes before', offsetMinutes: 15 },
-  { label: '1 hour before', offsetMinutes: 60 },
-  { label: '1 day before', offsetMinutes: 60 * 24 },
-  { label: '2 days before', offsetMinutes: 60 * 24 * 2 },
-  { label: '1 week before', offsetMinutes: 60 * 24 * 7 },
-  { label: '2 weeks before', offsetMinutes: 60 * 24 * 14 },
+export const REMINDER_PRESET_OPTIONS: { labelKey: string; offsetMinutes: number }[] = [
+  { labelKey: 'reminders.atTimeOfEvent', offsetMinutes: 0 },
+  { labelKey: 'reminders.minutesBefore15', offsetMinutes: 15 },
+  { labelKey: 'reminders.hourBefore1', offsetMinutes: 60 },
+  { labelKey: 'reminders.dayBefore1', offsetMinutes: 60 * 24 },
+  { labelKey: 'reminders.daysBefore2', offsetMinutes: 60 * 24 * 2 },
+  { labelKey: 'reminders.weekBefore1', offsetMinutes: 60 * 24 * 7 },
+  { labelKey: 'reminders.weeksBefore2', offsetMinutes: 60 * 24 * 14 },
 ];
 
 export const REPEAT_OPTIONS: {
   freq: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-  label: string;
+  labelKey: string;
 }[] = [
-  { freq: 'none', label: 'Does not repeat' },
-  { freq: 'daily', label: 'Every day' },
-  { freq: 'weekly', label: 'Every week' },
-  { freq: 'monthly', label: 'Every month' },
-  { freq: 'yearly', label: 'Every year' },
+  { freq: 'none', labelKey: 'repeatOptions.none' },
+  { freq: 'daily', labelKey: 'repeatOptions.daily' },
+  { freq: 'weekly', labelKey: 'repeatOptions.weekly' },
+  { freq: 'monthly', labelKey: 'repeatOptions.monthly' },
+  { freq: 'yearly', labelKey: 'repeatOptions.yearly' },
 ];

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import { withDbWriteLock } from '../db/writeLock';
 import * as weatherRepo from '../db/repositories/weatherRepository';
+import { i18n } from '../i18n';
 import { toDateString } from '../protocol';
 import { useSettingsStore } from './settingsStore';
 import { getEventDataEpoch } from './eventStore';
@@ -177,7 +178,7 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
         set({
           loading: false,
           offline: false,
-          error: 'Set a location in Settings',
+          error: i18n.t('home:weatherErrors.setLocation'),
         });
         return;
       }

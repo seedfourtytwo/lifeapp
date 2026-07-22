@@ -1,0 +1,87 @@
+{
+  "dock": {
+    "habitsTab": "Habitudes",
+    "countersTab": "Compteurs",
+    "more": "Plus"
+  },
+  "habitsTab": {
+    "remaining": "{{count}} restantes",
+    "doneOfTotal": "{{done}} sur {{total}}",
+    "reorderHint": "Déplacez pour définir l'ordre",
+    "sort": "Trier",
+    "done": "Terminé",
+    "retry": "Réessayer",
+    "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
+    "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
+    "emptyNothingDueToday": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis."
+  },
+  "countersTab": {
+    "moveWithArrows": "Déplacez avec les flèches",
+    "resetsAtMidnight": "Aujourd'hui · remis à zéro à minuit",
+    "sort": "Trier",
+    "done": "Terminé",
+    "retry": "Réessayer",
+    "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
+    "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",
+    "couldNotLogBody": "Une erreur s'est produite",
+    "couldNotUpdateTotalTitle": "Mise à jour du total impossible"
+  },
+  "journalMeta": {
+    "dictateTodayJournal": "Dicter le journal du jour",
+    "dictateNewJournal": "Dicter une nouvelle entrée de journal",
+    "editWithoutDictatingHint": "Appui long pour ouvrir et modifier sans dicter"
+  },
+  "emptyTabState": {
+    "openTrackers": "Ouvrir les suivis"
+  },
+  "chromeBubble": {
+    "opensWeatherOrCalendar": "Ouvre la météo ou le calendrier",
+    "opensForecast": "Ouvre les prévisions",
+    "opensCalendar": "Ouvre le calendrier",
+    "openWeather": "Ouvrir la météo",
+    "openCalendar": "Ouvrir le calendrier",
+    "openCalendarWithCount": "Ouvrir le calendrier, {{count}} à venir",
+    "todayDate": "Aujourd'hui {{date}}",
+    "upcomingCount": "{{count}} à venir",
+    "weatherWithCondition": "Météo {{temp}}, {{condition}}",
+    "weatherOffline": "Météo hors ligne",
+    "weatherLoading": "Chargement de la météo",
+    "weatherUnavailable": "Météo indisponible"
+  },
+  "weatherForecast": {
+    "title": "Prévisions",
+    "offlineNotice": "Aucune connexion — dernière météo enregistrée affichée",
+    "nowLabel": "Maintenant {{temp}}",
+    "todayRange": " · Aujourd'hui {{min}}°–{{max}}°",
+    "subtitle": "5 prochains jours · °C · risque de pluie",
+    "emptyFallback": "Pas encore de prévisions. Vérifiez la localisation dans les Paramètres.",
+    "close": "Fermer"
+  },
+  "weatherConditions": {
+    "sunny": "Ensoleillé",
+    "cloudy": "Nuageux",
+    "rain": "Pluie",
+    "snow": "Neige",
+    "other": "Variable"
+  },
+  "weatherErrors": {
+    "offline": "Pas de connexion",
+    "http": "Service météo indisponible",
+    "invalid": "Données météo incomplètes",
+    "unknown": "Météo indisponible",
+    "setLocation": "Définir une localisation dans les Paramètres"
+  },
+  "calendarPeek": {
+    "title": "Calendrier",
+    "emptySubtitle": "Aucun événement à venir dans les deux prochaines semaines.",
+    "withListSubtitle": "À venir · appuyez sur ✓ pour ignorer cette occurrence",
+    "emptyBody": "Rien ne nécessite votre attention pour le moment.",
+    "openCalendar": "Ouvrir le calendrier",
+    "openFullCalendar": "Ouvrir le calendrier complet",
+    "fullCalendar": "Calendrier complet",
+    "add": "Ajouter",
+    "close": "Fermer",
+    "markDoneA11y": "Marquer cette occurrence comme faite",
+    "couldNotMarkDoneTitle": "Impossible de marquer comme fait"
+  }
+}

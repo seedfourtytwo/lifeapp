@@ -1,0 +1,87 @@
+{
+  "dock": {
+    "habitsTab": "Habits",
+    "countersTab": "Counters",
+    "more": "More"
+  },
+  "habitsTab": {
+    "remaining": "{{count}} remaining",
+    "doneOfTotal": "{{done}} of {{total}}",
+    "reorderHint": "Move to set your order",
+    "sort": "Sort",
+    "done": "Done",
+    "retry": "Retry",
+    "emptyNoHabits": "No habits yet. Add one to start your daily list.",
+    "emptyNoActiveHabits": "No active habits. Restore something from Archive in Trackers.",
+    "emptyNothingDueToday": "Nothing due today — check schedule or time window in Trackers."
+  },
+  "countersTab": {
+    "moveWithArrows": "Move with arrows",
+    "resetsAtMidnight": "Today · resets at midnight",
+    "sort": "Sort",
+    "done": "Done",
+    "retry": "Retry",
+    "emptyNoActiveCounters": "No active counters. Restore something from Archive in Trackers.",
+    "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
+    "couldNotLogBody": "Something went wrong",
+    "couldNotUpdateTotalTitle": "Could not update total"
+  },
+  "journalMeta": {
+    "dictateTodayJournal": "Dictate today's journal",
+    "dictateNewJournal": "Dictate a new journal entry",
+    "editWithoutDictatingHint": "Long press to open and edit without dictating"
+  },
+  "emptyTabState": {
+    "openTrackers": "Open Trackers"
+  },
+  "chromeBubble": {
+    "opensWeatherOrCalendar": "Opens weather or calendar",
+    "opensForecast": "Opens forecast",
+    "opensCalendar": "Opens calendar",
+    "openWeather": "Open weather",
+    "openCalendar": "Open calendar",
+    "openCalendarWithCount": "Open calendar, {{count}} upcoming",
+    "todayDate": "Today {{date}}",
+    "upcomingCount": "{{count}} upcoming",
+    "weatherWithCondition": "Weather {{temp}}, {{condition}}",
+    "weatherOffline": "Weather offline",
+    "weatherLoading": "Loading weather",
+    "weatherUnavailable": "Weather unavailable"
+  },
+  "weatherForecast": {
+    "title": "Forecast",
+    "offlineNotice": "No connection — showing last saved weather",
+    "nowLabel": "Now {{temp}}",
+    "todayRange": " · Today {{min}}°–{{max}}°",
+    "subtitle": "Next 5 days · °C · rain chance",
+    "emptyFallback": "No forecast yet. Check location in Settings.",
+    "close": "Close"
+  },
+  "weatherConditions": {
+    "sunny": "Sunny",
+    "cloudy": "Cloudy",
+    "rain": "Rain",
+    "snow": "Snow",
+    "other": "Mixed"
+  },
+  "weatherErrors": {
+    "offline": "No connection",
+    "http": "Weather service unavailable",
+    "invalid": "Weather data incomplete",
+    "unknown": "Weather unavailable",
+    "setLocation": "Set a location in Settings"
+  },
+  "calendarPeek": {
+    "title": "Calendar",
+    "emptySubtitle": "No upcoming events in the next two weeks.",
+    "withListSubtitle": "Upcoming · tap ✓ to silence this occurrence",
+    "emptyBody": "Nothing needing attention right now.",
+    "openCalendar": "Open calendar",
+    "openFullCalendar": "Open full calendar",
+    "fullCalendar": "Full calendar",
+    "add": "Add",
+    "close": "Close",
+    "markDoneA11y": "Mark done for this occurrence",
+    "couldNotMarkDoneTitle": "Could not mark done"
+  }
+}

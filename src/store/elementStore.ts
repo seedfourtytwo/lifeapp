@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { i18n } from '../i18n';
 import { newId } from '../utils/id';
 import type { DashboardItem, ElementDefinition } from '../protocol';
 import { PROTOCOL_VERSION } from '../protocol';
@@ -33,15 +34,19 @@ function invalidateElementLoads(): void {
   elementLoadGeneration += 1;
 }
 
+function dataReplacedError(): Error {
+  return new Error(i18n.t('common:errors.dataReplacedTryAgain'));
+}
+
 async function withGuardedElementWrite<T>(fn: () => Promise<T>): Promise<T> {
   const epochAtStart = getEventDataEpoch();
   return withDbWriteLock(async () => {
     if (epochAtStart !== getEventDataEpoch()) {
-      throw new Error('Data was replaced; try again');
+      throw dataReplacedError();
     }
     const result = await fn();
     if (epochAtStart !== getEventDataEpoch()) {
-      throw new Error('Data was replaced; try again');
+      throw dataReplacedError();
     }
     return result;
   });
@@ -213,7 +218,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       if (generation !== elementLoadGeneration) return;
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to load elements',
+        error: error instanceof Error ? error.message : i18n.t('common:errors.failedToLoadElements'),
       });
     }
   },
@@ -247,7 +252,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       const db = await getDatabase();
       const existing = get().elements.find((e) => e.id === id);
       if (!existing || existing.kind !== 'counter') {
-        throw new Error('Counter element not found');
+        throw new Error(i18n.t('common:errors.counterNotFound'));
       }
 
       const config = buildCounterConfig(existing.config as Partial<CounterConfig>, input);
@@ -303,7 +308,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       const db = await getDatabase();
       const existing = get().elements.find((e) => e.id === id);
       if (!existing || existing.kind !== 'habit') {
-        throw new Error('Habit not found');
+        throw new Error(i18n.t('common:errors.habitNotFound'));
       }
 
       const timerSound = prepareHabitTimerSoundForSave(input.timerSound);
@@ -345,7 +350,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
         });
       } catch (error) {
         throw new Error(
-          error instanceof Error ? error.message : 'Failed to archive element',
+          error instanceof Error ? error.message : i18n.t('common:errors.failedToArchiveElement'),
         );
       }
     });
@@ -394,7 +399,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
         });
       } catch (error) {
         throw new Error(
-          error instanceof Error ? error.message : 'Failed to restore element',
+          error instanceof Error ? error.message : i18n.t('common:errors.failedToRestoreElement'),
         );
       }
     });
@@ -416,7 +421,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
   deleteElement: async (id) => {
     const existing = get().elements.find((e) => e.id === id);
     if (!existing) {
-      throw new Error('Element not found');
+      throw new Error(i18n.t('common:errors.elementNotFound'));
     }
     bumpWriteEpoch(id);
     await awaitElementEventWrites(id);

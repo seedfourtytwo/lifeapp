@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import { toDateString } from '../protocol/event';
 
 /** How far back to wipe protocol activity (habit/counter events). */
@@ -66,37 +67,40 @@ export function describeClearPlan(
   const lines: string[] = [];
 
   if (options.definitions) {
-    lines.push('Habits, counters, and their Home order');
-    lines.push('All activity history and day notes / journals (required when removing definitions)');
+    lines.push(i18n.t('settings:clearData.plan.definitions'));
+    lines.push(i18n.t('settings:clearData.plan.definitionsActivity'));
   } else if (options.activityHistory) {
     if (options.activityPeriod.kind === 'beforeDate') {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(options.activityPeriod.date)) {
-        lines.push('Activity, day notes, and journals before a chosen date (enter YYYY-MM-DD)');
+        lines.push(i18n.t('settings:clearData.plan.activityBeforeUnset'));
       } else {
         lines.push(
-          `Activity, day notes, and journals before ${options.activityPeriod.date}`,
+          i18n.t('settings:clearData.plan.activityBefore', {
+            date: options.activityPeriod.date,
+          }),
         );
       }
     } else if (options.activityPeriod.kind === 'keepLastDays') {
       const cutoff = resolveActivityDeleteBeforeDate(options.activityPeriod, today);
       lines.push(
-        `Activity, day notes, and journals older than the last ${options.activityPeriod.days} days (before ${cutoff})`,
+        i18n.t('settings:clearData.plan.activityKeepLast', {
+          days: options.activityPeriod.days,
+          cutoff,
+        }),
       );
     } else {
-      lines.push(
-        'All activity history (check-offs, timers, counter logs, day notes, journals)',
-      );
+      lines.push(i18n.t('settings:clearData.plan.activityAll'));
     }
   }
 
   if (options.calendar) {
-    lines.push('Calendar events, reminders, and clears');
+    lines.push(i18n.t('settings:clearData.plan.calendar'));
   }
   if (options.weather) {
-    lines.push('Cached weather forecasts');
+    lines.push(i18n.t('settings:clearData.plan.weather'));
   }
   if (options.preferences) {
-    lines.push('App preferences (theme, toggles, bubble position)');
+    lines.push(i18n.t('settings:clearData.plan.preferences'));
   }
 
   return lines;

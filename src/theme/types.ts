@@ -4,28 +4,52 @@ export { THEME_MODES, isThemeMode, type ThemeMode } from '../protocol/appSetting
 
 export interface ThemeModeOption {
   value: ThemeMode;
-  label: string;
-  description: string;
+  labelKey: 'appearance.themeLight' | 'appearance.themeDark' | 'appearance.themeCartoon';
+  descriptionKey:
+    | 'appearance.themeLightDesc'
+    | 'appearance.themeDarkDesc'
+    | 'appearance.themeCartoonDesc';
   icon: string;
 }
 
 export const THEME_MODE_OPTIONS: ThemeModeOption[] = [
   {
     value: 'light',
-    label: 'Light',
-    description: 'Clean and minimal',
+    labelKey: 'appearance.themeLight',
+    descriptionKey: 'appearance.themeLightDesc',
     icon: 'white-balance-sunny',
   },
   {
     value: 'dark',
-    label: 'Dark',
-    description: 'Easier on the eyes at night',
+    labelKey: 'appearance.themeDark',
+    descriptionKey: 'appearance.themeDarkDesc',
     icon: 'weather-night',
   },
   {
     value: 'cartoon',
-    label: 'Cartoon',
-    description: 'Warm colors and rounded panels',
+    labelKey: 'appearance.themeCartoon',
+    descriptionKey: 'appearance.themeCartoonDesc',
     icon: 'gamepad-variant-outline',
+  },
+];
+
+export const APP_LANGUAGE_OPTIONS = [
+  {
+    value: 'system' as const,
+    labelKey: 'appearance.languageSystem' as const,
+    descriptionKey: 'appearance.languageSystemDesc' as const,
+    icon: 'cellphone',
+  },
+  {
+    value: 'en' as const,
+    labelKey: 'appearance.languageEn' as const,
+    descriptionKey: 'appearance.languageEnDesc' as const,
+    icon: 'translate',
+  },
+  {
+    value: 'fr' as const,
+    labelKey: 'appearance.languageFr' as const,
+    descriptionKey: 'appearance.languageFrDesc' as const,
+    icon: 'translate',
   },
 ];

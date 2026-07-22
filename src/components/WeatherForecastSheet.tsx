@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { toDateString } from '../protocol';
 import { useWeatherStore } from '../store/weatherStore';
@@ -15,6 +16,7 @@ interface Props {
 /** Bottom sheet body for the 5-day forecast (used by Home chrome bubble). */
 export default function WeatherForecastSheet({ onClose }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('home');
   const { decorations: deco, isCartoon } = useAppTheme();
   const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const forecast = useWeatherStore((s) => s.forecast);
@@ -42,11 +44,11 @@ export default function WeatherForecastSheet({ onClose }: Props) {
         variant="titleMedium"
         style={[styles.title, isCartoon && { color: theme.colors.onSurface }]}
       >
-        Forecast
+        {t('weatherForecast.title')}
       </Text>
       {offline ? (
         <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 4 }}>
-          No connection — showing last saved weather
+          {t('weatherForecast.offlineNotice')}
         </Text>
       ) : null}
       {hasForecast ? (
@@ -54,9 +56,12 @@ export default function WeatherForecastSheet({ onClose }: Props) {
           variant="bodySmall"
           style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4 }}
         >
-          Now {formatTempC(forecast.currentTempC)}
+          {t('weatherForecast.nowLabel', { temp: formatTempC(forecast.currentTempC) })}
           {todayForecast
-            ? ` · Today ${Math.round(todayForecast.tempMinC)}°–${Math.round(todayForecast.tempMaxC)}°`
+            ? t('weatherForecast.todayRange', {
+                min: Math.round(todayForecast.tempMinC),
+                max: Math.round(todayForecast.tempMaxC),
+              })
             : ''}
         </Text>
       ) : null}
@@ -64,7 +69,7 @@ export default function WeatherForecastSheet({ onClose }: Props) {
         variant="bodySmall"
         style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
       >
-        Next 5 days · °C · rain chance
+        {t('weatherForecast.subtitle')}
       </Text>
       {forecast?.daily.length ? (
         forecast.daily.slice(0, 5).map((day) => (
@@ -90,17 +95,17 @@ export default function WeatherForecastSheet({ onClose }: Props) {
         ))
       ) : (
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          {error ?? 'No forecast yet. Check location in Settings.'}
+          {error ?? t('weatherForecast.emptyFallback')}
         </Text>
       )}
       <Pressable
         onPress={onClose}
         style={styles.closeBtn}
         accessibilityRole="button"
-        accessibilityLabel="Close forecast"
+        accessibilityLabel={t('weatherForecast.close')}
       >
         <Text variant="labelLarge" style={{ color: accent }}>
-          Close
+          {t('weatherForecast.close')}
         </Text>
       </Pressable>
     </View>

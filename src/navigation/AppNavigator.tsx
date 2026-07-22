@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
@@ -18,6 +19,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function AppNavigator() {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
+  // Subscribing to useTranslation ensures the navigator re-renders (and options
+  // below re-evaluate) whenever the active language changes.
+  const { t } = useTranslation();
 
   return (
     <Stack.Navigator
@@ -47,37 +51,37 @@ export default function AppNavigator() {
       <Stack.Screen
         name="SettingsMenu"
         component={SettingsMenuScreen}
-        options={{ title: 'More' }}
+        options={{ title: t('home:dock.more') }}
       />
       <Stack.Screen
         name="Trackers"
         component={TrackersScreen}
-        options={{ title: 'Trackers' }}
+        options={{ title: t('settings:menu.trackersTitle') }}
       />
       <Stack.Screen
         name="AppSettings"
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{ title: t('settings:menu.settingsSectionTitle') }}
       />
       <Stack.Screen
         name="TrackerHistory"
         component={TrackerHistoryScreen}
-        options={{ title: 'History' }}
+        options={{ title: t('trackers:card.history') }}
       />
       <Stack.Screen
         name="Insights"
         component={InsightsScreen}
-        options={{ title: 'Insights' }}
+        options={{ title: t('settings:menu.insightsTitle') }}
       />
       <Stack.Screen
         name="Journal"
         component={JournalScreen}
-        options={{ title: 'Journal' }}
+        options={{ title: t('settings:menu.journalTitle') }}
       />
       <Stack.Screen
         name="Calendar"
         component={CalendarScreen}
-        options={{ title: 'Calendar' }}
+        options={{ title: t('settings:menu.calendarTitle') }}
       />
       <Stack.Screen
         name="CalendarEventEditor"
@@ -86,7 +90,9 @@ export default function AppNavigator() {
           params?.eventId ?? `new-${params?.seedDate ?? 'blank'}`
         }
         options={({ route }) => ({
-          title: route.params?.eventId ? 'Edit event' : 'New event',
+          title: route.params?.eventId
+            ? t('calendar:editEvent')
+            : t('calendar:newEvent'),
         })}
       />
     </Stack.Navigator>

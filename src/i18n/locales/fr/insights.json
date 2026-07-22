@@ -1,0 +1,41 @@
+{
+  "screen": {
+    "emptyTitle": "Pas encore de suivi",
+    "emptyBody": "Ajoutez des habitudes ou des compteurs, puis comparez-les ici.",
+    "trackersLabel": "Suivis",
+    "capHint": "Jusqu'à {{count}} séries à la fois — décochez-en une pour en ajouter une autre.",
+    "weatherLabel": "Météo (max °C)",
+    "compareTitle": "Comparer · {{count}} derniers jours",
+    "tickToPlot": "Cochez au moins un suivi pour tracer le graphique.",
+    "tickToCompare": "Cochez des suivis ci-dessus pour comparer valeurs et notes.",
+    "journalLabel": "Journal",
+    "addJournal": "Ajouter un journal",
+    "addNote": "Ajouter une note",
+    "editJournalForA11y": "Modifier le journal du {{date}}",
+    "addJournalForA11y": "Ajouter un journal pour le {{date}}",
+    "highTempCondition": "{{temp}} max · {{condition}}",
+    "rainChanceSuffix": " · {{percent}}% de pluie",
+    "noWeatherForDay": "Pas de météo pour ce jour",
+    "dayRangeChip": "{{count}}j",
+    "chartFooter": "Les lignes sont normalisées (0–max) pour partager une échelle entre unités différentes",
+    "couldNotLoadFallback": "Impossible de charger les statistiques"
+  },
+  "history": {
+    "lastNDays": "{{count}} derniers jours",
+    "dayRangeChip": "{{count}}j",
+    "streakLabel": "Série {{count}}j",
+    "missedLabel": "Manqué {{count}}j",
+    "bestLabel": "Record {{count}}j",
+    "topLabel": "Max {{duration}}",
+    "avgLabel": "Moy. {{duration}}",
+    "bestValueLabel": "Record {{value}}",
+    "avgValueLabel": "Moy. {{value}} {{unit}}",
+    "chartFooter": "Total quotidien ({{unit}}) · pointillés = moyenne sur {{window}} jours",
+    "editNoteForA11y": "{{date}}, {{value}}, modifier la note",
+    "addNoteForA11y": "{{date}}, {{value}}, ajouter une note",
+    "tapToAddNote": "Appuyez pour ajouter une note",
+    "tapDayHint": "Appuyez sur un jour du graphique pour l'examiner.",
+    "trackerNotFound": "Suivi introuvable.",
+    "couldNotLoadFallback": "Impossible de charger l'historique"
+  }
+}

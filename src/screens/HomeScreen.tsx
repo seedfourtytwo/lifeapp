@@ -13,6 +13,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import HomeChromeBubble from '../components/HomeChromeBubble';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
@@ -35,13 +36,14 @@ type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
 let lastGpsRefreshAt = 0;
 
-const TABS: { value: HomeTab; label: string; icon: DockIconName }[] = [
-  { value: 'habits', label: 'Habits', icon: 'calendar-check' },
-  { value: 'counters', label: 'Counters', icon: 'counter' },
+const TABS: { value: HomeTab; labelKey: 'dock.habitsTab' | 'dock.countersTab'; icon: DockIconName }[] = [
+  { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
+  { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
 ];
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { t } = useTranslation('home');
   const { decorations: deco, isCartoon } = useAppTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -187,9 +189,10 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {TABS.map(({ value, label, icon }) => {
+        {TABS.map(({ value, labelKey, icon }) => {
           const active = tab === value;
           const color = active ? activeColor : quietColor;
+          const label = t(labelKey);
           return (
             <Pressable
               key={value}
@@ -218,7 +221,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate('SettingsMenu')}
           style={styles.dockItem}
           accessibilityRole="button"
-          accessibilityLabel="More"
+          accessibilityLabel={t('dock.more')}
         >
           <MaterialCommunityIcons name="dots-horizontal" size={22} color={quietColor} />
           <Text
@@ -229,7 +232,7 @@ export default function HomeScreen() {
               marginTop: 2,
             }}
           >
-            More
+            {t('dock.more')}
           </Text>
         </Pressable>
       </View>

@@ -5,17 +5,19 @@ import { Button, FAB, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { addLocalDays, monthGridRange, startOfLocalDay, toDateString } from '../calendar/dates';
 import { formatDayHeading, formatOccurrenceTime, formatMonthTitle } from '../calendar/format';
 import { occurrencesOnDay } from '../calendar/occurrences';
 import type { RootStackParamList } from '../navigation/types';
 import { useCalendarStore } from '../store/calendarStore';
 
-const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export default function CalendarScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation(['calendar', 'common']);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
@@ -70,7 +72,7 @@ export default function CalendarScreen() {
           <Pressable
             onPress={() => setCursor(new Date(year, monthIndex - 1, 1))}
             accessibilityRole="button"
-            accessibilityLabel="Previous month"
+            accessibilityLabel={t('calendar:screen.previousMonth')}
             style={styles.monthNav}
           >
             <MaterialCommunityIcons name="chevron-left" size={28} color={theme.colors.primary} />
@@ -79,7 +81,7 @@ export default function CalendarScreen() {
           <Pressable
             onPress={() => setCursor(new Date(year, monthIndex + 1, 1))}
             accessibilityRole="button"
-            accessibilityLabel="Next month"
+            accessibilityLabel={t('calendar:screen.nextMonth')}
             style={styles.monthNav}
           >
             <MaterialCommunityIcons name="chevron-right" size={28} color={theme.colors.primary} />
@@ -87,13 +89,13 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.weekRow}>
-          {WEEKDAY_LABELS.map((label) => (
+          {WEEKDAY_ORDER.map((key) => (
             <Text
-              key={label}
+              key={key}
               variant="labelSmall"
               style={[styles.weekLabel, { color: theme.colors.onSurfaceVariant }]}
             >
-              {label}
+              {t(`common:weekdaysShort.${key}`)}
             </Text>
           ))}
         </View>
@@ -114,7 +116,9 @@ export default function CalendarScreen() {
                   selected && { backgroundColor: theme.colors.primaryContainer },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${key}${hasEvents ? ', has events' : ''}`}
+                accessibilityLabel={
+                  hasEvents ? t('calendar:screen.dayHasEventsA11y', { date: key }) : key
+                }
               >
                 <Text
                   variant="bodyMedium"
@@ -154,7 +158,7 @@ export default function CalendarScreen() {
           </Text>
           {dayOccurrences.length === 0 ? (
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              No events
+              {t('calendar:screen.noEvents')}
             </Text>
           ) : (
             dayOccurrences.map((occ) => {
@@ -174,8 +178,12 @@ export default function CalendarScreen() {
                         : clearOccurrence(occ);
                       void action.catch((error) => {
                         Alert.alert(
-                          cleared ? 'Could not restore' : 'Could not mark done',
-                          error instanceof Error ? error.message : 'Something went wrong',
+                          cleared
+                            ? t('calendar:screen.couldNotRestoreTitle')
+                            : t('calendar:screen.couldNotMarkDoneTitle'),
+                          error instanceof Error
+                            ? error.message
+                            : t('common:errors.somethingWentWrong'),
                         );
                       });
                     }}
@@ -183,7 +191,9 @@ export default function CalendarScreen() {
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: cleared }}
                     accessibilityLabel={
-                      cleared ? 'Undo done for this occurrence' : 'Mark done for this occurrence'
+                      cleared
+                        ? t('calendar:screen.undoDoneA11y')
+                        : t('calendar:screen.markDoneA11y')
                     }
                     style={styles.checkHit}
                   >
@@ -211,7 +221,7 @@ export default function CalendarScreen() {
                         {occ.title}
                       </Text>
                       <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                        {cleared ? 'Done · ' : ''}
+                        {cleared ? t('calendar:screen.doneLabel') : ''}
                         {formatOccurrenceTime(occ)}
                       </Text>
                     </View>
@@ -235,7 +245,7 @@ export default function CalendarScreen() {
             }
             style={{ alignSelf: 'flex-start', marginTop: 4 }}
           >
-            Add event
+            {t('calendar:screen.addEvent')}
           </Button>
         </View>
       </ScrollView>
@@ -249,7 +259,7 @@ export default function CalendarScreen() {
             seedDate: toDateString(selectedDay),
           })
         }
-        accessibilityLabel="Add event"
+        accessibilityLabel={t('calendar:screen.addEvent')}
       />
     </View>
   );

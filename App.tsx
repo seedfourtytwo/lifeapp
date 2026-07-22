@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
@@ -11,6 +11,8 @@ import {
   initialWindowMetrics,
 } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
+import './src/i18n';
+import { applyAppLanguage } from './src/i18n';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
@@ -25,13 +27,29 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 
 function ThemedApp() {
   const themeMode = useSettingsStore((s) => s.themeMode);
+  const appLanguage = useSettingsStore((s) => s.appLanguage);
   const isLoaded = useSettingsStore((s) => s.isLoaded);
+  const [languageReady, setLanguageReady] = useState(false);
 
   useAppBootstrap();
   useHabitReminderSync();
   useCalendarReminderSync();
 
-  if (!isLoaded) {
+  useEffect(() => {
+    if (!isLoaded) {
+      setLanguageReady(false);
+      return;
+    }
+    let cancelled = false;
+    void applyAppLanguage(appLanguage).finally(() => {
+      if (!cancelled) setLanguageReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [appLanguage, isLoaded]);
+
+  if (!isLoaded || !languageReady) {
     return (
       <View style={styles.boot}>
         <ActivityIndicator size="large" />

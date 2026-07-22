@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconButton, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   hasNote: boolean;
@@ -21,11 +22,13 @@ export function NoteIconButton({
   hasNote,
   onPress,
   onLongPress,
-  accessibilityNoun = 'note',
+  accessibilityNoun,
   size = 18,
   style,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('common');
+  const noun = accessibilityNoun ?? t('note.noteNoun');
   return (
     <IconButton
       icon="microphone-outline"
@@ -35,11 +38,11 @@ export function NoteIconButton({
       delayLongPress={350}
       iconColor={hasNote ? theme.colors.primary : theme.colors.onSurfaceVariant}
       accessibilityLabel={
-        hasNote ? `Dictate ${accessibilityNoun}` : `Dictate new ${accessibilityNoun}`
+        hasNote
+          ? t('note.dictateAccessible', { noun })
+          : t('note.dictateNewAccessible', { noun })
       }
-      accessibilityHint={
-        onLongPress ? 'Long press to open and edit without dictating' : undefined
-      }
+      accessibilityHint={onLongPress ? t('note.dictateHint') : undefined}
       style={[{ margin: 0 }, style]}
       hitSlop={8}
     />

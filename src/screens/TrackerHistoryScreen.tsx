@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Card, Chip, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
@@ -49,6 +50,7 @@ interface DayRow {
 
 export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation(['insights', 'common']);
   const { decorations: deco, isCartoon } = useAppTheme();
   const { elementId } = route.params;
   const [element, setElement] = useState<ElementDefinition | null>(null);
@@ -146,7 +148,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     } catch (err) {
       if (generation !== loadGenerationRef.current) return false;
       if (!silent) {
-        setError(err instanceof Error ? err.message : 'Could not load history');
+        setError(err instanceof Error ? err.message : t('history.couldNotLoadFallback'));
       }
       return false;
     } finally {
@@ -154,7 +156,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setLoading(false);
       }
     }
-  }, [elementId, rangeDays]);
+  }, [elementId, rangeDays, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -244,7 +246,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
             {error}
           </Text>
           <Button mode="outlined" onPress={() => void load()}>
-            Retry
+            {t('common:actions.retry')}
           </Button>
         </View>
         <NoteEditorHost session={noteEditor} />
@@ -256,7 +258,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     return (
       <>
         <View style={styles.centered}>
-          <Text variant="bodyLarge">Tracker not found.</Text>
+          <Text variant="bodyLarge">{t('history.trackerNotFound')}</Text>
         </View>
         <NoteEditorHost session={noteEditor} />
       </>
@@ -272,15 +274,21 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   let metricLine: string | null = null;
   if (chartModel.isHabit) {
     const streakBits = [
-      streak > 0 ? `Streak ${streak}d` : null,
-      failureStreak > 0 ? `Missed ${failureStreak}d` : null,
-      personalBest > 0 ? `Best ${personalBest}d` : null,
+      streak > 0 ? t('history.streakLabel', { count: streak }) : null,
+      failureStreak > 0 ? t('history.missedLabel', { count: failureStreak }) : null,
+      personalBest > 0 ? t('history.bestLabel', { count: personalBest }) : null,
     ].filter(Boolean);
     if (chartModel.isTimerHabit && chartModel.activity.activeDays > 0) {
       const bestDay = days.find((d) => d.date === chartModel.activity.bestDate);
-      if (bestDay) streakBits.push(`Top ${formatHabitTimerDuration(bestDay.total)}`);
+      if (bestDay) {
+        streakBits.push(
+          t('history.topLabel', { duration: formatHabitTimerDuration(bestDay.total) }),
+        );
+      }
       streakBits.push(
-        `Avg ${formatHabitTimerDuration(Math.round(chartModel.activity.averageActive * 60))}`,
+        t('history.avgLabel', {
+          duration: formatHabitTimerDuration(Math.round(chartModel.activity.averageActive * 60)),
+        }),
       );
     }
     metricLine = streakBits.length > 0 ? streakBits.join(' · ') : null;
@@ -288,9 +296,14 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     const bestDay = days.find((d) => d.date === chartModel.activity.bestDate);
     metricLine = [
       bestDay
-        ? `Best ${formatTrackerHistoryDayValue(element, bestDay.total)}`
+        ? t('history.bestValueLabel', {
+            value: formatTrackerHistoryDayValue(element, bestDay.total),
+          })
         : null,
-      `Avg ${Math.round(chartModel.activity.averageActive * 10) / 10} ${chartModel.chartUnit}`,
+      t('history.avgValueLabel', {
+        value: Math.round(chartModel.activity.averageActive * 10) / 10,
+        unit: chartModel.chartUnit,
+      }),
     ]
       .filter(Boolean)
       .join(' · ');
@@ -314,7 +327,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               onPress={() => setRangeDays(n)}
               style={styles.rangeChip}
             >
-              {n}d
+              {t('history.dayRangeChip', { count: n })}
             </Chip>
           ))}
         </View>
@@ -331,7 +344,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
           ]}
         >
           <Card.Content>
-            <Text variant="titleMedium">Last {rangeDays} days</Text>
+            <Text variant="titleMedium">{t('history.lastNDays', { count: rangeDays })}</Text>
             <InteractiveDailyChart
               days={days.map((d) => ({ date: d.date, label: d.label }))}
               series={[
@@ -346,7 +359,10 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               onSelectDay={handleSelectDay}
               movingAverage={chartModel.ma}
               dense={rangeDays > 14}
-              footer={`Daily total (${chartModel.chartUnit}) · dashed = ${MOVING_AVERAGE_WINDOW}-day avg`}
+              footer={t('history.chartFooter', {
+                unit: chartModel.chartUnit,
+                window: MOVING_AVERAGE_WINDOW,
+              })}
             />
           </Card.Content>
         </Card>
@@ -357,8 +373,14 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel={
               selectedNote
-                ? `${formatFullDate(selected.date)}, ${selectedValueLabel}, edit note`
-                : `${formatFullDate(selected.date)}, ${selectedValueLabel}, add note`
+                ? t('history.editNoteForA11y', {
+                    date: formatFullDate(selected.date),
+                    value: selectedValueLabel,
+                  })
+                : t('history.addNoteForA11y', {
+                    date: formatFullDate(selected.date),
+                    value: selectedValueLabel,
+                  })
             }
             android_ripple={{ color: theme.colors.primaryContainer }}
             style={[
@@ -389,13 +411,15 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
                 numberOfLines={2}
                 style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}
               >
-                {selectedNote ? truncateNotePreview(selectedNote, 120) : 'Tap to add a note'}
+                {selectedNote
+                  ? truncateNotePreview(selectedNote, 120)
+                  : t('history.tapToAddNote')}
               </Text>
             </View>
           </Pressable>
         ) : (
           <Text variant="bodySmall" style={styles.emptyHint}>
-            Tap a day on the chart to inspect it.
+            {t('history.tapDayHint')}
           </Text>
         )}
       </ScrollView>

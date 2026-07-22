@@ -1,3 +1,5 @@
+import { getDateLocale } from '../i18n';
+
 /** Shared weather display helpers (bubble + sheet). */
 
 export function formatTempC(tempC: number): string {
@@ -6,7 +8,7 @@ export function formatTempC(tempC: number): string {
 
 export function formatDayLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(getDateLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 export function formatCoordLabel(lat: number, lon: number): string {

@@ -1,4 +1,5 @@
 import type { TrackerEditorSaveData } from '../components/trackerEditor/types';
+import { i18n } from '../i18n';
 import {
   buildHabitTimerSound,
   isScheduleSupportedForReminders,
@@ -14,7 +15,7 @@ function parseIncrements(raw: string): number[] {
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => !Number.isNaN(n) && n > 0);
   if (values.length === 0) {
-    throw new Error('Enter at least one positive number (e.g. 5, 10)');
+    throw new Error(i18n.t('trackers:validation.incrementsRequired'));
   }
   return values;
 }
@@ -24,7 +25,7 @@ function parseDailyTarget(raw: string): number | undefined {
   if (!trimmed) return undefined;
   const value = parseInt(trimmed, 10);
   if (Number.isNaN(value) || value <= 0) {
-    throw new Error('Daily target must be a positive whole number');
+    throw new Error(i18n.t('trackers:validation.dailyTargetPositive'));
   }
   return value;
 }
@@ -34,7 +35,7 @@ function parseDailyGoalSeconds(raw: string): number | undefined {
   if (!trimmed) return undefined;
   const minutes = parseInt(trimmed, 10);
   if (Number.isNaN(minutes) || minutes <= 0) {
-    throw new Error('Daily goal must be a positive number of minutes');
+    throw new Error(i18n.t('trackers:validation.dailyGoalPositive'));
   }
   return minutes * 60;
 }
@@ -45,17 +46,17 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
   }
   if (data.scheduleType === 'weekdays') {
     if (data.scheduleWeekdays.length === 0) {
-      throw new Error('Pick at least one day');
+      throw new Error(i18n.t('trackers:validation.pickAtLeastOneDay'));
     }
     return { type: 'weekdays', days: [...data.scheduleWeekdays].sort() };
   }
   const interval = parseInt(data.scheduleInterval.trim(), 10);
   if (Number.isNaN(interval) || interval < 1) {
-    throw new Error('Interval must be at least 1 day');
+    throw new Error(i18n.t('trackers:validation.intervalMin1'));
   }
   const anchorDate = data.scheduleAnchorDate.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(anchorDate)) {
-    throw new Error('First day must be YYYY-MM-DD');
+    throw new Error(i18n.t('trackers:validation.firstDayFormat'));
   }
   return { type: 'every_n_days', interval, anchorDate };
 }
@@ -71,7 +72,7 @@ function parseRemindMinutes(
   if (!trimmed) return undefined;
   const minutes = parseInt(trimmed, 10);
   if (Number.isNaN(minutes) || minutes < 0) {
-    throw new Error('Reminder minutes must be zero or more');
+    throw new Error(i18n.t('trackers:validation.reminderMinutesNonNegative'));
   }
   return minutes;
 }
@@ -95,12 +96,12 @@ export function parseTrackerEditorSave(
     const start = parseTimeHHmm(data.timeRangeStart);
     const end = parseTimeHHmm(data.timeRangeEnd);
     if (!start || !end) {
-      throw new Error('Enter valid times in HH:mm format, e.g. 06:00');
+      throw new Error(i18n.t('trackers:validation.timeRangeFormat'));
     }
     timeRange = { start, end };
   }
   if (data.visibleOnlyInTimeRange && !timeRange) {
-    throw new Error('Set a time range before limiting visibility');
+    throw new Error(i18n.t('trackers:validation.timeRangeRequiredForVisibility'));
   }
 
   const schedule = parseSchedule(data);

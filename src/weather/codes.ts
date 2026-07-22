@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import type { WeatherCondition } from './types';
 
 /** Map WMO weather interpretation codes (Open-Meteo) to a small condition set. */
@@ -37,14 +38,14 @@ export function conditionIconName(
 export function conditionLabel(condition: WeatherCondition): string {
   switch (condition) {
     case 'sunny':
-      return 'Sunny';
+      return i18n.t('home:weatherConditions.sunny');
     case 'cloudy':
-      return 'Cloudy';
+      return i18n.t('home:weatherConditions.cloudy');
     case 'rain':
-      return 'Rain';
+      return i18n.t('home:weatherConditions.rain');
     case 'snow':
-      return 'Snow';
+      return i18n.t('home:weatherConditions.snow');
     default:
-      return 'Mixed';
+      return i18n.t('home:weatherConditions.other');
   }
 }

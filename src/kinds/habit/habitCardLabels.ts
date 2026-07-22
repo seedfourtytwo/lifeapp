@@ -1,3 +1,4 @@
+import { i18n } from '../../i18n';
 import { shouldShowHabitStreakOnCard, type HabitConfig } from '../../protocol';
 
 /**
@@ -12,7 +13,9 @@ export function formatHabitStreakLabel(
   if (!shouldShowHabitStreakOnCard(config)) return null;
   const days = streak ?? 0;
   if (days <= 0) return null;
-  return days === 1 ? '1-day streak' : `${days}-day streak`;
+  return days === 1
+    ? i18n.t('trackers:habitWidget.streakOne')
+    : i18n.t('trackers:habitWidget.streakMany', { count: days });
 }
 
 /** Optional schedule / target blurb under the title (separate from streak). */

@@ -1,0 +1,37 @@
+{
+  "screen": {
+    "today": "Aujourd'hui",
+    "journalLabel": "Journal",
+    "tapToWriteJournal": "Appuyez pour écrire le journal",
+    "trackerNotesLabel": "Notes de suivi",
+    "noTrackerNotes": "Aucune note de suivi ce jour-là.",
+    "daysLabel": "Jours",
+    "noJournalYet": "Pas encore de journal",
+    "trackerNotesOnly": "Notes de suivi uniquement",
+    "emptyHint": "Écrivez depuis l'accueil ou ici — choisissez un jour ci-dessus pour revoir les notes.",
+    "retry": "Réessayer",
+    "viewDayA11y": "Voir {{title}}",
+    "editJournalForA11y": "Modifier le journal du {{date}}",
+    "addJournalForA11y": "Ajouter un journal pour le {{date}}",
+    "editNoteForA11y": "Modifier la note de {{name}}",
+    "couldNotLoadJournalsFallback": "Impossible de charger les journaux"
+  },
+  "editorSheet": {
+    "noteHeading": "Note",
+    "journalHeading": "Journal",
+    "previewPlaceholderNote": "Appuyez sur le micro pour dicter une note",
+    "previewPlaceholderJournal": "Appuyez sur le micro pour dicter le journal du jour",
+    "clear": "Effacer",
+    "editText": "Modifier le texte",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "save": "Enregistrer"
+  },
+  "noteIconButton": {
+    "dictateNote": "Dicter la note",
+    "dictateNewNote": "Dicter une nouvelle note",
+    "dictateJournal": "Dicter le journal",
+    "dictateNewJournal": "Dicter un nouveau journal",
+    "longPressHint": "Appui long pour ouvrir et modifier sans dicter"
+  }
+}

@@ -10,6 +10,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { toDateString } from '../protocol';
 import { useCalendarStore } from '../store/calendarStore';
@@ -33,6 +34,7 @@ type SheetKind = 'weather' | 'calendar' | null;
 
 export default function HomeChromeBubble() {
   const theme = useTheme();
+  const { t } = useTranslation('home');
   const { decorations: deco, isCartoon } = useAppTheme();
   const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
@@ -171,17 +173,31 @@ export default function HomeChromeBubble() {
 
   const a11yParts: string[] = [];
   if (calendarEnabled) {
-    a11yParts.push(`Today ${toDateString(today)}`);
-    if (badgeCount > 0) a11yParts.push(`${badgeCount} upcoming`);
+    a11yParts.push(t('chromeBubble.todayDate', { date: toDateString(today) }));
+    if (badgeCount > 0) a11yParts.push(t('chromeBubble.upcomingCount', { count: badgeCount }));
   }
   if (weatherEnabled) {
     a11yParts.push(
       hasForecast
-        ? `Weather ${tempLabel}, ${conditionLabel(condition)}`
-        : (weatherError ?? (weatherOffline ? 'Weather offline' : weatherLoading ? 'Loading weather' : 'Weather unavailable')),
+        ? t('chromeBubble.weatherWithCondition', {
+            temp: tempLabel,
+            condition: conditionLabel(condition),
+          })
+        : (weatherError ??
+            (weatherOffline
+              ? t('chromeBubble.weatherOffline')
+              : weatherLoading
+                ? t('chromeBubble.weatherLoading')
+                : t('chromeBubble.weatherUnavailable'))),
     );
   }
-  a11yParts.push(bothEnabled ? 'Opens weather or calendar' : weatherEnabled ? 'Opens forecast' : 'Opens calendar');
+  a11yParts.push(
+    bothEnabled
+      ? t('chromeBubble.opensWeatherOrCalendar')
+      : weatherEnabled
+        ? t('chromeBubble.opensForecast')
+        : t('chromeBubble.opensCalendar'),
+  );
 
   const bubbleLeft = clamped.x * layout.width;
   const bubbleTop = clamped.y * layout.height;
@@ -216,7 +232,7 @@ export default function HomeChromeBubble() {
             },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Open weather"
+          accessibilityLabel={t('chromeBubble.openWeather')}
         >
           <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={accent} />
         </Pressable>
@@ -241,8 +257,8 @@ export default function HomeChromeBubble() {
           accessibilityRole="button"
           accessibilityLabel={
             badgeCount > 0
-              ? `Open calendar, ${badgeCount} upcoming`
-              : 'Open calendar'
+              ? t('chromeBubble.openCalendarWithCount', { count: badgeCount })
+              : t('chromeBubble.openCalendar')
           }
         >
           <MaterialCommunityIcons name="calendar" size={22} color={accent} />

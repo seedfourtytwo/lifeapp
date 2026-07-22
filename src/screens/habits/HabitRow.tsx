@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
 import ReorderControls from '../shared/ReorderControls';
 import { homeTabScreenStyles as styles } from '../shared/screenStyles';
@@ -33,6 +34,7 @@ export default function HabitRow({
   onDictateNote,
   onEditNote,
 }: Props) {
+  const { t } = useTranslation('trackers');
   return (
     <View style={styles.reorderRow}>
       {reordering ? (
@@ -41,7 +43,7 @@ export default function HabitRow({
           canMoveDown={canMoveDown}
           onMoveUp={onMoveUp}
           onMoveDown={onMoveDown}
-          accessibilityNoun="habit"
+          accessibilityNoun={t('kindLabel.habit')}
         />
       ) : null}
       <View style={[styles.reorderCard, dimmed ? styles.dimmedCard : null]}>

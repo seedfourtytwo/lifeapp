@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { List, Menu, Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { REMINDER_PRESET_OPTIONS } from '../../calendar/defaults';
 import { formatReminderOffset } from '../../calendar/format';
 
@@ -23,13 +24,16 @@ export default function EventRemindersSection({
   onRemove,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('calendar');
   const availableReminders = REMINDER_PRESET_OPTIONS.filter(
     (preset) => !reminderOffsets.includes(preset.offsetMinutes),
   );
 
   return (
     <>
-      <List.Subheader style={styles.subheader}>Notifications</List.Subheader>
+      <List.Subheader style={styles.subheader}>
+        {t('editor.notificationsSectionTitle')}
+      </List.Subheader>
       {reminderOffsets.length === 0 ? (
         <Text
           variant="bodyMedium"
@@ -39,7 +43,7 @@ export default function EventRemindersSection({
             marginBottom: 4,
           }}
         >
-          None — you’ll only see this on the calendar
+          {t('editor.noneReminderHint')}
         </Text>
       ) : (
         reminderOffsets.map((offset) => (
@@ -60,7 +64,7 @@ export default function EventRemindersSection({
         onDismiss={onCloseAdd}
         anchor={
           <List.Item
-            title="Add notification"
+            title={t('editor.addNotification')}
             disabled={availableReminders.length === 0}
             titleStyle={{ color: theme.colors.primary }}
             left={(props) => (
@@ -74,7 +78,7 @@ export default function EventRemindersSection({
           <Menu.Item
             key={preset.offsetMinutes}
             onPress={() => onAdd(preset.offsetMinutes)}
-            title={preset.label}
+            title={t(preset.labelKey)}
           />
         ))}
       </Menu>

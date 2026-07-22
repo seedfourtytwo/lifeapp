@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Button, IconButton, Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import {
@@ -39,6 +40,7 @@ export function HabitTimerWidget({
   hasTodayNote,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
   const { themeMode, decorations: deco, isCartoon } = useAppTheme();
   const [, setTick] = useState(0);
   const loggedTotalAtSessionStart = useRef(todayTotal);
@@ -132,7 +134,7 @@ export function HabitTimerWidget({
               icon="backup-restore"
               size={16}
               onPress={() => void onResetToday()}
-              accessibilityLabel="Reset today"
+              accessibilityLabel={t('habitWidget.resetTodayA11y')}
               style={styles.iconButton}
               hitSlop={8}
             />
@@ -166,10 +168,14 @@ export function HabitTimerWidget({
           contentStyle={styles.primaryButtonContent}
           labelStyle={styles.primaryButtonLabel}
           accessibilityLabel={
-            !isRunning ? 'Start timer' : isPaused ? 'Resume timer' : 'Pause timer'
+            !isRunning
+              ? t('habitWidget.startTimerA11y')
+              : isPaused
+                ? t('habitWidget.resumeTimerA11y')
+                : t('habitWidget.pauseTimerA11y')
           }
         >
-          {!isRunning ? 'Start' : isPaused ? 'Resume' : 'Pause'}
+          {!isRunning ? t('habitWidget.start') : isPaused ? t('habitWidget.resume') : t('habitWidget.pause')}
         </Button>
         {isRunning && onTimerFinish ? (
           <Button
@@ -179,9 +185,9 @@ export function HabitTimerWidget({
             style={[styles.finishButton, { borderRadius: deco.buttonRadius }]}
             contentStyle={styles.primaryButtonContent}
             labelStyle={styles.primaryButtonLabel}
-            accessibilityLabel="Finish timer session"
+            accessibilityLabel={t('habitWidget.finishSessionA11y')}
           >
-            Done
+            {t('habitWidget.done')}
           </Button>
         ) : null}
       </View>

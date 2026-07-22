@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   clearAppData,
   clearOptionsAreEmpty,
@@ -14,6 +15,7 @@ import {
 import { reloadStoresAfterImport } from '../utils/reloadStoresAfterImport';
 
 export function useProtocolBackup() {
+  const { t } = useTranslation(['settings', 'common']);
   const [busy, setBusy] = useState(false);
   const [clearSheetVisible, setClearSheetVisible] = useState(false);
 
@@ -22,19 +24,19 @@ export function useProtocolBackup() {
     try {
       const result = await exportBackupToFile();
       if (result === 'saved') {
-        Alert.alert('Backup saved', 'Your JSON backup was saved to the folder you chose.');
+        Alert.alert(t('settings:data.backupSavedTitle'), t('settings:data.backupSavedBody'));
       } else {
-        Alert.alert('Backup ready', 'Share or save the JSON file from the share sheet.');
+        Alert.alert(t('settings:data.backupReadyTitle'), t('settings:data.backupReadyBody'));
       }
     } catch (error) {
       Alert.alert(
-        'Export failed',
-        error instanceof Error ? error.message : 'Could not export your data.',
+        t('settings:data.exportFailedTitle'),
+        error instanceof Error ? error.message : t('settings:data.exportFailedBodyFallback'),
       );
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const runImport = useCallback(async () => {
     setBusy(true);
@@ -43,82 +45,88 @@ export function useProtocolBackup() {
       if (!imported) return;
 
       await reloadStoresAfterImport();
-      Alert.alert(
-        'Import complete',
-        'Your habits, counters, history, notes, journals, and preferences were restored.',
-      );
+      Alert.alert(t('settings:data.importCompleteTitle'), t('settings:data.importCompleteBody'));
     } catch (error) {
       Alert.alert(
-        'Import failed',
-        error instanceof Error ? error.message : 'Could not import that backup file.',
+        t('settings:data.importFailedTitle'),
+        error instanceof Error ? error.message : t('settings:data.importFailedBodyFallback'),
       );
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const handleImport = useCallback(() => {
     if (!isImportBackupAvailable()) {
       Alert.alert(
-        'Rebuild required',
-        'Backup import needs a dev client with document picker. Run: npx expo run:android (local) or eas build --platform android --profile development',
+        t('common:alerts.rebuildRequiredTitle'),
+        t('settings:data.importRebuildRequiredBody'),
       );
       return;
     }
 
     Alert.alert(
-      'Import backup?',
-      'This replaces all habits, counters, history, notes, journals, and preferences on this device.',
+      t('settings:data.importConfirmTitle'),
+      t('settings:data.importConfirmBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Import', style: 'destructive', onPress: () => void runImport() },
+        { text: t('common:actions.cancel'), style: 'cancel' },
+        {
+          text: t('settings:data.importConfirmAction'),
+          style: 'destructive',
+          onPress: () => void runImport(),
+        },
       ],
     );
-  }, [runImport]);
+  }, [runImport, t]);
 
-  const runClearData = useCallback(async (options: ClearAppDataOptions) => {
-    if (clearOptionsAreEmpty(options)) return;
+  const runClearData = useCallback(
+    async (options: ClearAppDataOptions) => {
+      if (clearOptionsAreEmpty(options)) return;
 
-    setBusy(true);
-    try {
-      await clearAppData(options);
-      await reloadStoresAfterImport({
-        cleared: {
-          calendar: options.calendar,
-          weather: options.weather,
-          preferences: options.preferences,
-          definitions: options.definitions,
-          activityHistory: options.activityHistory,
-        },
-      });
-      setClearSheetVisible(false);
-      const lines = describeClearPlan(options);
-      Alert.alert(
-        'Data cleared',
-        lines.length > 0 ? lines.map((line) => `• ${line}`).join('\n') : 'Selected data was removed.',
-      );
-    } catch (error) {
-      Alert.alert(
-        'Clear failed',
-        error instanceof Error ? error.message : 'Could not clear local data.',
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+      setBusy(true);
+      try {
+        await clearAppData(options);
+        await reloadStoresAfterImport({
+          cleared: {
+            calendar: options.calendar,
+            weather: options.weather,
+            preferences: options.preferences,
+            definitions: options.definitions,
+            activityHistory: options.activityHistory,
+          },
+        });
+        setClearSheetVisible(false);
+        const lines = describeClearPlan(options);
+        Alert.alert(
+          t('settings:data.clearedTitle'),
+          lines.length > 0
+            ? lines.map((line) => `• ${line}`).join('\n')
+            : t('settings:data.clearedBodyFallback'),
+        );
+      } catch (error) {
+        Alert.alert(
+          t('settings:data.clearFailedTitle'),
+          error instanceof Error ? error.message : t('settings:data.clearFailedBodyFallback'),
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [t],
+  );
 
   const handleClearConfirm = useCallback(
     (options: ClearAppDataOptions) => {
       const lines = describeClearPlan(options);
       const body =
         (lines.length > 0 ? `${lines.map((line) => `• ${line}`).join('\n')}\n\n` : '') +
-        'This cannot be undone.';
+        t('settings:data.clearConfirmSuffix');
 
       if (options.definitions) {
-        Alert.alert('Remove habits & counters?', body, [
-          { text: 'Cancel', style: 'cancel' },
+        Alert.alert(t('settings:data.clearConfirmDefinitionsTitle'), body, [
+          { text: t('common:actions.cancel'), style: 'cancel' },
           {
-            text: 'Remove everything selected',
+            text: t('settings:data.clearConfirmDefinitionsAction'),
             style: 'destructive',
             onPress: () => void runClearData(options),
           },
@@ -126,16 +134,16 @@ export function useProtocolBackup() {
         return;
       }
 
-      Alert.alert('Clear selected data?', body, [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(t('settings:data.clearConfirmTitle'), body, [
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('settings:data.clearConfirmAction'),
           style: 'destructive',
           onPress: () => void runClearData(options),
         },
       ]);
     },
-    [runClearData],
+    [runClearData, t],
   );
 
   const openClearSheet = useCallback(() => {

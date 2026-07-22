@@ -1,3 +1,4 @@
+import { getDateLocale } from '../i18n';
 import { toDateString } from '../protocol';
 
 /** Days of history used for streak calculations (inclusive window). */
@@ -26,12 +27,12 @@ export function lastNDates(count: number): string[] {
 
 export function formatChartLabel(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+  return d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: 'numeric' });
 }
 
 export function formatFullDate(dateStr: string): string {
   const d = new Date(`${dateStr}T12:00:00`);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(getDateLocale(), {
     weekday: 'long',
     month: 'short',
     day: 'numeric',

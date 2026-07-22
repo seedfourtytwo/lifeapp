@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+export const APP_LANGUAGES = ['system', 'en', 'fr'] as const;
+
+export type AppLanguage = (typeof APP_LANGUAGES)[number];
+
+export function isAppLanguage(value: string): value is AppLanguage {
+  return (APP_LANGUAGES as readonly string[]).includes(value);
+}
+
 export const THEME_MODES = ['light', 'dark', 'cartoon'] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
@@ -18,6 +26,7 @@ export function isWeatherLocationMode(value: string): value is WeatherLocationMo
 
 export const AppSettingsSchema = z.object({
   themeMode: z.enum(THEME_MODES).optional(),
+  appLanguage: z.enum(APP_LANGUAGES).optional(),
   habitRemindersEnabled: z.boolean().optional(),
   weatherWidgetEnabled: z.boolean().optional(),
   calendarWidgetEnabled: z.boolean().optional(),
@@ -33,6 +42,7 @@ export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 export const APP_SETTING_KEYS = {
   themeMode: 'theme_mode',
+  appLanguage: 'app_language',
   habitRemindersEnabled: 'habit_reminders_enabled',
   weatherWidgetEnabled: 'weather_widget_enabled',
   calendarWidgetEnabled: 'calendar_widget_enabled',

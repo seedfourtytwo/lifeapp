@@ -1,6 +1,7 @@
 import { Platform, Share } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import * as FileSystem from 'expo-file-system/legacy';
+import { i18n } from '../i18n';
 import {
   exportProtocolBundle,
   importProtocolBundle,
@@ -22,9 +23,7 @@ export function isImportBackupAvailable(): boolean {
 
 async function getDocumentPicker(): Promise<DocumentPickerModule> {
   if (!isImportBackupAvailable()) {
-    throw new Error(
-      'Import needs a dev client rebuild. Run: npx expo run:android or eas build --platform android --profile development',
-    );
+    throw new Error(i18n.t('settings:data.importRebuildRequiredBody'));
   }
 
   return import('expo-document-picker');
@@ -51,7 +50,7 @@ async function saveBackupToAndroidFolder(json: string): Promise<boolean> {
 async function shareBackupFile(json: string): Promise<void> {
   const directory = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
   if (!directory) {
-    throw new Error('Could not access app storage for export');
+    throw new Error(i18n.t('settings:data.couldNotAccessStorage'));
   }
 
   const path = `${directory}${protocolBackupFileName()}`;
@@ -65,7 +64,7 @@ async function shareBackupFile(json: string): Promise<void> {
       : path;
 
   await Share.share({
-    title: 'Export Life Dashboard backup',
+    title: i18n.t('settings:data.exportShareTitle'),
     url: shareUrl,
   });
 }

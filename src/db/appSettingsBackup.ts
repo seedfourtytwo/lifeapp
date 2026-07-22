@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   APP_SETTING_KEYS,
+  isAppLanguage,
   isThemeMode,
   isWeatherLocationMode,
   type AppSettings,
@@ -22,6 +23,7 @@ function parseNorm(value: string | null): number | undefined {
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
   // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
   const themeMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
+  const appLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
   const habitRemindersEnabled = await settingsRepo.getSetting(
     db,
     APP_SETTING_KEYS.habitRemindersEnabled,
@@ -48,6 +50,9 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
 
   if (themeMode && isThemeMode(themeMode)) {
     settings.themeMode = themeMode;
+  }
+  if (appLanguage && isAppLanguage(appLanguage)) {
+    settings.appLanguage = appLanguage;
   }
   if (habitRemindersEnabled === 'true' || habitRemindersEnabled === 'false') {
     settings.habitRemindersEnabled = habitRemindersEnabled === 'true';
@@ -84,6 +89,9 @@ export async function writeAppSettings(
 
   if (settings.themeMode) {
     await settingsRepo.setSetting(db, APP_SETTING_KEYS.themeMode, settings.themeMode);
+  }
+  if (settings.appLanguage) {
+    await settingsRepo.setSetting(db, APP_SETTING_KEYS.appLanguage, settings.appLanguage);
   }
   if (settings.habitRemindersEnabled !== undefined) {
     await settingsRepo.setSetting(

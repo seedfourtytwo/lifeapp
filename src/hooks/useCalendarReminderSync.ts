@@ -18,6 +18,7 @@ export function useCalendarReminderSync(): void {
   const reminders = useCalendarStore((s) => s.reminders);
   const clearedByKey = useCalendarStore((s) => s.clearedByKey);
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
+  const appLanguage = useSettingsStore((s) => s.appLanguage);
 
   useEffect(() => {
     if (!settingsLoaded || !isLoaded || !isNotificationsNativeAvailable()) return;
@@ -30,7 +31,7 @@ export function useCalendarReminderSync(): void {
     }).catch((error) => {
       console.warn('Calendar reminder sync skipped', error);
     });
-  }, [calendars, clearedByKey, events, isLoaded, reminders, settingsLoaded]);
+  }, [calendars, clearedByKey, events, isLoaded, reminders, settingsLoaded, appLanguage]);
 
   useEffect(() => {
     if (!settingsLoaded || !isLoaded || !isNotificationsNativeAvailable()) return;
@@ -49,5 +50,5 @@ export function useCalendarReminderSync(): void {
     });
 
     return () => sub.remove();
-  }, [isLoaded, settingsLoaded]);
+  }, [isLoaded, settingsLoaded, appLanguage]);
 }

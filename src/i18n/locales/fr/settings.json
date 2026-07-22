@@ -1,0 +1,164 @@
+{
+  "menu": {
+    "insightsTitle": "Statistiques",
+    "insightsDescription": "Comparez habitudes, compteurs et météo",
+    "journalTitle": "Journal",
+    "journalDescription": "Revoir les journaux quotidiens et les notes de suivi par jour",
+    "calendarTitle": "Calendrier",
+    "calendarDescription": "Anniversaires, rendez-vous et rappels",
+    "settingsSectionTitle": "Paramètres",
+    "trackersTitle": "Suivis",
+    "trackersDescription": "Gérer, archiver et restaurer habitudes et compteurs",
+    "appSettingsTitle": "Paramètres de l'application",
+    "appSettingsDescription": "Thème, sauvegarde, widgets et préférences"
+  },
+  "appearance": {
+    "sectionTitle": "Apparence",
+    "languageSectionTitle": "Langue",
+    "languageSystem": "Système",
+    "languageSystemDesc": "Suivre la langue du téléphone si elle est prise en charge",
+    "languageEn": "English",
+    "languageEnDesc": "Utiliser l’anglais dans l’application",
+    "languageFr": "Français",
+    "languageFrDesc": "Utiliser le français dans l’application",
+    "themeLight": "Clair",
+    "themeLightDesc": "Épuré et minimal",
+    "themeDark": "Sombre",
+    "themeDarkDesc": "Plus confortable le soir",
+    "themeCartoon": "Cartoon",
+    "themeCartoonDesc": "Couleurs chaudes et panneaux arrondis",
+    "rebuildRequiredTitle": "Nouvelle build requise"
+  },
+  "notifications": {
+    "sectionTitle": "Notifications",
+    "habitRemindersTitle": "Rappels d'habitudes",
+    "habitRemindersDescription": "Rappel avant les habitudes programmées et à 20h s'il en reste",
+    "rebuildRequiredBody": "Les rappels d'habitudes nécessitent une nouvelle build de développement. Exécutez : npx expo run:android",
+    "blockedTitle": "Notifications bloquées",
+    "blockedBody": "Activez les notifications dans les paramètres système pour recevoir les rappels d'habitudes."
+  },
+  "data": {
+    "sectionTitle": "Données",
+    "exportTitle": "Exporter la sauvegarde",
+    "exportDescription": "Enregistrer habitudes, compteurs, calendrier, notes, journaux, historique et préférences en JSON",
+    "importTitle": "Importer une sauvegarde",
+    "importDescriptionAvailable": "Remplacer les données de cet appareil par un fichier de sauvegarde",
+    "importDescriptionUnavailable": "Nécessite une reconstruction du client de développement — l'export fonctionne déjà",
+    "clearDataTitle": "Effacer des données…",
+    "clearDataDescription": "Effacer historique, calendrier, cache, préférences — ou habitudes/compteurs",
+    "backupSavedTitle": "Sauvegarde enregistrée",
+    "backupSavedBody": "Votre sauvegarde JSON a été enregistrée dans le dossier choisi.",
+    "backupReadyTitle": "Sauvegarde prête",
+    "backupReadyBody": "Partagez ou enregistrez le fichier JSON depuis le menu de partage.",
+    "exportFailedTitle": "Échec de l'export",
+    "exportFailedBodyFallback": "Impossible d'exporter vos données.",
+    "importRebuildRequiredBody": "L'import de sauvegarde nécessite un client de développement avec sélecteur de fichiers. Exécutez : npx expo run:android (local) ou eas build --platform android --profile development",
+    "importConfirmTitle": "Importer la sauvegarde ?",
+    "importConfirmBody": "Cela remplace toutes les habitudes, compteurs, historique, notes, journaux et préférences sur cet appareil.",
+    "importConfirmAction": "Importer",
+    "importCompleteTitle": "Import terminé",
+    "importCompleteBody": "Vos habitudes, compteurs, historique, notes, journaux et préférences ont été restaurés.",
+    "importFailedTitle": "Échec de l'import",
+    "importFailedBodyFallback": "Impossible d'importer ce fichier de sauvegarde.",
+    "clearFailedTitle": "Échec de l'effacement",
+    "clearFailedBodyFallback": "Impossible d'effacer les données locales.",
+    "clearedTitle": "Données effacées",
+    "clearedBodyFallback": "Les données sélectionnées ont été supprimées.",
+    "exportShareTitle": "Exporter la sauvegarde Life Dashboard",
+    "couldNotAccessStorage": "Impossible d'accéder au stockage de l'application pour l'export",
+    "clearConfirmTitle": "Effacer les données sélectionnées ?",
+    "clearConfirmDefinitionsTitle": "Supprimer les habitudes et compteurs ?",
+    "clearConfirmSuffix": "Cette action est irréversible.",
+    "clearConfirmAction": "Effacer",
+    "clearConfirmDefinitionsAction": "Supprimer tout ce qui est sélectionné"
+  },
+  "about": {
+    "sectionTitle": "À propos",
+    "title": "Life Dashboard",
+    "version": "Version {{version}}",
+    "note": "Les sauvegardes sont des fichiers JSON que vous pouvez transférer entre installations. L'import remplace toutes les données locales (y compris les notes de suivi et les journaux). Effacer les données peut conserver habitudes et compteurs tout en supprimant seulement l'activité."
+  },
+  "weather": {
+    "sectionTitle": "Météo",
+    "widgetTitle": "Bulle météo sur l'accueil",
+    "widgetDescription": "Afficher une bulle de température déplaçable sur l'accueil",
+    "usePhoneLocationTitle": "Utiliser la position du téléphone",
+    "descriptionRebuildRequired": "Nécessite une nouvelle build Android — utilisez une ville ci-dessous",
+    "descriptionLocating": "Localisation en cours…",
+    "descriptionUsingGps": "Utilise le GPS de l'appareil",
+    "descriptionPreferGps": "Préfère le GPS si autorisé",
+    "getLocationA11y": "Localisation en cours",
+    "refreshHint": "Appuyez à nouveau pour rafraîchir la position du téléphone",
+    "cityHint": "Ou recherchez une ville, puis choisissez le bon résultat",
+    "cityLabel": "Ville",
+    "savedPlace": "Enregistré : {{place}}",
+    "searchButton": "Rechercher",
+    "rebuildRequiredTitle": "Reconstruction nécessaire",
+    "rebuildRequiredBody": "La position du téléphone nécessite une nouvelle build de développement avec expo-location. Vous pouvez définir une ville manuellement ci-dessous.",
+    "locationBlockedTitle": "Localisation bloquée",
+    "locationBlockedBody": "Activez l'autorisation de localisation dans les paramètres système, ou définissez une ville manuellement.",
+    "locationUnavailableTitle": "Localisation indisponible",
+    "locationUnavailableBody": "Impossible de lire la position de l'appareil. Essayez plutôt un nom de ville.",
+    "locationUnavailableOfflineBody": "Aucune connexion pendant la résolution de la position. Réessayez en ligne, ou recherchez une ville.",
+    "cityRequiredTitle": "Ville requise",
+    "cityRequiredBody": "Saisissez au moins 2 lettres, puis appuyez sur Rechercher.",
+    "noMatchesBody": "Aucun résultat. Essayez seulement le nom de la ville (ex. Munich), pas « Ville Pays ».",
+    "searchOfflineBody": "Aucune connexion — la recherche de ville nécessite Internet.",
+    "searchFailedBodyFallback": "Impossible de rechercher des lieux."
+  },
+  "calendarSection": {
+    "sectionTitle": "Calendrier",
+    "widgetTitle": "Bulle calendrier sur l'accueil",
+    "widgetDescription": "Afficher la date du jour sur l'accueil et un aperçu des événements à venir",
+    "openTitle": "Ouvrir le calendrier",
+    "openDescription": "Parcourir la vue mensuelle, ajouter anniversaires et rendez-vous"
+  },
+  "clearData": {
+    "title": "Effacer des données",
+    "subtitle": "Choisissez ce qu'il faut supprimer. Exportez d'abord une sauvegarde si besoin.",
+    "exportFirstButton": "Exporter la sauvegarde d'abord",
+    "willRemoveTitle": "Sera supprimé",
+    "confirmButton": "Effacer la sélection",
+    "activityHistory": {
+      "label": "Historique d'activité",
+      "description": "Coches, minuteurs, journaux de compteurs, notes de suivi et journaux"
+    },
+    "period": {
+      "label": "Période",
+      "all": "Depuis toujours",
+      "keep7": "Garder 7j",
+      "keep30": "Garder 30j",
+      "before": "Avant…",
+      "beforeDateLabel": "Avant le",
+      "beforeDatePlaceholder": "AAAA-MM-JJ",
+      "keepHint": "Conserve l'activité récente ; supprime seulement les jours plus anciens."
+    },
+    "calendar": {
+      "label": "Calendrier",
+      "description": "Événements, rappels et occurrences marquées comme faites"
+    },
+    "weatherCache": {
+      "label": "Cache météo",
+      "description": "Prévisions enregistrées sur cet appareil"
+    },
+    "appPreferences": {
+      "label": "Préférences de l'application",
+      "description": "Thème, options, position de la bulle"
+    },
+    "habitsCounters": {
+      "label": "Habitudes et compteurs",
+      "description": "Définitions et ordre sur l'accueil — efface aussi toute l'activité"
+    },
+    "plan": {
+      "definitions": "Habitudes, compteurs et leur ordre sur l'accueil",
+      "definitionsActivity": "Tout l'historique d'activité et les notes / journaux (requis lors de la suppression des définitions)",
+      "activityBeforeUnset": "Activité, notes du jour et journaux avant une date choisie (saisir AAAA-MM-JJ)",
+      "activityBefore": "Activité, notes du jour et journaux avant le {{date}}",
+      "activityKeepLast": "Activité, notes du jour et journaux plus anciens que les {{days}} derniers jours (avant le {{cutoff}})",
+      "activityAll": "Tout l'historique d'activité (coches, minuteurs, journaux de compteurs, notes du jour, journaux)",
+      "calendar": "Événements du calendrier, rappels et occurrences marquées",
+      "weather": "Prévisions météo en cache",
+      "preferences": "Préférences de l'application (thème, options, position de la bulle)"
+    }
+  }
+}

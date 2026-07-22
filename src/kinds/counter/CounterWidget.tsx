@@ -18,6 +18,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { type CounterConfig, formatCounterUnit } from '../../protocol';
 import { getCounterProgressBarColors } from '../../utils/color';
@@ -38,6 +39,8 @@ export function CounterWidget({
   hasTodayNote,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const { width } = useWindowDimensions();
   const { themeMode, decorations: deco, isCartoon } = useAppTheme();
   const [editVisible, setEditVisible] = useState(false);
@@ -73,7 +76,7 @@ export function CounterWidget({
   const saveEdit = async () => {
     const total = parseInt(editValue.trim(), 10);
     if (Number.isNaN(total) || total < 0) {
-      Alert.alert('Invalid total', 'Enter a whole number zero or greater.');
+      Alert.alert(t('counterWidget.invalidTotalTitle'), t('counterWidget.invalidTotalBody'));
       return;
     }
     setSaving(true);
@@ -82,8 +85,8 @@ export function CounterWidget({
       setEditVisible(false);
     } catch (error) {
       Alert.alert(
-        'Could not update',
-        error instanceof Error ? error.message : 'Something went wrong',
+        t('counterWidget.couldNotUpdateTitle'),
+        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
       );
     } finally {
       setSaving(false);
@@ -136,7 +139,7 @@ export function CounterWidget({
                 icon="pencil-outline"
                 size={16}
                 onPress={openEdit}
-                accessibilityLabel="Edit today's total"
+                accessibilityLabel={t('counterWidget.editTodaysTotalA11y')}
                 style={cardStyles.iconButton}
                 hitSlop={8}
               />
@@ -197,13 +200,13 @@ export function CounterWidget({
                   variant="titleLarge"
                   style={[styles.sheetTitle, { color: theme.colors.onSurface }]}
                 >
-                  Edit today&apos;s total
+                  {t('counterWidget.editTotalTitle')}
                 </Text>
                 <IconButton
                   icon="close"
                   onPress={closeEdit}
                   disabled={saving}
-                  accessibilityLabel="Close"
+                  accessibilityLabel={tCommon('actions.close')}
                 />
               </View>
 
@@ -212,10 +215,10 @@ export function CounterWidget({
                   variant="bodySmall"
                   style={[styles.sheetHint, { color: theme.colors.onSurfaceVariant }]}
                 >
-                  Replaces today&apos;s logged {config.unit} with a single total.
+                  {t('counterWidget.replacesTotalHint', { unit: config.unit })}
                 </Text>
                 <TextInput
-                  label={`Total (${config.unit})`}
+                  label={t('counterWidget.totalLabel', { unit: config.unit })}
                   value={editValue}
                   onChangeText={setEditValue}
                   keyboardType="number-pad"
@@ -229,7 +232,7 @@ export function CounterWidget({
 
               <View style={styles.sheetFooter}>
                 <Button onPress={closeEdit} disabled={saving}>
-                  Cancel
+                  {tCommon('actions.cancel')}
                 </Button>
                 <Button
                   mode="contained"
@@ -239,7 +242,7 @@ export function CounterWidget({
                   buttonColor={isCartoon ? theme.colors.primary : undefined}
                   style={{ borderRadius: deco.buttonRadius }}
                 >
-                  Save
+                  {tCommon('actions.save')}
                 </Button>
               </View>
             </View>

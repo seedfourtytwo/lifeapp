@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { i18n } from '../i18n';
 import {
   pauseHabitSound,
   playHabitSound,
@@ -133,15 +134,15 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
           playChime: trackCompleted === true,
         }).catch((error) => {
           Alert.alert(
-            'Could not finish timer',
-            error instanceof Error ? error.message : 'Something went wrong',
+            i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+            error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
           );
         });
       });
     } catch (error) {
       Alert.alert(
-        'Could not start timer',
-        error instanceof Error ? error.message : 'Something went wrong',
+        i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
+        error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
       );
     }
   });
@@ -166,8 +167,10 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
               void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
                 (error) => {
                   Alert.alert(
-                    'Could not finish timer',
-                    error instanceof Error ? error.message : 'Something went wrong',
+                    i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+                    error instanceof Error
+                      ? error.message
+                      : i18n.t('common:errors.somethingWentWrong'),
                   );
                 },
               );
@@ -180,8 +183,8 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
         playChime: trackCompleted === true,
       }).catch((error) => {
         Alert.alert(
-          'Could not finish timer',
-          error instanceof Error ? error.message : 'Something went wrong',
+          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
         );
       });
     });

@@ -2,6 +2,7 @@ import {
   parseDateOnlyLocal,
   toDateString,
 } from '../../calendar/dates';
+import { getDateLocale, i18n } from '../../i18n';
 
 export type TimeParts = { hour: string; minute: string };
 
@@ -31,9 +32,9 @@ export function formatFriendlyDate(dateStr: string): string {
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const tomorrow = toDateString(tomorrowDate);
-  if (dateStr === today) return 'Today';
-  if (dateStr === tomorrow) return 'Tomorrow';
-  return d.toLocaleDateString(undefined, {
+  if (dateStr === today) return i18n.t('common:dateTime.today');
+  if (dateStr === tomorrow) return i18n.t('common:dateTime.tomorrow');
+  return d.toLocaleDateString(getDateLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',

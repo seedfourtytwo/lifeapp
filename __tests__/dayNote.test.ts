@@ -6,11 +6,13 @@ import {
   PROTOCOL_VERSION,
   validateBundleDayNoteLinks,
 } from '../src/protocol';
+import { applyAppLanguage } from '../src/i18n';
 import { appendTranscript, joinDictationParts } from '../src/utils/appendTranscript';
 import { polishDictationTranscript } from '../src/utils/polishDictationTranscript';
 import {
   localeIsInstalledForOffline,
   normalizeSpeechLocaleTag,
+  pickInstalledSpeechLocale,
   speechRecognitionLocale,
 } from '../src/utils/speechRecognitionLocale';
 import {
@@ -340,5 +342,22 @@ describe('speechRecognitionLocale', () => {
     expect(normalizeSpeechLocaleTag('en_GB')).toBe('en-GB');
     expect(normalizeSpeechLocaleTag('en')).toBe('en-US');
     expect(normalizeSpeechLocaleTag('fr')).toBe('fr-FR');
+  });
+
+  it('follows the active app language for dictation', async () => {
+    await applyAppLanguage('fr');
+    expect(speechRecognitionLocale().toLowerCase().startsWith('fr')).toBe(true);
+    await applyAppLanguage('en');
+    expect(speechRecognitionLocale().toLowerCase().startsWith('en')).toBe(true);
+  });
+
+  it('remaps en-US requests to an installed en-GB pack', () => {
+    expect(pickInstalledSpeechLocale('en-US', ['en-GB', 'fr-FR'])).toBe('en-GB');
+    expect(localeIsInstalledForOffline('en-US', ['en-GB'])).toBe(true);
+  });
+
+  it('prefers an exact candidate when installed', () => {
+    expect(pickInstalledSpeechLocale(['en-US', 'en-GB'], ['en-GB', 'fr-FR'])).toBe('en-GB');
+    expect(pickInstalledSpeechLocale(['en-US', 'en-GB'], ['en-US', 'en-GB'])).toBe('en-US');
   });
 });

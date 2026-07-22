@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import TrackerEditorDialog from '../components/TrackerEditorDialog';
 import TrackerLibraryCard, {
   type TrackerLibraryBadge,
@@ -28,9 +30,16 @@ import { getTrackerKindAccent } from '../utils/trackerKindAccent';
 import { isElementArchived } from '../utils/dashboardElements';
 import { parseTrackerEditorSave } from '../utils/parseTrackerEditorSave';
 
-function runElementMutation(action: () => Promise<void>, errorTitle: string): void {
+function runElementMutation(
+  action: () => Promise<void>,
+  errorTitle: string,
+  tCommon: TFunction,
+): void {
   void action().catch((error) => {
-    Alert.alert(errorTitle, error instanceof Error ? error.message : 'Something went wrong');
+    Alert.alert(
+      errorTitle,
+      error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+    );
   });
 }
 
@@ -38,15 +47,18 @@ function confirmArchive(
   elementName: string,
   kindLabel: string,
   onConfirm: () => Promise<void>,
+  tTrackers: TFunction,
+  tCommon: TFunction,
 ): void {
   Alert.alert(
-    `Archive ${kindLabel}?`,
-    `"${elementName}" will be hidden from Home. You can restore it from Archive later.`,
+    tTrackers('confirm.archiveTitle', { kind: kindLabel }),
+    tTrackers('confirm.archiveBody', { name: elementName }),
     [
-      { text: 'Cancel', style: 'cancel' },
+      { text: tCommon('actions.cancel'), style: 'cancel' },
       {
-        text: 'Archive',
-        onPress: () => runElementMutation(onConfirm, 'Could not archive'),
+        text: tCommon('actions.archive'),
+        onPress: () =>
+          runElementMutation(onConfirm, tCommon('alerts.couldNotArchive'), tCommon),
       },
     ],
   );
@@ -54,6 +66,8 @@ function confirmArchive(
 
 export default function TrackersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useTranslation('trackers');
+  const { t: tCommon } = useTranslation('common');
   const { themeMode } = useAppTheme();
   const counterAccent = getTrackerKindAccent(themeMode, 'counter').color;
   const habitAccent = getTrackerKindAccent(themeMode, 'habit').color;
@@ -91,12 +105,12 @@ export default function TrackersScreen() {
   const confirmDelete = useCallback(
     (elementId: string, elementName: string, kindLabel: string) => {
       Alert.alert(
-        `Delete ${kindLabel}?`,
-        `"${elementName}" and all its history and day notes will be removed permanently.`,
+        t('confirm.deleteTitle', { kind: kindLabel }),
+        t('confirm.deleteBody', { name: elementName }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: tCommon('actions.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: tCommon('actions.delete'),
             style: 'destructive',
             onPress: () => {
               void (async () => {
@@ -105,8 +119,9 @@ export default function TrackersScreen() {
                   await deleteElement(elementId);
                   setEditorSession(null);
                 } catch (error) {
-                  const message = error instanceof Error ? error.message : 'Failed to delete';
-                  Alert.alert('Could not delete', message);
+                  const message =
+                    error instanceof Error ? error.message : tCommon('errors.failedToDelete');
+                  Alert.alert(tCommon('alerts.couldNotDelete'), message);
                 } finally {
                   setDeleting(false);
                 }
@@ -116,21 +131,24 @@ export default function TrackersScreen() {
         ],
       );
     },
-    [deleteElement],
+    [deleteElement, t, tCommon],
   );
 
   const renderElementCard = useCallback(
     (element: ElementDefinition, archived: boolean) => {
-      const kindLabel = element.kind === 'counter' ? 'counter' : 'habit';
+      const kindLabel = t(element.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit');
       const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
       const badges: TrackerLibraryBadge[] =
         element.kind === 'counter'
-          ? [{ label: 'Counter', tone: archived ? 'muted' : 'accent' }]
+          ? [{ label: t('card.counterBadge'), tone: archived ? 'muted' : 'accent' }]
           : (() => {
               const config = HabitConfigSchema.parse(element.config);
               return [
                 {
-                  label: config.trackingMode === 'timer' ? 'Timer' : 'Check off',
+                  label:
+                    config.trackingMode === 'timer'
+                      ? t('card.timerBadge')
+                      : t('card.checkOffBadge'),
                   tone: archived ? 'muted' : 'accent',
                 },
               ];
@@ -166,17 +184,38 @@ export default function TrackersScreen() {
           onArchive={
             archived
               ? undefined
-              : () => confirmArchive(element.name, kindLabel, () => archiveElement(element.id))
+              : () =>
+                  confirmArchive(
+                    element.name,
+                    kindLabel,
+                    () => archiveElement(element.id),
+                    t,
+                    tCommon,
+                  )
           }
           onRestore={
             archived
-              ? () => runElementMutation(() => restoreElement(element.id), 'Could not restore')
+              ? () =>
+                  runElementMutation(
+                    () => restoreElement(element.id),
+                    tCommon('alerts.couldNotRestore'),
+                    tCommon,
+                  )
               : undefined
           }
         />
       );
     },
-    [archiveElement, confirmDelete, counterAccent, habitAccent, navigation, restoreElement],
+    [
+      archiveElement,
+      confirmDelete,
+      counterAccent,
+      habitAccent,
+      navigation,
+      restoreElement,
+      t,
+      tCommon,
+    ],
   );
 
   const handleSave = async (data: TrackerEditorSaveData) => {
@@ -198,8 +237,8 @@ export default function TrackersScreen() {
       }
       setEditorSession(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save';
-      Alert.alert('Could not save', message);
+      const message = error instanceof Error ? error.message : tCommon('errors.failedToSave');
+      Alert.alert(tCommon('alerts.couldNotSave'), message);
     } finally {
       setSaving(false);
     }
@@ -221,47 +260,46 @@ export default function TrackersScreen() {
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text variant="bodyMedium" style={styles.intro}>
-          Active habits and counters appear on Home. Archive items to hide them without losing
-          history or day notes — restore anytime from Archive below.
+          {t('screen.intro')}
         </Text>
 
         <TrackersCollapsibleSection
-          title="Counters"
-          subtitle="Daily quantities with optional targets — totals reset each day"
+          title={t('screen.countersTitle')}
+          subtitle={t('screen.countersSubtitle')}
           icon="counter"
           accentColor={counterAccent}
           count={activeCounters.length}
-          addLabel="New counter"
+          addLabel={t('screen.countersAddLabel')}
           defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'counter' }))}
-          emptyMessage="No active counters. Add one to track water, steps, or anything countable."
+          emptyMessage={t('screen.countersEmpty')}
         >
           {activeCounters.map((element) => renderElementCard(element, false))}
         </TrackersCollapsibleSection>
 
         <TrackersCollapsibleSection
-          title="Habits"
-          subtitle="Daily check-offs or timed sessions"
+          title={t('screen.habitsTitle')}
+          subtitle={t('screen.habitsSubtitle')}
           icon="checkbox-marked-circle-outline"
           accentColor={habitAccent}
           count={activeHabits.length}
-          addLabel="New habit"
+          addLabel={t('screen.habitsAddLabel')}
           defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'habit' }))}
-          emptyMessage="No active habits. Add one for meditation, reading, or any daily routine."
+          emptyMessage={t('screen.habitsEmpty')}
         >
           {activeHabits.map((element) => renderElementCard(element, false))}
         </TrackersCollapsibleSection>
 
         <TrackersCollapsibleSection
-          title="Archive"
-          subtitle="Hidden from Home — history kept until deleted"
+          title={t('screen.archiveTitle')}
+          subtitle={t('screen.archiveSubtitle')}
           icon="archive-outline"
           accentColor="#64748B"
           count={archivedElements.length}
           showAddButton={false}
           defaultCollapsed={archivedElements.length === 0}
-          emptyMessage="Nothing archived. Archive a counter or habit to pause it without deleting its history."
+          emptyMessage={t('screen.archiveEmpty')}
         >
           {archivedElements.map((element) => renderElementCard(element, true))}
         </TrackersCollapsibleSection>
@@ -279,7 +317,7 @@ export default function TrackersScreen() {
                 confirmDelete(
                   editingElement.id,
                   editingElement.name,
-                  editingElement.kind === 'counter' ? 'counter' : 'habit',
+                  t(editingElement.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit'),
                 )
             : undefined
         }

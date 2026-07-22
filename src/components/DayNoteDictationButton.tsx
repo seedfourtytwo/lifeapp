@@ -234,8 +234,7 @@ export default function DayNoteDictationButton({
         resetSession();
         return;
       }
-      const locale = speechRecognitionLocale();
-      const prep = await ensureLocalDictationReady(locale);
+      const prep = await ensureLocalDictationReady();
       if (blockedRef.current || !activeRef.current) {
         resetSession();
         return;

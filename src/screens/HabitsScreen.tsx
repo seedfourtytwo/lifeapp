@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
@@ -42,6 +43,7 @@ export default function HabitsScreen({
   onBeforeOpenTrackerNote,
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslation('home');
   const { isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
@@ -167,19 +169,19 @@ export default function HabitsScreen({
     dueTodayHabits.length === 0
       ? null
       : remainingCount > 0
-        ? `${remainingCount} remaining`
-        : `${doneCount} of ${dueTodayHabits.length}`;
+        ? t('habitsTab.remaining', { count: remainingCount })
+        : t('habitsTab.doneOfTotal', { done: doneCount, total: dueTodayHabits.length });
 
   let emptyMessage: string | null = null;
   let emptyWithCta = false;
   if (totalHabitCount === 0) {
-    emptyMessage = 'No habits yet. Add one to start your daily list.';
+    emptyMessage = t('habitsTab.emptyNoHabits');
     emptyWithCta = true;
   } else if (allHabits.length === 0) {
-    emptyMessage = 'No active habits. Restore something from Archive in Trackers.';
+    emptyMessage = t('habitsTab.emptyNoActiveHabits');
     emptyWithCta = true;
   } else if (habits.length === 0) {
-    emptyMessage = 'Nothing due today — check schedule or time window in Trackers.';
+    emptyMessage = t('habitsTab.emptyNothingDueToday');
   }
 
   return (
@@ -198,7 +200,7 @@ export default function HabitsScreen({
         <View style={styles.errorBox}>
           <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
           <Button mode="outlined" onPress={() => void onRefresh()}>
-            Retry
+            {t('habitsTab.retry')}
           </Button>
         </View>
       ) : null}
@@ -211,7 +213,7 @@ export default function HabitsScreen({
           habits.length > 0 ? (
             reordering ? (
               <Text variant="bodySmall" style={styles.metaQuiet}>
-                Move to set your order
+                {t('habitsTab.reorderHint')}
               </Text>
             ) : statusLabel ? (
               <Text
@@ -234,7 +236,7 @@ export default function HabitsScreen({
           habits.length > 0 ? (
             reordering ? (
               <Button compact mode="text" onPress={() => setReordering(false)}>
-                Done
+                {t('habitsTab.done')}
               </Button>
             ) : (
               <Button
@@ -245,7 +247,7 @@ export default function HabitsScreen({
                 onPress={() => setReordering(true)}
                 labelStyle={styles.controlLabel}
               >
-                Sort
+                {t('habitsTab.sort')}
               </Button>
             )
           ) : null

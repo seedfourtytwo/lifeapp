@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { Button, List, Switch, Text, TextInput, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import {
@@ -14,6 +15,7 @@ import { classifyWeatherFetchError } from '../weather/errors';
 
 export default function WeatherSettingsSection() {
   const theme = useTheme();
+  const { t } = useTranslation('settings');
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const setWeatherWidgetEnabled = useSettingsStore((s) => s.setWeatherWidgetEnabled);
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
@@ -33,14 +35,14 @@ export default function WeatherSettingsSection() {
   const deviceLocationAvailable = isDeviceLocationAvailable();
 
   const deviceLocationDescription = !deviceLocationAvailable
-    ? 'Needs a fresh Android build — use a city below'
+    ? t('weather.descriptionRebuildRequired')
     : locating
-      ? 'Getting location…'
+      ? t('weather.descriptionLocating')
       : weatherLocationMode === 'device' && weatherPlaceName
         ? weatherPlaceName
         : weatherLocationMode === 'device'
-          ? 'Using device GPS'
-          : 'Prefer GPS when permitted';
+          ? t('weather.descriptionUsingGps')
+          : t('weather.descriptionPreferGps');
 
   const handleWeatherToggle = async (enabled: boolean) => {
     await setWeatherWidgetEnabled(enabled);
@@ -54,28 +56,19 @@ export default function WeatherSettingsSection() {
   const handleUseDeviceLocation = async () => {
     if (locating) return;
     if (!deviceLocationAvailable) {
-      Alert.alert(
-        'Rebuild required',
-        'Phone location needs a fresh dev build with expo-location. You can set a city manually below.',
-      );
+      Alert.alert(t('weather.rebuildRequiredTitle'), t('weather.rebuildRequiredBody'));
       return;
     }
     setLocating(true);
     try {
       const granted = await requestDeviceLocationPermission();
       if (!granted) {
-        Alert.alert(
-          'Location blocked',
-          'Enable location permission in system settings, or set a city manually.',
-        );
+        Alert.alert(t('weather.locationBlockedTitle'), t('weather.locationBlockedBody'));
         return;
       }
       const coords = await getDeviceCoords();
       if (!coords) {
-        Alert.alert(
-          'Location unavailable',
-          'Could not read device location. Try a city name instead.',
-        );
+        Alert.alert(t('weather.locationUnavailableTitle'), t('weather.locationUnavailableBody'));
         return;
       }
       const placeName = coords.placeName ?? formatCoordLabel(coords.lat, coords.lon);
@@ -93,10 +86,10 @@ export default function WeatherSettingsSection() {
     } catch (error) {
       const kind = classifyWeatherFetchError(error);
       Alert.alert(
-        'Location unavailable',
+        t('weather.locationUnavailableTitle'),
         kind === 'offline'
-          ? 'No connection while resolving location. Try again online, or search a city.'
-          : 'Could not read device location. Try a city name instead.',
+          ? t('weather.locationUnavailableOfflineBody')
+          : t('weather.locationUnavailableBody'),
       );
     } finally {
       setLocating(false);
@@ -106,7 +99,7 @@ export default function WeatherSettingsSection() {
   const handleSearchPlaces = async () => {
     const query = placeQuery.trim();
     if (query.length < 2) {
-      Alert.alert('City required', 'Type at least 2 letters, then tap Search.');
+      Alert.alert(t('weather.cityRequiredTitle'), t('weather.cityRequiredBody'));
       return;
     }
     setPlaceBusy(true);
@@ -115,9 +108,7 @@ export default function WeatherSettingsSection() {
     try {
       const hits = await searchPlaces(query);
       if (hits.length === 0) {
-        setPlaceSearchError(
-          'No matches. Try just the city name (e.g. Munich), not “City Country”.',
-        );
+        setPlaceSearchError(t('weather.noMatchesBody'));
         return;
       }
       setPlaceHits(hits);
@@ -125,10 +116,10 @@ export default function WeatherSettingsSection() {
       const kind = classifyWeatherFetchError(error);
       setPlaceSearchError(
         kind === 'offline'
-          ? 'No connection — city search needs the internet.'
+          ? t('weather.searchOfflineBody')
           : error instanceof Error
             ? error.message
-            : 'Could not search places.',
+            : t('weather.searchFailedBodyFallback'),
       );
     } finally {
       setPlaceBusy(false);
@@ -150,10 +141,10 @@ export default function WeatherSettingsSection() {
 
   return (
     <List.Section>
-      <List.Subheader>Weather</List.Subheader>
+      <List.Subheader>{t('weather.sectionTitle')}</List.Subheader>
       <List.Item
-        title="Home weather bubble"
-        description="Show a movable temp bubble on Home"
+        title={t('weather.widgetTitle')}
+        description={t('weather.widgetDescription')}
         left={(props) => <List.Icon {...props} icon="weather-partly-cloudy" />}
         right={() => (
           <Switch
@@ -165,7 +156,7 @@ export default function WeatherSettingsSection() {
       {weatherWidgetEnabled ? (
         <>
           <List.Item
-            title="Use phone location"
+            title={t('weather.usePhoneLocationTitle')}
             description={deviceLocationDescription}
             left={(props) => <List.Icon {...props} icon="crosshairs-gps" />}
             right={() =>
@@ -173,7 +164,7 @@ export default function WeatherSettingsSection() {
                 <ActivityIndicator
                   style={styles.locatingSpinner}
                   color={theme.colors.primary}
-                  accessibilityLabel="Getting location"
+                  accessibilityLabel={t('weather.getLocationA11y')}
                 />
               ) : null
             }
@@ -181,17 +172,17 @@ export default function WeatherSettingsSection() {
             onPress={() => void handleUseDeviceLocation()}
             accessibilityHint={
               weatherLocationMode === 'device' && weatherPlaceName
-                ? 'Tap again to refresh phone location'
+                ? t('weather.refreshHint')
                 : undefined
             }
           />
           <View style={styles.placeBlock}>
             <Text variant="bodySmall" style={styles.placeHint}>
-              Or search a city, then pick the correct match
+              {t('weather.cityHint')}
             </Text>
             <TextInput
               mode="outlined"
-              label="City"
+              label={t('weather.cityLabel')}
               value={placeQuery}
               onChangeText={(text) => {
                 setPlaceQuery(text);
@@ -205,7 +196,7 @@ export default function WeatherSettingsSection() {
             />
             {weatherPlaceName && weatherLocationMode === 'manual' ? (
               <Text variant="bodySmall" style={styles.placeCurrent}>
-                Saved: {weatherPlaceName}
+                {t('weather.savedPlace', { place: weatherPlaceName })}
               </Text>
             ) : null}
             <Button
@@ -216,7 +207,7 @@ export default function WeatherSettingsSection() {
               style={styles.placeBtn}
               icon="magnify"
             >
-              Search
+              {t('weather.searchButton')}
             </Button>
             {placeSearchError ? (
               <Text variant="bodySmall" style={{ color: theme.colors.error }}>

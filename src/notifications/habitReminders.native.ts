@@ -1,4 +1,5 @@
 import { NativeModules } from 'react-native';
+import { i18n } from '../i18n';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
 import { isScheduleSupportedForReminders, toExpoWeekday } from '../protocol/schedule';
@@ -122,8 +123,8 @@ async function scheduleDailyReminder(
   await notifications.scheduleNotificationAsync({
     identifier: `${REMINDER_PREFIX}${element.id}`,
     content: {
-      title: 'Habit reminder',
-      body: `Time for ${element.name}`,
+      title: i18n.t('notifications:habitReminder.title'),
+      body: i18n.t('notifications:habitReminder.body', { name: element.name }),
     },
     trigger: {
       type: notifications.SchedulableTriggerInputTypes.DAILY,
@@ -151,8 +152,8 @@ async function scheduleWeekdayReminders(
       notifications.scheduleNotificationAsync({
         identifier: `${REMINDER_PREFIX}${element.id}-${day}`,
         content: {
-          title: 'Habit reminder',
-          body: `Time for ${element.name}`,
+          title: i18n.t('notifications:habitReminder.title'),
+          body: i18n.t('notifications:habitReminder.body', { name: element.name }),
         },
         trigger: {
           type: notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -235,8 +236,13 @@ export async function scheduleEndOfDayReminder(
     await Notifications.scheduleNotificationAsync({
       identifier: END_OF_DAY_REMINDER_ID,
       content: {
-        title: 'Habits left today',
-        body: `${undoneCount} habit${undoneCount === 1 ? '' : 's'} still to do`,
+        title: i18n.t('notifications:endOfDayReminder.title'),
+        body: i18n.t(
+          undoneCount === 1
+            ? 'notifications:endOfDayReminder.bodyOne'
+            : 'notifications:endOfDayReminder.bodyMany',
+          { count: undoneCount },
+        ),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,

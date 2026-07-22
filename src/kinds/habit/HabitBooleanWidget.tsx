@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Button, useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { formatHabitDescription, type HabitConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
@@ -25,6 +26,7 @@ export function HabitBooleanWidget({
   streak,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
+  const { t } = useTranslation('trackers');
   const { decorations: deco, isCartoon } = useAppTheme();
   const done = Boolean(isDone);
   const streakLabel = formatHabitStreakLabel(config, streak);
@@ -60,10 +62,12 @@ export function HabitBooleanWidget({
           buttonColor={isCartoon ? theme.colors.primary : undefined}
           contentStyle={styles.primaryButtonContent}
           labelStyle={styles.primaryButtonLabel}
-          accessibilityLabel={done ? 'Completed. Tap to undo' : 'Mark habit done'}
+          accessibilityLabel={
+            done ? t('habitWidget.completedTapToUndoA11y') : t('habitWidget.markHabitDoneA11y')
+          }
           accessibilityState={{ checked: done }}
         >
-          {done ? 'Done' : 'Mark done'}
+          {done ? t('habitWidget.done') : t('habitWidget.markDone')}
         </Button>
       </View>
     </TrackerCard>
