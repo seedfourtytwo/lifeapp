@@ -169,24 +169,7 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
     throw new Error('Forecast response missing current or daily data');
   }
 
-  const daily: WeatherDayForecast[] = data.daily.time.map((date, index) => {
-    const weatherCode = data.daily!.weather_code[index] ?? 0;
-    const tempMinC = data.daily!.temperature_2m_min[index] ?? 0;
-    const tempMaxC = data.daily!.temperature_2m_max[index] ?? 0;
-    const tempMeanC =
-      data.daily!.temperature_2m_mean?.[index] ?? (tempMinC + tempMaxC) / 2;
-    const precipRaw = data.daily!.precipitation_probability_max?.[index] ?? 0;
-    const precipProbabilityPct = Math.min(100, Math.max(0, Math.round(precipRaw)));
-    return {
-      date,
-      tempMinC,
-      tempMaxC,
-      tempMeanC,
-      weatherCode,
-      condition: weatherCodeToCondition(weatherCode),
-      precipProbabilityPct,
-    };
-  });
+  const daily = mapDailyForecast(data.daily);
 
   const currentCode = data.current.weather_code;
 
@@ -200,4 +183,85 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
     lon: data.longitude,
     fetchedAt: new Date().toISOString(),
   };
+}
+
+function mapDailyForecast(daily: NonNullable<ForecastApiResult['daily']>): WeatherDayForecast[] {
+  return daily.time.map((date, index) => {
+    const weatherCode = daily.weather_code[index] ?? 0;
+    const tempMinC = daily.temperature_2m_min[index] ?? 0;
+    const tempMaxC = daily.temperature_2m_max[index] ?? 0;
+    const tempMeanC =
+      daily.temperature_2m_mean?.[index] ?? (tempMinC + tempMaxC) / 2;
+    const precipRaw = daily.precipitation_probability_max?.[index] ?? 0;
+    const precipProbabilityPct = Math.min(100, Math.max(0, Math.round(precipRaw)));
+    return {
+      date,
+      tempMinC,
+      tempMaxC,
+      tempMeanC,
+      weatherCode,
+      condition: weatherCodeToCondition(weatherCode),
+      precipProbabilityPct,
+    };
+  });
+}
+
+function calendarDaysBetween(fromDate: string, toDate: string): number {
+  const a = new Date(`${fromDate}T12:00:00`).getTime();
+  const b = new Date(`${toDate}T12:00:00`).getTime();
+  return Math.max(0, Math.round((b - a) / (24 * 60 * 60 * 1000)));
+}
+
+/**
+ * Fetch daily weather covering [sinceDate, untilDate] using Open-Meteo past_days
+ * (up to 92 days back from today). Returns only days inside the requested window.
+ */
+export async function fetchDailyWeatherRange(
+  lat: number,
+  lon: number,
+  sinceDate: string,
+  untilDate: string,
+): Promise<WeatherDayForecast[]> {
+  const today = new Date();
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+
+  const pastDays = Math.min(92, calendarDaysBetween(sinceDate, todayStr));
+  const forecastDays = Math.min(
+    16,
+    Math.max(1, calendarDaysBetween(todayStr, untilDate) + 1),
+  );
+
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    daily:
+      'weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max',
+    past_days: String(pastDays),
+    forecast_days: String(forecastDays),
+    timezone: 'auto',
+  });
+
+  let data: ForecastApiResult;
+  try {
+    data = (await fetchJsonWithTimeout(
+      `${FORECAST_URL}?${params.toString()}`,
+    )) as ForecastApiResult;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('HTTP ')) {
+      throw new Error(`Weather history failed (${error.message.slice(5)})`);
+    }
+    throw error;
+  }
+
+  if (!data.daily?.time?.length) {
+    throw new Error('Weather history response missing daily data');
+  }
+
+  return mapDailyForecast(data.daily).filter(
+    (day) => day.date >= sinceDate && day.date <= untilDate,
+  );
 }

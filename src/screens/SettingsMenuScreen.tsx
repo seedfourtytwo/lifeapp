@@ -19,6 +19,13 @@ export default function SettingsMenuScreen() {
           onPress={() => navigation.navigate('Trackers')}
         />
         <List.Item
+          title="Insights"
+          description="Compare habits, counters, and weather"
+          left={(props) => <List.Icon {...props} icon="chart-timeline-variant" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => navigation.navigate('Insights')}
+        />
+        <List.Item
           title="Calendar"
           description="Birthdays, appointments, and reminders"
           left={(props) => <List.Icon {...props} icon="calendar-month" />}

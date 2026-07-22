@@ -69,6 +69,29 @@ export async function getNotesForElementInRange(
   return mapRows(rows);
 }
 
+/** Notes for many elements on a single calendar day. */
+export async function getNotesForElementsOnDate(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  date: string,
+): Promise<Map<string, DayNote>> {
+  const byElement = new Map<string, DayNote>();
+  if (elementIds.length === 0) return byElement;
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<DayNoteRow>(
+    `SELECT * FROM day_notes
+     WHERE date = ? AND element_id IN (${placeholders})`,
+    date,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    const note = tryRowToNote(row);
+    if (note) byElement.set(note.elementId, note);
+  }
+  return byElement;
+}
+
 export async function getAllNotes(db: SQLiteDatabase): Promise<DayNote[]> {
   const rows = await db.getAllAsync<DayNoteRow>(
     'SELECT * FROM day_notes ORDER BY date ASC, updated_at ASC',
