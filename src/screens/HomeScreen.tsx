@@ -78,11 +78,14 @@ export default function HomeScreen() {
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
   const quietColor = theme.colors.onSurfaceVariant;
-  // Absolute-fill tab panes ignore parent padding; inset must live on the panes.
-  const topInset = Math.max(
-    insets.top,
-    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0,
-  );
+  // Edge-to-edge Android draws under the status bar. Absolute-fill panes use top:0
+  // relative to the parent, so parent padding is ignored — offset `top` instead.
+  const topInset =
+    insets.top > 0
+      ? insets.top
+      : Platform.OS === 'android'
+        ? (StatusBar.currentHeight ?? 28)
+        : 0;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -90,7 +93,7 @@ export default function HomeScreen() {
         <View
           style={[
             styles.tabPane,
-            { paddingTop: topInset },
+            { top: topInset },
             tab !== 'habits' && styles.tabPaneHidden,
           ]}
           pointerEvents={tab === 'habits' ? 'auto' : 'none'}
@@ -102,7 +105,7 @@ export default function HomeScreen() {
         <View
           style={[
             styles.tabPane,
-            { paddingTop: topInset },
+            { top: topInset },
             tab !== 'counters' && styles.tabPaneHidden,
           ]}
           pointerEvents={tab === 'counters' ? 'auto' : 'none'}

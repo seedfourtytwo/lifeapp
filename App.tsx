@@ -6,7 +6,10 @@ import {
 } from '@react-navigation/native';
 import { ActivityIndicator, PaperProvider, adaptNavigationTheme } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
@@ -51,7 +54,7 @@ function ThemedApp() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <ThemedApp />
     </SafeAreaProvider>
   );
