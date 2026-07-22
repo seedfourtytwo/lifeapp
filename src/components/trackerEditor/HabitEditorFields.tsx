@@ -1,10 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
-import {
-  type HabitTimeSlot,
-  type HabitTrackingMode,
-} from '../../protocol';
+import { Button, Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
+import { toDateString, type HabitTrackingMode } from '../../protocol';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
 import type { HabitEditorFieldState, HabitScheduleType } from './types';
@@ -18,6 +15,33 @@ const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
   { value: 5, label: 'Fri' },
   { value: 6, label: 'Sat' },
 ];
+
+const INTERVAL_PRESETS = [2, 3, 7] as const;
+
+function formatAnchorLabel(dateStr: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const date = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function everyNDaysSummary(intervalRaw: string, anchorDate: string): string {
+  const interval = parseInt(intervalRaw.trim(), 10);
+  if (Number.isNaN(interval) || interval < 1) {
+    return 'Enter how often this habit repeats.';
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(anchorDate)) {
+    return 'Set a first day (YYYY-MM-DD).';
+  }
+  if (interval === 1) {
+    return `Due every day from ${formatAnchorLabel(anchorDate)}.`;
+  }
+  return `Due every ${interval} days from ${formatAnchorLabel(anchorDate)}.`;
+}
 
 type Props = {
   state: HabitEditorFieldState;
@@ -35,9 +59,22 @@ export default function HabitEditorFields({ state, onChange }: Props) {
   const setScheduleType = (next: HabitScheduleType) => {
     onChange({
       scheduleType: next,
-      ...(next === 'every_n_days' ? { useReminder: false } : {}),
+      ...(next === 'every_n_days'
+        ? {
+            useReminder: false,
+            scheduleAnchorDate: state.scheduleAnchorDate || toDateString(new Date()),
+          }
+        : {}),
     });
   };
+
+  const today = toDateString(new Date());
+  const intervalValue = parseInt(state.scheduleInterval.trim(), 10);
+  const knownPreset =
+    Number.isFinite(intervalValue) &&
+    INTERVAL_PRESETS.includes(intervalValue as (typeof INTERVAL_PRESETS)[number])
+      ? String(intervalValue)
+      : 'custom';
 
   return (
     <>
@@ -101,38 +138,8 @@ export default function HabitEditorFields({ state, onChange }: Props) {
       <Divider style={styles.divider} />
 
       <FormSection
-        title="Time of day"
-        description="Optional cue on the Habits list (AM, Lunch, PM). Does not change order."
-        collapsible
-        defaultCollapsed={state.timeSlot === 'anytime'}
-      >
-        <SegmentedButtons
-          value={state.timeSlot}
-          onValueChange={(value) => {
-            if (value) onChange({ timeSlot: value as HabitTimeSlot });
-          }}
-          buttons={[
-            { value: 'morning', label: 'Morning' },
-            { value: 'afternoon', label: 'Afternoon' },
-          ]}
-          style={styles.field}
-        />
-        <SegmentedButtons
-          value={state.timeSlot}
-          onValueChange={(value) => {
-            if (value) onChange({ timeSlot: value as HabitTimeSlot });
-          }}
-          buttons={[
-            { value: 'evening', label: 'Evening' },
-            { value: 'anytime', label: 'Anytime' },
-          ]}
-        />
-      </FormSection>
-
-      <Divider style={styles.divider} />
-
-      <FormSection
         title="Repeat"
+        description="Which days this habit is due. Off days stay off the Habits list and do not break streaks."
         collapsible
         defaultCollapsed={state.scheduleType === 'daily'}
       >
@@ -143,7 +150,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
           }}
           buttons={[
             { value: 'daily', label: 'Every day' },
-            { value: 'weekdays', label: 'Weekdays' },
+            { value: 'weekdays', label: 'Specific days' },
           ]}
           style={styles.field}
         />
@@ -171,24 +178,72 @@ export default function HabitEditorFields({ state, onChange }: Props) {
         ) : null}
         {state.scheduleType === 'every_n_days' ? (
           <View style={styles.sectionBody}>
+            <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
+              Interval
+            </Text>
+            <View style={[styles.chipRow, styles.field]}>
+              {INTERVAL_PRESETS.map((preset) => (
+                <Chip
+                  key={preset}
+                  selected={knownPreset === String(preset)}
+                  onPress={() => onChange({ scheduleInterval: String(preset) })}
+                  compact
+                >
+                  Every {preset}
+                </Chip>
+              ))}
+              <Chip
+                selected={knownPreset === 'custom'}
+                onPress={() => {
+                  if (knownPreset !== 'custom') {
+                    onChange({ scheduleInterval: '4' });
+                  }
+                }}
+                compact
+              >
+                Custom
+              </Chip>
+            </View>
+            {knownPreset === 'custom' ? (
+              <TextInput
+                label="Every N days"
+                placeholder="4"
+                value={state.scheduleInterval}
+                onChangeText={(scheduleInterval) => onChange({ scheduleInterval })}
+                keyboardType="number-pad"
+                mode="outlined"
+                style={styles.field}
+              />
+            ) : null}
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabel}>
+                <Text variant="bodyMedium">First day</Text>
+                <Text variant="bodySmall" style={styles.hint}>
+                  {formatAnchorLabel(state.scheduleAnchorDate || today)}
+                </Text>
+              </View>
+              <Button
+                mode="outlined"
+                compact
+                onPress={() => onChange({ scheduleAnchorDate: today })}
+                disabled={state.scheduleAnchorDate === today}
+              >
+                Start today
+              </Button>
+            </View>
             <TextInput
-              label="Every N days"
-              placeholder="2"
-              value={state.scheduleInterval}
-              onChangeText={(scheduleInterval) => onChange({ scheduleInterval })}
-              keyboardType="number-pad"
-              mode="outlined"
-              style={styles.field}
-            />
-            <TextInput
-              label="Anchor date"
-              placeholder="YYYY-MM-DD"
+              label="First day (YYYY-MM-DD)"
+              placeholder={today}
               value={state.scheduleAnchorDate}
               onChangeText={(scheduleAnchorDate) => onChange({ scheduleAnchorDate })}
               autoCapitalize="none"
               autoCorrect={false}
               mode="outlined"
+              style={styles.field}
             />
+            <Text variant="bodySmall" style={styles.hint}>
+              {everyNDaysSummary(state.scheduleInterval, state.scheduleAnchorDate)}
+            </Text>
           </View>
         ) : null}
       </FormSection>
@@ -197,7 +252,7 @@ export default function HabitEditorFields({ state, onChange }: Props) {
 
       <FormSection
         title="Time window"
-        description="Optional. Limit when the habit shows on the Habits tab."
+        description="Optional. Limit when the habit shows on the Habits tab, and set a reminder before it starts."
         collapsible
         defaultCollapsed={!state.useTimeRange}
       >

@@ -20,7 +20,6 @@ import type { RootStackParamList } from '../navigation/types';
 import {
   CounterConfigSchema,
   HabitConfigSchema,
-  habitTimeHintLabel,
   type ElementDefinition,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
@@ -129,13 +128,11 @@ export default function TrackersScreen() {
           ? [{ label: 'Counter', tone: archived ? 'muted' : 'accent' }]
           : (() => {
               const config = HabitConfigSchema.parse(element.config);
-              const timeHint = habitTimeHintLabel(config.timeSlot);
               return [
                 {
                   label: config.trackingMode === 'timer' ? 'Timer' : 'Check off',
                   tone: archived ? 'muted' : 'accent',
                 },
-                ...(timeHint ? [{ label: timeHint, tone: 'muted' as const }] : []),
               ];
             })();
 

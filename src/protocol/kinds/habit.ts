@@ -45,7 +45,7 @@ export type HabitTimeRange = z.infer<typeof HabitTimeRangeSchema>;
 
 export const HabitConfigSchema = z.object({
   trackingMode: HabitTrackingModeSchema.default('boolean'),
-  timeSlot: HabitTimeSlotSchema,
+  timeSlot: HabitTimeSlotSchema.default('anytime'),
   schedule: HabitScheduleSchema.default({ type: 'daily' }),
   targetLabel: z.string().optional(),
   timeRange: HabitTimeRangeSchema.optional(),
@@ -103,7 +103,7 @@ export function parseHabitConfig(config: unknown): HabitConfig {
 export type HabitInput = {
   name: string;
   trackingMode?: HabitTrackingMode;
-  timeSlot: HabitTimeSlot;
+  timeSlot?: HabitTimeSlot;
   targetLabel?: string;
   timeRange?: HabitTimeRange;
   visibleOnlyInTimeRange?: boolean;
@@ -123,7 +123,7 @@ export function buildHabitConfig(
 ): HabitConfig {
   return {
     trackingMode: input.trackingMode ?? 'boolean',
-    timeSlot: input.timeSlot,
+    timeSlot: input.timeSlot ?? 'anytime',
     schedule: input.schedule ?? { type: 'daily' },
     ...(input.targetLabel?.trim() ? { targetLabel: input.targetLabel.trim() } : {}),
     ...(input.timeRange ? { timeRange: input.timeRange } : {}),

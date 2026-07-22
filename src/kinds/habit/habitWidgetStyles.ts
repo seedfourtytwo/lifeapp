@@ -47,11 +47,6 @@ export const habitWidgetStyles = StyleSheet.create({
     fontWeight: '700',
     flexShrink: 1,
   },
-  timeHint: {
-    opacity: 0.7,
-    letterSpacing: 0.3,
-    flexShrink: 0,
-  },
   titleLeading: {
     flexDirection: 'row',
     alignItems: 'center',

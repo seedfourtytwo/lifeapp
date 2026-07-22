@@ -1,5 +1,5 @@
 import type { ElementDefinition } from './element';
-import type { HabitConfig, HabitTimeSlot } from './kinds/habit';
+import type { HabitConfig } from './kinds/habit';
 import {
   HabitConfigSchema,
   isHabitScheduledOnDate,
@@ -51,18 +51,4 @@ export function orderHabitsList(
     }
   }
   return [...remaining, ...done];
-}
-
-/** Quiet part-of-day cue on habit cards — not a list structure. */
-export function habitTimeHintLabel(timeSlot: HabitTimeSlot): string | null {
-  switch (timeSlot) {
-    case 'morning':
-      return 'AM';
-    case 'afternoon':
-      return 'Lunch';
-    case 'evening':
-      return 'PM';
-    case 'anytime':
-      return null;
-  }
 }

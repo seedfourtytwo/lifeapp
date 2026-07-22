@@ -1,4 +1,4 @@
-import type { HabitSchedule, HabitTimeSlot, HabitTrackingMode, HabitTimerPlaybackMode } from '../../protocol';
+import type { HabitSchedule, HabitTrackingMode, HabitTimerPlaybackMode } from '../../protocol';
 
 export type HabitScheduleType = HabitSchedule['type'];
 
@@ -16,7 +16,6 @@ export type TrackerEditorSession = {
   habitDailyGoalMinutes: string;
   habitSoundTrackId: string;
   habitSoundPlaybackMode: HabitTimerPlaybackMode;
-  timeSlot: HabitTimeSlot;
   useTimeRange: boolean;
   timeRangeStart: string;
   timeRangeEnd: string;
@@ -45,7 +44,6 @@ export type TrackerEditorSaveData =
       habitDailyGoalMinutes: string;
       habitSoundTrackId: string;
       habitSoundPlaybackMode: HabitTimerPlaybackMode;
-      timeSlot: HabitTimeSlot;
       useTimeRange: boolean;
       timeRangeStart: string;
       timeRangeEnd: string;
@@ -66,7 +64,6 @@ export type HabitEditorFieldState = Pick<
   | 'habitDailyGoalMinutes'
   | 'habitSoundTrackId'
   | 'habitSoundPlaybackMode'
-  | 'timeSlot'
   | 'useTimeRange'
   | 'timeRangeStart'
   | 'timeRangeEnd'

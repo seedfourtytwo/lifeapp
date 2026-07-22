@@ -108,7 +108,6 @@ export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './sched
 export {
   filterHabitsDueToday,
   orderHabitsList,
-  habitTimeHintLabel,
   isHabitDueToday,
 } from './habitsList';
 export type { HabitListFilterContext } from './habitsList';

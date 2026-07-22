@@ -45,7 +45,7 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
   }
   if (data.scheduleType === 'weekdays') {
     if (data.scheduleWeekdays.length === 0) {
-      throw new Error('Pick at least one weekday');
+      throw new Error('Pick at least one day');
     }
     return { type: 'weekdays', days: [...data.scheduleWeekdays].sort() };
   }
@@ -55,7 +55,7 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
   }
   const anchorDate = data.scheduleAnchorDate.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(anchorDate)) {
-    throw new Error('Anchor date must be YYYY-MM-DD');
+    throw new Error('First day must be YYYY-MM-DD');
   }
   return { type: 'every_n_days', interval, anchorDate };
 }
@@ -118,7 +118,8 @@ export function parseTrackerEditorSave(
     input: {
       name: data.name,
       trackingMode: data.habitTrackingMode,
-      timeSlot: data.timeSlot,
+      // Time-of-day slots no longer drive list filters/order — keep protocol field stable.
+      timeSlot: 'anytime',
       targetLabel:
         data.habitTrackingMode === 'boolean' ? data.targetLabel || undefined : undefined,
       dailyTargetSeconds:

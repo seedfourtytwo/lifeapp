@@ -45,7 +45,6 @@ function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorF
     habitDailyGoalMinutes: session.habitDailyGoalMinutes,
     habitSoundTrackId: session.habitSoundTrackId,
     habitSoundPlaybackMode: session.habitSoundPlaybackMode,
-    timeSlot: session.timeSlot,
     useTimeRange: session.useTimeRange,
     timeRangeStart: session.timeRangeStart,
     timeRangeEnd: session.timeRangeEnd,

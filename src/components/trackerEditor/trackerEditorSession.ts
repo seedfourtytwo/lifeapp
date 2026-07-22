@@ -16,7 +16,6 @@ export function newEditorSession(
     habitDailyGoalMinutes: '',
     habitSoundTrackId: '',
     habitSoundPlaybackMode: 'play_once',
-    timeSlot: 'anytime',
     useTimeRange: false,
     timeRangeStart: '',
     timeRangeEnd: '',
@@ -66,7 +65,6 @@ export function editorSessionFromHabit(
     habitSoundPlaybackMode: timerSound
       ? getHabitTimerPlaybackMode(timerSound)
       : 'play_once',
-    timeSlot: config.timeSlot,
     useTimeRange: Boolean(config.timeRange),
     timeRangeStart: config.timeRange?.start ?? '',
     timeRangeEnd: config.timeRange?.end ?? '',
