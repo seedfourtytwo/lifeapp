@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ATTENTION_LIST_LIMIT, ATTENTION_WITHIN_DAYS } from '../calendar/attention';
 import { formatDayHeading, formatOccurrenceTime } from '../calendar/format';
@@ -19,6 +20,7 @@ interface Props {
 /** Attention list only — cleared occurrences drop off (silence). Full history stays on Calendar. */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { decorations: deco, isCartoon } = useAppTheme();
   const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -57,15 +59,18 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
   };
 
   let lastDay = '';
+  const isEmpty = upcoming.length === 0;
 
   return (
     <View
       style={[
         styles.sheet,
+        !isEmpty && styles.sheetWithList,
         {
           backgroundColor: theme.colors.surface,
           borderTopLeftRadius: deco.radius.lg,
           borderTopRightRadius: deco.radius.lg,
+          paddingBottom: 20 + insets.bottom,
           ...(isCartoon && {
             borderTopWidth: deco.headerBorderWidth,
             borderColor: theme.colors.outline,
@@ -91,35 +96,43 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
         variant="bodySmall"
         style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
       >
-        Upcoming · tap ✓ to silence this occurrence
+        {isEmpty
+          ? 'No upcoming events in the next two weeks.'
+          : 'Upcoming · tap ✓ to silence this occurrence'}
       </Text>
 
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {upcoming.length === 0 ? (
-          <View style={styles.empty}>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
-            >
-              Nothing needing attention right now.
-            </Text>
-            <Button
-              mode="contained-tonal"
-              icon="calendar-month"
-              onPress={openFullCalendar}
-              style={{ borderRadius: deco.buttonRadius }}
-              buttonColor={isCartoon ? theme.colors.secondaryContainer : undefined}
-            >
-              Open calendar
-            </Button>
-          </View>
-        ) : (
-          upcoming.map((occ) => {
+      {isEmpty ? (
+        <View style={styles.empty}>
+          <MaterialCommunityIcons
+            name="calendar-blank-outline"
+            size={40}
+            color={theme.colors.onSurfaceVariant}
+            style={{ marginBottom: 12, opacity: 0.6 }}
+          />
+          <Text
+            variant="bodyMedium"
+            style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16, textAlign: 'center' }}
+          >
+            Nothing needing attention right now.
+          </Text>
+          <Button
+            mode="contained-tonal"
+            icon="calendar-month"
+            onPress={openFullCalendar}
+            style={{ borderRadius: deco.buttonRadius }}
+            buttonColor={isCartoon ? theme.colors.secondaryContainer : undefined}
+          >
+            Open calendar
+          </Button>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {upcoming.map((occ) => {
             const dayKey = toDateString(occ.start);
             const showHeading = dayKey !== lastDay;
             lastDay = dayKey;
@@ -178,18 +191,16 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
                 </View>
               </View>
             );
-          })
-        )}
-      </ScrollView>
+          })}
+        </ScrollView>
+      )}
 
-      <View style={styles.actions}>
-        {upcoming.length > 0 ? (
+      <View style={[styles.actions, isEmpty && styles.actionsEmpty]}>
+        {!isEmpty ? (
           <Button mode="text" compact onPress={openFullCalendar} icon="calendar-month">
             Full calendar
           </Button>
-        ) : (
-          <View />
-        )}
+        ) : null}
         <View style={styles.actionRight}>
           <Button mode="text" compact onPress={openAddEvent} icon="plus">
             Add
@@ -205,9 +216,11 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   sheet: {
+    width: '100%',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 28,
+  },
+  sheetWithList: {
     maxHeight: '70%',
   },
   list: {
@@ -225,8 +238,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   empty: {
-    paddingVertical: 8,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
   },
   row: {
     flexDirection: 'row',
@@ -254,6 +268,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
+  },
+  actionsEmpty: {
+    justifyContent: 'flex-end',
   },
   actionRight: {
     flexDirection: 'row',

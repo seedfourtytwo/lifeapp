@@ -322,7 +322,7 @@ export default function HomeChromeBubble() {
         onRequestClose={() => setSheet(null)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setSheet(null)}>
-          <Pressable onPress={(e) => e.stopPropagation()}>
+          <Pressable style={styles.sheetContainer} onPress={(e) => e.stopPropagation()}>
             {sheet === 'weather' ? (
               <WeatherForecastSheet onClose={() => setSheet(null)} />
             ) : (
@@ -389,5 +389,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    width: '100%',
   },
 });
