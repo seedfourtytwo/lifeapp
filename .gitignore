@@ -41,3 +41,6 @@ yarn-error.*
 
 # test coverage
 coverage/
+
+# Local research notes — never push
+.cursor/competitor-inspiration.md
