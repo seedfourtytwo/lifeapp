@@ -115,6 +115,9 @@ export default function HomeScreen() {
   const activeColor = isCartoon
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
+  const activeBg = isCartoon
+    ? theme.colors.secondaryContainer
+    : theme.colors.primaryContainer;
   const quietColor = theme.colors.onSurfaceVariant;
   // Edge-to-edge Android draws under the status bar. Absolute-fill panes use top:0
   // relative to the parent, so parent padding is ignored — offset `top` instead.
@@ -197,12 +200,18 @@ export default function HomeScreen() {
             <Pressable
               key={value}
               onPress={() => setTab(value)}
-              style={styles.dockItem}
+              style={[
+                styles.dockItem,
+                active && {
+                  backgroundColor: activeBg,
+                  borderRadius: deco.tabRadius,
+                },
+              ]}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
             >
-              <MaterialCommunityIcons name={icon} size={22} color={color} />
+              <MaterialCommunityIcons name={icon} size={active ? 24 : 22} color={color} />
               <Text
                 variant="labelSmall"
                 style={{
@@ -261,12 +270,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     paddingHorizontal: 8,
+    gap: 4,
   },
   dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    minHeight: 48,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    minHeight: 52,
   },
 });
