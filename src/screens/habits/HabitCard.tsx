@@ -12,10 +12,17 @@ type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
   hasTodayNote?: boolean;
-  onOpenNote?: () => void;
+  onDictateNote?: () => void;
+  onEditNote?: () => void;
 };
 
-export default function HabitCard({ habit, config, hasTodayNote, onOpenNote }: Props) {
+export default function HabitCard({
+  habit,
+  config,
+  hasTodayNote,
+  onDictateNote,
+  onEditNote,
+}: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { handleTimerPress, handleFinishTimer, handleResetToday } = useHabitTimerControls();
   const {
@@ -51,7 +58,8 @@ export default function HabitCard({ habit, config, hasTodayNote, onOpenNote }: P
       failureStreak={failureStreak}
       activeTimerSession={activeTimerSession}
       hasTodayNote={hasTodayNote}
-      onOpenNote={onOpenNote}
+      onDictateNote={onDictateNote}
+      onEditNote={onEditNote}
       onToggle={() =>
         toggleHabit(habit.id, config).catch((error) => {
           Alert.alert(

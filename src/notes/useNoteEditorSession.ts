@@ -12,11 +12,18 @@ export type NoteEditorSessionState = {
   target: NoteEditorTarget;
   date: string;
   initialBody: string;
+  /** Open the sheet and start mic dictation immediately. */
+  autoStartDictation?: boolean;
 };
 
 type Options = {
   /** Called after a successful save. `body` is null when cleared. */
   onSaved?: (date: string, body: string | null, target: NoteEditorTarget) => void;
+};
+
+export type OpenNoteOptions = {
+  /** Start microphone dictation as soon as the sheet is ready. */
+  dictate?: boolean;
 };
 
 /**
@@ -34,23 +41,15 @@ export function useNoteEditorSession(options: Options = {}) {
   sessionRef.current = session;
   const openGenerationRef = useRef(0);
 
-  const openWithBody = useCallback(
-    (target: NoteEditorTarget, date: string, initialBody: string) => {
-      openGenerationRef.current += 1;
-      setSession({ target, date, initialBody });
-    },
-    [],
-  );
-
   const open = useCallback(
-    async (target: NoteEditorTarget, date: string) => {
+    async (target: NoteEditorTarget, date: string, openOptions?: OpenNoteOptions) => {
       const generation = ++openGenerationRef.current;
       const noun = target.kind === 'journal' ? 'journal' : 'note';
+      const autoStartDictation = openOptions?.dictate === true;
       try {
         const body = await loadNoteBody(target, date);
         if (generation !== openGenerationRef.current) return;
-        // Set session directly — do not call openWithBody (that would bump generation again).
-        setSession({ target, date, initialBody: body });
+        setSession({ target, date, initialBody: body, autoStartDictation });
       } catch (error) {
         if (generation !== openGenerationRef.current) return;
         Alert.alert(
@@ -64,6 +63,8 @@ export function useNoteEditorSession(options: Options = {}) {
 
   const dismiss = useCallback(() => {
     if (savingRef.current) return;
+    // Invalidate any in-flight open() so a late load cannot resurrect this sheet.
+    openGenerationRef.current += 1;
     setSession(null);
   }, []);
 
@@ -76,6 +77,7 @@ export function useNoteEditorSession(options: Options = {}) {
     try {
       const saved = await saveNoteBody(current.target, current.date, body);
       onSavedRef.current?.(current.date, saved, current.target);
+      openGenerationRef.current += 1;
       setSession(null);
     } catch (error) {
       Alert.alert(
@@ -92,7 +94,6 @@ export function useNoteEditorSession(options: Options = {}) {
     session,
     saving,
     open,
-    openWithBody,
     dismiss,
     save,
     /** Props for DayNoteEditorSheet / NoteEditorHost */
@@ -104,6 +105,7 @@ export function useNoteEditorSession(options: Options = {}) {
           heading: noteEditorHeading(session.target),
           trackerName: noteEditorLabel(session.target),
           initialBody: session.initialBody,
+          autoStartDictation: session.autoStartDictation === true,
           saving,
         }
       : {
@@ -113,6 +115,7 @@ export function useNoteEditorSession(options: Options = {}) {
           heading: 'Note',
           trackerName: '',
           initialBody: '',
+          autoStartDictation: false,
           saving: false,
         },
   };

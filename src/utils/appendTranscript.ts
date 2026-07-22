@@ -13,7 +13,21 @@ export function joinDictationParts(parts: readonly string[]): string {
     .join(' ');
 }
 
-/** Append a dictated phrase into the note body with a single separating space. */
+/** Prefer cutting at whitespace; fall back to a hard code-unit slice. */
+function truncateNoteBody(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const slice = text.slice(0, maxLength);
+  const lastBreak = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf(' '));
+  if (lastBreak > maxLength * 0.6) {
+    return slice.slice(0, lastBreak).trimEnd();
+  }
+  return slice.trimEnd();
+}
+
+/**
+ * Append a dictated phrase as its own paragraph.
+ * Trailing newline so the next dictation (or typing) starts on a new line.
+ */
 export function appendTranscript(
   existing: string,
   transcript: string,
@@ -22,12 +36,12 @@ export function appendTranscript(
   if (!next) return { text: existing, truncated: false };
 
   const trimmed = existing.trimEnd();
-  const joined = trimmed ? `${trimmed} ${next}` : next;
+  const joined = trimmed ? `${trimmed}\n${next}\n` : `${next}\n`;
   if (joined.length <= DAY_NOTE_BODY_MAX_LENGTH) {
     return { text: joined, truncated: false };
   }
   return {
-    text: joined.slice(0, DAY_NOTE_BODY_MAX_LENGTH),
+    text: truncateNoteBody(joined, DAY_NOTE_BODY_MAX_LENGTH),
     truncated: true,
   };
 }

@@ -14,7 +14,8 @@ export function HabitBooleanWidget({
   isDone,
   onToggle,
   onOpenDetails,
-  onOpenNote,
+  onDictateNote,
+  onEditNote,
   hasTodayNote,
   streak,
   failureStreak,
@@ -70,10 +71,11 @@ export function HabitBooleanWidget({
               </Text>
             ) : null}
           </Pressable>
-          {onOpenNote ? (
+          {onDictateNote ? (
             <NoteIconButton
               hasNote={Boolean(hasTodayNote)}
-              onPress={onOpenNote}
+              onPress={onDictateNote}
+              onLongPress={onEditNote}
               size={16}
             />
           ) : null}

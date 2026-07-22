@@ -24,8 +24,11 @@ import { homeTabScreenStyles } from './shared/screenStyles';
 type Props = {
   hasTodayJournal: boolean;
   onOpenJournal: () => void;
+  onEditJournal?: () => void;
   /** True while Home's journal sheet is open — dismisses this screen's tracker note sheet. */
   journalOpen?: boolean;
+  /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
+  notesActive?: boolean;
   /** Called before opening a tracker note so Home can dismiss the journal sheet. */
   onBeforeOpenTrackerNote?: () => void;
 };
@@ -33,7 +36,9 @@ type Props = {
 export default function HabitsScreen({
   hasTodayJournal,
   onOpenJournal,
+  onEditJournal,
   journalOpen = false,
+  notesActive = true,
   onBeforeOpenTrackerNote,
 }: Props) {
   const theme = useTheme();
@@ -99,8 +104,8 @@ export default function HabitsScreen({
   });
 
   useEffect(() => {
-    if (journalOpen) noteEditor.dismiss();
-  }, [journalOpen, noteEditor.dismiss]);
+    if (journalOpen || !notesActive) noteEditor.dismiss();
+  }, [journalOpen, notesActive, noteEditor.dismiss]);
 
   /** Sort only among remaining — done stays parked at the bottom. */
   const reorderPeerIds = useMemo(
@@ -123,6 +128,7 @@ export default function HabitsScreen({
     <HomeTabMetaRow
       hasTodayJournal={hasTodayJournal}
       onOpenJournal={onOpenJournal}
+      onEditJournal={onEditJournal}
     />
   );
 
@@ -200,6 +206,7 @@ export default function HabitsScreen({
       <HomeTabMetaRow
         hasTodayJournal={hasTodayJournal}
         onOpenJournal={onOpenJournal}
+        onEditJournal={onEditJournal}
         leading={
           habits.length > 0 ? (
             reordering ? (
@@ -272,7 +279,15 @@ export default function HabitsScreen({
               onMoveUp={() => void reorderHabit(habit.id, 'up', reorderPeerIds)}
               onMoveDown={() => void reorderHabit(habit.id, 'down', reorderPeerIds)}
               hasTodayNote={notesToday.has(habit.id)}
-              onOpenNote={() => {
+              onDictateNote={() => {
+                onBeforeOpenTrackerNote?.();
+                void noteEditor.open(
+                  { kind: 'tracker', elementId: habit.id, label: habit.name },
+                  currentAppCalendarDate(now),
+                  { dictate: true },
+                );
+              }}
+              onEditNote={() => {
                 onBeforeOpenTrackerNote?.();
                 void noteEditor.open(
                   { kind: 'tracker', elementId: habit.id, label: habit.name },

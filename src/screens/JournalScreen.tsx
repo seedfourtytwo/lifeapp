@@ -96,10 +96,11 @@ export default function JournalScreen() {
     setSelectedDate(today);
   }, [today]);
 
+  // Skip reload while editing so mid-edit body isn't overwritten; refresh when the sheet closes.
   useEffect(() => {
-    if (editingRef.current) return;
+    if (noteEditor.session != null) return;
     void loadTrackerNotes(selectedDate, elements);
-  }, [selectedDate, elements, loadTrackerNotes]);
+  }, [selectedDate, elements, loadTrackerNotes, noteEditor.session]);
 
   const openJournal = (date: string) => {
     void noteEditor.open({ kind: 'journal' }, date);

@@ -17,6 +17,7 @@ export default function NoteEditorHost({ session }: Props) {
       heading={sheet.heading}
       trackerName={sheet.trackerName}
       initialBody={sheet.initialBody}
+      autoStartDictation={sheet.autoStartDictation}
       saving={saving}
       onDismiss={dismiss}
       onSave={(body) => void save(body)}

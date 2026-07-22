@@ -30,7 +30,8 @@ export function HabitTimerWidget({
   onTimerFinish,
   onResetToday,
   onOpenDetails,
-  onOpenNote,
+  onDictateNote,
+  onEditNote,
   hasTodayNote,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
@@ -156,10 +157,11 @@ export function HabitTimerWidget({
                 hitSlop={8}
               />
             ) : null}
-            {onOpenNote ? (
+            {onDictateNote ? (
               <NoteIconButton
                 hasNote={Boolean(hasTodayNote)}
-                onPress={onOpenNote}
+                onPress={onDictateNote}
+                onLongPress={onEditNote}
                 size={16}
               />
             ) : null}

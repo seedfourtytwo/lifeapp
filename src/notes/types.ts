@@ -24,7 +24,8 @@ export function noteEditorHeading(target: NoteEditorTarget): string {
 
 export function noteEditorLabel(target: NoteEditorTarget): string {
   if (target.kind === 'journal') {
-    return target.label?.trim() || 'Day';
+    // Date alone is enough under "Journal" — no redundant "Day" prefix.
+    return target.label?.trim() || '';
   }
   return target.label;
 }

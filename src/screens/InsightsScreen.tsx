@@ -167,7 +167,7 @@ export default function InsightsScreen() {
       setNotesByElement(new Map());
       return;
     }
-    if (editingRef.current) return;
+    if (noteEditor.session != null) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -192,7 +192,7 @@ export default function InsightsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, selectedIds]);
+  }, [selectedDate, selectedIds, noteEditor.session]);
 
   const toggleSeries = (id: string) => {
     setSelectedIds((prev) => {

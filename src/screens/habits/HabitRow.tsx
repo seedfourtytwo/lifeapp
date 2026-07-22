@@ -16,7 +16,8 @@ type Props = {
   onMoveUp: () => void;
   onMoveDown: () => void;
   hasTodayNote?: boolean;
-  onOpenNote?: () => void;
+  onDictateNote?: () => void;
+  onEditNote?: () => void;
 };
 
 export default function HabitRow({
@@ -29,7 +30,8 @@ export default function HabitRow({
   onMoveUp,
   onMoveDown,
   hasTodayNote,
-  onOpenNote,
+  onDictateNote,
+  onEditNote,
 }: Props) {
   return (
     <View style={styles.reorderRow}>
@@ -47,7 +49,8 @@ export default function HabitRow({
           habit={habit}
           config={config}
           hasTodayNote={hasTodayNote}
-          onOpenNote={onOpenNote}
+          onDictateNote={onDictateNote}
+          onEditNote={onEditNote}
         />
       </View>
     </View>

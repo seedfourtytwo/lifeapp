@@ -26,12 +26,14 @@ export function bestRecognitionTranscript(results: readonly ResultLike[]): strin
 }
 
 /**
- * On-device-only recognition tuned for journal dictation.
- * Audio is processed by the OS speech engine — never sent to a cloud API by this app.
+ * Recognition options for journal/note dictation.
+ * Prefer on-device when the engine supports it (`requiresOnDeviceRecognition`).
+ * Google TTS fallbacks may use the engine default path (local packs when present).
  */
 export function buildLocalNoteDictationOptions(
   locale = speechRecognitionLocale(),
   androidPackage?: string,
+  requiresOnDeviceRecognition = true,
 ): ExpoSpeechRecognitionOptions {
   return {
     lang: locale,
@@ -39,7 +41,7 @@ export function buildLocalNoteDictationOptions(
     continuous: supportsContinuousDictation(),
     addsPunctuation: true,
     maxAlternatives: 5,
-    requiresOnDeviceRecognition: true,
+    requiresOnDeviceRecognition,
     iosTaskHint: 'dictation',
     ...(Platform.OS === 'android' && androidPackage
       ? { androidRecognitionServicePackage: androidPackage }

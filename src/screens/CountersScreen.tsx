@@ -26,14 +26,19 @@ import { homeTabScreenStyles } from './shared/screenStyles';
 type Props = {
   hasTodayJournal: boolean;
   onOpenJournal: () => void;
+  onEditJournal?: () => void;
   journalOpen?: boolean;
+  /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
+  notesActive?: boolean;
   onBeforeOpenTrackerNote?: () => void;
 };
 
 export default function CountersScreen({
   hasTodayJournal,
   onOpenJournal,
+  onEditJournal,
   journalOpen = false,
+  notesActive = true,
   onBeforeOpenTrackerNote,
 }: Props) {
   const theme = useTheme();
@@ -73,8 +78,8 @@ export default function CountersScreen({
   });
 
   useEffect(() => {
-    if (journalOpen) noteEditor.dismiss();
-  }, [journalOpen, noteEditor.dismiss]);
+    if (journalOpen || !notesActive) noteEditor.dismiss();
+  }, [journalOpen, notesActive, noteEditor.dismiss]);
 
   const counterConfigs = useMemo(() => {
     const configs = new Map<string, CounterConfig>();
@@ -99,6 +104,7 @@ export default function CountersScreen({
     <HomeTabMetaRow
       hasTodayJournal={hasTodayJournal}
       onOpenJournal={onOpenJournal}
+      onEditJournal={onEditJournal}
     />
   );
 
@@ -154,6 +160,7 @@ export default function CountersScreen({
         <HomeTabMetaRow
           hasTodayJournal={hasTodayJournal}
           onOpenJournal={onOpenJournal}
+          onEditJournal={onEditJournal}
           leading={
             counters.length > 0 ? (
               <Text variant="bodyMedium" numberOfLines={1}>
@@ -240,7 +247,15 @@ export default function CountersScreen({
                       navigation.navigate('TrackerHistory', { elementId: element.id })
                     }
                     hasTodayNote={notesToday.has(element.id)}
-                    onOpenNote={() => {
+                    onDictateNote={() => {
+                      onBeforeOpenTrackerNote?.();
+                      void noteEditor.open(
+                        { kind: 'tracker', elementId: element.id, label: element.name },
+                        currentAppCalendarDate(now),
+                        { dictate: true },
+                      );
+                    }}
+                    onEditNote={() => {
                       onBeforeOpenTrackerNote?.();
                       void noteEditor.open(
                         { kind: 'tracker', elementId: element.id, label: element.name },

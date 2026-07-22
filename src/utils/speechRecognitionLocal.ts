@@ -1,71 +1,77 @@
 import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import {
+  androidPackageUsesAsiOfflineApis,
+  pickAndroidRecognitionPackage,
+} from './speechRecognitionAndroid';
+import { SPEECH_MSG } from './speechRecognitionErrors';
+import {
   localeIsInstalledForOffline,
   normalizeSpeechLocaleTag,
 } from './speechRecognitionLocale';
 
-/** Google on-device speech on Pixel / Android System Intelligence. */
-export const ANDROID_ON_DEVICE_ASR_PACKAGE = 'com.google.android.as';
-
 export type LocalDictationPrep =
-  | { ready: true; locale: string; androidPackage?: string }
+  | {
+      ready: true;
+      locale: string;
+      androidPackage?: string;
+      requiresOnDeviceRecognition: boolean;
+    }
   | { ready: false; message: string };
 
-function pickAndroidOnDevicePackage(): string | undefined {
-  if (Platform.OS !== 'android') return undefined;
+function listAndroidRecognitionServices(): string[] {
   try {
-    const services = ExpoSpeechRecognitionModule.getSpeechRecognitionServices();
-    if (services.includes(ANDROID_ON_DEVICE_ASR_PACKAGE)) {
-      return ANDROID_ON_DEVICE_ASR_PACKAGE;
-    }
+    return ExpoSpeechRecognitionModule.getSpeechRecognitionServices();
   } catch {
-    // Fall through — requiresOnDeviceRecognition still uses system on-device engine.
+    return [];
   }
-  return undefined;
 }
 
-let cachedAndroidPackage: string | undefined | null = null;
+/** Successful package only — never permanently cache “none found”. */
+let cachedAndroidPackage: string | undefined;
 
-function resolveAndroidOnDevicePackage(): string | undefined {
-  if (cachedAndroidPackage !== null) return cachedAndroidPackage ?? undefined;
-  cachedAndroidPackage = pickAndroidOnDevicePackage();
-  return cachedAndroidPackage ?? undefined;
+function resolveAndroidRecognitionPackage(): string | undefined {
+  if (cachedAndroidPackage) return cachedAndroidPackage;
+  const picked = pickAndroidRecognitionPackage(listAndroidRecognitionServices());
+  if (picked) cachedAndroidPackage = picked;
+  return picked;
 }
 
-/**
- * Ensure on-device speech models are ready. May open a system dialog on Android
- * to download the offline language pack — still fully local, no cloud STT.
- */
-export async function ensureLocalDictationReady(
-  locale: string,
+/** Drop memoized package so the next attempt can see a newly installed engine. */
+export function clearAndroidRecognitionPackageCache(): void {
+  cachedAndroidPackage = undefined;
+}
+
+/** Google TTS / sandboxed Play — voice packs live in that app’s settings. */
+function prepGoogleTtsDictation(
+  normalized: string,
+  androidPackage: string,
+): LocalDictationPrep {
+  return {
+    ready: true,
+    locale: normalized,
+    androidPackage,
+    // ASI offline-download APIs do not apply; may use local packs or network.
+    requiresOnDeviceRecognition: false,
+  };
+}
+
+async function prepAsiOfflineDictation(
+  normalized: string,
+  androidPackage: string,
 ): Promise<LocalDictationPrep> {
-  const normalized = normalizeSpeechLocaleTag(locale);
-
-  if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
-    return {
-      ready: false,
-      message: 'On-device speech recognition is not available on this device.',
-    };
-  }
-
-  if (Platform.OS === 'ios') {
-    return { ready: true, locale: normalized };
-  }
-
-  if (Platform.OS !== 'android') {
-    return { ready: false, message: 'Speech recognition is not supported here.' };
-  }
-
-  const androidPackage = resolveAndroidOnDevicePackage();
-
   try {
     const { installedLocales } = await ExpoSpeechRecognitionModule.getSupportedLocales({
-      ...(androidPackage ? { androidRecognitionServicePackage: androidPackage } : {}),
+      androidRecognitionServicePackage: androidPackage,
     });
 
     if (localeIsInstalledForOffline(normalized, installedLocales)) {
-      return { ready: true, locale: normalized, androidPackage };
+      return {
+        ready: true,
+        locale: normalized,
+        androidPackage,
+        requiresOnDeviceRecognition: true,
+      };
     }
 
     const download = await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
@@ -73,25 +79,64 @@ export async function ensureLocalDictationReady(
     });
 
     if (download.status === 'download_success') {
-      return { ready: true, locale: normalized, androidPackage };
-    }
-
-    if (download.status === 'opened_dialog') {
       return {
-        ready: false,
-        message:
-          'Download the offline voice model in the system dialog, then try dictation again.',
+        ready: true,
+        locale: normalized,
+        androidPackage,
+        requiresOnDeviceRecognition: true,
       };
     }
 
-    return {
-      ready: false,
-      message: 'Offline voice model download was canceled.',
-    };
+    if (download.status === 'opened_dialog') {
+      return { ready: false, message: SPEECH_MSG.offlineModel };
+    }
+
+    return { ready: false, message: SPEECH_MSG.offlineCanceled };
   } catch {
+    // ASI prep can throw on non-stock ROMs — still attempt on-device start.
     return {
-      ready: false,
-      message: 'Could not prepare on-device speech recognition.',
+      ready: true,
+      locale: normalized,
+      androidPackage,
+      requiresOnDeviceRecognition: true,
     };
   }
+}
+
+async function prepareAndroidDictation(
+  normalized: string,
+  androidPackage: string,
+): Promise<LocalDictationPrep> {
+  if (!androidPackageUsesAsiOfflineApis(androidPackage)) {
+    return prepGoogleTtsDictation(normalized, androidPackage);
+  }
+  return prepAsiOfflineDictation(normalized, androidPackage);
+}
+
+/**
+ * Prepare the best available speech backend for note dictation.
+ * Prefers Android System Intelligence; falls back to Google TTS (GrapheneOS).
+ */
+export async function ensureLocalDictationReady(
+  locale: string,
+): Promise<LocalDictationPrep> {
+  const normalized = normalizeSpeechLocaleTag(locale);
+
+  if (Platform.OS === 'ios') {
+    if (!ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()) {
+      return { ready: false, message: SPEECH_MSG.iosOnDevice };
+    }
+    return { ready: true, locale: normalized, requiresOnDeviceRecognition: true };
+  }
+
+  if (Platform.OS !== 'android') {
+    return { ready: false, message: SPEECH_MSG.webOnly };
+  }
+
+  const androidPackage = resolveAndroidRecognitionPackage();
+  if (androidPackage) {
+    return prepareAndroidDictation(normalized, androidPackage);
+  }
+
+  return { ready: false, message: SPEECH_MSG.installTts };
 }

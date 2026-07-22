@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
@@ -30,6 +32,8 @@ export interface DayNoteEditorSheetProps {
   initialBody: string;
   /** Stable id for draft seeding — changes when target or day changes. */
   sessionKey?: string | null;
+  /** Start mic dictation once when the sheet opens. */
+  autoStartDictation?: boolean;
   saving?: boolean;
   onDismiss: () => void;
   onSave: (body: string) => void;
@@ -42,6 +46,7 @@ export default function DayNoteEditorSheet({
   sessionKey = null,
   trackerName,
   initialBody,
+  autoStartDictation = false,
   saving = false,
   onDismiss,
   onSave,
@@ -53,6 +58,8 @@ export default function DayNoteEditorSheet({
   /** Seed text for uncontrolled remounts (open / clear / dictation). */
   const [fieldSeed, setFieldSeed] = useState(initialBody);
   const [fieldEpoch, setFieldEpoch] = useState(0);
+  /** Mic-first: full TextInput only after Edit text / tap preview. */
+  const [textEditing, setTextEditing] = useState(false);
   const [dictationHint, setDictationHint] = useState<string | null>(null);
   const [dictationError, setDictationError] = useState<string | null>(null);
   const seededSessionKeyRef = useRef<string | null>(null);
@@ -63,18 +70,20 @@ export default function DayNoteEditorSheet({
   const noun = isJournal ? 'journal' : 'note';
 
   const remountField = (text: string) => {
+    draftRef.current = text;
     setFieldSeed(text);
     setDraft(text);
     setFieldEpoch((n) => n + 1);
   };
 
-  // Seed draft when the sheet opens for a target+day — not when parent refreshes mid-edit.
-  // Uncontrolled TextInput (defaultValue + remount) — controlled `value` fights phone IME.
+  // Seed when the sheet opens for a target+day — not when the parent refreshes mid-edit.
+  // Uncontrolled TextInput (defaultValue + remount): controlled `value` fights phone IME.
   useEffect(() => {
     if (!visible || !date || !sessionKey) {
       if (!visible) {
         seededSessionKeyRef.current = null;
         limitAlertShownRef.current = false;
+        setTextEditing(false);
       }
       setDictationHint(null);
       setDictationError(null);
@@ -82,10 +91,13 @@ export default function DayNoteEditorSheet({
     }
     if (seededSessionKeyRef.current === sessionKey) return;
     remountField(initialBody);
+    setTextEditing(false);
     setDictationHint(null);
     setDictationError(null);
     limitAlertShownRef.current = initialBody.length >= NOTE_BODY_MAX_LENGTH;
     seededSessionKeyRef.current = sessionKey;
+    // Mic-first: don't pop the keyboard on open — only when the user edits text.
+    Keyboard.dismiss();
   }, [visible, date, sessionKey, initialBody]);
 
   const hasStoredNote = initialBody.trim().length > 0;
@@ -120,6 +132,8 @@ export default function DayNoteEditorSheet({
   };
 
   const handleClear = () => {
+    setDictationHint(null);
+    setDictationError(null);
     if (hasStoredNote) {
       onSave('');
       return;
@@ -128,8 +142,16 @@ export default function DayNoteEditorSheet({
   };
 
   const handleSave = () => {
-    if (!canSave || saving) return;
-    onSave(draft);
+    if (saving) return;
+    const body = draftRef.current;
+    if (body.trim() === initialBody.trim()) return;
+    onSave(body);
+  };
+
+  const enterTextEditing = () => {
+    if (saving) return;
+    remountField(draftRef.current);
+    setTextEditing(true);
   };
 
   const handleTranscript = (text: string) => {
@@ -145,7 +167,23 @@ export default function DayNoteEditorSheet({
     }
     // Remount so dictation text appears without driving a controlled `value`.
     remountField(result.text);
+    Keyboard.dismiss();
   };
+
+  /** Quick Home capture: Done finishes speech, saves, and closes. */
+  const handleDictationFinished = () => {
+    if (!autoStartDictation || saving) return;
+    const body = draftRef.current;
+    if (body.trim() !== initialBody.trim()) {
+      onSave(body);
+      return;
+    }
+    onDismiss();
+  };
+
+  const previewPlaceholder = isJournal
+    ? "Tap the mic to dictate today's journal"
+    : 'Tap the mic to dictate a note';
 
   return (
     <Portal>
@@ -174,15 +212,18 @@ export default function DayNoteEditorSheet({
                 variant="bodySmall"
                 style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}
               >
-                {trackerName}
-                {titleDate ? ` · ${titleDate}` : ''}
+                {[trackerName, titleDate].filter(Boolean).join(' · ')}
               </Text>
             </View>
             <DayNoteDictationButton
-              compact
               active={visible}
-              disabled={saving || !visible || atLimit}
+              disabled={saving || !visible || (atLimit && !autoStartDictation)}
+              autoStart={autoStartDictation && visible}
+              autoStartToken={
+                autoStartDictation && sessionKey ? `${sessionKey}:dictate` : null
+              }
               onTranscript={handleTranscript}
+              onFinished={autoStartDictation ? handleDictationFinished : undefined}
               onError={setDictationError}
             />
             <IconButton
@@ -190,6 +231,7 @@ export default function DayNoteEditorSheet({
               onPress={requestDismiss}
               disabled={saving}
               accessibilityLabel={isJournal ? 'Close journal' : 'Close note'}
+              style={styles.headerIcon}
             />
           </View>
 
@@ -203,45 +245,86 @@ export default function DayNoteEditorSheet({
             </Text>
           ) : null}
 
-          <TextInput
-            key={`${sessionKey ?? 'closed'}-${fieldEpoch}`}
-            mode="outlined"
-            multiline
-            numberOfLines={isJournal ? 8 : 6}
-            defaultValue={fieldSeed}
-            onChangeText={(next) => {
-              setDictationHint(null);
-              notifyIfReachedLimit(next.length, draftRef.current.length);
-              setDraft(next);
-            }}
-            style={[styles.input, isJournal && styles.journalInput]}
-            contentStyle={styles.inputContent}
-            disabled={saving}
-            autoFocus={visible}
-            maxLength={NOTE_BODY_MAX_LENGTH}
-            autoCorrect
-            autoCapitalize="sentences"
-            // Form autofill off — keep normal keyboard spelling suggestions.
-            autoComplete="off"
-            textContentType="none"
-            importantForAutofill="no"
-            spellCheck
-          />
-          {nearLimit ? (
-            <Text
-              variant="labelSmall"
-              accessibilityLiveRegion="polite"
-              style={{
-                color: atLimit ? theme.colors.error : theme.colors.onSurfaceVariant,
-                marginTop: 4,
-                textAlign: 'right',
+          {textEditing ? (
+            <TextInput
+              key={`${sessionKey ?? 'closed'}-${fieldEpoch}`}
+              mode="outlined"
+              multiline
+              numberOfLines={isJournal ? 8 : 6}
+              defaultValue={fieldSeed}
+              onChangeText={(next) => {
+                setDictationHint(null);
+                setDictationError(null);
+                notifyIfReachedLimit(next.length, draftRef.current.length);
+                draftRef.current = next;
+                setDraft(next);
               }}
+              style={[styles.input, isJournal && styles.journalInput]}
+              contentStyle={styles.inputContent}
+              disabled={saving}
+              autoFocus
+              maxLength={NOTE_BODY_MAX_LENGTH}
+              autoCorrect
+              autoCapitalize="sentences"
+              // Form autofill off — keep normal keyboard spelling suggestions.
+              autoComplete="off"
+              textContentType="none"
+              importantForAutofill="no"
+              spellCheck
+            />
+          ) : (
+            <Pressable
+              onPress={enterTextEditing}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel={
+                hasDraftText
+                  ? `Edit ${noun} text`
+                  : `Edit ${noun} — currently empty`
+              }
+              accessibilityHint="Opens the keyboard to type or correct text"
+              style={[
+                styles.preview,
+                isJournal && styles.journalPreview,
+                {
+                  borderColor: theme.colors.outline,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}
             >
-              {atLimit
-                ? `Character limit reached (${NOTE_BODY_MAX_LENGTH.toLocaleString()})`
-                : `${remaining.toLocaleString()} characters left`}
-            </Text>
-          ) : null}
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: hasDraftText
+                    ? theme.colors.onSurface
+                    : theme.colors.onSurfaceVariant,
+                }}
+              >
+                {hasDraftText ? draft : previewPlaceholder}
+              </Text>
+            </Pressable>
+          )}
+
+          <Text
+            variant="labelSmall"
+            accessibilityLiveRegion={nearLimit ? 'polite' : 'none'}
+            accessibilityLabel={`${draft.length.toLocaleString()} of ${NOTE_BODY_MAX_LENGTH.toLocaleString()} characters${
+              atLimit ? ', limit reached' : nearLimit ? ', approaching limit' : ''
+            }`}
+            style={{
+              color: atLimit
+                ? theme.colors.error
+                : nearLimit
+                  ? theme.colors.onSurfaceVariant
+                  : theme.colors.outline,
+              marginTop: 6,
+              textAlign: 'right',
+              fontVariant: ['tabular-nums'],
+              opacity: atLimit ? 1 : nearLimit ? 0.9 : 0.7,
+            }}
+          >
+            {`${draft.length.toLocaleString()} / ${NOTE_BODY_MAX_LENGTH.toLocaleString()}`}
+          </Text>
 
           {dictationHint ? (
             <Text
@@ -254,31 +337,43 @@ export default function DayNoteEditorSheet({
           ) : null}
 
           <View style={styles.actions}>
-            {showClear ? (
-              <Button
-                mode="text"
-                textColor={theme.colors.error}
-                onPress={handleClear}
-                disabled={saving}
-                compact
-              >
-                Clear
-              </Button>
-            ) : (
-              <View />
-            )}
+            <View style={styles.actionsLeft}>
+              {showClear ? (
+                <Button
+                  mode="text"
+                  textColor={theme.colors.error}
+                  onPress={handleClear}
+                  disabled={saving}
+                  compact
+                >
+                  Clear
+                </Button>
+              ) : null}
+              {!textEditing ? (
+                <Button
+                  mode="text"
+                  onPress={enterTextEditing}
+                  disabled={saving}
+                  compact
+                >
+                  Edit text
+                </Button>
+              ) : null}
+            </View>
             <View style={styles.actionsRight}>
               <Button mode="text" onPress={requestDismiss} disabled={saving}>
-                Cancel
+                {autoStartDictation ? 'Close' : 'Cancel'}
               </Button>
-              <Button
-                mode="contained"
-                onPress={handleSave}
-                loading={saving}
-                disabled={saving || !canSave}
-              >
-                Save
-              </Button>
+              {!autoStartDictation || textEditing || isDirty ? (
+                <Button
+                  mode="contained"
+                  onPress={handleSave}
+                  loading={saving}
+                  disabled={saving || !canSave}
+                >
+                  Save
+                </Button>
+              ) : null}
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -297,18 +392,36 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 8,
   },
   headerText: {
     flex: 1,
     paddingRight: 8,
   },
+  headerIcon: {
+    margin: 0,
+  },
+  preview: {
+    minHeight: 140,
+    maxHeight: 280,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  journalPreview: {
+    minHeight: 180,
+    maxHeight: 320,
+  },
   input: {
     minHeight: 140,
+    maxHeight: 280,
   },
   journalInput: {
     minHeight: 180,
+    maxHeight: 320,
   },
   inputContent: {
     paddingTop: 12,
@@ -319,6 +432,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
+    gap: 8,
+  },
+  actionsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    gap: 0,
   },
   actionsRight: {
     flexDirection: 'row',

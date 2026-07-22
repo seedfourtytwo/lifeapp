@@ -8,7 +8,10 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   onLog?: (value: number, meta?: Record<string, unknown>) => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
   onOpenDetails?: () => void;
-  onOpenNote?: () => void;
+  /** One-tap dictate: open today's note and start the mic. */
+  onDictateNote?: () => void;
+  /** Long-press: open today's note for edit without dictating. */
+  onEditNote?: () => void;
   hasTodayNote?: boolean;
   isDone?: boolean;
   onToggle?: () => Promise<void>;

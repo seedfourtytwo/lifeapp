@@ -17,6 +17,16 @@ import {
   bestRecognitionTranscript,
   buildLocalNoteDictationOptions,
 } from '../src/utils/speechRecognitionOptions';
+import {
+  ANDROID_ASI_PACKAGE,
+  ANDROID_GOOGLE_TTS_PACKAGE,
+  androidPackageUsesAsiOfflineApis,
+  pickAndroidRecognitionPackage,
+} from '../src/utils/speechRecognitionAndroid';
+import {
+  messageForSpeechRecognitionError,
+  SPEECH_MSG,
+} from '../src/utils/speechRecognitionErrors';
 import { truncateNotePreview } from '../src/utils/trackerHistoryFormat';
 
 const habitElement = {
@@ -139,17 +149,26 @@ describe('day notes in protocol bundle', () => {
 });
 
 describe('appendTranscript', () => {
-  it('joins phrases with a single space', () => {
+  it('joins phrases as new paragraphs and leaves a trailing newline', () => {
     expect(appendTranscript('Hello', 'world')).toEqual({
-      text: 'Hello world',
+      text: 'Hello\nworld\n',
       truncated: false,
     });
-    expect(appendTranscript('Hello ', 'world')).toEqual({
-      text: 'Hello world',
+    expect(appendTranscript('Hello\n', 'world')).toEqual({
+      text: 'Hello\nworld\n',
       truncated: false,
     });
     expect(appendTranscript('', '  hi  ')).toEqual({
-      text: 'hi',
+      text: 'hi\n',
+      truncated: false,
+    });
+  });
+
+  it('stacks successive dictation takes as separate lines', () => {
+    const first = appendTranscript('', 'Felt calm today.');
+    const second = appendTranscript(first.text, 'Had coffee with Sam.');
+    expect(second).toEqual({
+      text: 'Felt calm today.\nHad coffee with Sam.\n',
       truncated: false,
     });
   });
@@ -169,31 +188,54 @@ describe('appendTranscript', () => {
   it('respects the max body length and reports truncation', () => {
     const almostFull = 'x'.repeat(3990);
     const result = appendTranscript(almostFull, 'more text here');
-    expect(result.text.length).toBe(4000);
     expect(result.truncated).toBe(true);
+    expect(result.text.length).toBeLessThanOrEqual(4000);
+  });
+
+  it('prefers truncating at a word boundary when over the limit', () => {
+    const prefix = 'word '.repeat(798); // 3990 chars
+    const result = appendTranscript(prefix, 'overflowing leftover words forever and ever');
+    expect(result.truncated).toBe(true);
+    expect(result.text.length).toBeLessThanOrEqual(4000);
+    expect(result.text.endsWith(' ')).toBe(false);
+    expect(result.text.includes('overflowing leftover words forever and ever')).toBe(false);
   });
 });
 
 describe('polishDictationTranscript', () => {
   it('removes common vocal fillers in English', () => {
     expect(polishDictationTranscript('um I went uh to the store you know')).toBe(
-      'I went to the store',
+      'I went to the store.',
     );
   });
 
   it('keeps meaningful words that resemble fillers', () => {
     expect(polishDictationTranscript('I like this just fine')).toBe(
-      'I like this just fine',
+      'I like this just fine.',
     );
   });
 
+  it('adds a period when the speech has no ending punctuation', () => {
+    expect(polishDictationTranscript('felt calm today')).toBe('Felt calm today.');
+  });
+
+  it('keeps existing sentence-ending punctuation', () => {
+    expect(polishDictationTranscript('Really?')).toBe('Really?');
+    expect(polishDictationTranscript('Done!')).toBe('Done!');
+    expect(polishDictationTranscript('All set.')).toBe('All set.');
+  });
+
   it('skips filler cleanup for non-English locales', () => {
-    expect(polishDictationTranscript('um bonjour', 'fr-FR')).toBe('Um bonjour');
+    expect(polishDictationTranscript('um bonjour', 'fr-FR')).toBe('Um bonjour.');
   });
   it('collapses simple stutter duplicates', () => {
     expect(polishDictationTranscript('the the cat and and dog')).toBe(
-      'The cat and dog',
+      'The cat and dog.',
     );
+  });
+
+  it('keeps meaningful repeated words like had had', () => {
+    expect(polishDictationTranscript('I had had enough')).toBe('I had had enough.');
   });
 });
 
@@ -224,6 +266,61 @@ describe('buildLocalNoteDictationOptions', () => {
     expect(options.maxAlternatives).toBe(5);
     expect(options.iosTaskHint).toBe('dictation');
     expect(options.lang).toBe('en-US');
+  });
+
+  it('allows Google TTS path without forcing on-device recognition', () => {
+    const options = buildLocalNoteDictationOptions(
+      'en-US',
+      ANDROID_GOOGLE_TTS_PACKAGE,
+      false,
+    );
+    expect(options.requiresOnDeviceRecognition).toBe(false);
+    expect(options.lang).toBe('en-US');
+  });
+});
+
+describe('pickAndroidRecognitionPackage', () => {
+  it('prefers Android System Intelligence when both backends are installed', () => {
+    expect(
+      pickAndroidRecognitionPackage([ANDROID_GOOGLE_TTS_PACKAGE, ANDROID_ASI_PACKAGE]),
+    ).toBe(ANDROID_ASI_PACKAGE);
+  });
+
+  it('falls back to Google speech synthesis on GrapheneOS', () => {
+    expect(pickAndroidRecognitionPackage([ANDROID_GOOGLE_TTS_PACKAGE])).toBe(
+      ANDROID_GOOGLE_TTS_PACKAGE,
+    );
+  });
+});
+
+describe('androidPackageUsesAsiOfflineApis', () => {
+  it('is true only for Android System Intelligence', () => {
+    expect(androidPackageUsesAsiOfflineApis(ANDROID_ASI_PACKAGE)).toBe(true);
+    expect(androidPackageUsesAsiOfflineApis(ANDROID_GOOGLE_TTS_PACKAGE)).toBe(false);
+  });
+});
+
+describe('messageForSpeechRecognitionError', () => {
+  it('ignores benign stop codes', () => {
+    expect(messageForSpeechRecognitionError('aborted')).toBeNull();
+    expect(messageForSpeechRecognitionError('no-speech')).toBeNull();
+  });
+
+  it('guides the user for permission failures', () => {
+    expect(messageForSpeechRecognitionError('not-allowed')).toBe(SPEECH_MSG.micLifeApp);
+    expect(messageForSpeechRecognitionError('client', 'Insufficient permissions')).toBe(
+      SPEECH_MSG.micBoth,
+    );
+  });
+
+  it('guides install / language / network cases', () => {
+    expect(messageForSpeechRecognitionError('service-not-allowed')).toBe(
+      SPEECH_MSG.notAvailable,
+    );
+    expect(messageForSpeechRecognitionError('language-not-supported')).toBe(
+      SPEECH_MSG.language,
+    );
+    expect(messageForSpeechRecognitionError('network')).toBe(SPEECH_MSG.network);
   });
 });
 

@@ -123,8 +123,12 @@ export default function HomeScreen() {
         ? (StatusBar.currentHeight ?? 28)
         : 0;
 
-  const openTodayJournal = () => {
-    void noteEditor.open({ kind: 'journal' }, currentAppCalendarDate(now));
+  const openTodayJournal = (opts?: { dictate?: boolean }) => {
+    void noteEditor.open(
+      { kind: 'journal' },
+      currentAppCalendarDate(now),
+      opts?.dictate ? { dictate: true } : undefined,
+    );
   };
 
   return (
@@ -142,8 +146,10 @@ export default function HomeScreen() {
         >
           <HabitsScreen
             hasTodayJournal={hasTodayJournal}
-            onOpenJournal={openTodayJournal}
+            onOpenJournal={() => openTodayJournal({ dictate: true })}
+            onEditJournal={() => openTodayJournal()}
             journalOpen={noteEditor.session != null}
+            notesActive={tab === 'habits'}
             onBeforeOpenTrackerNote={noteEditor.dismiss}
           />
         </View>
@@ -159,8 +165,10 @@ export default function HomeScreen() {
         >
           <CountersScreen
             hasTodayJournal={hasTodayJournal}
-            onOpenJournal={openTodayJournal}
+            onOpenJournal={() => openTodayJournal({ dictate: true })}
+            onEditJournal={() => openTodayJournal()}
             journalOpen={noteEditor.session != null}
+            notesActive={tab === 'counters'}
             onBeforeOpenTrackerNote={noteEditor.dismiss}
           />
         </View>

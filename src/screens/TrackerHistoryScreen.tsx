@@ -254,9 +254,12 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
   if (!element || !chartModel) {
     return (
-      <View style={styles.centered}>
-        <Text variant="bodyLarge">Tracker not found.</Text>
-      </View>
+      <>
+        <View style={styles.centered}>
+          <Text variant="bodyLarge">Tracker not found.</Text>
+        </View>
+        <NoteEditorHost session={noteEditor} />
+      </>
     );
   }
 
