@@ -4,7 +4,8 @@ Same role as weather: reduce app-switching. **Not** a Life Protocol element kind
 
 ## Status
 
-Implemented on `feature/home-calendar` (local-first v1). DB schema **v11** (includes per-occurrence clears).
+Implemented on `feature/home-calendar` (local-first v1). DB schema **v11** (includes per-occurrence clears).  
+Home chrome shares `HomeChromeBubble` with weather — **weather T2d is done**; calendar peek / fan chip behavior stays as shipped unless a bug turns up.
 
 ## Product goals
 
@@ -20,7 +21,7 @@ Implemented on `feature/home-calendar` (local-first v1). DB schema **v11** (incl
 |-------|----------|
 | v1 scope | Fully working **in-app** calendar; no external sync yet |
 | App backup | Optional `calendar` section on backup JSON (own `schemaVersion`) |
-| Home chrome | Combined bubble + Weather/Calendar fan-out chips |
+| Home chrome | Weather mood chip + tap forecast strip; long-press calendar chip when both enabled |
 | Recurrence | None, daily, weekly, monthly, yearly |
 | Timing | All-day or start/end (default timed duration 1h) |
 | Reminders | Customizable presets per event; local notifications |
@@ -35,7 +36,7 @@ Implemented on `feature/home-calendar` (local-first v1). DB schema **v11** (incl
 - `src/hooks/useCalendarReminderSync.ts` — **sole owner** of calendar DATE notification sync
 - `src/notifications/calendarReminders.*` — schedule/cancel (capped; respects clears)
 - Screens: `CalendarScreen`, `CalendarEventEditorScreen` (+ `screens/calendar/` sections)
-- Home: `HomeChromeBubble` + `CalendarPeekSheet` + `WeatherForecastSheet`
+- Home: `HomeChromeBubble` + `CalendarPeekSheet` (+ weather face/strip under `components/weather/`)
 
 ## Architecture notes
 

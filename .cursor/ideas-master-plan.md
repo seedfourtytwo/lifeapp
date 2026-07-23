@@ -1,6 +1,6 @@
 # Ideas master plan — review draft
 
-**Status:** Track 1 easy wins **complete** on branch `fix/easy-wins-w1-w8` (W1–W6; W4 cancelled, W5→T2). Next up is **Track 2** UI rework or a dedicated future session below.  
+**Status:** Track 1 easy wins **complete**. Track 2 UI rework **in progress** on `feature/track2-ui-rework`. **T2d weather chrome is done** (pause further bubble polish). **Next:** **T2c** tracker editor / settings menus (then **T2e** sheets / journal expand).  
 **Native builds:** **local Android SDK** (default). Debug app = package `…dashboard.dev`, launcher **dev**. EAS optional backup.  
 **Sources (2026-07-22 export):** journal (hit 4k) + Study habit note + Workout habit note + `.cursor/product-ideas.md` + competitor scout.
 
@@ -10,7 +10,7 @@
 
 # Work order (start here)
 
-**Track 1** (easy wins) is done. Then **Track 2** (UI/graphics). **Export/import** and **lock screen** are **not** small Track 1 leftovers — each is its own full session later.
+**Track 1** (easy wins) is done. **Track 2** (UI/graphics) is underway — Home cards + weather chrome shipped; do **not** reopen the weather bubble unless a real bug turns up. **Export/import** and **lock screen** stay separate full sessions later.
 
 ## Native rebuild backlog
 
@@ -46,7 +46,7 @@ Small, high leverage, mostly isolated. **Finished** before the big visual rework
 
 **Explicitly not in Track 1:** voice “Done done” commands, undo/redo stacks, Proton Drive, drag-reorder, hold-+5/+10, Insights rewrite, new kinds (todos/food/idea inbox), **W5** copy clutter (Track 2), **export/import** (Session Export), **lock screen** (Session Lock).
 
-**Next action:** **Track 2** (start with T2a design brief) — or jump to Session Export / Session Lock when prioritizing those.
+**Next action:** **T2c** — Tracker editor / settings menus (visual structure & clearer sections). Skip further weather-bubble work. After T2c: **T2e** sheets + journal expand, then **T2f** haptics/sound.
 
 ---
 
@@ -58,12 +58,12 @@ One coordinated visual language pass — **not** mixed into Track 1. Own series 
 
 | Area | From inventory | Notes |
 |------|----------------|-------|
-| **Home cards** | C1, C2, C4 layout · **W5** | One-line habits; progress as border/background; counter +1 primary look; drop “reps” / clutter units; sticky-note+mic icon; larger sharper icons |
-| **Tracker editor / menus** | C6 | Habit & counter edit panels — less ugly, clearer sections |
-| **Ambient bubble** | D1, D2, D3 | Shape ↔ weather morph; richer date/temp/rain; drag physics; long-press → next-day chips |
-| **Sheets & transitions** | F1, B1 expand | Smooth open (no flicker); journal preview → expand-down |
+| **Home cards** | C1, C2, C4 layout · **W5** · C5 | **Mostly done** on `feature/track2-ui-rework` — one-line habits, quieter copy, drag-reorder. Hold-+N still **Later** |
+| **Tracker editor / menus** | C6 | **Next (T2c)** — habit & counter edit panels; less ugly, clearer sections |
+| **Ambient weather chrome** | D1, D2, D3 | **Done (T2d)** — mood chip, expand strip, fling/bounce, preloaded corner confetti. Do not reopen for polish |
+| **Sheets & transitions** | F1, B1 expand | **T2e** — smooth open (no flicker); journal preview → expand-down |
 | **Settings / Insights chrome** | I1 (visual shell first) | “Menu redesign” — structure & look; Insights **content** model can stay Later |
-| **Haptics / chime taste** | F2 | Only **after** layouts settle — consistency pass |
+| **Haptics / chime taste** | F2 | **T2f** — only after layouts settle |
 
 ### Scope (out of Track 2 — keep separate)
 
@@ -71,15 +71,16 @@ One coordinated visual language pass — **not** mixed into Track 1. Own series 
 - **Session Export** / Proton backup (G3) / event-type product work (E1) beyond visual chips
 - New surfaces: idea inbox, todos, food, quotes (J*, B7, D5)
 - Competitor protocol features (skip day, heatmap, EMA) — Session K
+- Weather **shake-to-refresh** (D4) and further bubble experiments — **Later**, not T2
 
-### Suggested Track 2 session split (when we get there)
+### Track 2 session split (status)
 
-1. **T2a** — Design brief: typography, spacing, card anatomy, bubble rules (no code or minimal spike)
-2. **T2b** — Habit + counter Home cards
-3. **T2c** — Tracker editor / settings menus
-4. **T2d** — Weather/calendar bubble (content + motion)
-5. **T2e** — Sheet transitions + journal expand
-6. **T2f** — Haptics/sound taste pass
+1. **T2a** — Design brief — **informal / absorbed** into shipping T2b–T2d
+2. **T2b** — Habit + counter Home cards — **mostly done** (hold-+N left Later)
+3. **T2c** — Tracker editor / settings menus — **next**
+4. **T2d** — Weather/calendar chrome (content + motion) — **done** (2026-07-23); leave as-is
+5. **T2e** — Sheet transitions + journal expand — after T2c
+6. **T2f** — Haptics/sound taste pass — last
 
 ---
 
@@ -122,7 +123,7 @@ Former **W7** / **W8** were too small as “easy wins” — each belongs to a f
 
 | Bucket | Items |
 |--------|-------|
-| Interaction upgrades | C5 drag-reorder · C4 hold-+N (if not in T2b) · D4 shake refresh |
+| Interaction upgrades | C4 hold-+N · D4 shake refresh |
 | Notes power | B2 undo/redo · B5 voice commands + last-sentence confirm · B6 FR/EN dictation policy |
 | Data | **Session Export** (G1/G2/B4) · G3 Proton/scheduled backup |
 | Stats follow-ups | Counter **target-hit streak in History / Insights** (Home card cache is not stats — recompute or surface there when Insights content is planned) |
@@ -340,19 +341,15 @@ Things that already hurt daily use. Prefer these before big redesigns.
 
 ---
 
-### C5 · Drag-to-reorder cards
+### C5 · Drag-to-reorder cards — **Done (T2b)**
 
-**Idea:** Long-press habit/counter cards to reorder instead of Sort mode click flow.
+**Shipped:** Long-press drag-reorder on Home habit/counter lists.
 
-**Chunks:**
-1. Drag-and-drop reorder on Home lists.
-2. Keep or retire current Sort / ReorderControls.
-
-**Verdict:** **Later** · **Size:** M · **Layer:** UI
+**Verdict:** **Done (T2b)** · **Layer:** UI
 
 ---
 
-### C6 · Tracker editor panels (Settings)
+### C6 · Tracker editor panels (Settings) — **Next (T2c)**
 
 **Idea:** Habit/counter edit panels in settings feel ugly — rework per kind.
 
@@ -360,46 +357,39 @@ Things that already hurt daily use. Prefer these before big redesigns.
 1. Visual/IA pass on `TrackerEditorDialog` + habit/counter fields.
 2. Sound / schedule sections clarity (no new fields unless needed).
 
-**Verdict:** **T2c** · **Size:** M · **Layer:** UI
+**Verdict:** **T2c (next)** · **Size:** M · **Layer:** UI
 
 ---
 
 # D — Ambient bubble · weather & calendar
 
-### D1 · Weather bubble content & shape
+### D1 · Weather bubble content & shape — **Done (T2d)**
 
-**Idea:** Bubble shape hints sun/cloud/rain with sleek morph; inside: richer date (“20 July”), temp, min/max, rain %. Clever way to bring calendar alongside.
+**Shipped (2026-07-23):** Rounded mood chip (temp · condition · trend · hi/lo · rain · `DD/MM`); soft→hard mood colors by condition/precip (not literal shape morph). Calendar stays long-press / calendar-only chip, not jammed into first glance.
 
-**Chunks:**
-1. Richer content in bubble (date format, temp, precip).
-2. Shape / weather-state animation (keep performance phone-friendly).
-3. Calendar integration concept (without cluttering first glance).
+**Leave alone** unless bugs. Further morph/animation experiments → **Later**.
 
-**Verdict:** **T2d** · **Size:** M–L · **Layer:** ambient UI
+**Verdict:** **Done (T2d)** · **Layer:** ambient UI
 
 ---
 
-### D2 · Bubble physics / feel
+### D2 · Bubble physics / feel — **Done (T2d)**
 
-**Idea:** More bubbly transparency; lag/follow after drag; edge bounce; fast flick bounce vs slow gentle drag.
+**Shipped:** Fling + edge bounce (`bubblePhysics` + `useChromeBubbleDrag`); velocity from finger samples; Animated pixels during motion (no per-frame React). DVD-corner confetti is pre-mounted (`CornerConfettiBurst.play`) so celebrate stays smooth.
 
-**Chunks:**
-1. Motion polish on bubble drag (spring / decay).
-2. Edge bounce; speed-dependent release.
+**Leave alone** unless bugs. Extra “transparency / lag-follow” polish → **Later**.
 
-**Verdict:** **T2d** · **Size:** M · **Layer:** UI motion
+**Verdict:** **Done (T2d)** · **Layer:** UI motion
 
 ---
 
-### D3 · Long-press → next-day weather chips
+### D3 · Expand → next-day forecast — **Done (T2d)**
 
-**Idea:** Hold weather bubble → expands sideways with similar bubbles for following days.
+**Shipped:** Tap chip → sideways forecast strip (weekday · icon · hi/lo · rain%) for following days. Long-press (when calendar also on) opens the calendar affordance, not the strip.
 
-**Chunks:**
-1. Long-press expand UI.
-2. Wire to forecast cache for N days.
+**Leave alone** unless bugs.
 
-**Verdict:** **T2d** · **Size:** M · **Layer:** ambient UI
+**Verdict:** **Done (T2d)** · **Layer:** ambient UI
 
 ---
 
@@ -609,7 +599,7 @@ Keep as a parallel track; don’t mix into “voice dump” until after review. 
 # Capture meta (process)
 
 - Dictation overflow into habit notes worked as a workaround — **W3** exists because the journal cap ate ideas.
-- Work order: **Track 1 (done)** → **Track 2 (T2a→T2f)** and/or **Session Export** / **Session Lock** when those are the priority.
+- Work order: **Track 1 (done)** → **Track 2** (**T2d weather done** → **T2c** editor → **T2e** sheets → **T2f** haptics) and/or **Session Export** / **Session Lock** when those are the priority.
 - Each item → short acceptance note if needed → one coding session → next.
 
 ---
@@ -625,9 +615,9 @@ Keep as a parallel track; don’t mix into “voice dump” until after review. 
 | Journal expand / distinct | | ✓ | | |
 | Transitions / bounce | ✓ bubble | ✓ screens | slick UI ethos | |
 | Undo/redo notes | | ✓ | | |
-| Weather bubble rich + morph | | ✓ | | |
-| Hold → next days | | ✓ | | |
-| Drag reorder | | ✓ | | |
+| Weather bubble rich + morph | | ✓ | | **T2d done** (mood chip, not literal morph) |
+| Hold → next days | | ✓ | | **T2d done** (tap → forecast strip) |
+| Drag reorder | | ✓ | | **T2b done** |
 | Shake refresh weather | | ✓ | | |
 | Habit one-line cards | ✓ | | | |
 | Counter +1 / hold expand | ✓ | | | |
