@@ -7,24 +7,17 @@
   "habitsTab": {
     "remaining": "{{count}} remaining",
     "doneOfTotal": "{{done}} of {{total}}",
-    "reorderHint": "Move to set your order",
-    "sort": "Sort",
-    "done": "Done",
     "retry": "Retry",
     "emptyNoHabits": "No habits yet. Add one to start your daily list.",
     "emptyNoActiveHabits": "No active habits. Restore something from Archive in Trackers.",
     "emptyNothingDueToday": "Nothing due today — check schedule or time window in Trackers."
   },
   "countersTab": {
-    "moveWithArrows": "Move with arrows",
     "resetsAtMidnight": "Today · resets at midnight",
-    "sort": "Sort",
-    "done": "Done",
     "retry": "Retry",
     "emptyNoActiveCounters": "No active counters. Restore something from Archive in Trackers.",
     "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
-    "couldNotLogBody": "Something went wrong",
-    "couldNotUpdateTotalTitle": "Could not update total"
+    "couldNotLogBody": "Something went wrong"
   },
   "journalMeta": {
     "dictateTodayJournal": "Dictate today's journal",
@@ -35,10 +28,7 @@
     "openTrackers": "Open Trackers"
   },
   "chromeBubble": {
-    "opensWeatherOrCalendar": "Opens weather or calendar",
-    "opensForecast": "Opens forecast",
     "opensCalendar": "Opens calendar",
-    "openWeather": "Open weather",
     "openCalendar": "Open calendar",
     "openCalendarWithCount": "Open calendar, {{count}} upcoming",
     "todayDate": "Today {{date}}",
@@ -46,21 +36,23 @@
     "weatherWithCondition": "Weather {{temp}}, {{condition}}",
     "weatherOffline": "Weather offline",
     "weatherLoading": "Loading weather",
-    "weatherUnavailable": "Weather unavailable"
-  },
-  "weatherForecast": {
-    "title": "Forecast",
-    "offlineNotice": "No connection — showing last saved weather",
-    "nowLabel": "Now {{temp}}",
-    "todayRange": " · Today {{min}}°–{{max}}°",
-    "subtitle": "Next 5 days · °C · rain chance",
-    "emptyFallback": "No forecast yet. Check location in Settings.",
-    "close": "Close"
+    "weatherUnavailable": "Weather unavailable",
+    "rainChance": "Rain {{pct}}%",
+    "trendImproving": "Improving soon",
+    "trendWorsening": "Worsening soon",
+    "trendSteady": "Steady for now",
+    "tapToExpandForecast": "Tap to show 5-day forecast",
+    "tapToCollapseForecast": "Tap to hide forecast",
+    "forecastExpanded": "Forecast shown",
+    "forecastCollapsed": "Forecast hidden",
+    "longPressForCalendar": "Long press for calendar",
+    "showCalendar": "Show calendar"
   },
   "weatherConditions": {
     "sunny": "Sunny",
     "cloudy": "Cloudy",
     "rain": "Rain",
+    "storm": "Storm",
     "snow": "Snow",
     "other": "Mixed"
   },

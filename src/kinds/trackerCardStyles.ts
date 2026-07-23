@@ -10,20 +10,25 @@ export const trackerCardStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 0,
   },
-  headerRow: {
+  /** Habit one-liner: name/streak · meta · actions (titles share a left edge). */
+  oneLineRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 52,
   },
   titlePress: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+  },
+  titleInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   pressed: {
     opacity: 0.7,
@@ -32,50 +37,35 @@ export const trackerCardStyles = StyleSheet.create({
     fontWeight: '600',
     flexShrink: 1,
   },
-  subline: {
-    fontWeight: '500',
-  },
-  metaCluster: {
+  streakInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
-    maxWidth: '48%',
-    gap: 0,
-    paddingTop: 1,
+    gap: 2,
+    flexShrink: 0,
   },
-  metaText: {
-    flexShrink: 1,
+  streakCount: {
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
-    fontWeight: '600',
   },
-  iconButton: {
-    margin: 0,
-    width: 32,
-    height: 32,
-  },
-  actionRow: {
+  /** Timer/meta cluster on a one-liner — stable right rail with breathing room. */
+  trailingCluster: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    flexShrink: 0,
     gap: 8,
   },
-  primaryButton: {
-    flex: 1,
+  timerLabel: {
+    fontVariant: ['tabular-nums'],
+    fontWeight: '600',
+    marginRight: 4,
+    flexShrink: 1,
+    maxWidth: 120,
+    textAlign: 'right',
+  },
+  /** Primary habit/counter actions — fill more of the card height. */
+  iconButton: {
     margin: 0,
-  },
-  primaryButtonContent: {
-    minHeight: 44,
-    paddingVertical: 4,
-  },
-  primaryButtonLabel: {
-    fontWeight: '700',
-    marginVertical: 0,
-  },
-  finishButton: {
-    margin: 0,
-    justifyContent: 'center',
-  },
-  progressBar: {
-    borderRadius: 999,
-    overflow: 'hidden',
+    width: 48,
+    height: 48,
   },
 });

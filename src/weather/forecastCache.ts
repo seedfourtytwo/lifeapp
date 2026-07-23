@@ -15,15 +15,16 @@ const WeatherDayCacheSchema = z.object({
   tempMaxC: z.number(),
   tempMeanC: z.number(),
   weatherCode: z.number(),
-  condition: z.enum(['sunny', 'cloudy', 'rain', 'snow', 'other']),
+  condition: z.enum(['sunny', 'cloudy', 'rain', 'storm', 'snow', 'other']),
   precipProbabilityPct: z.number(),
 });
 
 const WeatherForecastCacheSchema = z.object({
   currentTempC: z.number(),
   currentWeatherCode: z.number(),
-  currentCondition: z.enum(['sunny', 'cloudy', 'rain', 'snow', 'other']),
+  currentCondition: z.enum(['sunny', 'cloudy', 'rain', 'storm', 'snow', 'other']),
   precipProbabilityPct: z.number(),
+  trend: z.enum(['improving', 'worsening']).nullable().optional(),
   daily: z.array(WeatherDayCacheSchema).min(1),
   lat: z.number(),
   lon: z.number(),
@@ -35,7 +36,11 @@ export async function loadCachedForecast(): Promise<WeatherForecast | null> {
     const db = await getDatabase();
     const raw = await settingsRepo.getSetting(db, WEATHER_FORECAST_CACHE_KEY);
     if (!raw) return null;
-    return WeatherForecastCacheSchema.parse(JSON.parse(raw));
+    const parsed = WeatherForecastCacheSchema.parse(JSON.parse(raw));
+    return {
+      ...parsed,
+      trend: parsed.trend ?? null,
+    };
   } catch {
     return null;
   }

@@ -4,9 +4,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
   useWindowDimensions,
   View,
+  StyleSheet,
 } from 'react-native';
 import {
   Button,
@@ -20,13 +20,20 @@ import {
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { type CounterConfig, formatCounterUnit } from '../../protocol';
+import { type CounterConfig } from '../../protocol';
 import { getCounterProgressBarColors } from '../../utils/color';
+import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
-import { formatCounterStreakLabel } from './counterCardLabels';
+import { HabitCardTitle } from '../habit/HabitCardTitle';
+import {
+  formatCounterStreakLabel,
+  getCounterStreakDays,
+} from './counterCardLabels';
+
+const ACTION_ICON_SIZE = 30;
 
 export function CounterWidget({
   element,
@@ -39,6 +46,12 @@ export function CounterWidget({
   onDictateNote,
   onEditNote,
   hasTodayNote,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
@@ -48,6 +61,7 @@ export function CounterWidget({
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [bubblesOpen, setBubblesOpen] = useState(false);
 
   const sheetWidth = Math.min(width - 24, 400);
 
@@ -56,15 +70,21 @@ export function CounterWidget({
   const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
   const progressBarColors = getCounterProgressBarColors(themeMode);
+  const streakDays = getCounterStreakDays(config, streak);
   const streakLabel = formatCounterStreakLabel(config, streak);
 
-  const countText = hasTarget
-    ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)}`
-    : `${todayTotal} ${formatCounterUnit(todayTotal, config.unit)}`;
+  const increments = config.quickIncrements;
+  const primaryIncrement = increments[0];
+  const extraIncrements = increments.slice(1);
+  const canShowBubbles = extraIncrements.length > 0 || Boolean(onSetDailyTotal);
 
-  const metaColor = isCartoon
-    ? theme.colors.onSecondaryContainer
-    : theme.colors.onSurfaceVariant;
+  const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
+
+  const metaColor = isComplete
+    ? theme.colors.primary
+    : isCartoon
+      ? theme.colors.onSecondaryContainer
+      : theme.colors.onSurfaceVariant;
 
   const closeEdit = () => {
     if (saving) return;
@@ -72,6 +92,7 @@ export function CounterWidget({
   };
 
   const openEdit = () => {
+    setBubblesOpen(false);
     setEditValue(String(todayTotal));
     setEditVisible(true);
   };
@@ -96,6 +117,33 @@ export function CounterWidget({
     }
   };
 
+  const logIncrement = (increment: number) => {
+    setBubblesOpen(false);
+    onLog?.(increment, { source: 'quick_button', increment });
+  };
+
+  const primaryBg = theme.colors.primary;
+  const primaryFg = theme.colors.onPrimary;
+
+  const bubbles = [
+    ...extraIncrements.map((increment) => ({
+      key: `inc-${increment}`,
+      label: `+${increment}`,
+      accessibilityLabel: t('counterWidget.addIncrementA11y', { count: increment }),
+      onPress: () => logIncrement(increment),
+    })),
+    ...(onSetDailyTotal
+      ? [
+          {
+            key: 'edit-total',
+            icon: 'pencil-outline',
+            accessibilityLabel: t('counterWidget.editTodaysTotalA11y'),
+            onPress: openEdit,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
       <TrackerCard
@@ -106,81 +154,81 @@ export function CounterWidget({
                 color: isComplete
                   ? progressBarColors.complete
                   : progressBarColors.active,
-                trackColor: theme.colors.surfaceVariant,
+                trackColor: theme.colors.outlineVariant,
                 height: deco.progressHeight,
               }
             : null
         }
       >
-        <View style={cardStyles.headerRow}>
-          <Pressable
-            onPress={onOpenDetails}
-            disabled={!onOpenDetails}
-            style={({ pressed }) => [
-              cardStyles.titlePress,
-              pressed && onOpenDetails && cardStyles.pressed,
-            ]}
-          >
+        <View style={cardStyles.oneLineRow}>
+          <HabitCardTitle
+            name={element.name}
+            streakDays={streakDays}
+            streakAccessibilityLabel={streakLabel}
+            onOpenDetails={onOpenDetails}
+            onLongPressReorder={onLongPressReorder}
+            delayLongPressReorder={delayLongPressReorder}
+            onReorderTouchMove={onReorderTouchMove}
+            onReorderTouchEnd={onReorderTouchEnd}
+            onReorderTouchCancel={onReorderTouchCancel}
+            reorderHint={reorderHint}
+          />
+
+          <View style={cardStyles.trailingCluster}>
             <Text
-              variant="titleMedium"
+              variant="titleSmall"
               numberOfLines={1}
-              style={[cardStyles.name, { color: theme.colors.onSurface }]}
-            >
-              {element.name}
-            </Text>
-            {streakLabel ? (
-              <Text
-                variant="labelSmall"
-                numberOfLines={1}
-                style={[cardStyles.subline, { color: theme.colors.onSurfaceVariant }]}
-              >
-                {streakLabel}
-              </Text>
-            ) : null}
-          </Pressable>
-          <View style={cardStyles.metaCluster}>
-            <Text
-              variant="bodyMedium"
-              numberOfLines={1}
-              style={[cardStyles.metaText, { color: metaColor }]}
+              style={[cardStyles.timerLabel, { color: metaColor }]}
+              accessibilityLabel={countText}
             >
               {countText}
             </Text>
-            {onSetDailyTotal ? (
-              <IconButton
-                icon="pencil-outline"
-                size={16}
-                onPress={openEdit}
-                accessibilityLabel={t('counterWidget.editTodaysTotalA11y')}
-                style={cardStyles.iconButton}
-                hitSlop={8}
-              />
-            ) : null}
+
+            <ActionBubbleTray
+              open={bubblesOpen}
+              onDismiss={() => setBubblesOpen(false)}
+              bubbles={bubbles}
+            >
+              <Pressable
+                onPress={() => logIncrement(primaryIncrement)}
+                onLongPress={
+                  canShowBubbles
+                    ? () => setBubblesOpen((open) => !open)
+                    : undefined
+                }
+                delayLongPress={350}
+                style={({ pressed }) => [
+                  styles.incrementHit,
+                  {
+                    backgroundColor: primaryBg,
+                    borderRadius: deco.buttonRadius,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('counterWidget.addIncrementA11y', {
+                  count: primaryIncrement,
+                })}
+                accessibilityHint={
+                  canShowBubbles ? t('counterWidget.expandIncrementsHint') : undefined
+                }
+              >
+                <Text style={[styles.incrementLabel, { color: primaryFg }]}>
+                  +{primaryIncrement}
+                </Text>
+              </Pressable>
+            </ActionBubbleTray>
+
             {onDictateNote ? (
               <NoteIconButton
                 hasNote={Boolean(hasTodayNote)}
                 onPress={onDictateNote}
                 onLongPress={onEditNote}
-                size={16}
+                size={ACTION_ICON_SIZE - 4}
+                style={cardStyles.iconButton}
               />
             ) : null}
           </View>
-        </View>
-
-        <View style={cardStyles.actionRow}>
-          {config.quickIncrements.map((increment) => (
-            <Button
-              key={increment}
-              mode="contained"
-              onPress={() => onLog?.(increment, { source: 'quick_button', increment })}
-              style={[cardStyles.primaryButton, { borderRadius: deco.buttonRadius }]}
-              labelStyle={[cardStyles.primaryButtonLabel, styles.incLabel]}
-              contentStyle={[cardStyles.primaryButtonContent, styles.incContent]}
-              buttonColor={isCartoon ? theme.colors.primary : undefined}
-            >
-              +{increment}
-            </Button>
-          ))}
         </View>
       </TrackerCard>
 
@@ -266,11 +314,17 @@ export function CounterWidget({
 }
 
 const styles = StyleSheet.create({
-  incContent: {
-    paddingHorizontal: 4,
+  incrementHit: {
+    minWidth: 52,
+    height: 48,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  incLabel: {
-    fontSize: 14,
+  incrementLabel: {
+    fontSize: 18,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   modalContainer: {
     alignSelf: 'center',

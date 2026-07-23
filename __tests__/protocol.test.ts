@@ -6,6 +6,7 @@ import {
   HabitEventMetaSchema,
   buildCounterConfig,
   buildHabitConfig,
+  formatHabitHomeTimerLabel,
   isHabitDayComplete,
   parseElementDefinition,
   parseProtocolBundle,
@@ -24,7 +25,7 @@ describe('CounterConfigSchema', () => {
   it('accepts valid counter config', () => {
     const result = CounterConfigSchema.parse(DEFAULT_COUNTER_CONFIG);
     expect(result.unit).toBe('reps');
-    expect(result.quickIncrements).toEqual([5, 10]);
+    expect(result.quickIncrements).toEqual([1, 5, 10]);
   });
 
   it('accepts optional daily target', () => {
@@ -230,6 +231,16 @@ describe('isHabitDayComplete', () => {
       ]),
     ).toBe(true);
   });
+
+  it('does not treat play_once as complete from totals alone', () => {
+    const config = HabitConfigSchema.parse({
+      timeSlot: 'anytime',
+      trackingMode: 'timer',
+      timerSound: { trackId: 'wimhofMorning', playbackMode: 'play_once' },
+    });
+    expect(isHabitDayComplete(30, config)).toBe(false);
+    expect(isHabitDayComplete(1340, config)).toBe(false);
+  });
 });
 
 describe('parseElementDefinition', () => {
@@ -273,5 +284,51 @@ describe('parseProtocolBundle', () => {
 
     expect(bundle.protocolVersion).toBe(1);
     expect(bundle.events).toEqual([]);
+  });
+});
+
+describe('formatHabitHomeTimerLabel', () => {
+  it('shows target only while idle with no progress', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: 900,
+        isRunning: false,
+      }),
+    ).toBe('15:00');
+  });
+
+  it('shows elapsed / target once running or after progress', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: 900,
+        isRunning: true,
+      }),
+    ).toBe('0:00 / 15:00');
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 125,
+        effectiveTargetSeconds: 900,
+        isRunning: false,
+      }),
+    ).toBe('2:05 / 15:00');
+  });
+
+  it('hides open-ended idle totals and shows elapsed once active', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: undefined,
+        isRunning: false,
+      }),
+    ).toBeNull();
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 45,
+        effectiveTargetSeconds: undefined,
+        isRunning: false,
+      }),
+    ).toBe('0:45');
   });
 });

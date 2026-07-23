@@ -1,46 +1,6 @@
 import type { DashboardItem, ElementDefinition, ElementKind } from '../protocol';
 
 /**
- * Move an item up/down within a peer group, keeping non-peers in place
- * among themselves in the global order.
- */
-export function movePeersInOrder(
-  orderedIds: string[],
-  peerIds: readonly string[],
-  itemId: string,
-  direction: 'up' | 'down',
-): string[] | null {
-  const peerSet = new Set(peerIds);
-  if (!peerSet.has(itemId)) return null;
-
-  const peerPositions: number[] = [];
-  for (let index = 0; index < orderedIds.length; index += 1) {
-    if (peerSet.has(orderedIds[index])) {
-      peerPositions.push(index);
-    }
-  }
-
-  const peerOrder = peerPositions.map((position) => orderedIds[position]);
-  const from = peerOrder.indexOf(itemId);
-  if (from < 0) return null;
-
-  const to = direction === 'up' ? from - 1 : from + 1;
-  if (to < 0 || to >= peerOrder.length) return null;
-
-  const nextPeerOrder = [...peerOrder];
-  [nextPeerOrder[from], nextPeerOrder[to]] = [nextPeerOrder[to], nextPeerOrder[from]];
-
-  const next = [...orderedIds];
-  peerPositions.forEach((position, index) => {
-    next[position] = nextPeerOrder[index];
-  });
-  return next;
-}
-
-/** Alias used by habit reorder call sites/tests. */
-export const moveHabitInSlotOrder = movePeersInOrder;
-
-/**
  * Write a new on-screen sequence for visible habits into the global habit order,
  * keeping non-visible habits in their relative places.
  */
@@ -66,30 +26,25 @@ export function applyVisibleOrder(
   return next;
 }
 
-/**
- * Plan a Habits-tab habit move against the current on-screen sequence.
- * Peers are only the visible habits so chevrons match what the user sees.
- */
-export function planHabitReorder(args: {
-  orderedHabitIds: string[];
-  visibleOrder: readonly string[];
-  habitId: string;
-  direction: 'up' | 'down';
-}): string[] | null {
-  const { orderedHabitIds, visibleOrder, habitId, direction } = args;
-  const from = visibleOrder.indexOf(habitId);
-  if (from < 0) return null;
-
-  const to = direction === 'up' ? from - 1 : from + 1;
-  if (to < 0 || to >= visibleOrder.length) return null;
-
-  const nextVisibleOrder = [...visibleOrder];
-  [nextVisibleOrder[from], nextVisibleOrder[to]] = [
-    nextVisibleOrder[to],
-    nextVisibleOrder[from],
-  ];
-
-  return applyVisibleOrder(orderedHabitIds, nextVisibleOrder);
+/** Move one id from `from` to `to` within a list (drag-and-drop drop target). */
+export function moveIdInOrder(
+  orderedIds: readonly string[],
+  fromIndex: number,
+  toIndex: number,
+): string[] | null {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= orderedIds.length ||
+    toIndex >= orderedIds.length ||
+    fromIndex === toIndex
+  ) {
+    return null;
+  }
+  const next = [...orderedIds];
+  const [item] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, item);
+  return next;
 }
 
 /**

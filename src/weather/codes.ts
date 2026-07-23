@@ -5,10 +5,10 @@ import type { WeatherCondition } from './types';
 export function weatherCodeToCondition(code: number): WeatherCondition {
   if (code === 0 || code === 1) return 'sunny';
   if (code === 2 || code === 3 || code === 45 || code === 48) return 'cloudy';
+  if (code >= 95 && code <= 99) return 'storm';
   if (
     (code >= 51 && code <= 67) ||
-    (code >= 80 && code <= 82) ||
-    (code >= 95 && code <= 99)
+    (code >= 80 && code <= 82)
   ) {
     return 'rain';
   }
@@ -20,7 +20,13 @@ export function weatherCodeToCondition(code: number): WeatherCondition {
 
 export function conditionIconName(
   condition: WeatherCondition,
-): 'weather-sunny' | 'weather-cloudy' | 'weather-rainy' | 'weather-snowy' | 'weather-partly-cloudy' {
+):
+  | 'weather-sunny'
+  | 'weather-cloudy'
+  | 'weather-rainy'
+  | 'weather-lightning-rainy'
+  | 'weather-snowy'
+  | 'weather-partly-cloudy' {
   switch (condition) {
     case 'sunny':
       return 'weather-sunny';
@@ -28,6 +34,8 @@ export function conditionIconName(
       return 'weather-cloudy';
     case 'rain':
       return 'weather-rainy';
+    case 'storm':
+      return 'weather-lightning-rainy';
     case 'snow':
       return 'weather-snowy';
     default:
@@ -43,6 +51,8 @@ export function conditionLabel(condition: WeatherCondition): string {
       return i18n.t('home:weatherConditions.cloudy');
     case 'rain':
       return i18n.t('home:weatherConditions.rain');
+    case 'storm':
+      return i18n.t('home:weatherConditions.storm');
     case 'snow':
       return i18n.t('home:weatherConditions.snow');
     default:

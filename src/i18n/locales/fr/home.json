@@ -7,24 +7,17 @@
   "habitsTab": {
     "remaining": "{{count}} restantes",
     "doneOfTotal": "{{done}} sur {{total}}",
-    "reorderHint": "Déplacez pour définir l'ordre",
-    "sort": "Trier",
-    "done": "Terminé",
     "retry": "Réessayer",
     "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
     "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
     "emptyNothingDueToday": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis."
   },
   "countersTab": {
-    "moveWithArrows": "Déplacez avec les flèches",
     "resetsAtMidnight": "Aujourd'hui · remis à zéro à minuit",
-    "sort": "Trier",
-    "done": "Terminé",
     "retry": "Réessayer",
     "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
     "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",
-    "couldNotLogBody": "Une erreur s'est produite",
-    "couldNotUpdateTotalTitle": "Mise à jour du total impossible"
+    "couldNotLogBody": "Une erreur s'est produite"
   },
   "journalMeta": {
     "dictateTodayJournal": "Dicter le journal du jour",
@@ -35,10 +28,7 @@
     "openTrackers": "Ouvrir les suivis"
   },
   "chromeBubble": {
-    "opensWeatherOrCalendar": "Ouvre la météo ou le calendrier",
-    "opensForecast": "Ouvre les prévisions",
     "opensCalendar": "Ouvre le calendrier",
-    "openWeather": "Ouvrir la météo",
     "openCalendar": "Ouvrir le calendrier",
     "openCalendarWithCount": "Ouvrir le calendrier, {{count}} à venir",
     "todayDate": "Aujourd'hui {{date}}",
@@ -46,21 +36,23 @@
     "weatherWithCondition": "Météo {{temp}}, {{condition}}",
     "weatherOffline": "Météo hors ligne",
     "weatherLoading": "Chargement de la météo",
-    "weatherUnavailable": "Météo indisponible"
-  },
-  "weatherForecast": {
-    "title": "Prévisions",
-    "offlineNotice": "Aucune connexion — dernière météo enregistrée affichée",
-    "nowLabel": "Maintenant {{temp}}",
-    "todayRange": " · Aujourd'hui {{min}}°–{{max}}°",
-    "subtitle": "5 prochains jours · °C · risque de pluie",
-    "emptyFallback": "Pas encore de prévisions. Vérifiez la localisation dans les Paramètres.",
-    "close": "Fermer"
+    "weatherUnavailable": "Météo indisponible",
+    "rainChance": "Pluie {{pct}} %",
+    "trendImproving": "Amélioration prochaine",
+    "trendWorsening": "Dégradation prochaine",
+    "trendSteady": "Stable pour l'instant",
+    "tapToExpandForecast": "Appuyer pour afficher les prévisions sur 5 jours",
+    "tapToCollapseForecast": "Appuyer pour masquer les prévisions",
+    "forecastExpanded": "Prévisions affichées",
+    "forecastCollapsed": "Prévisions masquées",
+    "longPressForCalendar": "Appui long pour le calendrier",
+    "showCalendar": "Afficher le calendrier"
   },
   "weatherConditions": {
     "sunny": "Ensoleillé",
     "cloudy": "Nuageux",
     "rain": "Pluie",
+    "storm": "Orage",
     "snow": "Neige",
     "other": "Variable"
   },

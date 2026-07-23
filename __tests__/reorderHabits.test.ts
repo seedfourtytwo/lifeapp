@@ -1,63 +1,47 @@
 import { PROTOCOL_VERSION, type DashboardItem, type ElementDefinition } from '../src/protocol';
 import {
+  applyVisibleOrder,
   mergeHabitOrderIntoDashboard,
   mergeKindOrderIntoDashboard,
-  moveHabitInSlotOrder,
-  movePeersInOrder,
-  planHabitReorder,
+  moveIdInOrder,
 } from '../src/utils/reorderHabits';
 
-describe('movePeersInOrder', () => {
-  it('moves a habit up within its slot peers', () => {
-    const ordered = ['m1', 'a1', 'm2', 'e1', 'm3'];
-    const morning = ['m1', 'm2', 'm3'];
-    expect(movePeersInOrder(ordered, morning, 'm2', 'up')).toEqual([
-      'm2',
-      'a1',
-      'm1',
-      'e1',
-      'm3',
-    ]);
+describe('moveIdInOrder', () => {
+  it('moves an id to a new index', () => {
+    expect(moveIdInOrder(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a']);
+    expect(moveIdInOrder(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b']);
   });
 
-  it('moves a habit down within its slot peers', () => {
-    const ordered = ['m1', 'a1', 'm2'];
-    const morning = ['m1', 'm2'];
-    expect(moveHabitInSlotOrder(ordered, morning, 'm1', 'down')).toEqual([
-      'm2',
-      'a1',
-      'm1',
-    ]);
-  });
-
-  it('returns null at the ends or for foreign habit', () => {
-    const ordered = ['m1', 'm2'];
-    const morning = ['m1', 'm2'];
-    expect(movePeersInOrder(ordered, morning, 'm1', 'up')).toBeNull();
-    expect(movePeersInOrder(ordered, morning, 'm2', 'down')).toBeNull();
-    expect(movePeersInOrder(ordered, morning, 'x', 'up')).toBeNull();
+  it('returns null for no-ops and out-of-range indexes', () => {
+    expect(moveIdInOrder(['a', 'b'], 0, 0)).toBeNull();
+    expect(moveIdInOrder(['a', 'b'], -1, 1)).toBeNull();
+    expect(moveIdInOrder(['a', 'b'], 0, 5)).toBeNull();
   });
 });
 
-describe('planHabitReorder', () => {
-  it('reorders against the visible sequence', () => {
-    const next = planHabitReorder({
-      orderedHabitIds: ['a1', 'm1', 'e1', 'm2'],
-      visibleOrder: ['a1', 'm1', 'e1', 'm2'],
-      habitId: 'a1',
-      direction: 'down',
-    });
-    expect(next).toEqual(['m1', 'a1', 'e1', 'm2']);
+describe('applyVisibleOrder', () => {
+  it('rewrites visible peer slots and leaves hidden ids in place', () => {
+    expect(applyVisibleOrder(['a', 'hidden', 'b', 'c'], ['b', 'a', 'c'])).toEqual([
+      'b',
+      'hidden',
+      'a',
+      'c',
+    ]);
   });
 
-  it('only rewrites visible peers, leaving hidden habits in place', () => {
-    const next = planHabitReorder({
-      orderedHabitIds: ['a1', 'hidden', 'm1'],
-      visibleOrder: ['a1', 'm1'],
-      habitId: 'a1',
-      direction: 'down',
-    });
-    expect(next).toEqual(['m1', 'hidden', 'a1']);
+  it('returns null when visible ids are missing or duplicated', () => {
+    expect(applyVisibleOrder(['a', 'b'], ['a', 'a'])).toBeNull();
+    expect(applyVisibleOrder(['a', 'b'], ['a', 'x'])).toBeNull();
+  });
+
+  it('supports incomplete-only peers like the Habits tab (done parked elsewhere)', () => {
+    // Global habit order still includes done "d"; visible incomplete peers reorder among themselves.
+    expect(applyVisibleOrder(['a', 'd', 'b', 'c'], ['b', 'a', 'c'])).toEqual([
+      'b',
+      'd',
+      'a',
+      'c',
+    ]);
   });
 });
 
@@ -67,11 +51,11 @@ describe('mergeKindOrderIntoDashboard', () => {
     kind: 'habit' | 'counter',
   ): ElementDefinition => ({
     id,
-    kind,
     name: id,
-    config: kind === 'habit' ? { timeSlot: 'anytime', schedule: { type: 'daily' } } : { step: 1 },
+    kind,
+    config: {},
     protocolVersion: PROTOCOL_VERSION,
-    createdAt: '2025-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
   });
 
   const dash = (elementId: string, sortOrder: number): DashboardItem => ({
@@ -81,25 +65,45 @@ describe('mergeKindOrderIntoDashboard', () => {
   });
 
   it('rewrites habit order while keeping counters in place', () => {
-    const elements = [element('c1', 'counter'), element('h1', 'habit'), element('h2', 'habit')];
-    const dashboard = [dash('c1', 0), dash('h1', 1), dash('h2', 2)];
-    const { nextDashboard, updates } = mergeHabitOrderIntoDashboard(dashboard, elements, [
-      'h2',
-      'h1',
-    ]);
-
-    expect(updates.map((u) => u.id)).toEqual(['d-c1', 'd-h2', 'd-h1']);
-    expect(nextDashboard.map((item) => item.elementId)).toEqual(['c1', 'h2', 'h1']);
-    expect(nextDashboard.map((item) => item.sortOrder)).toEqual([0, 1, 2]);
+    const elements = [
+      element('h1', 'habit'),
+      element('c1', 'counter'),
+      element('h2', 'habit'),
+    ];
+    const dashboard = [dash('h1', 0), dash('c1', 1), dash('h2', 2)];
+    const { nextDashboard } = mergeKindOrderIntoDashboard(
+      dashboard,
+      elements,
+      'habit',
+      ['h2', 'h1'],
+    );
+    expect(nextDashboard.map((item) => item.elementId)).toEqual(['h2', 'c1', 'h1']);
   });
 
   it('rewrites counter order while keeping habits in place', () => {
-    const elements = [element('h1', 'habit'), element('c1', 'counter'), element('c2', 'counter')];
+    const elements = [
+      element('h1', 'habit'),
+      element('c1', 'counter'),
+      element('c2', 'counter'),
+    ];
     const dashboard = [dash('h1', 0), dash('c1', 1), dash('c2', 2)];
-    const { nextDashboard } = mergeKindOrderIntoDashboard(dashboard, elements, 'counter', [
+    const { nextDashboard } = mergeHabitOrderIntoDashboard(
+      dashboard,
+      elements,
+      ['h1'],
+    );
+    expect(nextDashboard.map((item) => item.elementId)).toEqual(['h1', 'c1', 'c2']);
+
+    const counterMerge = mergeKindOrderIntoDashboard(
+      dashboard,
+      elements,
+      'counter',
+      ['c2', 'c1'],
+    );
+    expect(counterMerge.nextDashboard.map((item) => item.elementId)).toEqual([
+      'h1',
       'c2',
       'c1',
     ]);
-    expect(nextDashboard.map((item) => item.elementId)).toEqual(['h1', 'c2', 'c1']);
   });
 });

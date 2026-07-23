@@ -1,4 +1,7 @@
-export type WeatherCondition = 'sunny' | 'cloudy' | 'rain' | 'snow' | 'other';
+export type WeatherCondition = 'sunny' | 'cloudy' | 'rain' | 'storm' | 'snow' | 'other';
+
+/** Near-term outlook vs the next few hours; omit when flat. */
+export type WeatherTrend = 'improving' | 'worsening';
 
 export interface WeatherCoords {
   lat: number;
@@ -23,6 +26,8 @@ export interface WeatherForecast {
   currentCondition: WeatherCondition;
   /** Today's max precip chance (from daily), 0–100. */
   precipProbabilityPct: number;
+  /** Improving / worsening over the next few hours; null when flat or unknown. */
+  trend: WeatherTrend | null;
   daily: WeatherDayForecast[];
   lat: number;
   lon: number;

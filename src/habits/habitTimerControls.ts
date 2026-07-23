@@ -35,15 +35,21 @@ function playSoundForConfig(
   onFinish: (elementId: string, config: HabitConfig, trackCompleted?: boolean) => void,
 ): Promise<void> {
   setFocusedHabitId(elementId);
+  const hasSecondsTarget =
+    config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
+  // play_once without a minutes target: track end completes the habit.
+  // With a minutes target, let the session keep running (overtime / finish via Done).
+  const finishOnTrackEnd =
+    hasHabitTimerSound(config.timerSound) &&
+    getHabitTimerPlaybackMode(config.timerSound) === 'play_once' &&
+    !hasSecondsTarget;
   return playHabitSound(config.timerSound, {
     lockScreen: lockScreenMetaFor(elementId, config),
-    onEnded:
-      hasHabitTimerSound(config.timerSound) &&
-      getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
-        ? () => {
-            onFinish(elementId, config, true);
-          }
-        : undefined,
+    onEnded: finishOnTrackEnd
+      ? () => {
+          onFinish(elementId, config, true);
+        }
+      : undefined,
   }).then(() => {
     refreshLockScreenTicker();
   });
@@ -159,10 +165,12 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
   const lockScreen = lockScreenMetaFor(elementId, config);
   if (hasHabitTimerSound(config.timerSound)) {
     const playbackMode = getHabitTimerPlaybackMode(config.timerSound);
+    const hasSecondsTarget =
+      config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
     void resumeHabitSound(config.timerSound, {
       lockScreen,
       onEnded:
-        playbackMode === 'play_once'
+        playbackMode === 'play_once' && !hasSecondsTarget
           ? () => {
               void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
                 (error) => {

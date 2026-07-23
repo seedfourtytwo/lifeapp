@@ -12,13 +12,7 @@
     "clear": "Clear",
     "archive": "Archive",
     "restore": "Restore",
-    "sort": "Sort",
     "search": "Search",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
-    "moveNounUp": "Move {{noun}} up",
-    "moveNounDown": "Move {{noun}} down",
-    "itemNoun": "item",
     "openTrackers": "Open Trackers",
     "more": "More",
     "editText": "Edit text"

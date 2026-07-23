@@ -119,7 +119,30 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
   statusSub = activePlayer.addListener('playbackStatusUpdate', (status: AudioStatus) => {
     if (ignoreRemoteStatus) return;
 
+    const isKeepalive = activeSourceKey === 'keepalive';
+    const effectiveLoop = Boolean(status.loop || activePlayer.loop || isKeepalive);
+
     if (status.didJustFinish && !status.loop) {
+      // Keepalive / looping sources must never complete a habit session.
+      if (isKeepalive || activePlayer.loop) {
+        if (userPausedPlayback) return;
+        try {
+          activePlayer.loop = true;
+          if (isKeepalive) {
+            activePlayer.muted = true;
+            onTrackEnded = null;
+          }
+          void activePlayer.seekTo(0).then(() => {
+            if (!userPausedPlayback && player === activePlayer) {
+              activePlayer.play();
+            }
+          });
+        } catch {
+          // Player may have been replaced.
+        }
+        return;
+      }
+
       if (userPausedPlayback) {
         onTrackEnded = null;
         return;
@@ -140,22 +163,22 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
         currentTime: status.currentTime,
         lastCurrentTime: seekBaselineTime,
         duration: status.duration,
-        loop: status.loop,
+        loop: effectiveLoop,
       })
     ) {
       resetSeekBaseline(status.currentTime);
-      if (lastReportedPlaying !== status.playing) {
-        lastReportedPlaying = status.playing;
-        onRemotePlayingChange?.(status.playing);
-      }
+      // Loop wrap can briefly report playing=false — do not pause the habit timer.
       return;
     }
 
+    // Keepalive is ~2s: normal progress and end-of-clip look like seek clamps.
+    // Only honor intentional seek skips (handled below with stricter rules); still
+    // sync play/pause from the OS for no-sound timers.
     const skip = detectLockScreenSeekSkip({
       currentTime: status.currentTime,
       lastCurrentTime: seekBaselineTime,
       duration: status.duration,
-      loop: status.loop,
+      loop: effectiveLoop,
       wallDeltaMs,
     });
     if (skip) {
@@ -164,6 +187,13 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
         try {
           await activePlayer.seekTo(restoreTo);
           resetSeekBaseline(restoreTo);
+          if (isKeepalive) {
+            activePlayer.loop = true;
+            activePlayer.muted = true;
+            if (!userPausedPlayback) {
+              activePlayer.play();
+            }
+          }
         } catch {
           // Player may have been replaced.
         }
@@ -284,6 +314,10 @@ async function playSource(
   if (isPlaybackStale(requestEpoch)) return false;
 
   onTrackEnded = loop ? null : onEnded ?? null;
+  // Keepalive is never a completion signal, even if a prior play_once left a callback.
+  if (key === 'keepalive') {
+    onTrackEnded = null;
+  }
 
   await withLocalControl(async () => {
     if (activeSourceKey !== key) {
@@ -296,6 +330,12 @@ async function playSource(
     await activePlayer.seekTo(0);
     resetSeekBaseline(0);
     if (isPlaybackStale(requestEpoch)) return;
+    // Re-assert after seek — some platforms clear loop on replace/seek.
+    activePlayer.loop = loop;
+    if (key === 'keepalive') {
+      onTrackEnded = null;
+      activePlayer.muted = true;
+    }
     activePlayer.play();
     activateLockScreen(lockScreen);
   });

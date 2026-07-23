@@ -9,7 +9,7 @@ export function newEditorSession(
     sessionId: newId(),
     editingId: null,
     name: '',
-    increments: '5, 10',
+    increments: '1, 5, 10',
     dailyTarget: '',
     targetLabel: '',
     habitTrackingMode: 'boolean',

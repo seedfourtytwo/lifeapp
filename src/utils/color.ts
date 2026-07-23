@@ -24,25 +24,24 @@ export function lerpHex(from: string, to: string, amount: number): string {
 export interface CounterProgressBarColors {
   active: string;
   complete: string;
-  completeText: string;
 }
 
 const COUNTER_PROGRESS_BAR: Record<ThemeMode, CounterProgressBarColors> = {
-  light: { active: '#F97316', complete: '#10B981', completeText: '#059669' },
-  dark: { active: '#F97316', complete: '#10B981', completeText: '#059669' },
-  cartoon: { active: '#E8A317', complete: '#4A9E3F', completeText: '#2D5A24' },
+  light: { active: '#F97316', complete: '#10B981' },
+  dark: { active: '#F97316', complete: '#10B981' },
+  cartoon: { active: '#E8A317', complete: '#4A9E3F' },
 };
 
 export function getCounterProgressBarColors(mode: ThemeMode): CounterProgressBarColors {
   return COUNTER_PROGRESS_BAR[mode];
 }
 
-const COUNTER_PROGRESS_PALETTE = {
-  light: { start: '#FFF7ED', end: '#ECFDF5' },
-  dark: { start: '#3D2A1F', end: '#1A2E26' },
-  cartoon: { start: '#FFF9E6', end: '#D4F5C4' },
-} as const;
-
-export function getCounterProgressPalette(mode: ThemeMode) {
-  return COUNTER_PROGRESS_PALETTE[mode];
+/** Append alpha (0–1) to a `#RRGGBB` color for translucent fills. */
+export function withHexAlpha(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) return hex;
+  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `#${normalized}${a}`;
 }

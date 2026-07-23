@@ -14,8 +14,7 @@ import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
 import {
   mergeKindOrderIntoDashboard,
-  planHabitReorder,
-  movePeersInOrder,
+  applyVisibleOrder,
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
 import {
@@ -180,17 +179,10 @@ interface ElementState {
   archiveElement: (elementId: string) => Promise<void>;
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
-  /**
-   * Move a habit in the Habits list. Uses the on-screen visible order so
-   * chevrons match what the user sees.
-   */
-  reorderHabit: (
-    habitId: string,
-    direction: 'up' | 'down',
-    visibleOrder: readonly string[],
-  ) => Promise<void>;
-  /** Move a counter up/down among counters; persists dashboard sort_order. */
-  reorderCounter: (counterId: string, direction: 'up' | 'down') => Promise<void>;
+  /** Persist a full on-screen habit sequence (drag-and-drop). */
+  reorderHabitToOrder: (visibleOrder: readonly string[]) => Promise<void>;
+  /** Persist a full active-counter sequence (drag-and-drop). */
+  reorderCounterToOrder: (orderedIds: readonly string[]) => Promise<void>;
 }
 
 export const useElementStore = create<ElementState>((set, get) => ({
@@ -439,35 +431,33 @@ export const useElementStore = create<ElementState>((set, get) => ({
     });
   },
 
-  reorderHabit: async (habitId, direction, visibleOrder) => {
+  reorderHabitToOrder: async (visibleOrder) => {
     const { elements, dashboard } = get();
     const habits = getActiveHabits(elements, dashboard);
-    const target = habits.find((habit) => habit.id === habitId);
-    if (!target) return;
+    const orderedHabitIds = habits.map((habit) => habit.id);
+    if (visibleOrder.length === 0) return;
+    if (
+      visibleOrder.length === orderedHabitIds.length &&
+      visibleOrder.every((id, index) => id === orderedHabitIds[index])
+    ) {
+      return;
+    }
 
-    const nextHabitOrder = planHabitReorder({
-      orderedHabitIds: habits.map((habit) => habit.id),
-      visibleOrder,
-      habitId,
-      direction,
-    });
+    const nextHabitOrder = applyVisibleOrder(orderedHabitIds, visibleOrder);
     if (!nextHabitOrder) return;
 
     await persistKindOrder('habit', nextHabitOrder, get, set);
   },
 
-  reorderCounter: async (counterId, direction) => {
+  reorderCounterToOrder: async (orderedIds) => {
     const { elements, dashboard } = get();
     const counters = getActiveCounters(elements, dashboard);
-    const orderedIds = counters.map((counter) => counter.id);
-    const nextCounterOrder = movePeersInOrder(
-      orderedIds,
-      orderedIds,
-      counterId,
-      direction,
-    );
-    if (!nextCounterOrder) return;
+    const currentIds = counters.map((counter) => counter.id);
+    if (orderedIds.length !== currentIds.length) return;
+    const currentSet = new Set(currentIds);
+    if (orderedIds.some((id) => !currentSet.has(id))) return;
+    if (orderedIds.every((id, index) => id === currentIds[index])) return;
 
-    await persistKindOrder('counter', nextCounterOrder, get, set);
+    await persistKindOrder('counter', [...orderedIds], get, set);
   },
 }));

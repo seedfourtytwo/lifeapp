@@ -1,8 +1,31 @@
 import {
   formatHabitStreakLabel,
   formatHabitCardDescription,
+  getHabitStreakDays,
 } from '../src/kinds/habit/habitCardLabels';
 import { HabitConfigSchema } from '../src/protocol';
+
+describe('getHabitStreakDays', () => {
+  const withStreak = HabitConfigSchema.parse({
+    timeSlot: 'anytime',
+    showStreakOnCard: true,
+  });
+  const hidden = HabitConfigSchema.parse({
+    timeSlot: 'anytime',
+    showStreakOnCard: false,
+  });
+
+  it('returns compact day count for the card', () => {
+    expect(getHabitStreakDays(withStreak, 3)).toBe(3);
+    expect(getHabitStreakDays(withStreak, 1)).toBe(1);
+  });
+
+  it('hides streak when count is zero or opted out', () => {
+    expect(getHabitStreakDays(withStreak, 0)).toBeNull();
+    expect(getHabitStreakDays(withStreak)).toBeNull();
+    expect(getHabitStreakDays(hidden, 5)).toBeNull();
+  });
+});
 
 describe('formatHabitStreakLabel', () => {
   const withStreak = HabitConfigSchema.parse({

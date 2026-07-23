@@ -1,47 +1,47 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
-  Modal,
-  PanResponder,
+  AccessibilityInfo,
+  Animated,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
+import { useTheme } from 'react-native-paper';
+import { useChromeBubbleDrag } from '../hooks/useChromeBubbleDrag';
 import { toDateString } from '../protocol';
-import { useCalendarStore } from '../store/calendarStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
+import BounceEdgeFlash, {
+  type BounceEdgeFlashHandle,
+} from './weather/BounceEdgeFlash';
+import CornerConfettiBurst, {
+  type CornerConfettiHandle,
+} from './weather/CornerConfettiBurst';
+import WeatherDayFace from './weather/WeatherDayFace';
+import WeatherForecastStrip from './weather/WeatherForecastStrip';
+import { recordCornerHit, getTodayCornerCount } from '../db/repositories/cornerScoreRepository';
 import {
   BUBBLE_HEIGHT,
-  BUBBLE_SIZE,
-  clampBubblePosition,
+  BUBBLE_WIDTH,
+  DOCK_RESERVE,
+  EXPAND_DAY_COUNT,
+  STRIP_GAP,
+  STRIP_HEIGHT,
+  forecastStripWidth,
 } from '../weather/bubblePosition';
-import { conditionIconName, conditionLabel } from '../weather/codes';
+import { conditionLabel } from '../weather/codes';
 import { formatTempC } from '../weather/format';
-import CalendarPeekSheet from './CalendarPeekSheet';
-import WeatherForecastSheet from './WeatherForecastSheet';
-import { ATTENTION_WITHIN_DAYS } from '../calendar/attention';
 
-const DOCK_RESERVE = 72;
-const TAP_SLOP = 8;
-
-type SheetKind = 'weather' | 'calendar' | null;
+/** How long the `· N` corner tally stays visible after a hit. */
+const CORNER_SCORE_FLASH_MS = 1800;
 
 export default function HomeChromeBubble() {
-  const theme = useTheme();
   const { t } = useTranslation('home');
-  const { decorations: deco, isCartoon } = useAppTheme();
-  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
-  const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
-  const outlineWidth = isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth;
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const weatherEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
-  const calendarEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
   const savedX = useSettingsStore((s) => s.weatherBubbleX);
   const savedY = useSettingsStore((s) => s.weatherBubbleY);
   const setBubblePosition = useSettingsStore((s) => s.setWeatherBubblePosition);
@@ -51,156 +51,184 @@ export default function HomeChromeBubble() {
   const weatherOffline = useWeatherStore((s) => s.offline);
   const weatherLoading = useWeatherStore((s) => s.loading);
 
-  // Clock tick so “needs attention” can advance without waiting for a store mutation.
-  const [badgeNow, setBadgeNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!calendarEnabled) return;
-    const timer = setInterval(() => setBadgeNow(Date.now()), 60_000);
-    return () => clearInterval(timer);
-  }, [calendarEnabled]);
-
-  const events = useCalendarStore((s) => s.events);
-  const calendars = useCalendarStore((s) => s.calendars);
-  const clearedByKey = useCalendarStore((s) => s.clearedByKey);
-  const badgeCount = useMemo(() => {
-    if (!calendarEnabled || events.length === 0) return 0;
-    // Recompute when calendar mirror or minute tick changes (attentionOccurrences reads store).
-    void badgeNow;
-    void calendars;
-    void clearedByKey;
-    return useCalendarStore.getState().attentionOccurrences(50, ATTENTION_WITHIN_DAYS).length;
-  }, [calendarEnabled, events, calendars, clearedByKey, badgeNow]);
-
-  const [sheet, setSheet] = useState<SheetKind>(null);
-  const [fanOpen, setFanOpen] = useState(false);
-  const [layout, setLayout] = useState(() => {
-    const { width, height } = Dimensions.get('window');
-    return { width, height };
-  });
-  const [pos, setPos] = useState({ x: savedX, y: savedY });
+  const confettiRef = useRef<CornerConfettiHandle>(null);
+  const bounceFlashRef = useRef<BounceEdgeFlashHandle>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [cornerScoreFlash, setCornerScoreFlash] = useState<number | null>(null);
+  const cornerCountRef = useRef(0);
+  const cornerScoreDateRef = useRef(toDateString(new Date()));
+  const cornerHitsBeforeHydrate = useRef(0);
+  const cornerFlashActiveRef = useRef(false);
+  const cornerFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expandAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    setPos({ x: savedX, y: savedY });
-  }, [savedX, savedY]);
+    Animated.spring(expandAnim, {
+      toValue: expanded ? 1 : 0,
+      friction: 8,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+  }, [expanded, expandAnim]);
 
-  const layoutRef = useRef(layout);
-  const insetsRef = useRef(insets);
-  const posRef = useRef(pos);
-  const dragOrigin = useRef(pos);
-  const moved = useRef(false);
+  useEffect(() => {
+    let alive = true;
+    void getTodayCornerCount()
+      .then((n) => {
+        if (!alive) return;
+        cornerScoreDateRef.current = toDateString(new Date());
+        // Don't clobber optimistic bumps that landed before hydrate.
+        if (cornerHitsBeforeHydrate.current === 0) {
+          cornerCountRef.current = n;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      if (cornerFlashTimer.current) clearTimeout(cornerFlashTimer.current);
+    };
+  }, []);
 
-  layoutRef.current = layout;
-  insetsRef.current = insets;
-  posRef.current = pos;
+  const tRef = useRef(t);
+  tRef.current = t;
 
-  const bottomInset = insets.bottom + DOCK_RESERVE;
-  const clamped = clampBubblePosition(pos.x, pos.y, {
-    width: layout.width,
-    height: layout.height,
+  const flashCornerScore = (count: number) => {
+    cornerFlashActiveRef.current = true;
+    setCornerScoreFlash(count);
+    if (cornerFlashTimer.current) clearTimeout(cornerFlashTimer.current);
+    cornerFlashTimer.current = setTimeout(() => {
+      cornerFlashTimer.current = null;
+      cornerFlashActiveRef.current = false;
+      setCornerScoreFlash(null);
+    }, CORNER_SCORE_FLASH_MS);
+  };
+
+  const toggleExpanded = () => {
+    setExpanded((open) => {
+      const next = !open;
+      AccessibilityInfo.announceForAccessibility(
+        next
+          ? tRef.current('chromeBubble.forecastExpanded')
+          : tRef.current('chromeBubble.forecastCollapsed'),
+      );
+      return next;
+    });
+  };
+
+  const {
+    panHandlers,
+    leftAnim,
+    topAnim,
+    chargeProgress,
+    layout,
+    bubbleLeft,
+    bubbleTop,
+    onLayout,
+  } = useChromeBubbleDrag({
+    savedX,
+    savedY,
+    setBubblePosition,
     topInset: insets.top,
-    bottomInset,
+    bottomInset: insets.bottom + DOCK_RESERVE,
+    chipWidth: BUBBLE_WIDTH,
+    chipHeight: BUBBLE_HEIGHT,
+    onTap: toggleExpanded,
+    onDragStart: () => setExpanded(false),
+    onCornerHit: (x, y) => {
+      confettiRef.current?.play(x, y);
+      const today = toDateString(new Date());
+      if (today !== cornerScoreDateRef.current) {
+        cornerScoreDateRef.current = today;
+        cornerCountRef.current = 0;
+      }
+      const optimistic = cornerCountRef.current + 1;
+      cornerCountRef.current = optimistic;
+      cornerHitsBeforeHydrate.current += 1;
+      flashCornerScore(optimistic);
+      void recordCornerHit()
+        .then((n) => {
+          // Queued writes are authoritative for today.
+          cornerCountRef.current = n;
+          if (cornerFlashActiveRef.current) setCornerScoreFlash(n);
+        })
+        .catch(() => {
+          cornerCountRef.current = Math.max(0, cornerCountRef.current - 1);
+        });
+    },
+    onBounce: ({ edges, scoredCorner, chipX, chipY, bounds }) => {
+      bounceFlashRef.current?.play({
+        edges,
+        scoredCorner,
+        chipX,
+        chipY,
+        chipW: BUBBLE_WIDTH,
+        chipH: BUBBLE_HEIGHT,
+        bounds,
+      });
+    },
   });
 
-  const bothEnabled = weatherEnabled && calendarEnabled;
-  const anyEnabled = weatherEnabled || calendarEnabled;
+  const todayIso = toDateString(new Date());
+  const otherDays = useMemo(() => {
+    if (!forecast?.daily.length) return [];
+    return forecast.daily.filter((d) => d.date !== todayIso).slice(0, EXPAND_DAY_COUNT);
+  }, [forecast, todayIso]);
 
-  const weatherEnabledRef = useRef(weatherEnabled);
-  const calendarEnabledRef = useRef(calendarEnabled);
-  const bothEnabledRef = useRef(bothEnabled);
-  weatherEnabledRef.current = weatherEnabled;
-  calendarEnabledRef.current = calendarEnabled;
-  bothEnabledRef.current = bothEnabled;
+  if (!weatherEnabled) return null;
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
-        onPanResponderGrant: () => {
-          dragOrigin.current = posRef.current;
-          moved.current = false;
-        },
-        onPanResponderMove: (_, gesture) => {
-          if (Math.abs(gesture.dx) > TAP_SLOP || Math.abs(gesture.dy) > TAP_SLOP) {
-            moved.current = true;
-            setFanOpen(false);
-          }
-          const { width, height } = layoutRef.current;
-          const topInset = insetsRef.current.top;
-          const bottom = insetsRef.current.bottom + DOCK_RESERVE;
-          const nextX = dragOrigin.current.x + gesture.dx / Math.max(width, 1);
-          const nextY = dragOrigin.current.y + gesture.dy / Math.max(height, 1);
-          const next = clampBubblePosition(nextX, nextY, {
-            width,
-            height,
-            topInset,
-            bottomInset: bottom,
-          });
-          setPos(next);
-        },
-        onPanResponderRelease: () => {
-          if (!moved.current) {
-            if (bothEnabledRef.current) {
-              setFanOpen((open) => !open);
-            } else if (weatherEnabledRef.current) {
-              setSheet('weather');
-            } else if (calendarEnabledRef.current) {
-              setSheet('calendar');
-            }
-            return;
-          }
-          void setBubblePosition(posRef.current.x, posRef.current.y);
-        },
-      }),
-    [setBubblePosition],
-  );
+  const expandLeft = bubbleLeft + BUBBLE_WIDTH / 2 > layout.width / 2;
+  const stripWidth = forecastStripWidth(otherDays.length || EXPAND_DAY_COUNT);
+  const stripLeft = expandLeft
+    ? bubbleLeft - stripWidth - STRIP_GAP
+    : bubbleLeft + BUBBLE_WIDTH + STRIP_GAP;
+  const stripTop = bubbleTop + (BUBBLE_HEIGHT - STRIP_HEIGHT) / 2;
 
-  if (!anyEnabled) return null;
-
-  const today = new Date();
-  const dayNum = String(today.getDate());
   const hasForecast = forecast != null;
   const condition = forecast?.currentCondition ?? 'other';
+  const todayForecast =
+    forecast?.daily.find((d) => d.date === todayIso) ?? forecast?.daily[0];
+  const tempMinC = todayForecast?.tempMinC ?? null;
+  const tempMaxC = todayForecast?.tempMaxC ?? null;
+  const precipPct = hasForecast
+    ? (todayForecast?.precipProbabilityPct ?? forecast.precipProbabilityPct)
+    : null;
   const tempLabel = hasForecast ? formatTempC(forecast.currentTempC) : '—';
+  const trend = hasForecast ? forecast.trend : null;
 
-  const weatherIcon =
-    !hasForecast && weatherOffline
-      ? 'cloud-off-outline'
-      : !hasForecast && weatherError
-        ? 'weather-cloudy-alert'
-        : conditionIconName(condition);
-
-  const a11yParts: string[] = [];
-  if (calendarEnabled) {
-    a11yParts.push(t('chromeBubble.todayDate', { date: toDateString(today) }));
-    if (badgeCount > 0) a11yParts.push(t('chromeBubble.upcomingCount', { count: badgeCount }));
+  const a11yParts: string[] = [
+    hasForecast
+      ? t('chromeBubble.weatherWithCondition', {
+          temp: tempLabel,
+          condition: conditionLabel(condition),
+        })
+      : (weatherError ??
+          (weatherOffline
+            ? t('chromeBubble.weatherOffline')
+            : weatherLoading
+              ? t('chromeBubble.weatherLoading')
+              : t('chromeBubble.weatherUnavailable'))),
+  ];
+  if (tempMinC != null && tempMaxC != null) {
+    a11yParts.push(`${formatTempC(tempMinC)}/${formatTempC(tempMaxC)}`);
   }
-  if (weatherEnabled) {
-    a11yParts.push(
-      hasForecast
-        ? t('chromeBubble.weatherWithCondition', {
-            temp: tempLabel,
-            condition: conditionLabel(condition),
-          })
-        : (weatherError ??
-            (weatherOffline
-              ? t('chromeBubble.weatherOffline')
-              : weatherLoading
-                ? t('chromeBubble.weatherLoading')
-                : t('chromeBubble.weatherUnavailable'))),
-    );
+  if (precipPct != null) {
+    a11yParts.push(t('chromeBubble.rainChance', { pct: precipPct }));
   }
+  if (trend === 'improving') a11yParts.push(t('chromeBubble.trendImproving'));
+  if (trend === 'worsening') a11yParts.push(t('chromeBubble.trendWorsening'));
+  if (hasForecast && trend == null) a11yParts.push(t('chromeBubble.trendSteady'));
   a11yParts.push(
-    bothEnabled
-      ? t('chromeBubble.opensWeatherOrCalendar')
-      : weatherEnabled
-        ? t('chromeBubble.opensForecast')
-        : t('chromeBubble.opensCalendar'),
+    expanded ? t('chromeBubble.tapToCollapseForecast') : t('chromeBubble.tapToExpandForecast'),
   );
 
-  const bubbleLeft = clamped.x * layout.width;
-  const bubbleTop = clamped.y * layout.height;
+  const stripOpacity = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const stripTranslateX = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [expandLeft ? 12 : -12, 0],
+  });
 
   return (
     <View
@@ -208,205 +236,90 @@ export default function HomeChromeBubble() {
       pointerEvents="box-none"
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
-        setLayout({ width, height });
+        onLayout(width, height);
       }}
     >
-      {fanOpen ? (
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setFanOpen(false)} />
+      {expanded ? (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => setExpanded(false)}
+          accessibilityRole="button"
+          accessibilityLabel={t('chromeBubble.tapToCollapseForecast')}
+        />
       ) : null}
 
-      {fanOpen && weatherEnabled ? (
-        <Pressable
-          onPress={() => {
-            setFanOpen(false);
-            setSheet('weather');
-          }}
+      <CornerConfettiBurst ref={confettiRef} />
+      <BounceEdgeFlash ref={bounceFlashRef} color={theme.colors.outline} />
+
+      {expanded && otherDays.length > 0 ? (
+        <Animated.View
+          pointerEvents="none"
           style={[
-            styles.fanChip,
+            styles.expandStrip,
             {
-              left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
-              top: bubbleTop + BUBBLE_HEIGHT + 6,
-              backgroundColor: theme.colors.surface,
-              borderColor: outlineColor,
-              borderWidth: outlineWidth,
+              left: stripLeft,
+              top: stripTop,
+              opacity: stripOpacity,
+              transform: [{ translateX: stripTranslateX }, { scale: expandAnim }],
             },
           ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('chromeBubble.openWeather')}
         >
-          <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={accent} />
-        </Pressable>
+          <WeatherForecastStrip days={otherDays} />
+        </Animated.View>
       ) : null}
 
-      {fanOpen && calendarEnabled ? (
-        <Pressable
-          onPress={() => {
-            setFanOpen(false);
-            setSheet('calendar');
-          }}
-          style={[
-            styles.fanChip,
-            {
-              left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
-              top: bubbleTop + BUBBLE_HEIGHT + (weatherEnabled ? 52 : 6),
-              backgroundColor: theme.colors.surface,
-              borderColor: outlineColor,
-              borderWidth: outlineWidth,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={
-            badgeCount > 0
-              ? t('chromeBubble.openCalendarWithCount', { count: badgeCount })
-              : t('chromeBubble.openCalendar')
-          }
-        >
-          <MaterialCommunityIcons name="calendar" size={22} color={accent} />
-          {badgeCount > 0 ? (
-            <View style={[styles.fanBadge, { backgroundColor: theme.colors.error }]}>
-              <Text variant="labelSmall" style={{ color: theme.colors.onError, fontSize: 10 }}>
-                {badgeCount > 9 ? '9+' : badgeCount}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
-      ) : null}
-
-      <View
-        {...panResponder.panHandlers}
+      <Animated.View
+        {...panHandlers}
         style={[
-          styles.bubble,
+          styles.bubbleHit,
           {
-            left: bubbleLeft,
-            top: bubbleTop,
-            backgroundColor: theme.colors.surface,
-            borderColor: outlineColor,
-            borderWidth: outlineWidth,
-            shadowColor: '#000',
+            width: BUBBLE_WIDTH,
+            height: BUBBLE_HEIGHT,
             opacity: weatherOffline && hasForecast ? 0.92 : 1,
+            transform: [{ translateX: leftAnim }, { translateY: topAnim }],
           },
         ]}
         accessibilityRole="button"
         accessibilityLabel={a11yParts.join('. ')}
+        accessibilityActions={[
+          {
+            name: 'activate',
+            label: expanded
+              ? t('chromeBubble.tapToCollapseForecast')
+              : t('chromeBubble.tapToExpandForecast'),
+          },
+        ]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'activate') toggleExpanded();
+        }}
       >
-        {calendarEnabled ? (
-          <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
-            {dayNum}
-          </Text>
-        ) : null}
-        {weatherEnabled ? (
-          <>
-            <MaterialCommunityIcons
-              name={weatherIcon}
-              size={calendarEnabled ? 16 : 20}
-              color={
-                !hasForecast && (weatherOffline || weatherError)
-                  ? theme.colors.onSurfaceVariant
-                  : accent
-              }
-            />
-            {!calendarEnabled ? (
-              <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-                {tempLabel}
-              </Text>
-            ) : (
-              <Text
-                variant="labelSmall"
-                style={{ color: theme.colors.onSurfaceVariant, marginTop: -2 }}
-                numberOfLines={1}
-              >
-                {tempLabel}
-              </Text>
-            )}
-          </>
-        ) : (
-          <MaterialCommunityIcons name="calendar" size={18} color={accent} />
-        )}
-        {calendarEnabled && badgeCount > 0 ? (
-          <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
-            <Text variant="labelSmall" style={{ color: theme.colors.onError, fontSize: 10 }}>
-              {badgeCount > 9 ? '9+' : badgeCount}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      <Modal
-        visible={sheet != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSheet(null)}
-      >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setSheet(null)}>
-          <Pressable style={styles.sheetContainer} onPress={(e) => e.stopPropagation()}>
-            {sheet === 'weather' ? (
-              <WeatherForecastSheet onClose={() => setSheet(null)} />
-            ) : (
-              <CalendarPeekSheet visible={sheet === 'calendar'} onClose={() => setSheet(null)} />
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+        <WeatherDayFace
+          condition={condition}
+          currentTempC={hasForecast ? forecast.currentTempC : null}
+          tempMinC={tempMinC}
+          tempMaxC={tempMaxC}
+          precipProbabilityPct={precipPct}
+          trend={trend}
+          muted={!hasForecast && !!(weatherOffline || weatherError)}
+          offline={!hasForecast && weatherOffline}
+          error={!hasForecast && !!weatherError && !weatherOffline}
+          chargeProgress={chargeProgress}
+          cornerScoreFlash={cornerScoreFlash}
+        />
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bubble: {
+  bubbleHit: {
     position: 'absolute',
-    width: BUBBLE_SIZE,
-    height: BUBBLE_HEIGHT,
-    borderRadius: BUBBLE_HEIGHT / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    left: 0,
+    top: 0,
     zIndex: 20,
-    paddingVertical: 4,
   },
-  badge: {
+  expandStrip: {
     position: 'absolute',
-    top: 2,
-    right: 4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  fanChip: {
-    position: 'absolute',
-    zIndex: 21,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-  },
-  fanBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  sheetContainer: {
-    width: '100%',
+    zIndex: 18,
   },
 });

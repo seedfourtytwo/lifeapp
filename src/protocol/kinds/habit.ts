@@ -6,6 +6,7 @@ import {
   getHabitTimerPlaybackMode,
   hasHabitTimerSound,
 } from '../habitSound';
+import { getBundledHabitSoundDurationSeconds } from '../habitSoundCatalog';
 import {
   formatScheduleDescription,
   HabitScheduleSchema,
@@ -154,16 +155,39 @@ export function isHabitDayComplete(
     if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
       return total >= config.dailyTargetSeconds;
     }
+    // play_once without a seconds target: only a finished track counts — never
+    // "any logged seconds" (that incorrectly completes after a short session).
     if (
-      dayEvents &&
       hasHabitTimerSound(config.timerSound) &&
       getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
     ) {
+      if (!dayEvents) return false;
       return dayEvents.some((event) => isTimerSessionTrackCompleted(event));
     }
     return total > 0;
   }
   return total >= 1;
+}
+
+/**
+ * Seconds goal for progress UI: explicit daily target, else play_once track length.
+ */
+export function getHabitTimerEffectiveTargetSeconds(
+  config: HabitConfig,
+): number | undefined {
+  if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
+    return config.dailyTargetSeconds;
+  }
+  if (
+    config.trackingMode !== 'timer' ||
+    !hasHabitTimerSound(config.timerSound) ||
+    getHabitTimerPlaybackMode(config.timerSound) !== 'play_once'
+  ) {
+    return undefined;
+  }
+  const trackId = config.timerSound?.trackId?.trim();
+  if (!trackId) return undefined;
+  return getBundledHabitSoundDurationSeconds(trackId);
 }
 
 /**
@@ -268,6 +292,29 @@ export function formatHabitTimerDuration(totalSeconds: number): string {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
   }
   return `${minutes}:${remainder.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Home timer card meta: target-only while idle with no progress; elapsed/target
+ * once running or after any logged time. Open-ended idle → null (hide label).
+ */
+export function formatHabitHomeTimerLabel(options: {
+  displayTotal: number;
+  effectiveTargetSeconds: number | undefined;
+  isRunning: boolean;
+}): string | null {
+  const { displayTotal, effectiveTargetSeconds, isRunning } = options;
+  const showElapsed = isRunning || displayTotal > 0;
+  const hasTarget =
+    effectiveTargetSeconds !== undefined && effectiveTargetSeconds > 0;
+
+  if (hasTarget) {
+    return showElapsed
+      ? `${formatHabitTimerDuration(displayTotal)} / ${formatHabitTimerDuration(effectiveTargetSeconds)}`
+      : formatHabitTimerDuration(effectiveTargetSeconds);
+  }
+
+  return showElapsed ? formatHabitTimerDuration(displayTotal) : null;
 }
 
 export function timerSessionDurationSeconds(startedAt: Date, endedAt: Date): number {

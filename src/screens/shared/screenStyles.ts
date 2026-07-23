@@ -48,16 +48,6 @@ export const homeTabScreenStyles = StyleSheet.create({
   metaIconButton: {
     margin: 0,
   },
-  reorderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  reorderCard: {
-    flex: 1,
-    minWidth: 0,
-  },
   dimmedCard: {
     opacity: 0.62,
   },

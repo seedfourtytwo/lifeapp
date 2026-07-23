@@ -1,18 +1,19 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Button, useTheme } from 'react-native-paper';
+import { IconButton, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../../hooks/useAppTheme';
-import { formatHabitDescription, type HabitConfig } from '../../protocol';
+import type { HabitConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 import {
-  formatHabitCardDescription,
   formatHabitStreakLabel,
+  getHabitStreakDays,
 } from './habitCardLabels';
 import { HabitCardTitle } from './HabitCardTitle';
 import { NoteIconButton } from '../../notes/NoteIconButton';
+
+const ACTION_ICON_SIZE = 30;
 
 export function HabitBooleanWidget({
   element,
@@ -24,51 +25,60 @@ export function HabitBooleanWidget({
   onEditNote,
   hasTodayNote,
   streak,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { decorations: deco, isCartoon } = useAppTheme();
   const done = Boolean(isDone);
+  const streakDays = getHabitStreakDays(config, streak);
   const streakLabel = formatHabitStreakLabel(config, streak);
-  const description = formatHabitCardDescription(formatHabitDescription(config));
 
   return (
     <TrackerCard>
-      <View style={styles.headerRow}>
+      <View style={styles.oneLineRow}>
         <HabitCardTitle
           name={element.name}
-          streakLabel={streakLabel}
-          description={description}
+          streakDays={streakDays}
+          streakAccessibilityLabel={streakLabel}
           onOpenDetails={onOpenDetails}
+          onLongPressReorder={onLongPressReorder}
+          delayLongPressReorder={delayLongPressReorder}
+          onReorderTouchMove={onReorderTouchMove}
+          onReorderTouchEnd={onReorderTouchEnd}
+          onReorderTouchCancel={onReorderTouchCancel}
+          reorderHint={reorderHint}
         />
-        {onDictateNote ? (
-          <View style={styles.metaCluster}>
+
+        <View style={styles.trailingCluster}>
+          <IconButton
+            icon={done ? 'checkbox-marked' : 'checkbox-blank-outline'}
+            size={ACTION_ICON_SIZE}
+            onPress={() => void onToggle?.()}
+            iconColor={done ? theme.colors.primary : theme.colors.onSurfaceVariant}
+            style={styles.iconButton}
+            hitSlop={4}
+            accessibilityLabel={
+              done ? t('habitWidget.completedTapToUndoA11y') : t('habitWidget.markHabitDoneA11y')
+            }
+            accessibilityState={{ checked: done }}
+            accessibilityRole="checkbox"
+          />
+
+          {onDictateNote ? (
             <NoteIconButton
               hasNote={Boolean(hasTodayNote)}
               onPress={onDictateNote}
               onLongPress={onEditNote}
-              size={16}
+              size={ACTION_ICON_SIZE - 4}
+              style={styles.iconButton}
             />
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.actionRow}>
-        <Button
-          mode="contained"
-          icon={done ? 'check' : 'check-circle-outline'}
-          onPress={() => void onToggle?.()}
-          style={[styles.primaryButton, { borderRadius: deco.buttonRadius }]}
-          buttonColor={isCartoon ? theme.colors.primary : undefined}
-          contentStyle={styles.primaryButtonContent}
-          labelStyle={styles.primaryButtonLabel}
-          accessibilityLabel={
-            done ? t('habitWidget.completedTapToUndoA11y') : t('habitWidget.markHabitDoneA11y')
-          }
-          accessibilityState={{ checked: done }}
-        >
-          {done ? t('habitWidget.done') : t('habitWidget.markDone')}
-        </Button>
+          ) : null}
+        </View>
       </View>
     </TrackerCard>
   );

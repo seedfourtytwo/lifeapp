@@ -1,14 +1,17 @@
 import React from 'react';
 import { View } from 'react-native';
-import { ProgressBar, useTheme } from 'react-native-paper';
+import { useTheme } from 'react-native-paper';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getTrackerCardChrome } from '../utils/trackerCardChrome';
 import { trackerCardStyles as styles } from './trackerCardStyles';
+import { TrackerCardProgressFill } from './TrackerCardProgressFill';
 
 export type TrackerCardProgress = {
   value: number;
   color: string;
+  /** Kept for call-site compatibility; unused (fill uses accent color). */
   trackColor: string;
+  /** Kept for call-site compatibility; unused (fill is full-height wash). */
   height: number;
 };
 
@@ -24,14 +27,13 @@ function clampProgress(value: number): number {
 }
 
 /**
- * Shared Home tracker card shell (View, not elevated Paper Card).
- * One fill/border for every kind; progress is the bar only.
+ * Shared Home tracker card shell.
+ * Same outer border for every card; progress is an inner wash/edge glow.
  */
 export default function TrackerCard({ children, progress = null }: Props) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const chrome = getTrackerCardChrome({
-    isCartoon,
     decorations: deco,
     fillColor: theme.colors.surface,
     outlineColor: theme.colors.outline,
@@ -39,22 +41,14 @@ export default function TrackerCard({ children, progress = null }: Props) {
 
   return (
     <View style={[styles.card, chrome]}>
-      <View style={styles.cardContent}>
-        {children}
-        {progress ? (
-          <ProgressBar
-            progress={clampProgress(progress.value)}
-            color={progress.color}
-            style={[
-              styles.progressBar,
-              {
-                height: progress.height,
-                backgroundColor: progress.trackColor,
-              },
-            ]}
-          />
-        ) : null}
-      </View>
+      {progress ? (
+        <TrackerCardProgressFill
+          progress={clampProgress(progress.value)}
+          color={progress.color}
+          borderRadius={deco.radius.md}
+        />
+      ) : null}
+      <View style={styles.cardContent}>{children}</View>
     </View>
   );
 }

@@ -12,13 +12,7 @@
     "clear": "Effacer",
     "archive": "Archiver",
     "restore": "Restaurer",
-    "sort": "Trier",
     "search": "Rechercher",
-    "moveUp": "Monter",
-    "moveDown": "Descendre",
-    "moveNounUp": "Monter {{noun}}",
-    "moveNounDown": "Descendre {{noun}}",
-    "itemNoun": "élément",
     "openTrackers": "Ouvrir les suivis",
     "more": "Plus",
     "editText": "Modifier le texte"

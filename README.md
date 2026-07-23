@@ -9,11 +9,11 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 | Feature | Description |
 |---------|-------------|
 | **Clean SQLite schema** | Dropped unused columns (`category`, `parent_id`, `overrides`); schema v12 **wipes local data** on upgrade |
-| **Home** | Dashboard with Habits / Counters tabs; ambient weather + calendar bubble |
-| **Habits** | Today's check-offs or timers — remaining progress, sort, reorder |
-| **Counters** | Quick +buttons, undo, edit total, reorder, 14-day history; totals reset daily |
+| **Home** | Dashboard with Habits / Counters tabs; ambient weather chrome + calendar peek |
+| **Habits** | Today's check-offs or timers — remaining progress, sort, drag-reorder |
+| **Counters** | Quick +buttons, undo, edit total, drag-reorder, 14-day history; totals reset daily |
 | **Calendar** | Local events, recurrence, reminders, per-occurrence Done (ambient — not a protocol kind) |
-| **Weather** | Optional forecast chip on Home (ambient — not a protocol kind) |
+| **Weather** | Optional Home chrome chip: mood face, trend, expand forecast strip, fling physics (ambient — not a protocol kind) |
 | **Trackers** | Create, edit, archive/restore, or delete habits and counters |
 | **Settings → Data** | JSON export/import; granular **Clear data…** (history by period, calendar, cache, prefs, or definitions) |
 | **Offline SQLite** | All data on device — no account, no cloud |
@@ -27,7 +27,7 @@ Local-first personal habit and counter tracker. Open the app → check off habit
 Home (default)
 ├── Habits tab     — active habits for today
 ├── Counters tab   — active counters (today's totals; reset at midnight)
-├── Ambient bubble — weather + calendar fan-out (optional in Settings)
+├── Ambient chrome — weather mood chip + calendar peek (optional in Settings)
 └── ⚙ Settings
     ├── Trackers   — manage habits & counters (active + archive)
     ├── Calendar   — full month browse / edit
@@ -55,13 +55,14 @@ Home (default)
 src/
 ├── protocol/       # Life Protocol v1 schemas (no React/SQLite)
 ├── calendar/       # Ambient calendar domain (types, RRULE, occurrences)
-├── weather/        # Ambient weather helpers
+├── weather/        # Ambient weather helpers (forecast, physics, trend)
+├── ui/             # Shared home insets (edge pad / dock reserve)
 ├── db/             # SQLite client, migrations, repositories, export
 ├── kinds/          # counter + habit widgets and handlers
 ├── store/          # Zustand stores
 ├── screens/        # Home, Habits, Counters, Calendar, Trackers, Settings
-├── components/     # Home chrome bubble, peek sheets, shared UI
-├── hooks/          # Bootstrap, reminder sync, timer, backup
+├── components/     # Home chrome bubble, weather face/strip, peek sheets
+├── hooks/          # Bootstrap, chrome drag, reminder sync, timer, backup
 ├── notifications/  # Habit + calendar local notifications (native/web)
 ├── audio/          # Timer sounds + completion chime (native)
 └── navigation/     # Root stack navigator
