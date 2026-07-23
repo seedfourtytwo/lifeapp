@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { PROTOCOL_VERSION } from './envelope';
+import { DAY_NOTE_BODY_MAX_LENGTH } from './dayNote';
 
-/** Soft cap — same as tracker day notes. */
-export const DAILY_JOURNAL_BODY_MAX_LENGTH = 4000;
+/** Absolute max — shared with tracker day notes. */
+export const DAILY_JOURNAL_BODY_MAX_LENGTH = DAY_NOTE_BODY_MAX_LENGTH;
 
 /**
  * One general journal entry for a calendar day (not tied to a tracker).

@@ -1,6 +1,7 @@
 import {
   createProtocolBundle,
   DayNoteSchema,
+  DAY_NOTE_BODY_MAX_LENGTH,
   HabitConfigSchema,
   parseProtocolBundle,
   PROTOCOL_VERSION,
@@ -139,7 +140,7 @@ describe('day notes in protocol bundle', () => {
     expect(() =>
       DayNoteSchema.parse({
         ...dayNote,
-        body: 'x'.repeat(4001),
+        body: 'x'.repeat(DAY_NOTE_BODY_MAX_LENGTH + 1),
       }),
     ).toThrow();
   });
@@ -189,18 +190,29 @@ describe('appendTranscript', () => {
 
   it('respects the max body length and reports truncation', () => {
     const almostFull = 'x'.repeat(3990);
-    const result = appendTranscript(almostFull, 'more text here');
+    const result = appendTranscript(almostFull, 'more text here', 4000);
     expect(result.truncated).toBe(true);
     expect(result.text.length).toBeLessThanOrEqual(4000);
   });
 
   it('prefers truncating at a word boundary when over the limit', () => {
     const prefix = 'word '.repeat(798); // 3990 chars
-    const result = appendTranscript(prefix, 'overflowing leftover words forever and ever');
+    const result = appendTranscript(
+      prefix,
+      'overflowing leftover words forever and ever',
+      4000,
+    );
     expect(result.truncated).toBe(true);
     expect(result.text.length).toBeLessThanOrEqual(4000);
     expect(result.text.endsWith(' ')).toBe(false);
     expect(result.text.includes('overflowing leftover words forever and ever')).toBe(false);
+  });
+
+  it('uses the absolute default max when none is passed', () => {
+    const almostFull = 'x'.repeat(DAY_NOTE_BODY_MAX_LENGTH - 5);
+    const result = appendTranscript(almostFull, 'more text here');
+    expect(result.truncated).toBe(true);
+    expect(result.text.length).toBeLessThanOrEqual(DAY_NOTE_BODY_MAX_LENGTH);
   });
 });
 

@@ -7,8 +7,8 @@ export {
   noteEditorHeading,
   noteEditorKind,
   noteEditorLabel,
-  NOTE_BODY_MAX_LENGTH,
 } from './types';
+export { NOTE_BODY_MAX_LENGTH } from './noteBodyLimits';
 export { loadNoteBody, saveNoteBody } from './noteSave';
 export { noteEditorSessionKey } from './sessionKey';
 export { useNoteEditorSession } from './useNoteEditorSession';

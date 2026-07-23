@@ -1,8 +1,4 @@
 import { i18n } from '../i18n';
-import { DAY_NOTE_BODY_MAX_LENGTH } from '../protocol';
-
-/** Max body length shared by tracker notes and daily journals. */
-export const NOTE_BODY_MAX_LENGTH = DAY_NOTE_BODY_MAX_LENGTH;
 
 export type TrackerNoteTarget = {
   kind: 'tracker';

@@ -8,8 +8,11 @@ import type { ElementDefinition } from './element';
  * revise notes without inventing a note-edit event stream.
  */
 
-/** Soft cap so notes stay lightweight in SQLite + exports. */
-export const DAY_NOTE_BODY_MAX_LENGTH = 4000;
+/**
+ * Absolute max body length for day notes (and daily journals — keep in sync).
+ * Editor UX only warns near this ceiling; see `notes/noteBodyLimits.ts`.
+ */
+export const DAY_NOTE_BODY_MAX_LENGTH = 128_000;
 
 export const DayNoteSchema = z.object({
   id: z.string().uuid(),
