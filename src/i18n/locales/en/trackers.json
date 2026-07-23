@@ -80,7 +80,11 @@
     "customPlaceholder": "e.g. 3",
     "add": "Add",
     "dailyTargetLabel": "Daily target (optional)",
-    "dailyTargetPlaceholder": "e.g. 50"
+    "dailyTargetPlaceholder": "e.g. 50",
+    "streakSectionTitle": "Streak",
+    "streakSectionDescription": "Shown under the counter name when you have a daily target.",
+    "showStreakLabel": "Show streak on card",
+    "showStreakHint": "Counts consecutive days you hit the daily target — even before today's total reaches it"
   },
   "habitFields": {
     "typeSectionTitle": "Type",
@@ -158,7 +162,9 @@
     "totalLabel": "Total ({{unit}})",
     "invalidTotalTitle": "Invalid total",
     "invalidTotalBody": "Enter a whole number zero or greater.",
-    "couldNotUpdateTitle": "Could not update"
+    "couldNotUpdateTitle": "Could not update",
+    "streakOne": "1-day streak",
+    "streakMany": "{{count}}-day streak"
   },
   "habitWidget": {
     "markDone": "Mark done",

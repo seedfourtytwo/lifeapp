@@ -1,12 +1,55 @@
 ---
-description: Android builds use Expo.dev EAS cloud, not local SDK
+description: Android native builds — local SDK default; EAS optional backup
 alwaysApply: true
 ---
 
 # Android build workflow
 
-- **Default:** Build Android APKs on **Expo.dev (EAS)** — not local Gradle/SDK.
-- **Dev/testing:** Use `eas build --platform android --profile development` (dev client APK).
-- **Do not** run `expo run:android`, `./gradlew`, or local SDK rebuilds unless the user explicitly asks for a local native build.
-- App runs on a physical phone via the dev client; cloud build produces the installable APK.
-- Invoke EAS via `npx eas-cli` if `eas` is not on PATH.
+- **Default:** Build the Android **dev client APK locally** with the Android SDK on this machine (not EAS).
+- **When to rebuild:** any new/changed native module (e.g. `expo-clipboard`, `expo-location`, speech, audio). JS-only changes → Metro reload only.
+
+## Local packages (side-by-side)
+
+| Build | Package | Launcher label | Use |
+|-------|---------|----------------|-----|
+| **Debug (local)** | `com.lifeapp.dashboard.dev` | **dev** | Daily coding + Metro |
+| **Release / EAS** | `com.lifeapp.dashboard` | **prod** | Store / cloud APK |
+
+Debug uses `applicationIdSuffix '.dev'` and `resValue "string", "app_name", "dev"` in `android/app/build.gradle`. Do **not** install local debug over the EAS package (signature mismatch).
+
+## Local build (preferred)
+
+```bash
+export ANDROID_HOME="$HOME/Android/Sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export JAVA_HOME="$HOME/.local/jdk-21"   # if set on this machine
+
+# Safer first-time / NDK builds (arm64 phone only, fewer workers):
+cd android && ./gradlew assembleDebug \
+  -PreactNativeArchitectures=arm64-v8a \
+  --max-workers=2
+
+# Install over wireless or USB ADB:
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Or: `npx expo run:android --device` when USB data works.
+
+## Phone install (GrapheneOS)
+
+- USB file transfer / `lsusb` often blocked by USB-C exploit protection — **wireless debugging** is the reliable path.
+- Pair once: Developer options → Wireless debugging → Pair with code → `adb pair IP:PORT`.
+- Then `adb devices` should list the phone; install with `adb install -r …/app-debug.apk`.
+- Keep only the **dev** app for day-to-day coding to avoid opening the wrong icon.
+
+## Day-to-day JS
+
+```bash
+CI=0 EXPO_NO_TELEMETRY=1 npx expo start --dev-client --lan --port 8081
+```
+
+Open **dev** on the phone → connect to `http://<laptop-wifi-ip>:8081` (same Wi‑Fi as the phone).
+
+## EAS (optional backup)
+
+`npx eas-cli build --platform android --profile development` — only if local SDK is unavailable or you need a cloud APK link. Free-plan quota applies. Do **not** treat EAS as the default for routine native rebuilds.

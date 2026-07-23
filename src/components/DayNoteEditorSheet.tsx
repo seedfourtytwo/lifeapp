@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import {
   Button,
   IconButton,
@@ -19,7 +20,11 @@ import {
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { NOTE_BODY_MAX_LENGTH } from '../notes/types';
+import {
+  NOTE_BODY_APPROACHING_REMAINING,
+  NOTE_BODY_MAX_LENGTH,
+  NOTE_BODY_URGENT_REMAINING,
+} from '../notes/noteBodyLimits';
 import { appendTranscript } from '../utils/appendTranscript';
 import { formatFullDate } from '../utils/dates';
 import DayNoteDictationButton from './DayNoteDictationButton';
@@ -42,6 +47,13 @@ export interface DayNoteEditorSheetProps {
   onSave: (body: string) => void;
 }
 
+/** Keep editor draft within the protocol max (corrupt / oversized imports). */
+function clampNoteBody(text: string): string {
+  return text.length <= NOTE_BODY_MAX_LENGTH
+    ? text
+    : text.slice(0, NOTE_BODY_MAX_LENGTH);
+}
+
 export default function DayNoteEditorSheet({
   visible,
   date,
@@ -59,27 +71,36 @@ export default function DayNoteEditorSheet({
   const { t } = useTranslation('common');
   const { decorations: deco, isCartoon } = useAppTheme();
   /** Draft tracked for dirty/limit UI — not fed back as `value` (IME-safe). */
-  const [draft, setDraft] = useState(initialBody);
+  const [draft, setDraft] = useState(() => clampNoteBody(initialBody));
   /** Seed text for uncontrolled remounts (open / clear / dictation). */
-  const [fieldSeed, setFieldSeed] = useState(initialBody);
+  const [fieldSeed, setFieldSeed] = useState(() => clampNoteBody(initialBody));
   const [fieldEpoch, setFieldEpoch] = useState(0);
   /** Mic-first: full TextInput only after Edit text / tap preview. */
   const [textEditing, setTextEditing] = useState(false);
   const [dictationHint, setDictationHint] = useState<string | null>(null);
   const [dictationError, setDictationError] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const seededSessionKeyRef = useRef<string | null>(null);
-  const limitAlertShownRef = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isJournal = kind === 'journal';
   const noun = isJournal ? t('note.journalNoun') : t('note.noteNoun');
   const displayHeading = heading ?? (isJournal ? t('note.journalHeading') : t('note.noteHeading'));
 
   const remountField = (text: string) => {
-    draftRef.current = text;
-    setFieldSeed(text);
-    setDraft(text);
+    const next = clampNoteBody(text);
+    draftRef.current = next;
+    setFieldSeed(next);
+    setDraft(next);
     setFieldEpoch((n) => n + 1);
+  };
+
+  const clearCopyFeedbackTimer = () => {
+    if (copyFeedbackTimerRef.current) {
+      clearTimeout(copyFeedbackTimerRef.current);
+      copyFeedbackTimerRef.current = null;
+    }
   };
 
   // Seed when the sheet opens for a target+day — not when the parent refreshes mid-edit.
@@ -88,8 +109,9 @@ export default function DayNoteEditorSheet({
     if (!visible || !date || !sessionKey) {
       if (!visible) {
         seededSessionKeyRef.current = null;
-        limitAlertShownRef.current = false;
         setTextEditing(false);
+        clearCopyFeedbackTimer();
+        setCopyFeedback(null);
       }
       setDictationHint(null);
       setDictationError(null);
@@ -100,11 +122,14 @@ export default function DayNoteEditorSheet({
     setTextEditing(false);
     setDictationHint(null);
     setDictationError(null);
-    limitAlertShownRef.current = initialBody.length >= NOTE_BODY_MAX_LENGTH;
+    clearCopyFeedbackTimer();
+    setCopyFeedback(null);
     seededSessionKeyRef.current = sessionKey;
     // Mic-first: don't pop the keyboard on open — only when the user edits text.
     Keyboard.dismiss();
   }, [visible, date, sessionKey, initialBody]);
+
+  useEffect(() => () => clearCopyFeedbackTimer(), []);
 
   const hasStoredNote = initialBody.trim().length > 0;
   const hasDraftText = draft.trim().length > 0;
@@ -113,27 +138,10 @@ export default function DayNoteEditorSheet({
   const showClear = hasStoredNote || hasDraftText;
   const canSave = isDirty;
   const titleDate = date ? formatFullDate(date) : '';
-  const remaining = NOTE_BODY_MAX_LENGTH - draft.length;
-  const nearLimit = remaining <= 100;
+  const remaining = Math.max(0, NOTE_BODY_MAX_LENGTH - draft.length);
+  const nearLimit = remaining <= NOTE_BODY_APPROACHING_REMAINING;
+  const urgentLimit = remaining <= NOTE_BODY_URGENT_REMAINING;
   const atLimit = remaining <= 0;
-
-  const notifyIfReachedLimit = (nextLength: number, previousLength: number) => {
-    if (nextLength < NOTE_BODY_MAX_LENGTH) {
-      if (nextLength < NOTE_BODY_MAX_LENGTH - 50) {
-        limitAlertShownRef.current = false;
-      }
-      return;
-    }
-    if (previousLength >= NOTE_BODY_MAX_LENGTH || limitAlertShownRef.current) return;
-    limitAlertShownRef.current = true;
-    Alert.alert(
-      t('note.characterLimitTitle'),
-      t('note.characterLimitBody', {
-        noun,
-        max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
-      }),
-    );
-  };
 
   const requestDismiss = () => {
     if (saving) return;
@@ -143,11 +151,30 @@ export default function DayNoteEditorSheet({
   const handleClear = () => {
     setDictationHint(null);
     setDictationError(null);
+    clearCopyFeedbackTimer();
+    setCopyFeedback(null);
     if (hasStoredNote) {
       onSave('');
       return;
     }
     remountField('');
+  };
+
+  const handleCopy = async () => {
+    if (saving) return;
+    const body = draftRef.current;
+    if (!body.trim()) return;
+    try {
+      await Clipboard.setStringAsync(body);
+      clearCopyFeedbackTimer();
+      setCopyFeedback(t('note.copied'));
+      copyFeedbackTimerRef.current = setTimeout(() => {
+        setCopyFeedback(null);
+        copyFeedbackTimerRef.current = null;
+      }, 2000);
+    } catch {
+      Alert.alert(t('note.couldNotCopyTitle'), t('note.couldNotCopyBody'));
+    }
   };
 
   const handleSave = () => {
@@ -165,14 +192,13 @@ export default function DayNoteEditorSheet({
 
   const handleTranscript = (text: string) => {
     const prev = draftRef.current;
-    const result = appendTranscript(prev, text);
+    const result = appendTranscript(prev, text, NOTE_BODY_MAX_LENGTH);
     if (result.truncated) {
       setDictationHint(
         isJournal
           ? t('note.dictationHintTruncatedJournal')
           : t('note.dictationHintTruncatedNote'),
       );
-      notifyIfReachedLimit(result.text.length, prev.length);
     }
     // Remount so dictation text appears without driving a controlled `value`.
     remountField(result.text);
@@ -226,6 +252,7 @@ export default function DayNoteEditorSheet({
             </View>
             <DayNoteDictationButton
               active={visible}
+              // Quick-capture autoStart must still arm when already at max (append truncates).
               disabled={saving || !visible || (atLimit && !autoStartDictation)}
               autoStart={autoStartDictation && visible}
               autoStartToken={
@@ -266,9 +293,9 @@ export default function DayNoteEditorSheet({
               onChangeText={(next) => {
                 setDictationHint(null);
                 setDictationError(null);
-                notifyIfReachedLimit(next.length, draftRef.current.length);
-                draftRef.current = next;
-                setDraft(next);
+                const clamped = clampNoteBody(next);
+                draftRef.current = clamped;
+                setDraft(clamped);
               }}
               style={[styles.input, isJournal && styles.journalInput]}
               contentStyle={styles.inputContent}
@@ -316,37 +343,48 @@ export default function DayNoteEditorSheet({
             </Pressable>
           )}
 
-          <Text
-            variant="labelSmall"
-            accessibilityLiveRegion={nearLimit ? 'polite' : 'none'}
-            accessibilityLabel={t(
-              atLimit
-                ? 'note.characterCountLimitReachedA11y'
-                : nearLimit
-                  ? 'note.characterCountApproachingLimitA11y'
-                  : 'note.characterCountA11y',
-              {
-                count: draft.length.toLocaleString(),
-                max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
-              },
-            )}
-            style={{
-              color: atLimit
-                ? theme.colors.error
-                : nearLimit
-                  ? theme.colors.onSurfaceVariant
-                  : theme.colors.outline,
-              marginTop: 6,
-              textAlign: 'right',
-              fontVariant: ['tabular-nums'],
-              opacity: atLimit ? 1 : nearLimit ? 0.9 : 0.7,
-            }}
-          >
-            {t('note.characterCount', {
-              count: draft.length.toLocaleString(),
-              max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
-            })}
-          </Text>
+          {nearLimit ? (
+            <View style={styles.limitBlock}>
+              <Text
+                variant="bodySmall"
+                accessibilityLiveRegion="polite"
+                style={{
+                  color: atLimit || urgentLimit ? theme.colors.error : theme.colors.onSurfaceVariant,
+                  fontWeight: urgentLimit || atLimit ? '600' : '400',
+                }}
+              >
+                {atLimit
+                  ? t('note.limitBannerFull', { noun })
+                  : urgentLimit
+                    ? t('note.limitBannerUrgent', { count: remaining })
+                    : t('note.limitBannerApproaching', { count: remaining })}
+              </Text>
+              <Text
+                variant="labelSmall"
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={t(
+                  atLimit
+                    ? 'note.characterCountLimitReachedA11y'
+                    : 'note.characterCountApproachingLimitA11y',
+                  {
+                    count: draft.length.toLocaleString(),
+                    max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
+                  },
+                )}
+                style={{
+                  color: atLimit || urgentLimit ? theme.colors.error : theme.colors.onSurfaceVariant,
+                  fontVariant: ['tabular-nums'],
+                  marginTop: 4,
+                  textAlign: 'right',
+                }}
+              >
+                {t('note.characterCount', {
+                  count: draft.length.toLocaleString(),
+                  max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
+                })}
+              </Text>
+            </View>
+          ) : null}
 
           {dictationHint ? (
             <Text
@@ -369,6 +407,17 @@ export default function DayNoteEditorSheet({
                   compact
                 >
                   {t('note.clear')}
+                </Button>
+              ) : null}
+              {hasDraftText ? (
+                <Button
+                  mode="text"
+                  onPress={() => void handleCopy()}
+                  disabled={saving}
+                  compact
+                  accessibilityLabel={t('note.copyA11y', { noun })}
+                >
+                  {copyFeedback ?? t('note.copy')}
                 </Button>
               ) : null}
               {!textEditing ? (
@@ -448,6 +497,9 @@ const styles = StyleSheet.create({
   inputContent: {
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  limitBlock: {
+    marginTop: 8,
   },
   actions: {
     flexDirection: 'row',

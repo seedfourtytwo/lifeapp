@@ -1,5 +1,6 @@
 import {
   createProtocolBundle,
+  DAILY_JOURNAL_BODY_MAX_LENGTH,
   DailyJournalSchema,
   parseProtocolBundle,
   PROTOCOL_VERSION,
@@ -71,7 +72,7 @@ describe('daily journals in protocol bundle', () => {
     expect(() =>
       DailyJournalSchema.parse({
         ...journal,
-        body: 'x'.repeat(4001),
+        body: 'x'.repeat(DAILY_JOURNAL_BODY_MAX_LENGTH + 1),
       }),
     ).toThrow();
   });

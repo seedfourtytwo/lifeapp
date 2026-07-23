@@ -3,6 +3,7 @@ import { newId } from '../utils/id';
 import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
+  CounterConfigSchema,
   habitNeedsEventMetaForCompletion,
   isHabitDayComplete,
   parseHabitConfig,
@@ -27,6 +28,11 @@ import {
   type HabitStreakInput,
 } from './habitStreakFetch';
 import {
+  loadCounterStreakForElement,
+  loadCounterStreakMaps,
+  type CounterStreakInput,
+} from './counterStreakFetch';
+import {
   bumpWriteEpoch,
   captureWriteEpochs,
   getWriteEpoch,
@@ -34,7 +40,7 @@ import {
 } from './writeEpoch';
 import { withDbWriteLock } from '../db/writeLock';
 
-export type { HabitStreakInput };
+export type { HabitStreakInput, CounterStreakInput };
 
 let persistTimersChain: Promise<void> = Promise.resolve();
 
@@ -78,6 +84,7 @@ interface EventState {
   habitDoneToday: Record<string, boolean>;
   habitStreaks: Record<string, number>;
   habitFailureStreaks: Record<string, number>;
+  counterStreaks: Record<string, number>;
   activeTimerSessions: Record<string, ActiveTimerSession>;
   /** True after at least one successful habit day-state load this process. */
   dayStateReady: boolean;
@@ -86,6 +93,7 @@ interface EventState {
   /** Restore in-progress timers after process death (call once at bootstrap). */
   hydrateActiveTimerSessions: () => Promise<void>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
+  loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;
   logEvent: (
@@ -117,6 +125,7 @@ function todayDate(): string {
 let habitDayLoadGeneration = 0;
 let habitStreakLoadGeneration = 0;
 let counterTotalLoadGeneration = 0;
+let counterStreakLoadGeneration = 0;
 /** Bumped on import/clear so in-flight stops don't write into a replaced DB. */
 let dataEpoch = 0;
 const habitToggleInFlight = new Set<string>();
@@ -219,6 +228,34 @@ async function refreshTotal(
   set({ dailyTotals: { ...get().dailyTotals, [elementId]: total } });
 }
 
+/** After a counter write, refresh target-hit streak when the element has a daily target. */
+async function refreshCounterStreakAfterWrite(
+  elementId: string,
+  set: (partial: Partial<EventState>) => void,
+  get: () => EventState,
+): Promise<void> {
+  const writeEpochAtStart = getWriteEpoch(elementId);
+  try {
+    const { useElementStore } = await import('./elementStore');
+    const element = useElementStore.getState().elements.find((el) => el.id === elementId);
+    if (!element || element.kind !== 'counter') return;
+    const parsed = CounterConfigSchema.safeParse(element.config);
+    if (!parsed.success || !parsed.data.dailyTarget) return;
+    const streak = await loadCounterStreakForElement(
+      elementId,
+      parsed.data,
+      element.createdAt,
+    );
+    // A newer + / set-total may have finished while we were querying history.
+    if (getWriteEpoch(elementId) !== writeEpochAtStart) return;
+    set({
+      counterStreaks: { ...get().counterStreaks, [elementId]: streak },
+    });
+  } catch {
+    // Non-fatal — focus refresh will catch up.
+  }
+}
+
 function applyTodayMaps(
   elementId: string,
   date: string,
@@ -258,6 +295,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   habitDoneToday: {},
   habitStreaks: {},
   habitFailureStreaks: {},
+  counterStreaks: {},
   activeTimerSessions: {},
   dayStateReady: false,
   counterTotalsReady: false,
@@ -363,6 +401,20 @@ export const useEventStore = create<EventState>((set, get) => ({
     });
   },
 
+  loadCounterStreaks: async (counters) => {
+    if (counters.length === 0) return;
+    const generation = ++counterStreakLoadGeneration;
+    const epochs = captureWriteEpochs(counters.map((c) => c.id));
+    const streaks = await loadCounterStreakMaps(counters);
+    if (generation !== counterStreakLoadGeneration) return;
+    set({
+      counterStreaks: {
+        ...get().counterStreaks,
+        ...mergeUnchangedEntries(streaks, epochs),
+      },
+    });
+  },
+
   loadHabitDayState: async (habits, date = todayDate()) => {
     if (habits.length === 0) {
       set({ dayStateReady: true });
@@ -444,6 +496,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
       if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
       const ourWriteEpoch = bumpWriteEpoch(elementId);
+      let wrote = false;
       await withDbWriteLock(async () => {
         if (
           dataEpochAtStart !== dataEpoch ||
@@ -470,7 +523,9 @@ export const useEventStore = create<EventState>((set, get) => ({
           return;
         }
         await refreshTotal(elementId, date, set, get);
+        wrote = true;
       });
+      if (wrote) await refreshCounterStreakAfterWrite(elementId, set, get);
     }),
 
   setDailyTotal: (elementId, total, date = todayDate()) =>
@@ -481,6 +536,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
 
       const ourWriteEpoch = bumpWriteEpoch(elementId);
+      let wrote = false;
       await withDbWriteLock(async () => {
         if (
           dataEpochAtStart !== dataEpoch ||
@@ -513,7 +569,9 @@ export const useEventStore = create<EventState>((set, get) => ({
           return;
         }
         await refreshTotal(elementId, date, set, get);
+        wrote = true;
       });
+      if (wrote) await refreshCounterStreakAfterWrite(elementId, set, get);
     }),
 
   toggleHabit: async (elementId, config, date = todayDate()) => {
@@ -827,4 +885,22 @@ export function habitStreakInputsFromElements(
       config: parseHabitConfig(e.config),
       createdAt: e.createdAt ?? null,
     }));
+}
+
+/** Counters with a daily target — inputs for target-hit streak loads. */
+export function counterStreakInputsFromElements(
+  elements: { id: string; kind: string; config: unknown; createdAt?: string | null }[],
+): CounterStreakInput[] {
+  const inputs: CounterStreakInput[] = [];
+  for (const e of elements) {
+    if (e.kind !== 'counter') continue;
+    const parsed = CounterConfigSchema.safeParse(e.config);
+    if (!parsed.success || !parsed.data.dailyTarget) continue;
+    inputs.push({
+      id: e.id,
+      config: parsed.data,
+      createdAt: e.createdAt ?? null,
+    });
+  }
+  return inputs;
 }

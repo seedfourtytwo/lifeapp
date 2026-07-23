@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Button, IconButton, useTheme } from 'react-native-paper';
 import {
   ExpoSpeechRecognitionModule,
@@ -78,6 +79,7 @@ export default function DayNoteDictationButton({
   onFinished,
   onError,
 }: Props) {
+  const { t } = useTranslation('common');
   const theme = useTheme();
   const [availability, setAvailability] = useState<SpeechAvailability>(() =>
     probeSpeechAvailability(),
@@ -94,8 +96,10 @@ export default function DayNoteDictationButton({
   onErrorRef.current = onError;
   const activeRef = useRef(active);
   activeRef.current = active;
-  const blockedRef = useRef(Boolean(disabled || !active));
-  blockedRef.current = Boolean(disabled || !active);
+  const disabledRef = useRef(Boolean(disabled));
+  disabledRef.current = Boolean(disabled);
+  /** True while a session is open — `disabled` must not drop in-flight finals. */
+  const sessionOpenRef = useRef(false);
   const sessionPartsRef = useRef<string[]>([]);
   const finishingRef = useRef(false);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,6 +123,7 @@ export default function DayNoteDictationButton({
     clearStartTimeout();
     sessionPartsRef.current = [];
     finishingRef.current = false;
+    sessionOpenRef.current = false;
     setSessionOpen(false);
     setListening(false);
     setStarting(false);
@@ -131,6 +136,7 @@ export default function DayNoteDictationButton({
     const text = polishDictationTranscript(raw, locale);
     sessionPartsRef.current = [];
     finishingRef.current = false;
+    sessionOpenRef.current = false;
     setSessionOpen(false);
     setListening(false);
     setStarting(false);
@@ -149,20 +155,25 @@ export default function DayNoteDictationButton({
   }, [clearStartTimeout]);
 
   useEffect(() => {
-    if (!active || disabled) {
+    // Closing the sheet (`active=false`) must abort. `disabled` only blocks *new*
+    // starts (via `busy`) — it must not kill an in-flight session (e.g. atLimit
+    // after a flush, or saving briefly disables the control).
+    if (!active) {
       abortRecognitionQuietly();
       resetSession();
     }
-  }, [active, disabled, resetSession]);
+  }, [active, resetSession]);
 
   useSpeechRecognitionEvent('start', () => {
-    if (blockedRef.current) {
+    // Abort only if the sheet closed, or a *new* start raced past a disable.
+    if (!activeRef.current || (disabledRef.current && !sessionOpenRef.current)) {
       abortRecognitionQuietly();
       return;
     }
     clearStartTimeout();
     setStarting(false);
     setListening(true);
+    sessionOpenRef.current = true;
     setSessionOpen(true);
     setError(null);
   });
@@ -176,14 +187,14 @@ export default function DayNoteDictationButton({
   });
 
   useSpeechRecognitionEvent('result', (event) => {
-    if (blockedRef.current || !activeRef.current) return;
+    if (!activeRef.current) return;
     if (!event.isFinal) return;
     const text = bestRecognitionTranscript(event.results);
     if (text) sessionPartsRef.current.push(text);
   });
 
   useSpeechRecognitionEvent('error', (event) => {
-    if (blockedRef.current || !activeRef.current) {
+    if (!activeRef.current) {
       resetSession();
       return;
     }
@@ -210,7 +221,9 @@ export default function DayNoteDictationButton({
   });
 
   const start = useCallback(async () => {
-    if (sessionOpen || listening || starting) return;
+    if (sessionOpen || listening || starting || disabledRef.current || !activeRef.current) {
+      return;
+    }
 
     const probe = probeSpeechAvailability();
     setAvailability(probe);
@@ -225,7 +238,7 @@ export default function DayNoteDictationButton({
     finishingRef.current = false;
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (blockedRef.current || !activeRef.current) {
+      if (disabledRef.current || !activeRef.current) {
         resetSession();
         return;
       }
@@ -235,7 +248,7 @@ export default function DayNoteDictationButton({
         return;
       }
       const prep = await ensureLocalDictationReady();
-      if (blockedRef.current || !activeRef.current) {
+      if (disabledRef.current || !activeRef.current) {
         resetSession();
         return;
       }
@@ -251,7 +264,7 @@ export default function DayNoteDictationButton({
         abortRecognitionQuietly();
         clearAndroidRecognitionPackageCache();
         resetSession();
-        if (!blockedRef.current && activeRef.current) {
+        if (!disabledRef.current && activeRef.current) {
           setError(SPEECH_MSG.timedOut);
         }
       }, START_TIMEOUT_MS);
@@ -264,7 +277,7 @@ export default function DayNoteDictationButton({
       );
     } catch {
       clearAndroidRecognitionPackageCache();
-      if (!blockedRef.current) {
+      if (!disabledRef.current && activeRef.current) {
         setError(SPEECH_MSG.unavailable);
       }
       resetSession();
@@ -293,7 +306,7 @@ export default function DayNoteDictationButton({
     let cancelled = false;
     lastAutoStartTokenRef.current = autoStartToken;
     const timer = setTimeout(() => {
-      if (cancelled || blockedRef.current || !activeRef.current) return;
+      if (cancelled || disabledRef.current || !activeRef.current) return;
       void startRef.current();
     }, 0);
 
@@ -342,9 +355,9 @@ export default function DayNoteDictationButton({
           compact
           onPress={finish}
           disabled={starting}
-          accessibilityLabel="Finish dictation"
+          accessibilityLabel={t('note.finishDictation')}
         >
-          Done
+          {t('actions.done')}
         </Button>
       ) : null}
       <IconButton
@@ -355,7 +368,7 @@ export default function DayNoteDictationButton({
         containerColor={listening ? theme.colors.primary : undefined}
         onPress={() => void start()}
         disabled={busy || sessionOpen}
-        accessibilityLabel="Dictate with microphone"
+        accessibilityLabel={t('note.dictateWithMic')}
         style={styles.mic}
       />
     </View>

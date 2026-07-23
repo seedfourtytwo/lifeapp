@@ -10,6 +10,7 @@ import { useElementStore } from '../store/elementStore';
 import {
   awaitHabitTimerStops,
   bumpEventDataEpoch,
+  counterStreakInputsFromElements,
   habitStreakInputsFromElements,
   useEventStore,
 } from '../store/eventStore';
@@ -51,6 +52,7 @@ export async function reloadStoresAfterImport(
       habitDoneToday: {},
       habitStreaks: {},
       habitFailureStreaks: {},
+      counterStreaks: {},
       dayStateReady: false,
       counterTotalsReady: false,
     });
@@ -77,14 +79,20 @@ export async function reloadStoresAfterImport(
   if (activityCleared) {
     const { elements, dashboard } = useElementStore.getState();
     const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
-    const counterIds = getActiveCounters(elements, dashboard).map((element) => element.id);
+    const counters = getActiveCounters(elements, dashboard);
+    const counterIds = counters.map((element) => element.id);
+    const counterStreakInputs = counterStreakInputsFromElements(counters);
 
-    const { loadHabitDayState, loadHabitStreaks, loadCounterTotals } = useEventStore.getState();
+    const { loadHabitDayState, loadHabitStreaks, loadCounterTotals, loadCounterStreaks } =
+      useEventStore.getState();
     // Always call day/counter loaders — empty inputs still mark *Ready flags true.
     await Promise.all([
       loadHabitDayState(habitInputs),
       habitInputs.length > 0 ? loadHabitStreaks(habitInputs) : Promise.resolve(),
       loadCounterTotals(counterIds),
+      counterStreakInputs.length > 0
+        ? loadCounterStreaks(counterStreakInputs)
+        : Promise.resolve(),
     ]);
 
     void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));

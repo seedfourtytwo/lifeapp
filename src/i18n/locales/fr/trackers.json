@@ -80,7 +80,11 @@
     "customPlaceholder": "ex. 3",
     "add": "Ajouter",
     "dailyTargetLabel": "Objectif quotidien (facultatif)",
-    "dailyTargetPlaceholder": "ex. 50"
+    "dailyTargetPlaceholder": "ex. 50",
+    "streakSectionTitle": "Série",
+    "streakSectionDescription": "Affichée sous le nom du compteur lorsque vous avez un objectif quotidien.",
+    "showStreakLabel": "Afficher la série sur la carte",
+    "showStreakHint": "Compte les jours consécutifs où vous atteignez l'objectif — même avant le total du jour"
   },
   "habitFields": {
     "typeSectionTitle": "Type",
@@ -158,7 +162,9 @@
     "totalLabel": "Total ({{unit}})",
     "invalidTotalTitle": "Total invalide",
     "invalidTotalBody": "Entrez un nombre entier supérieur ou égal à zéro.",
-    "couldNotUpdateTitle": "Mise à jour impossible"
+    "couldNotUpdateTitle": "Mise à jour impossible",
+    "streakOne": "Série de 1 jour",
+    "streakMany": "Série de {{count}} jours"
   },
   "habitWidget": {
     "markDone": "Marquer fait",

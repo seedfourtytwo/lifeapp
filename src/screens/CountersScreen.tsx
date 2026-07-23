@@ -52,14 +52,16 @@ export default function CountersScreen({
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const reorderCounter = useElementStore((s) => s.reorderCounter);
-  const { dailyTotals, logEvent, setDailyTotal, counterTotalsReady } = useEventStore(
-    useShallow((s) => ({
-      dailyTotals: s.dailyTotals,
-      logEvent: s.logEvent,
-      setDailyTotal: s.setDailyTotal,
-      counterTotalsReady: s.counterTotalsReady,
-    })),
-  );
+  const { dailyTotals, counterStreaks, logEvent, setDailyTotal, counterTotalsReady } =
+    useEventStore(
+      useShallow((s) => ({
+        dailyTotals: s.dailyTotals,
+        counterStreaks: s.counterStreaks,
+        logEvent: s.logEvent,
+        setDailyTotal: s.setDailyTotal,
+        counterTotalsReady: s.counterTotalsReady,
+      })),
+    );
   const [refreshing, setRefreshing] = useState(false);
   const [reordering, setReordering] = useState(false);
   const now = useAppCalendarNow();
@@ -228,6 +230,7 @@ export default function CountersScreen({
                     element={element}
                     config={config}
                     todayTotal={dailyTotals[element.id] ?? 0}
+                    streak={counterStreaks[element.id] ?? 0}
                     onLog={(value, meta) =>
                       logEvent(element.id, value, meta).catch((err) => {
                         Alert.alert(

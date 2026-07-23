@@ -27,21 +27,23 @@ function truncateNoteBody(text: string, maxLength: number): string {
 /**
  * Append a dictated phrase as its own paragraph.
  * Trailing newline so the next dictation (or typing) starts on a new line.
+ * `maxLength` defaults to the protocol absolute max.
  */
 export function appendTranscript(
   existing: string,
   transcript: string,
+  maxLength: number = DAY_NOTE_BODY_MAX_LENGTH,
 ): AppendTranscriptResult {
   const next = transcript.trim();
   if (!next) return { text: existing, truncated: false };
 
   const trimmed = existing.trimEnd();
   const joined = trimmed ? `${trimmed}\n${next}\n` : `${next}\n`;
-  if (joined.length <= DAY_NOTE_BODY_MAX_LENGTH) {
+  if (joined.length <= maxLength) {
     return { text: joined, truncated: false };
   }
   return {
-    text: truncateNoteBody(joined, DAY_NOTE_BODY_MAX_LENGTH),
+    text: truncateNoteBody(joined, maxLength),
     truncated: true,
   };
 }

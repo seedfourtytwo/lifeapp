@@ -87,6 +87,7 @@ export function parseTrackerEditorSave(
         name: data.name,
         quickIncrements: parseIncrements(data.increments),
         dailyTarget: parseDailyTarget(data.dailyTarget),
+        showStreakOnCard: data.showStreakOnCard,
       },
     };
   }

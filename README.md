@@ -80,28 +80,51 @@ npm test
 
 ### GrapheneOS / dev client (recommended)
 
-Install a **development** build once, then use Metro for JS updates:
+**Default:** build the development client **locally**, install as a side-by-side **dev** app, then use Metro for JS.
+
+| App on phone | Package | Label |
+|--------------|---------|-------|
+| Local coding | `com.lifeapp.dashboard.dev` | **dev** |
+| EAS / release | `com.lifeapp.dashboard` | **prod** |
 
 ```bash
-eas build --platform android --profile development   # dev client + hot reload
-eas build --platform android --profile preview       # standalone APK (no hot reload)
+export ANDROID_HOME="$HOME/Android/Sdk"   # if not already in your shell
+export JAVA_HOME="$HOME/.local/jdk-21"    # Temurin JDK used for Gradle
+
+# Build debug APK (arm64 phone; lighter than multi-arch):
+cd android && ./gradlew assembleDebug \
+  -PreactNativeArchitectures=arm64-v8a \
+  --max-workers=2
+
+# Install (wireless ADB is preferred on GrapheneOS):
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Connect Metro on LAN (phone and laptop on same network; VPN off):
+**GrapheneOS tip:** USB often stays on “No data transfer”. Use **Wireless debugging** (`adb pair` / `adb connect`) instead of MTP.
+
+**Optional backup:** Expo.dev when local SDK isn’t available (free-plan quota applies):
+
+```bash
+npx eas-cli build --platform android --profile development   # cloud APK
+npx eas-cli build --platform android --profile preview       # standalone APK (no hot reload)
+```
+
+Connect Metro on LAN (phone and laptop on same Wi‑Fi; VPN off):
 
 ```bash
 CI=0 EXPO_NO_TELEMETRY=1 npx expo start --dev-client --lan --port 8081
 ```
 
-Open the dev client and enter `http://<laptop-ip>:8081`.
+Open the **dev** app and enter `http://<laptop-wifi-ip>:8081`.
 
-### What needs a fresh dev build?
+### What needs a fresh native build?
 
-| Feature | Metro reload only | New dev/preview APK |
-|---------|-------------------|---------------------|
+| Feature | Metro reload only | New local (or EAS) APK |
+|---------|-------------------|------------------------|
 | Habits, counters, archive, export, delete-all | ✓ | |
 | Local calendar (no new native modules) | ✓ | |
 | Backup **import** (`expo-document-picker`) | | ✓ |
+| Note/journal **copy to clipboard** (`expo-clipboard`) | | ✓ |
 | Background timer audio, habit reminders | | ✓ |
 | Weather phone location (`expo-location`) | | ✓ |
 | Habit complete haptics (`expo-haptics`) | | ✓ |

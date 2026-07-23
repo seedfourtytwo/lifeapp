@@ -6,6 +6,8 @@ export const CounterConfigSchema = z.object({
   allowNegative: z.boolean().optional(),
   /** Optional daily goal for progress styling on the counter card */
   dailyTarget: z.number().int().positive().optional(),
+  /** Show target-hit streak under the name (only meaningful with dailyTarget). */
+  showStreakOnCard: z.boolean().optional(),
 });
 
 export type CounterConfig = z.infer<typeof CounterConfigSchema>;
@@ -26,6 +28,7 @@ export type CounterInput = {
   name: string;
   quickIncrements: number[];
   dailyTarget?: number;
+  showStreakOnCard?: boolean;
 };
 
 export function formatCounterUnit(count: number, unit: string): string {
@@ -39,14 +42,26 @@ export function formatCounterUnit(count: number, unit: string): string {
   return formatted;
 }
 
+/** Target-hit streak on the card — default on when a daily target exists. */
+export function shouldShowCounterStreakOnCard(config: CounterConfig): boolean {
+  if (!config.dailyTarget || config.dailyTarget <= 0) return false;
+  return config.showStreakOnCard !== false;
+}
+
 export function buildCounterConfig(
   existing: Partial<CounterConfig>,
-  input: Pick<CounterInput, 'quickIncrements' | 'dailyTarget'>,
+  input: Pick<CounterInput, 'quickIncrements' | 'dailyTarget' | 'showStreakOnCard'>,
 ): CounterConfig {
+  const hasTarget = Boolean(input.dailyTarget && input.dailyTarget > 0);
   return {
     unit: existing.unit ?? DEFAULT_COUNTER_CONFIG.unit,
     quickIncrements: input.quickIncrements,
     ...(existing.allowNegative !== undefined ? { allowNegative: existing.allowNegative } : {}),
-    ...(input.dailyTarget && input.dailyTarget > 0 ? { dailyTarget: input.dailyTarget } : {}),
+    ...(hasTarget ? { dailyTarget: input.dailyTarget } : {}),
+    ...(hasTarget
+      ? input.showStreakOnCard === false
+        ? { showStreakOnCard: false }
+        : { showStreakOnCard: true }
+      : {}),
   };
 }
