@@ -101,6 +101,7 @@ export {
   shouldShowHabitStreakOnCard,
   formatHabitDescription,
   formatHabitTimerDuration,
+  formatHabitHomeTimerLabel,
   timerSessionDurationSeconds,
   buildTimerSessionPayload,
   buildTimerSessionPayloadFromDuration,

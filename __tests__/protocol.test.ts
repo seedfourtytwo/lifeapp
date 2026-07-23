@@ -6,6 +6,7 @@ import {
   HabitEventMetaSchema,
   buildCounterConfig,
   buildHabitConfig,
+  formatHabitHomeTimerLabel,
   isHabitDayComplete,
   parseElementDefinition,
   parseProtocolBundle,
@@ -283,5 +284,51 @@ describe('parseProtocolBundle', () => {
 
     expect(bundle.protocolVersion).toBe(1);
     expect(bundle.events).toEqual([]);
+  });
+});
+
+describe('formatHabitHomeTimerLabel', () => {
+  it('shows target only while idle with no progress', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: 900,
+        isRunning: false,
+      }),
+    ).toBe('15:00');
+  });
+
+  it('shows elapsed / target once running or after progress', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: 900,
+        isRunning: true,
+      }),
+    ).toBe('0:00 / 15:00');
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 125,
+        effectiveTargetSeconds: 900,
+        isRunning: false,
+      }),
+    ).toBe('2:05 / 15:00');
+  });
+
+  it('hides open-ended idle totals and shows elapsed once active', () => {
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 0,
+        effectiveTargetSeconds: undefined,
+        isRunning: false,
+      }),
+    ).toBeNull();
+    expect(
+      formatHabitHomeTimerLabel({
+        displayTotal: 45,
+        effectiveTargetSeconds: undefined,
+        isRunning: false,
+      }),
+    ).toBe('0:45');
   });
 });

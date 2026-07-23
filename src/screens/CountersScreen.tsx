@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +22,7 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import ReorderControls from './shared/ReorderControls';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
+import { HomeTabScrollView } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 type Props = {
@@ -65,7 +66,6 @@ export default function CountersScreen({
         counterTotalsReady: s.counterTotalsReady,
       })),
     );
-  const [refreshing, setRefreshing] = useState(false);
   const [reordering, setReordering] = useState(false);
   const now = useAppCalendarNow();
 
@@ -103,14 +103,9 @@ export default function CountersScreen({
     return configs;
   }, [counters]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await refreshAllCounterData();
-      await reloadNotesToday();
-    } finally {
-      setRefreshing(false);
-    }
+  const reload = useCallback(async () => {
+    await refreshAllCounterData();
+    await reloadNotesToday();
   }, [reloadNotesToday]);
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
@@ -152,22 +147,13 @@ export default function CountersScreen({
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void onRefresh()}
-            enabled={!reordering}
-          />
-        }
-      >
+      <HomeTabScrollView contentContainerStyle={styles.container}>
         {error ? (
           <View style={styles.errorBox}>
             <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
-          <Button mode="outlined" onPress={() => void onRefresh()}>
-            {t('countersTab.retry')}
-          </Button>
+            <Button mode="outlined" onPress={() => void reload()}>
+              {t('countersTab.retry')}
+            </Button>
           </View>
         ) : null}
 
@@ -276,7 +262,7 @@ export default function CountersScreen({
             );
           })
         )}
-      </ScrollView>
+      </HomeTabScrollView>
       {editorHost}
     </>
   );

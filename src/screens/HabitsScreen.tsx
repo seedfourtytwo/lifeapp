@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -20,6 +20,7 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
+import { HomeTabScrollView } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 type Props = {
@@ -55,7 +56,6 @@ export default function HabitsScreen({
   const reorderHabit = useElementStore((s) => s.reorderHabit);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
-  const [refreshing, setRefreshing] = useState(false);
   const now = useAppCalendarNow();
   const [reordering, setReordering] = useState(false);
 
@@ -123,14 +123,9 @@ export default function HabitsScreen({
     [habits, habitDoneToday],
   );
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refreshAllHabitData();
-      await reloadNotesToday();
-    } finally {
-      setRefreshing(false);
-    }
+  const reload = async () => {
+    await refreshAllHabitData();
+    await reloadNotesToday();
   };
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
@@ -194,20 +189,11 @@ export default function HabitsScreen({
 
   return (
     <>
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => void onRefresh()}
-          enabled={!reordering}
-        />
-      }
-    >
+    <HomeTabScrollView contentContainerStyle={styles.container}>
       {error ? (
         <View style={styles.errorBox}>
           <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
-          <Button mode="outlined" onPress={() => void onRefresh()}>
+          <Button mode="outlined" onPress={() => void reload()}>
             {t('habitsTab.retry')}
           </Button>
         </View>
@@ -308,8 +294,8 @@ export default function HabitsScreen({
           );
         })
       )}
-    </ScrollView>
-    {editorHost}
+    </HomeTabScrollView>
+      {editorHost}
     </>
   );
 }

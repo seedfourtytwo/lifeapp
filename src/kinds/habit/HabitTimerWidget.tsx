@@ -6,7 +6,7 @@ import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import {
-  formatHabitTimerDuration,
+  formatHabitHomeTimerLabel,
   getHabitTimerEffectiveTargetSeconds,
   getHabitTimerPlaybackMode,
   hasHabitTimerSound,
@@ -142,10 +142,12 @@ export function HabitTimerWidget({
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
   const progressBarColors = getCounterProgressBarColors(themeMode);
 
-  const totalLabel =
-    hasCompletionTarget && effectiveTarget
-      ? `${formatHabitTimerDuration(displayTotal)} / ${formatHabitTimerDuration(effectiveTarget)}`
-      : formatHabitTimerDuration(displayTotal);
+  /** Idle + zero today: show target only (or hide for open-ended). Elapsed appears once started. */
+  const totalLabel = formatHabitHomeTimerLabel({
+    displayTotal,
+    effectiveTargetSeconds: effectiveTarget,
+    isRunning,
+  });
 
   const metaColor = isComplete
     ? theme.colors.primary
@@ -193,14 +195,16 @@ export function HabitTimerWidget({
         />
 
         <View style={styles.trailingCluster}>
-          <Text
-            variant="titleSmall"
-            numberOfLines={1}
-            style={[styles.timerLabel, { color: metaColor }]}
-            accessibilityLabel={totalLabel}
-          >
-            {totalLabel}
-          </Text>
+          {totalLabel ? (
+            <Text
+              variant="titleSmall"
+              numberOfLines={1}
+              style={[styles.timerLabel, { color: metaColor }]}
+              accessibilityLabel={totalLabel}
+            >
+              {totalLabel}
+            </Text>
+          ) : null}
 
           <ActionBubbleTray
             open={resetBubblesOpen}

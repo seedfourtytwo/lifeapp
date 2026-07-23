@@ -294,6 +294,29 @@ export function formatHabitTimerDuration(totalSeconds: number): string {
   return `${minutes}:${remainder.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Home timer card meta: target-only while idle with no progress; elapsed/target
+ * once running or after any logged time. Open-ended idle → null (hide label).
+ */
+export function formatHabitHomeTimerLabel(options: {
+  displayTotal: number;
+  effectiveTargetSeconds: number | undefined;
+  isRunning: boolean;
+}): string | null {
+  const { displayTotal, effectiveTargetSeconds, isRunning } = options;
+  const showElapsed = isRunning || displayTotal > 0;
+  const hasTarget =
+    effectiveTargetSeconds !== undefined && effectiveTargetSeconds > 0;
+
+  if (hasTarget) {
+    return showElapsed
+      ? `${formatHabitTimerDuration(displayTotal)} / ${formatHabitTimerDuration(effectiveTargetSeconds)}`
+      : formatHabitTimerDuration(effectiveTargetSeconds);
+  }
+
+  return showElapsed ? formatHabitTimerDuration(displayTotal) : null;
+}
+
 export function timerSessionDurationSeconds(startedAt: Date, endedAt: Date): number {
   return Math.max(1, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000));
 }
