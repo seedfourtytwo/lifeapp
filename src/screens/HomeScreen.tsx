@@ -65,7 +65,6 @@ export default function HomeScreen() {
   const [trackerDragActive, setTrackerDragActive] = useState(false);
   const now = useAppCalendarNow();
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
-  const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
@@ -135,7 +134,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [weatherWidgetEnabled, weatherLocationMode, refreshWeather]);
 
-  const showChrome = weatherWidgetEnabled || calendarWidgetEnabled;
+  const showChrome = weatherWidgetEnabled;
   const activeColor = isCartoon
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
