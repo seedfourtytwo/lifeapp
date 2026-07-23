@@ -5,10 +5,6 @@ const BUBBLE_WIDTH = 112;
 const BUBBLE_HEIGHT = 72;
 const BUBBLE_RADIUS = 18;
 
-/** Calendar-only chrome when the weather widget is off. */
-const CAL_ONLY_WIDTH = 64;
-const CAL_ONLY_HEIGHT = 72;
-
 /** Expanded forecast strip. */
 const STRIP_DAY_WIDTH = 52;
 const STRIP_HEIGHT = 100;
@@ -16,21 +12,15 @@ const STRIP_PAD_H = 6;
 const STRIP_GAP = 8;
 const EXPAND_DAY_COUNT = 4;
 
-/** Calendar affordance under the weather chip. */
-const CAL_CHIP_SIZE = 40;
-
 export {
   BUBBLE_WIDTH,
   BUBBLE_HEIGHT,
   BUBBLE_RADIUS,
-  CAL_ONLY_WIDTH,
-  CAL_ONLY_HEIGHT,
   STRIP_DAY_WIDTH,
   STRIP_HEIGHT,
   STRIP_PAD_H,
   STRIP_GAP,
   EXPAND_DAY_COUNT,
-  CAL_CHIP_SIZE,
   EDGE_PAD,
   DOCK_RESERVE,
 };
