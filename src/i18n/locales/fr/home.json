@@ -7,19 +7,13 @@
   "habitsTab": {
     "remaining": "{{count}} restantes",
     "doneOfTotal": "{{done}} sur {{total}}",
-    "reorderHint": "Déplacez pour définir l'ordre",
-    "sort": "Trier",
-    "done": "Terminé",
     "retry": "Réessayer",
     "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
     "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
     "emptyNothingDueToday": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis."
   },
   "countersTab": {
-    "moveWithArrows": "Déplacez avec les flèches",
     "resetsAtMidnight": "Aujourd'hui · remis à zéro à minuit",
-    "sort": "Trier",
-    "done": "Terminé",
     "retry": "Réessayer",
     "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
     "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",

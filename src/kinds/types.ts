@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { GestureResponderEvent } from 'react-native';
 import type { ActiveTimerSession, ElementDefinition, ElementKind, LifeEvent } from '../protocol';
 
 export interface WidgetProps<TConfig = Record<string, unknown>> {
@@ -21,6 +22,13 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   onTimerPress?: () => void | Promise<void>;
   onTimerFinish?: () => void | Promise<void>;
   onResetToday?: () => void | Promise<void>;
+  /** Long-press title to drag-reorder on Home (Habits / Counters). */
+  onLongPressReorder?: (event: GestureResponderEvent) => void;
+  onReorderTouchMove?: (event: GestureResponderEvent) => void;
+  onReorderTouchEnd?: (event: GestureResponderEvent) => void;
+  onReorderTouchCancel?: (event: GestureResponderEvent) => void;
+  delayLongPressReorder?: number;
+  reorderHint?: string;
 }
 
 export interface KindHandler<TConfig = Record<string, unknown>> {

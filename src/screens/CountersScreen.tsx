@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -19,10 +19,13 @@ import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
-import ReorderControls from './shared/ReorderControls';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
-import { HomeTabScrollView } from './shared/HomeTabScrollView';
+import { DraggableTrackerList } from './shared/DraggableTrackerList';
+import {
+  HomeTabScrollView,
+  type HomeTabScrollViewHandle,
+} from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 type Props = {
@@ -35,6 +38,8 @@ type Props = {
   onBeforeOpenTrackerNote?: () => void;
   /** Lets Home lock Habit↔Counter swipe while this tab's note sheet is open. */
   onTrackerNotesOpenChange?: (open: boolean) => void;
+  /** Lets Home lock Habit↔Counter swipe while dragging to reorder. */
+  onTrackerDragActiveChange?: (active: boolean) => void;
 };
 
 export default function CountersScreen({
@@ -45,6 +50,7 @@ export default function CountersScreen({
   notesActive = true,
   onBeforeOpenTrackerNote,
   onTrackerNotesOpenChange,
+  onTrackerDragActiveChange,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
@@ -55,7 +61,7 @@ export default function CountersScreen({
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
-  const reorderCounter = useElementStore((s) => s.reorderCounter);
+  const reorderCounterToOrder = useElementStore((s) => s.reorderCounterToOrder);
   const { dailyTotals, counterStreaks, logEvent, setDailyTotal, counterTotalsReady } =
     useEventStore(
       useShallow((s) => ({
@@ -66,8 +72,14 @@ export default function CountersScreen({
         counterTotalsReady: s.counterTotalsReady,
       })),
     );
-  const [reordering, setReordering] = useState(false);
   const now = useAppCalendarNow();
+  const [scrollLocked, setScrollLocked] = useState(false);
+  const scrollRef = useRef<HomeTabScrollViewHandle>(null);
+
+  useEffect(() => {
+    if (notesActive) return;
+    setScrollLocked(false);
+  }, [notesActive]);
 
   useRefreshCounterTotalsOnFocus();
 
@@ -101,6 +113,11 @@ export default function CountersScreen({
       configs.set(element.id, CounterConfigSchema.parse(element.config));
     }
     return configs;
+  }, [counters]);
+
+  const counterById = useMemo(() => {
+    const map = new Map(counters.map((element) => [element.id, element]));
+    return map;
   }, [counters]);
 
   const reload = useCallback(async () => {
@@ -147,7 +164,11 @@ export default function CountersScreen({
 
   return (
     <>
-      <HomeTabScrollView contentContainerStyle={styles.container}>
+      <HomeTabScrollView
+        ref={scrollRef}
+        scrollLocked={scrollLocked}
+        contentContainerStyle={styles.container}
+      >
         {error ? (
           <View style={styles.errorBox}>
             <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
@@ -164,29 +185,8 @@ export default function CountersScreen({
           leading={
             counters.length > 0 ? (
               <Text variant="bodyMedium" numberOfLines={1}>
-                {reordering
-                  ? t('countersTab.moveWithArrows')
-                  : t('countersTab.resetsAtMidnight')}
+                {t('countersTab.resetsAtMidnight')}
               </Text>
-            ) : null
-          }
-          trailing={
-            counters.length > 0 ? (
-              reordering ? (
-                <Button compact mode="text" onPress={() => setReordering(false)}>
-                  {t('countersTab.done')}
-                </Button>
-              ) : (
-                <Button
-                  mode="text"
-                  compact
-                  icon="sort"
-                  disabled={counters.length < 2}
-                  onPress={() => setReordering(true)}
-                >
-                  {t('countersTab.sort')}
-                </Button>
-              )
             ) : null
           }
         />
@@ -200,67 +200,82 @@ export default function CountersScreen({
             }
           />
         ) : (
-          counters.map((element, index) => {
-            const handler = getKindHandler(element.kind);
-            if (!handler) return null;
+          <DraggableTrackerList
+            itemIds={counterIds}
+            scrollRef={scrollRef}
+            onDragActiveChange={(active) => {
+              setScrollLocked(active);
+              onTrackerDragActiveChange?.(active);
+            }}
+            onReorder={(nextIds) =>
+              reorderCounterToOrder(nextIds).catch((error) => {
+                Alert.alert(
+                  tCommon('alerts.couldNotSave'),
+                  error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+                );
+                throw error;
+              })
+            }
+            renderItem={(id, drag) => {
+              const element = counterById.get(id);
+              if (!element) return null;
+              const handler = getKindHandler(element.kind);
+              if (!handler) return null;
+              const Widget = handler.DashboardWidget;
+              const config = counterConfigs.get(element.id);
+              if (!config) return null;
+              const canReorder = drag.canDrag;
 
-            const Widget = handler.DashboardWidget;
-            const config = counterConfigs.get(element.id);
-            if (!config) return null;
-
-            return (
-              <View key={element.id} style={styles.reorderRow}>
-                {reordering ? (
-                  <ReorderControls
-                    canMoveUp={index > 0}
-                    canMoveDown={index < counters.length - 1}
-                    onMoveUp={() => void reorderCounter(element.id, 'up')}
-                    onMoveDown={() => void reorderCounter(element.id, 'down')}
-                    accessibilityNoun={tTrackers('kindLabel.counter')}
-                  />
-                ) : null}
-                <View style={styles.reorderCard}>
-                  <Widget
-                    element={element}
-                    config={config}
-                    todayTotal={dailyTotals[element.id] ?? 0}
-                    streak={counterStreaks[element.id] ?? 0}
-                    onLog={(value, meta) =>
-                      logEvent(element.id, value, meta).catch((err) => {
-                        Alert.alert(
-                          tCommon('alerts.couldNotLog'),
-                          err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
-                        );
-                      })
-                    }
-                    onSetDailyTotal={async (total) => {
-                      // Errors surface in CounterWidget's edit sheet (avoid double Alert).
-                      await setDailyTotal(element.id, total);
-                    }}
-                    onOpenDetails={() =>
-                      navigation.navigate('TrackerHistory', { elementId: element.id })
-                    }
-                    hasTodayNote={notesToday.has(element.id)}
-                    onDictateNote={() => {
-                      onBeforeOpenTrackerNote?.();
-                      void noteEditor.open(
-                        { kind: 'tracker', elementId: element.id, label: element.name },
-                        currentAppCalendarDate(now),
-                        { dictate: true },
+              return (
+                <Widget
+                  element={element}
+                  config={config}
+                  todayTotal={dailyTotals[element.id] ?? 0}
+                  streak={counterStreaks[element.id] ?? 0}
+                  onLongPressReorder={canReorder ? drag.onLongPress : undefined}
+                  delayLongPressReorder={drag.delayLongPress}
+                  onReorderTouchMove={canReorder ? drag.onTouchMove : undefined}
+                  onReorderTouchEnd={canReorder ? drag.onTouchEnd : undefined}
+                  onReorderTouchCancel={canReorder ? drag.onTouchCancel : undefined}
+                  reorderHint={
+                    canReorder
+                      ? tTrackers('counterWidget.reorderLongPressHint')
+                      : undefined
+                  }
+                  onLog={(value, meta) =>
+                    logEvent(element.id, value, meta).catch((err) => {
+                      Alert.alert(
+                        tCommon('alerts.couldNotLog'),
+                        err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
                       );
-                    }}
-                    onEditNote={() => {
-                      onBeforeOpenTrackerNote?.();
-                      void noteEditor.open(
-                        { kind: 'tracker', elementId: element.id, label: element.name },
-                        currentAppCalendarDate(now),
-                      );
-                    }}
-                  />
-                </View>
-              </View>
-            );
-          })
+                    })
+                  }
+                  onSetDailyTotal={async (total) => {
+                    await setDailyTotal(element.id, total);
+                  }}
+                  onOpenDetails={() =>
+                    navigation.navigate('TrackerHistory', { elementId: element.id })
+                  }
+                  hasTodayNote={notesToday.has(element.id)}
+                  onDictateNote={() => {
+                    onBeforeOpenTrackerNote?.();
+                    void noteEditor.open(
+                      { kind: 'tracker', elementId: element.id, label: element.name },
+                      currentAppCalendarDate(now),
+                      { dictate: true },
+                    );
+                  }}
+                  onEditNote={() => {
+                    onBeforeOpenTrackerNote?.();
+                    void noteEditor.open(
+                      { kind: 'tracker', elementId: element.id, label: element.name },
+                      currentAppCalendarDate(now),
+                    );
+                  }}
+                />
+              );
+            }}
+          />
         )}
       </HomeTabScrollView>
       {editorHost}

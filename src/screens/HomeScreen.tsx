@@ -61,6 +61,8 @@ export default function HomeScreen() {
   const [hasTodayJournal, setHasTodayJournal] = useState(false);
   /** Tracker note sheet open on the active Habits/Counters tab. */
   const [trackerNotesOpen, setTrackerNotesOpen] = useState(false);
+  /** Row drag-reorder active — lock Habit↔Counter pager. */
+  const [trackerDragActive, setTrackerDragActive] = useState(false);
   const now = useAppCalendarNow();
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
@@ -77,10 +79,12 @@ export default function HomeScreen() {
 
   const journalOpen = noteEditor.session != null;
   const notesSheetOpen = journalOpen || trackerNotesOpen;
+  const pagerLocked = notesSheetOpen || trackerDragActive;
 
   useEffect(() => {
     // Inactive tab dismisses its sheet; clear the swipe lock until the active tab reports.
     setTrackerNotesOpen(false);
+    setTrackerDragActive(false);
   }, [tab]);
 
   useDayRolloverRefresh();
@@ -195,7 +199,7 @@ export default function HomeScreen() {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
-          scrollEnabled={!notesSheetOpen}
+          scrollEnabled={!pagerLocked}
           onMomentumScrollEnd={onPagerMomentumEnd}
           scrollEventThrottle={16}
           style={styles.pager}
@@ -219,6 +223,7 @@ export default function HomeScreen() {
               notesActive={tab === 'habits'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}
               onTrackerNotesOpenChange={setTrackerNotesOpen}
+              onTrackerDragActiveChange={setTrackerDragActive}
             />
           </View>
           <View
@@ -240,6 +245,7 @@ export default function HomeScreen() {
               notesActive={tab === 'counters'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}
               onTrackerNotesOpenChange={setTrackerNotesOpen}
+              onTrackerDragActiveChange={setTrackerDragActive}
             />
           </View>
         </ScrollView>

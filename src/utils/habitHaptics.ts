@@ -47,3 +47,14 @@ export async function playChartSelectHaptic(): Promise<void> {
     // Ignore
   }
 }
+
+/** Medium impact when a Home list drag-reorder activates. */
+export async function playReorderDragHaptic(): Promise<void> {
+  const Haptics = await getHaptics();
+  if (!Haptics) return;
+  try {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  } catch {
+    // Ignore
+  }
+}

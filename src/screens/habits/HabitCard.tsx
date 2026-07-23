@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Alert } from 'react-native';
+import { Alert, type GestureResponderEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
@@ -15,6 +15,12 @@ type Props = {
   hasTodayNote?: boolean;
   onDictateNote?: () => void;
   onEditNote?: () => void;
+  onLongPressReorder?: (event: GestureResponderEvent) => void;
+  onReorderTouchMove?: (event: GestureResponderEvent) => void;
+  onReorderTouchEnd?: (event: GestureResponderEvent) => void;
+  onReorderTouchCancel?: (event: GestureResponderEvent) => void;
+  delayLongPressReorder?: number;
+  reorderHint?: string;
 };
 
 export default function HabitCard({
@@ -23,6 +29,12 @@ export default function HabitCard({
   hasTodayNote,
   onDictateNote,
   onEditNote,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
@@ -60,6 +72,12 @@ export default function HabitCard({
       hasTodayNote={hasTodayNote}
       onDictateNote={onDictateNote}
       onEditNote={onEditNote}
+      onLongPressReorder={onLongPressReorder}
+      delayLongPressReorder={delayLongPressReorder}
+      onReorderTouchMove={onReorderTouchMove}
+      onReorderTouchEnd={onReorderTouchEnd}
+      onReorderTouchCancel={onReorderTouchCancel}
+      reorderHint={reorderHint}
       onToggle={() =>
         toggleHabit(habit.id, config).catch((error) => {
           Alert.alert(
@@ -70,8 +88,8 @@ export default function HabitCard({
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
       onTimerFinish={async () => {
-        // Manual Done / seconds-target auto-finish ends the session early.
-        // For play_once, only a natural track end sets trackCompleted — false here.
+        // Open-ended Done anytime; seconds-target Done after goal (banks overtime).
+        // play_once natural end sets trackCompleted elsewhere — false here.
         try {
           await handleFinishTimer(habit.id, config, false);
         } catch (error) {

@@ -10,18 +10,15 @@ type Props = {
   onOpenJournal: () => void;
   /** Long-press: open today's journal for edit. */
   onEditJournal?: () => void;
-  /** Optional trailing control (Sort / Done). */
-  trailing?: React.ReactNode;
   /** Leading status text / empty spacer. */
   leading?: React.ReactNode;
 };
 
-/** Shared Habits/Counters top row: status · journal note · sort. */
+/** Shared Habits/Counters top row: status · journal note. */
 export default function HomeTabMetaRow({
   hasTodayJournal,
   onOpenJournal,
   onEditJournal,
-  trailing,
   leading,
 }: Props) {
   const { t } = useTranslation('common');
@@ -37,7 +34,6 @@ export default function HomeTabMetaRow({
           size={22}
           style={styles.metaIconButton}
         />
-        {trailing}
       </View>
     </View>
   );

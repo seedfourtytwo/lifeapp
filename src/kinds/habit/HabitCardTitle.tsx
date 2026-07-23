@@ -1,5 +1,9 @@
-import React from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useRef } from 'react';
+import {
+  Pressable,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
@@ -11,33 +15,89 @@ type Props = {
   /** Full streak phrase for screen readers. */
   streakAccessibilityLabel?: string | null;
   onOpenDetails?: () => void;
+  /** Long-press on the title starts Home list drag-reorder. */
+  onLongPressReorder?: (event: GestureResponderEvent) => void;
+  onReorderTouchMove?: (event: GestureResponderEvent) => void;
+  onReorderTouchEnd?: (event: GestureResponderEvent) => void;
+  onReorderTouchCancel?: (event: GestureResponderEvent) => void;
+  delayLongPressReorder?: number;
+  reorderHint?: string;
 };
 
-/** Shared name + optional inline streak for habit Home one-liners. */
+/**
+ * Shared name + optional inline streak for habit Home one-liners.
+ * Reorder touch handlers stay on this Pressable so the activating finger can drag.
+ */
 export function HabitCardTitle({
   name,
   streakDays = null,
   streakAccessibilityLabel = null,
   onOpenDetails,
+  onLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  delayLongPressReorder = 380,
+  reorderHint,
 }: Props) {
   const theme = useTheme();
+  const suppressNextPress = useRef(false);
   const showStreak = streakDays != null && streakDays > 0;
+  const label =
+    showStreak && streakAccessibilityLabel
+      ? `${name}, ${streakAccessibilityLabel}`
+      : name;
 
   return (
     <Pressable
-      onPress={onOpenDetails}
-      disabled={!onOpenDetails}
+      onPress={() => {
+        if (suppressNextPress.current) {
+          suppressNextPress.current = false;
+          return;
+        }
+        onOpenDetails?.();
+      }}
+      onLongPress={
+        onLongPressReorder
+          ? (event) => {
+              suppressNextPress.current = true;
+              onLongPressReorder(event);
+            }
+          : undefined
+      }
+      delayLongPress={delayLongPressReorder}
+      onTouchMove={onLongPressReorder ? onReorderTouchMove : undefined}
+      onTouchEnd={
+        onLongPressReorder
+          ? (event) => {
+              onReorderTouchEnd?.(event);
+              // RN skips onPress after a successful long-press, so clear the
+              // suppress flag for the *next* tap (details / counter open).
+              requestAnimationFrame(() => {
+                suppressNextPress.current = false;
+              });
+            }
+          : undefined
+      }
+      onTouchCancel={
+        onLongPressReorder
+          ? (event) => {
+              onReorderTouchCancel?.(event);
+              requestAnimationFrame(() => {
+                suppressNextPress.current = false;
+              });
+            }
+          : undefined
+      }
+      disabled={!onOpenDetails && !onLongPressReorder}
       style={({ pressed }) => [
         styles.titlePress,
         styles.titleInline,
-        pressed && onOpenDetails && styles.pressed,
+        pressed && (onOpenDetails || onLongPressReorder) && styles.pressed,
       ]}
-      accessibilityRole={onOpenDetails ? 'button' : undefined}
-      accessibilityLabel={
-        showStreak && streakAccessibilityLabel
-          ? `${name}, ${streakAccessibilityLabel}`
-          : name
-      }
+      accessibilityRole={onOpenDetails || onLongPressReorder ? 'button' : undefined}
+      accessibilityLabel={label}
+      accessibilityHint={onLongPressReorder ? reorderHint : undefined}
     >
       <Text
         variant="titleMedium"

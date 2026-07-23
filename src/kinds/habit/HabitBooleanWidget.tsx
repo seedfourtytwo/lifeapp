@@ -25,6 +25,12 @@ export function HabitBooleanWidget({
   onEditNote,
   hasTodayNote,
   streak,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
@@ -40,6 +46,12 @@ export function HabitBooleanWidget({
           streakDays={streakDays}
           streakAccessibilityLabel={streakLabel}
           onOpenDetails={onOpenDetails}
+          onLongPressReorder={onLongPressReorder}
+          delayLongPressReorder={delayLongPressReorder}
+          onReorderTouchMove={onReorderTouchMove}
+          onReorderTouchEnd={onReorderTouchEnd}
+          onReorderTouchCancel={onReorderTouchCancel}
+          reorderHint={reorderHint}
         />
 
         <View style={styles.trailingCluster}>

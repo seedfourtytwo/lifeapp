@@ -43,6 +43,12 @@ export function HabitTimerWidget({
   onDictateNote,
   onEditNote,
   hasTodayNote,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
@@ -51,7 +57,6 @@ export function HabitTimerWidget({
   const [resetBubblesOpen, setResetBubblesOpen] = useState(false);
   const loggedTotalAtSessionStart = useRef(todayTotal);
   const chimePlayedRef = useRef(false);
-  const autoFinishedSessionRef = useRef<string | null>(null);
   const isRunning = Boolean(activeTimerSession);
   const isPaused = isActiveTimerPaused(activeTimerSession);
   const effectiveTarget = getHabitTimerEffectiveTargetSeconds(config);
@@ -62,12 +67,6 @@ export function HabitTimerWidget({
     !hasSecondsTarget &&
     hasHabitTimerSound(config.timerSound) &&
     getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
-  /**
-   * Done logs the open session. Hidden for play_once — only a natural track end
-   * may set trackCompleted. Seconds-target timers keep Done so users can stop early
-   * and still keep progress (auto-finish still runs when the target is crossed).
-   */
-  const showManualDone = isRunning && Boolean(onTimerFinish) && !isPlayOnceTarget;
   const streakDays = getHabitStreakDays(config, streak);
   const streakLabel = formatHabitStreakLabel(config, streak);
 
@@ -78,7 +77,6 @@ export function HabitTimerWidget({
     if (!activeTimerSession?.startedAt) return;
     loggedTotalAtSessionStart.current = todayTotalRef.current;
     chimePlayedRef.current = false;
-    autoFinishedSessionRef.current = null;
   }, [activeTimerSession?.startedAt]);
 
   useEffect(() => {
@@ -93,6 +91,19 @@ export function HabitTimerWidget({
   const isComplete = isPlayOnceTarget
     ? Boolean(isDone)
     : isHabitDayComplete(displayTotal, config);
+
+  /**
+   * Done banks/stops a session:
+   * - Open-ended: anytime while running
+   * - Seconds target: only after the goal is reached (keep going for overtime,
+   *   then Done to save). Under target: Play/Pause only; Reset clears the day.
+   * - play_once track goal: never — only natural track end completes.
+   */
+  const secondsTarget = config.dailyTargetSeconds ?? 0;
+  const showManualDone =
+    isRunning &&
+    Boolean(onTimerFinish) &&
+    (!hasCompletionTarget || (hasSecondsTarget && displayTotal >= secondsTarget));
 
   useEffect(() => {
     if (!hasSecondsTarget || !isRunning || isPaused || chimePlayedRef.current) return;
@@ -110,33 +121,6 @@ export function HabitTimerWidget({
       void playHabitCompleteChime();
     }
   }, [config, displayTotal, hasSecondsTarget, isPaused, isRunning]);
-
-  // Seconds target: auto-finish only when this session crosses the target
-  // (not when today was already complete before play).
-  useEffect(() => {
-    if (!hasSecondsTarget || !isRunning || isPaused || !onTimerFinish) return;
-    const target = config.dailyTargetSeconds;
-    if (!target) return;
-    const previousTotal = loggedTotalAtSessionStart.current;
-    if (previousTotal >= target || displayTotal < target) return;
-    const sessionKey = activeTimerSession?.startedAt ?? '';
-    if (!sessionKey || autoFinishedSessionRef.current === sessionKey) return;
-    autoFinishedSessionRef.current = sessionKey;
-    void Promise.resolve(onTimerFinish()).catch(() => {
-      // Allow another attempt if finish failed (session may still be running).
-      if (autoFinishedSessionRef.current === sessionKey) {
-        autoFinishedSessionRef.current = null;
-      }
-    });
-  }, [
-    activeTimerSession?.startedAt,
-    config.dailyTargetSeconds,
-    displayTotal,
-    hasSecondsTarget,
-    isPaused,
-    isRunning,
-    onTimerFinish,
-  ]);
 
   const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
@@ -192,6 +176,12 @@ export function HabitTimerWidget({
           streakDays={streakDays}
           streakAccessibilityLabel={streakLabel}
           onOpenDetails={onOpenDetails}
+          onLongPressReorder={onLongPressReorder}
+          delayLongPressReorder={delayLongPressReorder}
+          onReorderTouchMove={onReorderTouchMove}
+          onReorderTouchEnd={onReorderTouchEnd}
+          onReorderTouchCancel={onReorderTouchCancel}
+          reorderHint={reorderHint}
         />
 
         <View style={styles.trailingCluster}>

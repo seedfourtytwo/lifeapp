@@ -1,60 +1,54 @@
 import React from 'react';
-import { View } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { View, type GestureResponderEvent } from 'react-native';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
-import ReorderControls from '../shared/ReorderControls';
 import { homeTabScreenStyles as styles } from '../shared/screenStyles';
 import HabitCard from './HabitCard';
 
 type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
-  reordering: boolean;
   /** Quieter presentation for completed habits. */
   dimmed?: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   hasTodayNote?: boolean;
   onDictateNote?: () => void;
   onEditNote?: () => void;
+  onLongPressReorder?: (event: GestureResponderEvent) => void;
+  onReorderTouchMove?: (event: GestureResponderEvent) => void;
+  onReorderTouchEnd?: (event: GestureResponderEvent) => void;
+  onReorderTouchCancel?: (event: GestureResponderEvent) => void;
+  delayLongPressReorder?: number;
+  reorderHint?: string;
 };
 
 export default function HabitRow({
   habit,
   config,
-  reordering,
   dimmed = false,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
   hasTodayNote,
   onDictateNote,
   onEditNote,
+  onLongPressReorder,
+  delayLongPressReorder,
+  onReorderTouchMove,
+  onReorderTouchEnd,
+  onReorderTouchCancel,
+  reorderHint,
 }: Props) {
-  const { t } = useTranslation('trackers');
   return (
-    <View style={styles.reorderRow}>
-      {reordering ? (
-        <ReorderControls
-          canMoveUp={canMoveUp}
-          canMoveDown={canMoveDown}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-          accessibilityNoun={t('kindLabel.habit')}
-        />
-      ) : null}
-      <View style={[styles.reorderCard, dimmed ? styles.dimmedCard : null]}>
-        <HabitCard
-          habit={habit}
-          config={config}
-          hasTodayNote={hasTodayNote}
-          onDictateNote={onDictateNote}
-          onEditNote={onEditNote}
-        />
-      </View>
+    <View style={dimmed ? styles.dimmedCard : undefined}>
+      <HabitCard
+        habit={habit}
+        config={config}
+        hasTodayNote={hasTodayNote}
+        onDictateNote={onDictateNote}
+        onEditNote={onEditNote}
+        onLongPressReorder={onLongPressReorder}
+        delayLongPressReorder={delayLongPressReorder}
+        onReorderTouchMove={onReorderTouchMove}
+        onReorderTouchEnd={onReorderTouchEnd}
+        onReorderTouchCancel={onReorderTouchCancel}
+        reorderHint={reorderHint}
+      />
     </View>
   );
 }

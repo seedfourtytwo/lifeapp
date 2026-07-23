@@ -7,19 +7,13 @@
   "habitsTab": {
     "remaining": "{{count}} remaining",
     "doneOfTotal": "{{done}} of {{total}}",
-    "reorderHint": "Move to set your order",
-    "sort": "Sort",
-    "done": "Done",
     "retry": "Retry",
     "emptyNoHabits": "No habits yet. Add one to start your daily list.",
     "emptyNoActiveHabits": "No active habits. Restore something from Archive in Trackers.",
     "emptyNothingDueToday": "Nothing due today — check schedule or time window in Trackers."
   },
   "countersTab": {
-    "moveWithArrows": "Move with arrows",
     "resetsAtMidnight": "Today · resets at midnight",
-    "sort": "Sort",
-    "done": "Done",
     "retry": "Retry",
     "emptyNoActiveCounters": "No active counters. Restore something from Archive in Trackers.",
     "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
