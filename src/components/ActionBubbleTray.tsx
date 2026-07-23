@@ -10,6 +10,7 @@ import { Icon, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { i18n } from '../i18n';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { DOCK_RESERVE, EDGE_PAD } from '../ui/homeInsets';
 
 export type ActionBubble = {
   key: string;
@@ -37,8 +38,6 @@ const BUBBLE_SIZE = 48;
 /** Clear air between the control bottom and the bubble row. */
 const TRAY_GAP = 12;
 const BUBBLE_GAP = 8;
-const EDGE_PAD = 8;
-const DOCK_RESERVE = 72;
 const MIN_ANCHOR = 48;
 
 /**

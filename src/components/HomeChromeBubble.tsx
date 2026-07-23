@@ -1,36 +1,45 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
+  AccessibilityInfo,
+  Animated,
   Modal,
-  PanResponder,
   Pressable,
   StyleSheet,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useChromeBubbleDrag } from '../hooks/useChromeBubbleDrag';
 import { toDateString } from '../protocol';
 import { useCalendarStore } from '../store/calendarStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import {
   BUBBLE_HEIGHT,
-  BUBBLE_SIZE,
-  clampBubblePosition,
+  BUBBLE_WIDTH,
+  CAL_CHIP_SIZE,
+  CAL_ONLY_HEIGHT,
+  CAL_ONLY_WIDTH,
+  DOCK_RESERVE,
+  EXPAND_DAY_COUNT,
+  STRIP_GAP,
+  STRIP_HEIGHT,
+  forecastStripWidth,
 } from '../weather/bubblePosition';
-import { conditionIconName, conditionLabel } from '../weather/codes';
+import { conditionLabel } from '../weather/codes';
 import { formatTempC } from '../weather/format';
-import CalendarPeekSheet from './CalendarPeekSheet';
-import WeatherForecastSheet from './WeatherForecastSheet';
 import { ATTENTION_WITHIN_DAYS } from '../calendar/attention';
-
-const DOCK_RESERVE = 72;
-const TAP_SLOP = 8;
-
-type SheetKind = 'weather' | 'calendar' | null;
+import CalendarPeekSheet from './CalendarPeekSheet';
+import CornerConfettiBurst, {
+  type CornerConfettiHandle,
+} from './weather/CornerConfettiBurst';
+import WeatherDayFace from './weather/WeatherDayFace';
+import WeatherForecastStrip from './weather/WeatherForecastStrip';
 
 export default function HomeChromeBubble() {
   const theme = useTheme();
@@ -51,7 +60,8 @@ export default function HomeChromeBubble() {
   const weatherOffline = useWeatherStore((s) => s.offline);
   const weatherLoading = useWeatherStore((s) => s.loading);
 
-  // Clock tick so “needs attention” can advance without waiting for a store mutation.
+  const confettiRef = useRef<CornerConfettiHandle>(null);
+
   const [badgeNow, setBadgeNow] = useState(() => Date.now());
   useEffect(() => {
     if (!calendarEnabled) return;
@@ -64,118 +74,115 @@ export default function HomeChromeBubble() {
   const clearedByKey = useCalendarStore((s) => s.clearedByKey);
   const badgeCount = useMemo(() => {
     if (!calendarEnabled || events.length === 0) return 0;
-    // Recompute when calendar mirror or minute tick changes (attentionOccurrences reads store).
     void badgeNow;
     void calendars;
     void clearedByKey;
     return useCalendarStore.getState().attentionOccurrences(50, ATTENTION_WITHIN_DAYS).length;
   }, [calendarEnabled, events, calendars, clearedByKey, badgeNow]);
 
-  const [sheet, setSheet] = useState<SheetKind>(null);
-  const [fanOpen, setFanOpen] = useState(false);
-  const [layout, setLayout] = useState(() => {
-    const { width, height } = Dimensions.get('window');
-    return { width, height };
-  });
-  const [pos, setPos] = useState({ x: savedX, y: savedY });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarChipVisible, setCalendarChipVisible] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const expandAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    setPos({ x: savedX, y: savedY });
-  }, [savedX, savedY]);
+    Animated.spring(expandAnim, {
+      toValue: expanded ? 1 : 0,
+      friction: 8,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+  }, [expanded, expandAnim]);
 
-  const layoutRef = useRef(layout);
-  const insetsRef = useRef(insets);
-  const posRef = useRef(pos);
-  const dragOrigin = useRef(pos);
-  const moved = useRef(false);
-
-  layoutRef.current = layout;
-  insetsRef.current = insets;
-  posRef.current = pos;
-
-  const bottomInset = insets.bottom + DOCK_RESERVE;
-  const clamped = clampBubblePosition(pos.x, pos.y, {
-    width: layout.width,
-    height: layout.height,
-    topInset: insets.top,
-    bottomInset,
-  });
-
-  const bothEnabled = weatherEnabled && calendarEnabled;
-  const anyEnabled = weatherEnabled || calendarEnabled;
-
+  const tRef = useRef(t);
+  tRef.current = t;
   const weatherEnabledRef = useRef(weatherEnabled);
   const calendarEnabledRef = useRef(calendarEnabled);
-  const bothEnabledRef = useRef(bothEnabled);
   weatherEnabledRef.current = weatherEnabled;
   calendarEnabledRef.current = calendarEnabled;
-  bothEnabledRef.current = bothEnabled;
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
-        onPanResponderGrant: () => {
-          dragOrigin.current = posRef.current;
-          moved.current = false;
-        },
-        onPanResponderMove: (_, gesture) => {
-          if (Math.abs(gesture.dx) > TAP_SLOP || Math.abs(gesture.dy) > TAP_SLOP) {
-            moved.current = true;
-            setFanOpen(false);
-          }
-          const { width, height } = layoutRef.current;
-          const topInset = insetsRef.current.top;
-          const bottom = insetsRef.current.bottom + DOCK_RESERVE;
-          const nextX = dragOrigin.current.x + gesture.dx / Math.max(width, 1);
-          const nextY = dragOrigin.current.y + gesture.dy / Math.max(height, 1);
-          const next = clampBubblePosition(nextX, nextY, {
-            width,
-            height,
-            topInset,
-            bottomInset: bottom,
-          });
-          setPos(next);
-        },
-        onPanResponderRelease: () => {
-          if (!moved.current) {
-            if (bothEnabledRef.current) {
-              setFanOpen((open) => !open);
-            } else if (weatherEnabledRef.current) {
-              setSheet('weather');
-            } else if (calendarEnabledRef.current) {
-              setSheet('calendar');
-            }
-            return;
-          }
-          void setBubblePosition(posRef.current.x, posRef.current.y);
-        },
-      }),
-    [setBubblePosition],
-  );
+  const toggleExpanded = () => {
+    setCalendarChipVisible(false);
+    setExpanded((open) => {
+      const next = !open;
+      AccessibilityInfo.announceForAccessibility(
+        next
+          ? tRef.current('chromeBubble.forecastExpanded')
+          : tRef.current('chromeBubble.forecastCollapsed'),
+      );
+      return next;
+    });
+  };
+
+  const {
+    panHandlers,
+    leftAnim,
+    topAnim,
+    layout,
+    bubbleLeft,
+    bubbleTop,
+    onLayout,
+  } = useChromeBubbleDrag({
+    savedX,
+    savedY,
+    setBubblePosition,
+    topInset: insets.top,
+    bottomInset: insets.bottom + DOCK_RESERVE,
+    allowFling: weatherEnabled,
+    chipWidth: weatherEnabled ? BUBBLE_WIDTH : CAL_ONLY_WIDTH,
+    chipHeight: weatherEnabled ? BUBBLE_HEIGHT : CAL_ONLY_HEIGHT,
+    onTap: () => {
+      if (weatherEnabledRef.current) toggleExpanded();
+      else if (calendarEnabledRef.current) setCalendarOpen(true);
+    },
+    onLongPress: () => {
+      if (!calendarEnabledRef.current || !weatherEnabledRef.current) return;
+      setExpanded(false);
+      setCalendarChipVisible(true);
+      AccessibilityInfo.announceForAccessibility(tRef.current('chromeBubble.showCalendar'));
+    },
+    onDragStart: () => {
+      setExpanded(false);
+      setCalendarChipVisible(false);
+    },
+    onCornerHit: (x, y) => {
+      confettiRef.current?.play(x, y);
+    },
+  });
+
+  const anyEnabled = weatherEnabled || calendarEnabled;
+
+  const todayIso = toDateString(new Date());
+  const otherDays = useMemo(() => {
+    if (!forecast?.daily.length) return [];
+    return forecast.daily.filter((d) => d.date !== todayIso).slice(0, EXPAND_DAY_COUNT);
+  }, [forecast, todayIso]);
 
   if (!anyEnabled) return null;
 
-  const today = new Date();
-  const dayNum = String(today.getDate());
+  const expandLeft = bubbleLeft + BUBBLE_WIDTH / 2 > layout.width / 2;
+  const stripWidth = forecastStripWidth(otherDays.length || EXPAND_DAY_COUNT);
+  const stripLeft = expandLeft
+    ? bubbleLeft - stripWidth - STRIP_GAP
+    : bubbleLeft + BUBBLE_WIDTH + STRIP_GAP;
+  const stripTop = bubbleTop + (BUBBLE_HEIGHT - STRIP_HEIGHT) / 2;
+  const calChipTop = bubbleTop + BUBBLE_HEIGHT + 6;
+  const calChipLeft = bubbleLeft + (BUBBLE_WIDTH - CAL_CHIP_SIZE) / 2;
+  const dismissOverlay = expanded || calendarChipVisible;
+
   const hasForecast = forecast != null;
   const condition = forecast?.currentCondition ?? 'other';
+  const todayForecast =
+    forecast?.daily.find((d) => d.date === todayIso) ?? forecast?.daily[0];
+  const tempMinC = todayForecast?.tempMinC ?? null;
+  const tempMaxC = todayForecast?.tempMaxC ?? null;
+  const precipPct = hasForecast
+    ? (todayForecast?.precipProbabilityPct ?? forecast.precipProbabilityPct)
+    : null;
   const tempLabel = hasForecast ? formatTempC(forecast.currentTempC) : '—';
-
-  const weatherIcon =
-    !hasForecast && weatherOffline
-      ? 'cloud-off-outline'
-      : !hasForecast && weatherError
-        ? 'weather-cloudy-alert'
-        : conditionIconName(condition);
+  const trend = hasForecast ? forecast.trend : null;
 
   const a11yParts: string[] = [];
-  if (calendarEnabled) {
-    a11yParts.push(t('chromeBubble.todayDate', { date: toDateString(today) }));
-    if (badgeCount > 0) a11yParts.push(t('chromeBubble.upcomingCount', { count: badgeCount }));
-  }
   if (weatherEnabled) {
     a11yParts.push(
       hasForecast
@@ -190,17 +197,35 @@ export default function HomeChromeBubble() {
                 ? t('chromeBubble.weatherLoading')
                 : t('chromeBubble.weatherUnavailable'))),
     );
+    if (tempMinC != null && tempMaxC != null) {
+      a11yParts.push(`${formatTempC(tempMinC)}/${formatTempC(tempMaxC)}`);
+    }
+    if (precipPct != null) {
+      a11yParts.push(t('chromeBubble.rainChance', { pct: precipPct }));
+    }
+    if (trend === 'improving') a11yParts.push(t('chromeBubble.trendImproving'));
+    if (trend === 'worsening') a11yParts.push(t('chromeBubble.trendWorsening'));
+    if (hasForecast && trend == null) a11yParts.push(t('chromeBubble.trendSteady'));
+    a11yParts.push(
+      expanded ? t('chromeBubble.tapToCollapseForecast') : t('chromeBubble.tapToExpandForecast'),
+    );
+    if (calendarEnabled) a11yParts.push(t('chromeBubble.longPressForCalendar'));
+  } else {
+    a11yParts.push(t('chromeBubble.todayDate', { date: todayIso }));
+    if (badgeCount > 0) a11yParts.push(t('chromeBubble.upcomingCount', { count: badgeCount }));
+    a11yParts.push(t('chromeBubble.opensCalendar'));
   }
-  a11yParts.push(
-    bothEnabled
-      ? t('chromeBubble.opensWeatherOrCalendar')
-      : weatherEnabled
-        ? t('chromeBubble.opensForecast')
-        : t('chromeBubble.opensCalendar'),
-  );
 
-  const bubbleLeft = clamped.x * layout.width;
-  const bubbleTop = clamped.y * layout.height;
+  const stripOpacity = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const stripTranslateX = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [expandLeft ? 12 : -12, 0],
+  });
+
+  const badgeLabel = badgeCount > 9 ? '9+' : String(badgeCount);
 
   return (
     <View
@@ -208,47 +233,126 @@ export default function HomeChromeBubble() {
       pointerEvents="box-none"
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
-        setLayout({ width, height });
+        onLayout(width, height);
       }}
     >
-      {fanOpen ? (
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setFanOpen(false)} />
+      {dismissOverlay ? (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            setExpanded(false);
+            setCalendarChipVisible(false);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t('chromeBubble.tapToCollapseForecast')}
+        />
       ) : null}
 
-      {fanOpen && weatherEnabled ? (
-        <Pressable
-          onPress={() => {
-            setFanOpen(false);
-            setSheet('weather');
-          }}
+      {weatherEnabled ? <CornerConfettiBurst ref={confettiRef} /> : null}
+
+      {weatherEnabled && expanded && otherDays.length > 0 ? (
+        <Animated.View
+          pointerEvents="none"
           style={[
-            styles.fanChip,
+            styles.expandStrip,
             {
-              left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
-              top: bubbleTop + BUBBLE_HEIGHT + 6,
-              backgroundColor: theme.colors.surface,
-              borderColor: outlineColor,
-              borderWidth: outlineWidth,
+              left: stripLeft,
+              top: stripTop,
+              opacity: stripOpacity,
+              transform: [{ translateX: stripTranslateX }, { scale: expandAnim }],
+            },
+          ]}
+        >
+          <WeatherForecastStrip days={otherDays} />
+        </Animated.View>
+      ) : null}
+
+      {weatherEnabled ? (
+        <Animated.View
+          {...panHandlers}
+          style={[
+            styles.bubbleHit,
+            {
+              width: BUBBLE_WIDTH,
+              height: BUBBLE_HEIGHT,
+              opacity: weatherOffline && hasForecast ? 0.92 : 1,
+              transform: [{ translateX: leftAnim }, { translateY: topAnim }],
             },
           ]}
           accessibilityRole="button"
-          accessibilityLabel={t('chromeBubble.openWeather')}
+          accessibilityLabel={a11yParts.join('. ')}
+          accessibilityActions={[
+            {
+              name: 'activate',
+              label: expanded
+                ? t('chromeBubble.tapToCollapseForecast')
+                : t('chromeBubble.tapToExpandForecast'),
+            },
+            ...(calendarEnabled
+              ? [{ name: 'longpress' as const, label: t('chromeBubble.longPressForCalendar') }]
+              : []),
+          ]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'activate') toggleExpanded();
+            if (event.nativeEvent.actionName === 'longpress') {
+              setExpanded(false);
+              setCalendarChipVisible(true);
+            }
+          }}
         >
-          <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={accent} />
-        </Pressable>
-      ) : null}
+          <WeatherDayFace
+            condition={condition}
+            currentTempC={hasForecast ? forecast.currentTempC : null}
+            tempMinC={tempMinC}
+            tempMaxC={tempMaxC}
+            precipProbabilityPct={precipPct}
+            trend={trend}
+            muted={!hasForecast && !!(weatherOffline || weatherError)}
+            offline={!hasForecast && weatherOffline}
+            error={!hasForecast && !!weatherError && !weatherOffline}
+          />
+        </Animated.View>
+      ) : (
+        <Animated.View
+          {...panHandlers}
+          style={[
+            styles.calendarOnlyBubble,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: outlineColor,
+              borderWidth: outlineWidth,
+              shadowColor: '#000',
+              transform: [{ translateX: leftAnim }, { translateY: topAnim }],
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={a11yParts.join('. ')}
+        >
+          <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
+            {String(new Date().getDate())}
+          </Text>
+          <MaterialCommunityIcons name="calendar" size={18} color={accent} />
+          {badgeCount > 0 ? (
+            <CountBadge
+              label={badgeLabel}
+              backgroundColor={theme.colors.error}
+              color={theme.colors.onError}
+            />
+          ) : null}
+        </Animated.View>
+      )}
 
-      {fanOpen && calendarEnabled ? (
+      {calendarEnabled && weatherEnabled && calendarChipVisible ? (
         <Pressable
           onPress={() => {
-            setFanOpen(false);
-            setSheet('calendar');
+            setCalendarChipVisible(false);
+            setCalendarOpen(true);
           }}
           style={[
-            styles.fanChip,
+            styles.calChip,
             {
-              left: bubbleLeft + (BUBBLE_SIZE - 40) / 2,
-              top: bubbleTop + BUBBLE_HEIGHT + (weatherEnabled ? 52 : 6),
+              left: calChipLeft,
+              top: calChipTop,
               backgroundColor: theme.colors.surface,
               borderColor: outlineColor,
               borderWidth: outlineWidth,
@@ -263,87 +367,25 @@ export default function HomeChromeBubble() {
         >
           <MaterialCommunityIcons name="calendar" size={22} color={accent} />
           {badgeCount > 0 ? (
-            <View style={[styles.fanBadge, { backgroundColor: theme.colors.error }]}>
-              <Text variant="labelSmall" style={{ color: theme.colors.onError, fontSize: 10 }}>
-                {badgeCount > 9 ? '9+' : badgeCount}
-              </Text>
-            </View>
+            <CountBadge
+              label={badgeLabel}
+              backgroundColor={theme.colors.error}
+              color={theme.colors.onError}
+              style={styles.fanBadge}
+            />
           ) : null}
         </Pressable>
       ) : null}
 
-      <View
-        {...panResponder.panHandlers}
-        style={[
-          styles.bubble,
-          {
-            left: bubbleLeft,
-            top: bubbleTop,
-            backgroundColor: theme.colors.surface,
-            borderColor: outlineColor,
-            borderWidth: outlineWidth,
-            shadowColor: '#000',
-            opacity: weatherOffline && hasForecast ? 0.92 : 1,
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={a11yParts.join('. ')}
-      >
-        {calendarEnabled ? (
-          <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
-            {dayNum}
-          </Text>
-        ) : null}
-        {weatherEnabled ? (
-          <>
-            <MaterialCommunityIcons
-              name={weatherIcon}
-              size={calendarEnabled ? 16 : 20}
-              color={
-                !hasForecast && (weatherOffline || weatherError)
-                  ? theme.colors.onSurfaceVariant
-                  : accent
-              }
-            />
-            {!calendarEnabled ? (
-              <Text variant="labelLarge" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-                {tempLabel}
-              </Text>
-            ) : (
-              <Text
-                variant="labelSmall"
-                style={{ color: theme.colors.onSurfaceVariant, marginTop: -2 }}
-                numberOfLines={1}
-              >
-                {tempLabel}
-              </Text>
-            )}
-          </>
-        ) : (
-          <MaterialCommunityIcons name="calendar" size={18} color={accent} />
-        )}
-        {calendarEnabled && badgeCount > 0 ? (
-          <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
-            <Text variant="labelSmall" style={{ color: theme.colors.onError, fontSize: 10 }}>
-              {badgeCount > 9 ? '9+' : badgeCount}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
       <Modal
-        visible={sheet != null}
+        visible={calendarOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setSheet(null)}
+        onRequestClose={() => setCalendarOpen(false)}
       >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setSheet(null)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setCalendarOpen(false)}>
           <Pressable style={styles.sheetContainer} onPress={(e) => e.stopPropagation()}>
-            {sheet === 'weather' ? (
-              <WeatherForecastSheet onClose={() => setSheet(null)} />
-            ) : (
-              <CalendarPeekSheet visible={sheet === 'calendar'} onClose={() => setSheet(null)} />
-            )}
+            <CalendarPeekSheet visible={calendarOpen} onClose={() => setCalendarOpen(false)} />
           </Pressable>
         </Pressable>
       </Modal>
@@ -351,12 +393,40 @@ export default function HomeChromeBubble() {
   );
 }
 
+function CountBadge({
+  label,
+  backgroundColor,
+  color,
+  style,
+}: {
+  label: string;
+  backgroundColor: string;
+  color: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.badge, { backgroundColor }, style]}>
+      <Text variant="labelSmall" style={{ color, fontSize: 10 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  bubble: {
+  bubbleHit: {
     position: 'absolute',
-    width: BUBBLE_SIZE,
-    height: BUBBLE_HEIGHT,
-    borderRadius: BUBBLE_HEIGHT / 2,
+    left: 0,
+    top: 0,
+    zIndex: 20,
+  },
+  calendarOnlyBubble: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: CAL_ONLY_WIDTH,
+    height: CAL_ONLY_HEIGHT,
+    borderRadius: CAL_ONLY_WIDTH / 2,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
@@ -377,12 +447,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  fanChip: {
+  fanBadge: {
+    top: -2,
+    right: -2,
+  },
+  calChip: {
     position: 'absolute',
     zIndex: 21,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: CAL_CHIP_SIZE,
+    height: CAL_CHIP_SIZE,
+    borderRadius: CAL_CHIP_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
@@ -390,16 +464,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
   },
-  fanBadge: {
+  expandStrip: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
+    zIndex: 19,
   },
   sheetBackdrop: {
     flex: 1,

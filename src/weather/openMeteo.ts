@@ -1,5 +1,6 @@
 import { weatherCodeToCondition } from './codes';
 import { fetchJsonWithTimeout } from './fetchJson';
+import { computeWeatherTrend, type HourlyTrendSample } from './trend';
 import type { WeatherDayForecast, WeatherForecast } from './types';
 
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
@@ -36,6 +37,11 @@ interface ForecastApiResult {
   current?: {
     temperature_2m: number;
     weather_code: number;
+  };
+  hourly?: {
+    time: string[];
+    weather_code?: number[];
+    precipitation_probability?: number[];
   };
   daily?: {
     time: string[];
@@ -147,6 +153,7 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
     latitude: String(lat),
     longitude: String(lon),
     current: 'temperature_2m,weather_code',
+    hourly: 'weather_code,precipitation_probability',
     daily:
       'weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max',
     forecast_days: '5',
@@ -170,7 +177,6 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
   }
 
   const daily = mapDailyForecast(data.daily);
-
   const currentCode = data.current.weather_code;
 
   return {
@@ -178,11 +184,26 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
     currentWeatherCode: currentCode,
     currentCondition: weatherCodeToCondition(currentCode),
     precipProbabilityPct: daily[0]?.precipProbabilityPct ?? 0,
+    trend: computeWeatherTrend(mapHourlyTrendSamples(data.hourly)),
     daily,
     lat: data.latitude,
     lon: data.longitude,
     fetchedAt: new Date().toISOString(),
   };
+}
+
+function mapHourlyTrendSamples(
+  hourly: ForecastApiResult['hourly'],
+): HourlyTrendSample[] {
+  if (!hourly?.time?.length) return [];
+  return hourly.time.map((time, index) => {
+    const precipRaw = hourly.precipitation_probability?.[index] ?? 0;
+    return {
+      time,
+      weatherCode: hourly.weather_code?.[index] ?? 0,
+      precipProbabilityPct: Math.min(100, Math.max(0, Math.round(precipRaw))),
+    };
+  });
 }
 
 function mapDailyForecast(daily: NonNullable<ForecastApiResult['daily']>): WeatherDayForecast[] {
