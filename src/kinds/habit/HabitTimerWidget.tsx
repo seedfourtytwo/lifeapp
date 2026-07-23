@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Button, IconButton, Text, useTheme } from 'react-native-paper';
+import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
+import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import {
-  formatHabitDescription,
   formatHabitTimerDuration,
+  getHabitTimerEffectiveTargetSeconds,
+  getHabitTimerPlaybackMode,
   hasHabitTimerSound,
   isActiveTimerPaused,
   isHabitDayComplete,
@@ -19,17 +21,20 @@ import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 import {
-  formatHabitCardDescription,
   formatHabitStreakLabel,
+  getHabitStreakDays,
 } from './habitCardLabels';
 import { HabitCardTitle } from './HabitCardTitle';
 import { NoteIconButton } from '../../notes/NoteIconButton';
+
+const ACTION_ICON_SIZE = 30;
 
 export function HabitTimerWidget({
   element,
   config,
   todayTotal,
   streak,
+  isDone,
   activeTimerSession,
   onTimerPress,
   onTimerFinish,
@@ -41,15 +46,29 @@ export function HabitTimerWidget({
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { themeMode, decorations: deco, isCartoon } = useAppTheme();
+  const { themeMode, decorations: deco } = useAppTheme();
   const [, setTick] = useState(0);
+  const [resetBubblesOpen, setResetBubblesOpen] = useState(false);
   const loggedTotalAtSessionStart = useRef(todayTotal);
   const chimePlayedRef = useRef(false);
+  const autoFinishedSessionRef = useRef<string | null>(null);
   const isRunning = Boolean(activeTimerSession);
   const isPaused = isActiveTimerPaused(activeTimerSession);
-  const dailyTarget = config.dailyTargetSeconds;
-  const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
-  const description = formatHabitCardDescription(formatHabitDescription(config));
+  const effectiveTarget = getHabitTimerEffectiveTargetSeconds(config);
+  const hasCompletionTarget = effectiveTarget !== undefined && effectiveTarget > 0;
+  const hasSecondsTarget =
+    config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
+  const isPlayOnceTarget =
+    !hasSecondsTarget &&
+    hasHabitTimerSound(config.timerSound) &&
+    getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
+  /**
+   * Done logs the open session. Hidden for play_once — only a natural track end
+   * may set trackCompleted. Seconds-target timers keep Done so users can stop early
+   * and still keep progress (auto-finish still runs when the target is crossed).
+   */
+  const showManualDone = isRunning && Boolean(onTimerFinish) && !isPlayOnceTarget;
+  const streakDays = getHabitStreakDays(config, streak);
   const streakLabel = formatHabitStreakLabel(config, streak);
 
   const todayTotalRef = useRef(todayTotal);
@@ -59,6 +78,7 @@ export function HabitTimerWidget({
     if (!activeTimerSession?.startedAt) return;
     loggedTotalAtSessionStart.current = todayTotalRef.current;
     chimePlayedRef.current = false;
+    autoFinishedSessionRef.current = null;
   }, [activeTimerSession?.startedAt]);
 
   useEffect(() => {
@@ -68,10 +88,14 @@ export function HabitTimerWidget({
   }, [isPaused, isRunning, activeTimerSession?.startedAt]);
 
   const displayTotal = liveTimerTotalSeconds(todayTotal, activeTimerSession);
-  const isComplete = isHabitDayComplete(displayTotal, config);
+  // play_once without a seconds goal: only store "track finished" counts as done.
+  // Seconds goals use live total so the wash/colors update during the session.
+  const isComplete = isPlayOnceTarget
+    ? Boolean(isDone)
+    : isHabitDayComplete(displayTotal, config);
 
   useEffect(() => {
-    if (!hasTarget || !isRunning || isPaused || chimePlayedRef.current) return;
+    if (!hasSecondsTarget || !isRunning || isPaused || chimePlayedRef.current) return;
     const previousTotal = loggedTotalAtSessionStart.current;
     if (
       shouldPlayHabitCompletionChime(
@@ -85,111 +109,160 @@ export function HabitTimerWidget({
       chimePlayedRef.current = true;
       void playHabitCompleteChime();
     }
-  }, [config, displayTotal, hasTarget, isPaused, isRunning]);
+  }, [config, displayTotal, hasSecondsTarget, isPaused, isRunning]);
 
-  const progress = hasTarget ? displayTotal / dailyTarget : 0;
-  const canResetToday = isRunning || displayTotal > 0;
+  // Seconds target: auto-finish only when this session crosses the target
+  // (not when today was already complete before play).
+  useEffect(() => {
+    if (!hasSecondsTarget || !isRunning || isPaused || !onTimerFinish) return;
+    const target = config.dailyTargetSeconds;
+    if (!target) return;
+    const previousTotal = loggedTotalAtSessionStart.current;
+    if (previousTotal >= target || displayTotal < target) return;
+    const sessionKey = activeTimerSession?.startedAt ?? '';
+    if (!sessionKey || autoFinishedSessionRef.current === sessionKey) return;
+    autoFinishedSessionRef.current = sessionKey;
+    void Promise.resolve(onTimerFinish()).catch(() => {
+      // Allow another attempt if finish failed (session may still be running).
+      if (autoFinishedSessionRef.current === sessionKey) {
+        autoFinishedSessionRef.current = null;
+      }
+    });
+  }, [
+    activeTimerSession?.startedAt,
+    config.dailyTargetSeconds,
+    displayTotal,
+    hasSecondsTarget,
+    isPaused,
+    isRunning,
+    onTimerFinish,
+  ]);
+
+  const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
+  const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
   const progressBarColors = getCounterProgressBarColors(themeMode);
 
-  const totalLabel = hasTarget
-    ? `${formatHabitTimerDuration(displayTotal)} / ${formatHabitTimerDuration(dailyTarget)}`
-    : formatHabitTimerDuration(displayTotal);
+  const totalLabel =
+    hasCompletionTarget && effectiveTarget
+      ? `${formatHabitTimerDuration(displayTotal)} / ${formatHabitTimerDuration(effectiveTarget)}`
+      : formatHabitTimerDuration(displayTotal);
 
-  const metaColor = isCartoon
-    ? theme.colors.onSecondaryContainer
+  const metaColor = isComplete
+    ? theme.colors.primary
     : theme.colors.onSurfaceVariant;
+
+  const playIcon = !isRunning
+    ? 'play-circle'
+    : isPaused
+      ? 'play-circle'
+      : 'pause-circle';
+
+  const playA11y = !isRunning
+    ? t('habitWidget.startTimerA11y')
+    : isPaused
+      ? t('habitWidget.resumeTimerA11y')
+      : t('habitWidget.pauseTimerA11y');
+
+  const closeResetBubbles = () => setResetBubblesOpen(false);
+
+  const confirmResetToday = () => {
+    void onResetToday?.();
+  };
 
   return (
     <TrackerCard
       progress={
-        hasTarget
+        hasCompletionTarget
           ? {
               value: progress,
               color: isComplete
                 ? progressBarColors.complete
                 : progressBarColors.active,
-              trackColor: theme.colors.surfaceVariant,
+              trackColor: theme.colors.outlineVariant,
               height: deco.progressHeight,
             }
           : null
       }
     >
-      <View style={styles.headerRow}>
+      <View style={styles.oneLineRow}>
         <HabitCardTitle
           name={element.name}
-          streakLabel={streakLabel}
-          description={description}
+          streakDays={streakDays}
+          streakAccessibilityLabel={streakLabel}
           onOpenDetails={onOpenDetails}
         />
-        <View style={styles.metaCluster}>
+
+        <View style={styles.trailingCluster}>
           <Text
-            variant="bodyMedium"
+            variant="titleSmall"
             numberOfLines={1}
-            style={[styles.metaText, { color: metaColor }]}
+            style={[styles.timerLabel, { color: metaColor }]}
+            accessibilityLabel={totalLabel}
           >
             {totalLabel}
           </Text>
-          {onResetToday && canResetToday ? (
+
+          <ActionBubbleTray
+            open={resetBubblesOpen}
+            onDismiss={closeResetBubbles}
+            bubbles={
+              canResetToday
+                ? [
+                    {
+                      key: 'reset',
+                      icon: 'backup-restore',
+                      accessibilityLabel: t('habitWidget.resetTodayA11y'),
+                      onPress: confirmResetToday,
+                    },
+                  ]
+                : []
+            }
+          >
             <IconButton
-              icon="backup-restore"
-              size={16}
-              onPress={() => void onResetToday()}
-              accessibilityLabel={t('habitWidget.resetTodayA11y')}
+              icon={playIcon}
+              size={ACTION_ICON_SIZE}
+              onPress={() => {
+                closeResetBubbles();
+                void onTimerPress?.();
+              }}
+              onLongPress={
+                canResetToday
+                  ? () => setResetBubblesOpen((open) => !open)
+                  : undefined
+              }
+              delayLongPress={350}
+              iconColor={theme.colors.primary}
               style={styles.iconButton}
-              hitSlop={8}
+              hitSlop={4}
+              accessibilityLabel={playA11y}
+              accessibilityHint={
+                canResetToday ? t('habitWidget.playLongPressResetHint') : undefined
+              }
+            />
+          </ActionBubbleTray>
+
+          {showManualDone ? (
+            <IconButton
+              icon="check-circle"
+              size={ACTION_ICON_SIZE}
+              onPress={() => void onTimerFinish?.()}
+              iconColor={theme.colors.primary}
+              style={styles.iconButton}
+              hitSlop={4}
+              accessibilityLabel={t('habitWidget.finishSessionA11y')}
             />
           ) : null}
+
           {onDictateNote ? (
             <NoteIconButton
               hasNote={Boolean(hasTodayNote)}
               onPress={onDictateNote}
               onLongPress={onEditNote}
-              size={16}
+              size={ACTION_ICON_SIZE - 4}
+              style={styles.iconButton}
             />
           ) : null}
         </View>
-      </View>
-
-      <View style={styles.actionRow}>
-        <Button
-          mode="contained"
-          icon={
-            !isRunning
-              ? hasHabitTimerSound(config.timerSound)
-                ? 'play-circle'
-                : 'play'
-              : isPaused
-                ? 'play'
-                : 'pause'
-          }
-          onPress={() => void onTimerPress?.()}
-          style={[styles.primaryButton, { borderRadius: deco.buttonRadius }]}
-          buttonColor={isCartoon ? theme.colors.primary : undefined}
-          contentStyle={styles.primaryButtonContent}
-          labelStyle={styles.primaryButtonLabel}
-          accessibilityLabel={
-            !isRunning
-              ? t('habitWidget.startTimerA11y')
-              : isPaused
-                ? t('habitWidget.resumeTimerA11y')
-                : t('habitWidget.pauseTimerA11y')
-          }
-        >
-          {!isRunning ? t('habitWidget.start') : isPaused ? t('habitWidget.resume') : t('habitWidget.pause')}
-        </Button>
-        {isRunning && onTimerFinish ? (
-          <Button
-            mode="contained-tonal"
-            icon="check"
-            onPress={() => void onTimerFinish()}
-            style={[styles.finishButton, { borderRadius: deco.buttonRadius }]}
-            contentStyle={styles.primaryButtonContent}
-            labelStyle={styles.primaryButtonLabel}
-            accessibilityLabel={t('habitWidget.finishSessionA11y')}
-          >
-            {t('habitWidget.done')}
-          </Button>
-        ) : null}
       </View>
     </TrackerCard>
   );

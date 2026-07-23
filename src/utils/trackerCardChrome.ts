@@ -2,7 +2,6 @@ import type { ViewStyle } from 'react-native';
 import type { ThemeDecorations } from '../theme/decorations';
 
 export type TrackerCardChromeInput = {
-  isCartoon: boolean;
   decorations: ThemeDecorations;
   /** Shared fill for every Home tracker card (all kinds, all states). */
   fillColor: string;
@@ -10,11 +9,10 @@ export type TrackerCardChromeInput = {
 };
 
 /**
- * Shared chrome for Home tracker cards — identical fill for every kind.
- * Progress is never painted on the card background (bar only).
+ * Shared chrome for Home tracker cards — identical outline for every kind.
+ * Progress paints inside the card; it never replaces this border.
  */
 export function getTrackerCardChrome({
-  isCartoon,
   decorations: deco,
   fillColor,
   outlineColor,
@@ -24,8 +22,8 @@ export function getTrackerCardChrome({
 > {
   return {
     borderRadius: deco.radius.md,
-    borderWidth: isCartoon ? deco.cardBorderWidth : 0,
-    ...(isCartoon ? { borderColor: outlineColor } : {}),
+    borderWidth: deco.cardBorderWidth,
+    borderColor: outlineColor,
     backgroundColor: fillColor,
   };
 }

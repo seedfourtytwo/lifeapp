@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
-import { IconButton, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { NoteIconButton } from '../../notes/NoteIconButton';
 import { homeTabScreenStyles as styles } from './screenStyles';
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
   leading?: React.ReactNode;
 };
 
-/** Shared Habits/Counters top row: status · journal mic · sort. */
+/** Shared Habits/Counters top row: status · journal note · sort. */
 export default function HomeTabMetaRow({
   hasTodayJournal,
   onOpenJournal,
@@ -24,29 +24,17 @@ export default function HomeTabMetaRow({
   trailing,
   leading,
 }: Props) {
-  const theme = useTheme();
-  const { t } = useTranslation('home');
+  const { t } = useTranslation('common');
   return (
     <View style={styles.metaRow}>
       <View style={styles.metaStatus}>{leading}</View>
       <View style={styles.metaRight}>
-        <IconButton
-          icon="microphone-outline"
-          size={20}
+        <NoteIconButton
+          hasNote={hasTodayJournal}
           onPress={onOpenJournal}
           onLongPress={onEditJournal}
-          delayLongPress={350}
-          iconColor={
-            hasTodayJournal ? theme.colors.primary : theme.colors.onSurfaceVariant
-          }
-          accessibilityLabel={
-            hasTodayJournal
-              ? t('journalMeta.dictateTodayJournal')
-              : t('journalMeta.dictateNewJournal')
-          }
-          accessibilityHint={
-            onEditJournal ? t('journalMeta.editWithoutDictatingHint') : undefined
-          }
+          accessibilityNoun={t('note.journalNoun')}
+          size={22}
           style={styles.metaIconButton}
         />
         {trailing}

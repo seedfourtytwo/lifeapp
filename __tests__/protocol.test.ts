@@ -24,7 +24,7 @@ describe('CounterConfigSchema', () => {
   it('accepts valid counter config', () => {
     const result = CounterConfigSchema.parse(DEFAULT_COUNTER_CONFIG);
     expect(result.unit).toBe('reps');
-    expect(result.quickIncrements).toEqual([5, 10]);
+    expect(result.quickIncrements).toEqual([1, 5, 10]);
   });
 
   it('accepts optional daily target', () => {
@@ -229,6 +229,16 @@ describe('isHabitDayComplete', () => {
         },
       ]),
     ).toBe(true);
+  });
+
+  it('does not treat play_once as complete from totals alone', () => {
+    const config = HabitConfigSchema.parse({
+      timeSlot: 'anytime',
+      trackingMode: 'timer',
+      timerSound: { trackId: 'wimhofMorning', playbackMode: 'play_once' },
+    });
+    expect(isHabitDayComplete(30, config)).toBe(false);
+    expect(isHabitDayComplete(1340, config)).toBe(false);
   });
 });
 

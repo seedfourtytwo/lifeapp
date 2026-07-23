@@ -23,8 +23,7 @@
     "retry": "Retry",
     "emptyNoActiveCounters": "No active counters. Restore something from Archive in Trackers.",
     "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
-    "couldNotLogBody": "Something went wrong",
-    "couldNotUpdateTotalTitle": "Could not update total"
+    "couldNotLogBody": "Something went wrong"
   },
   "journalMeta": {
     "dictateTodayJournal": "Dictate today's journal",

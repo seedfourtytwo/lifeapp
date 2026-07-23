@@ -55,6 +55,9 @@ export {
 } from './habitSound';
 export {
   BUNDLED_HABIT_SOUND_CATALOG,
+  getBundledHabitSoundDurationSeconds,
+  getBundledHabitSoundLabel,
+  isBundledHabitSoundId,
   type BundledHabitSound,
 } from './habitSoundCatalog';
 
@@ -89,6 +92,7 @@ export {
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
   isHabitDayComplete,
+  getHabitTimerEffectiveTargetSeconds,
   completedDatesFromHabitEvents,
   completedDatesFromDailyTotals,
   habitNeedsEventMetaForCompletion,

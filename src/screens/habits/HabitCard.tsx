@@ -69,16 +69,19 @@ export default function HabitCard({
         })
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
-      onTimerFinish={() =>
-        // Manual Done marks play-once complete in meta, but must not play the goal chime
-        // (chime is for live target-crossing or natural track end only).
-        handleFinishTimer(habit.id, config, true).catch((error) => {
+      onTimerFinish={async () => {
+        // Manual Done / seconds-target auto-finish ends the session early.
+        // For play_once, only a natural track end sets trackCompleted — false here.
+        try {
+          await handleFinishTimer(habit.id, config, false);
+        } catch (error) {
           Alert.alert(
             t('habitWidget.couldNotFinishTimerTitle'),
             error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
           );
-        })
-      }
+          throw error;
+        }
+      }}
       onResetToday={() =>
         handleResetToday(habit.id, config).catch((error) => {
           Alert.alert(

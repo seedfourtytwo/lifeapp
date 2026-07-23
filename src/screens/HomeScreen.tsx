@@ -1,11 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   type AppStateStatus,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,6 +40,8 @@ type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
 let lastGpsRefreshAt = 0;
 
+const TAB_ORDER: HomeTab[] = ['habits', 'counters'];
+
 const TABS: { value: HomeTab; labelKey: 'dock.habitsTab' | 'dock.countersTab'; icon: DockIconName }[] = [
   { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
   { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
@@ -46,9 +52,15 @@ export default function HomeScreen() {
   const { t } = useTranslation('home');
   const { decorations: deco, isCartoon } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { width: pageWidth } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const pagerRef = useRef<ScrollView>(null);
+  const tabRef = useRef<HomeTab>('habits');
   const [tab, setTab] = useState<HomeTab>('habits');
+  const [pagerHeight, setPagerHeight] = useState(0);
   const [hasTodayJournal, setHasTodayJournal] = useState(false);
+  /** Tracker note sheet open on the active Habits/Counters tab. */
+  const [trackerNotesOpen, setTrackerNotesOpen] = useState(false);
   const now = useAppCalendarNow();
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
@@ -62,6 +74,14 @@ export default function HomeScreen() {
       setHasTodayJournal(body != null && body.length > 0);
     },
   });
+
+  const journalOpen = noteEditor.session != null;
+  const notesSheetOpen = journalOpen || trackerNotesOpen;
+
+  useEffect(() => {
+    // Inactive tab dismisses its sheet; clear the swipe lock until the active tab reports.
+    setTrackerNotesOpen(false);
+  }, [tab]);
 
   useDayRolloverRefresh();
 
@@ -119,8 +139,6 @@ export default function HomeScreen() {
     ? theme.colors.secondaryContainer
     : theme.colors.primaryContainer;
   const quietColor = theme.colors.onSurfaceVariant;
-  // Edge-to-edge Android draws under the status bar. Absolute-fill panes use top:0
-  // relative to the parent, so parent padding is ignored — offset `top` instead.
   const topInset =
     insets.top > 0
       ? insets.top
@@ -136,47 +154,95 @@ export default function HomeScreen() {
     );
   };
 
+  const scrollToTab = (next: HomeTab, animated = true) => {
+    const index = TAB_ORDER.indexOf(next);
+    pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
+    tabRef.current = next;
+    setTab(next);
+  };
+
+  const onPagerMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = event.nativeEvent.contentOffset.x;
+    const index = Math.round(x / Math.max(pageWidth, 1));
+    const next = TAB_ORDER[Math.min(Math.max(index, 0), TAB_ORDER.length - 1)] ?? 'habits';
+    if (next !== tabRef.current) {
+      tabRef.current = next;
+      setTab(next);
+    }
+  };
+
+  // Keep pager aligned if window width changes (rotation / fold).
+  useEffect(() => {
+    const index = TAB_ORDER.indexOf(tabRef.current);
+    pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+  }, [pageWidth]);
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.content}>
-        <View
-          style={[
-            styles.tabPane,
-            { top: topInset },
-            tab !== 'habits' && styles.tabPaneHidden,
-          ]}
-          pointerEvents={tab === 'habits' ? 'auto' : 'none'}
-          accessibilityElementsHidden={tab !== 'habits'}
-          importantForAccessibility={tab === 'habits' ? 'auto' : 'no-hide-descendants'}
+      <View
+        style={[styles.content, { paddingTop: topInset }]}
+        onLayout={(event) => {
+          const nextHeight = event.nativeEvent.layout.height;
+          if (nextHeight > 0 && nextHeight !== pagerHeight) {
+            setPagerHeight(nextHeight);
+          }
+        }}
+      >
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={!notesSheetOpen}
+          onMomentumScrollEnd={onPagerMomentumEnd}
+          scrollEventThrottle={16}
+          style={styles.pager}
         >
-          <HabitsScreen
-            hasTodayJournal={hasTodayJournal}
-            onOpenJournal={() => openTodayJournal({ dictate: true })}
-            onEditJournal={() => openTodayJournal()}
-            journalOpen={noteEditor.session != null}
-            notesActive={tab === 'habits'}
-            onBeforeOpenTrackerNote={noteEditor.dismiss}
-          />
-        </View>
-        <View
-          style={[
-            styles.tabPane,
-            { top: topInset },
-            tab !== 'counters' && styles.tabPaneHidden,
-          ]}
-          pointerEvents={tab === 'counters' ? 'auto' : 'none'}
-          accessibilityElementsHidden={tab !== 'counters'}
-          importantForAccessibility={tab === 'counters' ? 'auto' : 'no-hide-descendants'}
-        >
-          <CountersScreen
-            hasTodayJournal={hasTodayJournal}
-            onOpenJournal={() => openTodayJournal({ dictate: true })}
-            onEditJournal={() => openTodayJournal()}
-            journalOpen={noteEditor.session != null}
-            notesActive={tab === 'counters'}
-            onBeforeOpenTrackerNote={noteEditor.dismiss}
-          />
-        </View>
+          <View
+            style={[
+              styles.page,
+              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
+            ]}
+            pointerEvents={tab === 'habits' ? 'auto' : 'none'}
+            accessibilityElementsHidden={tab !== 'habits'}
+            importantForAccessibility={
+              tab === 'habits' ? 'auto' : 'no-hide-descendants'
+            }
+          >
+            <HabitsScreen
+              hasTodayJournal={hasTodayJournal}
+              onOpenJournal={() => openTodayJournal({ dictate: true })}
+              onEditJournal={() => openTodayJournal()}
+              journalOpen={journalOpen}
+              notesActive={tab === 'habits'}
+              onBeforeOpenTrackerNote={noteEditor.dismiss}
+              onTrackerNotesOpenChange={setTrackerNotesOpen}
+            />
+          </View>
+          <View
+            style={[
+              styles.page,
+              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
+            ]}
+            pointerEvents={tab === 'counters' ? 'auto' : 'none'}
+            accessibilityElementsHidden={tab !== 'counters'}
+            importantForAccessibility={
+              tab === 'counters' ? 'auto' : 'no-hide-descendants'
+            }
+          >
+            <CountersScreen
+              hasTodayJournal={hasTodayJournal}
+              onOpenJournal={() => openTodayJournal({ dictate: true })}
+              onEditJournal={() => openTodayJournal()}
+              journalOpen={journalOpen}
+              notesActive={tab === 'counters'}
+              onBeforeOpenTrackerNote={noteEditor.dismiss}
+              onTrackerNotesOpenChange={setTrackerNotesOpen}
+            />
+          </View>
+        </ScrollView>
       </View>
 
       {showChrome ? <HomeChromeBubble /> : null}
@@ -199,7 +265,7 @@ export default function HomeScreen() {
           return (
             <Pressable
               key={value}
-              onPress={() => setTab(value)}
+              onPress={() => scrollToTab(value)}
               style={[
                 styles.dockItem,
                 active && {
@@ -258,12 +324,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  tabPane: {
-    ...StyleSheet.absoluteFillObject,
+  pager: {
+    flex: 1,
   },
-  tabPaneHidden: {
-    opacity: 0,
-    zIndex: -1,
+  page: {
+    flex: 1,
   },
   dock: {
     flexDirection: 'row',

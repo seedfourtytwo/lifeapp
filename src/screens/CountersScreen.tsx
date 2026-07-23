@@ -32,6 +32,8 @@ type Props = {
   /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
   notesActive?: boolean;
   onBeforeOpenTrackerNote?: () => void;
+  /** Lets Home lock Habit↔Counter swipe while this tab's note sheet is open. */
+  onTrackerNotesOpenChange?: (open: boolean) => void;
 };
 
 export default function CountersScreen({
@@ -41,6 +43,7 @@ export default function CountersScreen({
   journalOpen = false,
   notesActive = true,
   onBeforeOpenTrackerNote,
+  onTrackerNotesOpenChange,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
@@ -86,6 +89,11 @@ export default function CountersScreen({
   useEffect(() => {
     if (journalOpen || !notesActive) noteEditor.dismiss();
   }, [journalOpen, notesActive, noteEditor.dismiss]);
+
+  useEffect(() => {
+    if (!notesActive) return;
+    onTrackerNotesOpenChange?.(noteEditor.session != null);
+  }, [notesActive, noteEditor.session, onTrackerNotesOpenChange]);
 
   const counterConfigs = useMemo(() => {
     const configs = new Map<string, CounterConfig>();
@@ -240,15 +248,8 @@ export default function CountersScreen({
                       })
                     }
                     onSetDailyTotal={async (total) => {
-                      try {
-                        await setDailyTotal(element.id, total);
-                      } catch (err) {
-                        Alert.alert(
-                          t('countersTab.couldNotUpdateTotalTitle'),
-                          err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
-                        );
-                        throw err;
-                      }
+                      // Errors surface in CounterWidget's edit sheet (avoid double Alert).
+                      await setDailyTotal(element.id, total);
                     }}
                     onOpenDetails={() =>
                       navigation.navigate('TrackerHistory', { elementId: element.id })

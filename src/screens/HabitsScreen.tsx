@@ -32,6 +32,8 @@ type Props = {
   notesActive?: boolean;
   /** Called before opening a tracker note so Home can dismiss the journal sheet. */
   onBeforeOpenTrackerNote?: () => void;
+  /** Lets Home lock Habit↔Counter swipe while this tab's note sheet is open. */
+  onTrackerNotesOpenChange?: (open: boolean) => void;
 };
 
 export default function HabitsScreen({
@@ -41,6 +43,7 @@ export default function HabitsScreen({
   journalOpen = false,
   notesActive = true,
   onBeforeOpenTrackerNote,
+  onTrackerNotesOpenChange,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
@@ -108,6 +111,11 @@ export default function HabitsScreen({
   useEffect(() => {
     if (journalOpen || !notesActive) noteEditor.dismiss();
   }, [journalOpen, notesActive, noteEditor.dismiss]);
+
+  useEffect(() => {
+    if (!notesActive) return;
+    onTrackerNotesOpenChange?.(noteEditor.session != null);
+  }, [notesActive, noteEditor.session, onTrackerNotesOpenChange]);
 
   /** Sort only among remaining — done stays parked at the bottom. */
   const reorderPeerIds = useMemo(

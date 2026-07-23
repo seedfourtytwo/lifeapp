@@ -6,6 +6,7 @@ import {
   getHabitTimerPlaybackMode,
   hasHabitTimerSound,
 } from '../habitSound';
+import { getBundledHabitSoundDurationSeconds } from '../habitSoundCatalog';
 import {
   formatScheduleDescription,
   HabitScheduleSchema,
@@ -154,16 +155,39 @@ export function isHabitDayComplete(
     if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
       return total >= config.dailyTargetSeconds;
     }
+    // play_once without a seconds target: only a finished track counts — never
+    // "any logged seconds" (that incorrectly completes after a short session).
     if (
-      dayEvents &&
       hasHabitTimerSound(config.timerSound) &&
       getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
     ) {
+      if (!dayEvents) return false;
       return dayEvents.some((event) => isTimerSessionTrackCompleted(event));
     }
     return total > 0;
   }
   return total >= 1;
+}
+
+/**
+ * Seconds goal for progress UI: explicit daily target, else play_once track length.
+ */
+export function getHabitTimerEffectiveTargetSeconds(
+  config: HabitConfig,
+): number | undefined {
+  if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
+    return config.dailyTargetSeconds;
+  }
+  if (
+    config.trackingMode !== 'timer' ||
+    !hasHabitTimerSound(config.timerSound) ||
+    getHabitTimerPlaybackMode(config.timerSound) !== 'play_once'
+  ) {
+    return undefined;
+  }
+  const trackId = config.timerSound?.trackId?.trim();
+  if (!trackId) return undefined;
+  return getBundledHabitSoundDurationSeconds(trackId);
 }
 
 /**

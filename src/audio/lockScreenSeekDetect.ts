@@ -22,8 +22,9 @@ export function detectLockScreenSeekSkip(input: {
     return null;
   }
 
-  // Only count nearly-instant jumps (button tap), not coalesced background catch-up.
-  if (wallDeltaMs >= 800) {
+  // Only count nearly-instant jumps (button tap), not coalesced background catch-up
+  // or the first status tick after local play/seek (often ~500–750ms wall time).
+  if (wallDeltaMs >= 300) {
     return null;
   }
 
@@ -32,14 +33,16 @@ export function detectLockScreenSeekSkip(input: {
     return mediaDelta > 0 ? 'next' : 'prev';
   }
 
-  // On the short keepalive clip, +10s clamps to the end — still an instant jump.
-  if (
-    duration > 0 &&
-    duration < 5 &&
-    Math.abs(mediaDelta) >= 0.5 &&
-    !(loop && mediaDelta < 0)
-  ) {
-    return mediaDelta > 0 ? 'next' : 'prev';
+  // Short keepalive (~2s): +10s / −10s clamp to end / start. Require a near-instant
+  // jump to the boundary — never treat normal 0.5s+ progress as a skip (that was
+  // finishing no-sound timers after ~1–2s).
+  if (duration > 0 && duration < 5) {
+    if (mediaDelta > 0 && currentTime >= duration - 0.2 && mediaDelta >= 0.4) {
+      return 'next';
+    }
+    if (mediaDelta < 0 && currentTime <= 0.2 && mediaDelta <= -0.4) {
+      return 'prev';
+    }
   }
 
   return null;

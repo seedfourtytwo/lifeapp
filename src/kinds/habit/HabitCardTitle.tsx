@@ -1,23 +1,27 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 
 type Props = {
   name: string;
-  streakLabel?: string | null;
-  description?: string | null;
+  /** Compact streak day count shown inline after the name. */
+  streakDays?: number | null;
+  /** Full streak phrase for screen readers. */
+  streakAccessibilityLabel?: string | null;
   onOpenDetails?: () => void;
 };
 
-/** Shared title + optional streak/description sublines for habit Home cards. */
+/** Shared name + optional inline streak for habit Home one-liners. */
 export function HabitCardTitle({
   name,
-  streakLabel = null,
-  description = null,
+  streakDays = null,
+  streakAccessibilityLabel = null,
   onOpenDetails,
 }: Props) {
   const theme = useTheme();
+  const showStreak = streakDays != null && streakDays > 0;
 
   return (
     <Pressable
@@ -25,8 +29,15 @@ export function HabitCardTitle({
       disabled={!onOpenDetails}
       style={({ pressed }) => [
         styles.titlePress,
+        styles.titleInline,
         pressed && onOpenDetails && styles.pressed,
       ]}
+      accessibilityRole={onOpenDetails ? 'button' : undefined}
+      accessibilityLabel={
+        showStreak && streakAccessibilityLabel
+          ? `${name}, ${streakAccessibilityLabel}`
+          : name
+      }
     >
       <Text
         variant="titleMedium"
@@ -35,23 +46,24 @@ export function HabitCardTitle({
       >
         {name}
       </Text>
-      {streakLabel ? (
-        <Text
-          variant="labelSmall"
-          numberOfLines={1}
-          style={[styles.subline, { color: theme.colors.onSurfaceVariant }]}
+      {showStreak ? (
+        <View
+          style={styles.streakInline}
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
         >
-          {streakLabel}
-        </Text>
-      ) : null}
-      {description ? (
-        <Text
-          variant="labelSmall"
-          numberOfLines={1}
-          style={[styles.subline, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {description}
-        </Text>
+          <MaterialCommunityIcons
+            name="fire"
+            size={16}
+            color={theme.colors.primary}
+          />
+          <Text
+            variant="labelLarge"
+            style={[styles.streakCount, { color: theme.colors.primary }]}
+          >
+            {streakDays}
+          </Text>
+        </View>
       ) : null}
     </Pressable>
   );

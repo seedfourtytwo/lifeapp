@@ -23,8 +23,7 @@
     "retry": "Réessayer",
     "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
     "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",
-    "couldNotLogBody": "Une erreur s'est produite",
-    "couldNotUpdateTotalTitle": "Mise à jour du total impossible"
+    "couldNotLogBody": "Une erreur s'est produite"
   },
   "journalMeta": {
     "dictateTodayJournal": "Dicter le journal du jour",

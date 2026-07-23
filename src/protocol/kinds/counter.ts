@@ -21,7 +21,7 @@ export type CounterEventMeta = z.infer<typeof CounterEventMetaSchema>;
 
 export const DEFAULT_COUNTER_CONFIG: CounterConfig = {
   unit: 'reps',
-  quickIncrements: [5, 10],
+  quickIncrements: [1, 5, 10],
 };
 
 export type CounterInput = {
