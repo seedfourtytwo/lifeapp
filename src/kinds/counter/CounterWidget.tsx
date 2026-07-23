@@ -26,11 +26,13 @@ import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
+import { formatCounterStreakLabel } from './counterCardLabels';
 
 export function CounterWidget({
   element,
   config,
   todayTotal,
+  streak,
   onLog,
   onSetDailyTotal,
   onOpenDetails,
@@ -54,6 +56,7 @@ export function CounterWidget({
   const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
   const progressBarColors = getCounterProgressBarColors(themeMode);
+  const streakLabel = formatCounterStreakLabel(config, streak);
 
   const countText = hasTarget
     ? `${todayTotal} / ${dailyTarget} ${formatCounterUnit(dailyTarget, config.unit)}`
@@ -125,6 +128,15 @@ export function CounterWidget({
             >
               {element.name}
             </Text>
+            {streakLabel ? (
+              <Text
+                variant="labelSmall"
+                numberOfLines={1}
+                style={[cardStyles.subline, { color: theme.colors.onSurfaceVariant }]}
+              >
+                {streakLabel}
+              </Text>
+            ) : null}
           </Pressable>
           <View style={cardStyles.metaCluster}>
             <Text

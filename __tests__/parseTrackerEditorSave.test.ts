@@ -32,6 +32,7 @@ describe('parseTrackerEditorSave', () => {
       name: ' Pushups',
       increments: '5, 10',
       dailyTarget: '50',
+      showStreakOnCard: true,
     });
 
     expect(result).toEqual({
@@ -40,8 +41,22 @@ describe('parseTrackerEditorSave', () => {
         name: ' Pushups',
         quickIncrements: [5, 10],
         dailyTarget: 50,
+        showStreakOnCard: true,
       },
     });
+  });
+
+  it('parses counter streak display option', () => {
+    const result = parseTrackerEditorSave({
+      mode: 'counter',
+      name: 'Steps',
+      increments: '1000',
+      dailyTarget: '8000',
+      showStreakOnCard: false,
+    });
+    expect(result.kind).toBe('counter');
+    if (result.kind !== 'counter') return;
+    expect(result.input.showStreakOnCard).toBe(false);
   });
 
   it('parses timer sound from bundled track', () => {
@@ -114,6 +129,7 @@ describe('parseTrackerEditorSave', () => {
         name: 'Test',
         increments: 'abc',
         dailyTarget: '',
+        showStreakOnCard: true,
       }),
     ).toThrow(/positive number/);
   });

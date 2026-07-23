@@ -42,6 +42,7 @@ export function editorSessionFromCounter(
     name,
     increments: config.quickIncrements.join(', '),
     dailyTarget: config.dailyTarget ? String(config.dailyTarget) : '',
+    showStreakOnCard: config.showStreakOnCard !== false,
   });
 }
 

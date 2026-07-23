@@ -35,6 +35,7 @@ export type TrackerEditorSaveData =
       name: string;
       increments: string;
       dailyTarget: string;
+      showStreakOnCard: boolean;
     }
   | {
       mode: 'habit';

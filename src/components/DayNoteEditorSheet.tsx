@@ -356,12 +356,8 @@ export default function DayNoteEditorSheet({
                 {atLimit
                   ? t('note.limitBannerFull', { noun })
                   : urgentLimit
-                    ? t('note.limitBannerUrgent', {
-                        remaining: remaining.toLocaleString(),
-                      })
-                    : t('note.limitBannerApproaching', {
-                        remaining: remaining.toLocaleString(),
-                      })}
+                    ? t('note.limitBannerUrgent', { count: remaining })
+                    : t('note.limitBannerApproaching', { count: remaining })}
               </Text>
               <Text
                 variant="labelSmall"

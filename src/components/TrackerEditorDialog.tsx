@@ -87,6 +87,7 @@ export default function TrackerEditorDialog({
   const [name, setName] = useState('');
   const [increments, setIncrements] = useState('5, 10');
   const [dailyTarget, setDailyTarget] = useState('');
+  const [showStreakOnCard, setShowStreakOnCard] = useState(true);
   const [habitFields, setHabitFields] = useState<HabitEditorFieldState>(emptyHabitFields);
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function TrackerEditorDialog({
     setName(session.name);
     setIncrements(session.increments);
     setDailyTarget(session.dailyTarget);
+    setShowStreakOnCard(session.showStreakOnCard);
     setHabitFields(habitFieldStateFromSession(session));
   }, [session, sessionId]);
 
@@ -105,7 +107,7 @@ export default function TrackerEditorDialog({
   const handleSave = () => {
     void stopHabitSound();
     if (mode === 'counter') {
-      onSave({ mode: 'counter', name, increments, dailyTarget });
+      onSave({ mode: 'counter', name, increments, dailyTarget, showStreakOnCard });
       return;
     }
     onSave({
@@ -184,8 +186,10 @@ export default function TrackerEditorDialog({
                 <CounterEditorFields
                   increments={increments}
                   dailyTarget={dailyTarget}
+                  showStreakOnCard={showStreakOnCard}
                   onIncrementsChange={setIncrements}
                   onDailyTargetChange={setDailyTarget}
+                  onShowStreakOnCardChange={setShowStreakOnCard}
                 />
               ) : session && mode === 'habit' ? (
                 <HabitEditorFields

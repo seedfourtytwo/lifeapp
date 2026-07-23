@@ -42,6 +42,22 @@ describe('CounterConfigSchema', () => {
       dailyTarget: 40,
     });
     expect(result.dailyTarget).toBe(40);
+    expect(result.showStreakOnCard).toBe(true);
+  });
+
+  it('defaults streak on when building with a target, and can opt out', () => {
+    expect(
+      buildCounterConfig(DEFAULT_COUNTER_CONFIG, {
+        quickIncrements: [1],
+        dailyTarget: 10,
+        showStreakOnCard: false,
+      }).showStreakOnCard,
+    ).toBe(false);
+    expect(
+      buildCounterConfig(DEFAULT_COUNTER_CONFIG, {
+        quickIncrements: [1],
+      }).showStreakOnCard,
+    ).toBeUndefined();
   });
 
   it('rejects empty quickIncrements', () => {
