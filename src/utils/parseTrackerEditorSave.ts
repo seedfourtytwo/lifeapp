@@ -85,6 +85,7 @@ export function parseTrackerEditorSave(
       kind: 'counter',
       input: {
         name: data.name,
+        icon: data.icon ?? undefined,
         quickIncrements: parseIncrements(data.increments),
         dailyTarget: parseDailyTarget(data.dailyTarget),
         showStreakOnCard: data.showStreakOnCard,
@@ -119,6 +120,7 @@ export function parseTrackerEditorSave(
     kind: 'habit',
     input: {
       name: data.name,
+      icon: data.icon ?? undefined,
       trackingMode: data.habitTrackingMode,
       // Time-of-day slots no longer drive list filters/order — keep protocol field stable.
       timeSlot: 'anytime',

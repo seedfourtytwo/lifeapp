@@ -37,7 +37,8 @@ export function buildLocalNoteDictationOptions(
 ): ExpoSpeechRecognitionOptions {
   return {
     lang: locale,
-    interimResults: false,
+    /** Live Echo — partial hypotheses while listening (wet ink in the note sheet). */
+    interimResults: true,
     continuous: supportsContinuousDictation(),
     addsPunctuation: true,
     maxAlternatives: 5,

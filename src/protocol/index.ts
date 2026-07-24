@@ -81,6 +81,14 @@ export {
 export type { CounterConfig, CounterEventMeta, CounterInput } from './kinds/counter';
 
 export {
+  TRACKER_ICON_IDS,
+  TrackerIconIdSchema,
+  OptionalTrackerIconSchema,
+  isTrackerIconId,
+} from './trackerIcons';
+export type { TrackerIconId } from './trackerIcons';
+
+export {
   HabitConfigSchema,
   HabitEventMetaSchema,
   HabitScheduleSchema,

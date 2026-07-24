@@ -6,7 +6,6 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
-import { joinDictationParts } from '../utils/appendTranscript';
 import { polishDictationTranscript } from '../utils/polishDictationTranscript';
 import {
   messageForSpeechRecognitionError,
@@ -21,6 +20,7 @@ import {
   ensureLocalDictationReady,
 } from '../utils/speechRecognitionLocal';
 import { speechRecognitionLocale } from '../utils/speechRecognitionLocale';
+import { DictationMicHalo } from './dictation/DictationPresence';
 
 /** How long to wait for the native `start` event before aborting. */
 const START_TIMEOUT_MS = 12_000;
@@ -33,7 +33,12 @@ interface Props {
   autoStart?: boolean;
   /** Stable token so auto-start runs once per open, not after Done. */
   autoStartToken?: string | null;
+  /** Polished phrase committed into the note (finals as they land, plus leftover interim on Done). */
   onTranscript: (text: string) => void;
+  /** Partial hypothesis while listening — `null` clears Live Echo. */
+  onInterim?: (text: string | null) => void;
+  /** True while a dictation session is open (Done visible). */
+  onSessionChange?: (open: boolean) => void;
   /** Called after Done finishes a session (even when no speech was captured). */
   onFinished?: () => void;
   onError?: (message: string | null) => void;
@@ -68,7 +73,7 @@ function abortRecognitionQuietly(): void {
 
 /**
  * Mic dictation for notes — transcript only (no audio stored).
- * Tap mic to record; Done to stop and append polished text.
+ * Tap mic to record; finals commit as they land; Done stops + Afterglow.
  */
 export default function DayNoteDictationButton({
   disabled,
@@ -76,6 +81,8 @@ export default function DayNoteDictationButton({
   autoStart = false,
   autoStartToken = null,
   onTranscript,
+  onInterim,
+  onSessionChange,
   onFinished,
   onError,
 }: Props) {
@@ -86,10 +93,14 @@ export default function DayNoteDictationButton({
   );
   const [listening, setListening] = useState(false);
   const [starting, setStarting] = useState(false);
-  /** Open until Done (or the sheet closes) — keeps continuous segments together. */
+  /** Open until Done (or the sheet closes). */
   const [sessionOpen, setSessionOpen] = useState(false);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+  const onInterimRef = useRef(onInterim);
+  onInterimRef.current = onInterim;
+  const onSessionChangeRef = useRef(onSessionChange);
+  onSessionChangeRef.current = onSessionChange;
   const onFinishedRef = useRef(onFinished);
   onFinishedRef.current = onFinished;
   const onErrorRef = useRef(onError);
@@ -100,7 +111,8 @@ export default function DayNoteDictationButton({
   disabledRef.current = Boolean(disabled);
   /** True while a session is open — `disabled` must not drop in-flight finals. */
   const sessionOpenRef = useRef(false);
-  const sessionPartsRef = useRef<string[]>([]);
+  /** Latest interim hypothesis — committed on Done if the engine never finals it. */
+  const interimRef = useRef('');
   const finishingRef = useRef(false);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutoStartTokenRef = useRef<string | null>(null);
@@ -119,32 +131,52 @@ export default function DayNoteDictationButton({
     }
   }, []);
 
+  const clearInterim = useCallback(() => {
+    interimRef.current = '';
+    onInterimRef.current?.(null);
+  }, []);
+
+  const publishInterim = useCallback((text: string | null) => {
+    const next = text?.trim() ? text : null;
+    interimRef.current = next ?? '';
+    onInterimRef.current?.(next);
+  }, []);
+
+  const commitPhrase = useCallback((raw: string) => {
+    const locale = speechRecognitionLocale();
+    const text = polishDictationTranscript(raw, locale);
+    if (!text) return;
+    onTranscriptRef.current(text);
+  }, []);
+
+  const setSession = useCallback((open: boolean) => {
+    sessionOpenRef.current = open;
+    setSessionOpen(open);
+    onSessionChangeRef.current?.(open);
+  }, []);
+
   const resetSession = useCallback(() => {
     clearStartTimeout();
-    sessionPartsRef.current = [];
+    clearInterim();
     finishingRef.current = false;
-    sessionOpenRef.current = false;
-    setSessionOpen(false);
+    setSession(false);
     setListening(false);
     setStarting(false);
-  }, [clearStartTimeout]);
+  }, [clearInterim, clearStartTimeout, setSession]);
 
   const flushSession = useCallback(() => {
     clearStartTimeout();
-    const locale = speechRecognitionLocale();
-    const raw = joinDictationParts(sessionPartsRef.current);
-    const text = polishDictationTranscript(raw, locale);
-    sessionPartsRef.current = [];
+    const leftover = interimRef.current.trim();
+    clearInterim();
     finishingRef.current = false;
-    sessionOpenRef.current = false;
-    setSessionOpen(false);
+    setSession(false);
     setListening(false);
     setStarting(false);
     // stop() may still emit an error after end/flush — ignore briefly.
     ignoreErrorsUntilRef.current = Date.now() + 750;
-    if (text) onTranscriptRef.current(text);
+    if (leftover) commitPhrase(leftover);
     onFinishedRef.current?.();
-  }, [clearStartTimeout]);
+  }, [clearInterim, clearStartTimeout, commitPhrase, setSession]);
 
   useEffect(() => {
     setAvailability(probeSpeechAvailability());
@@ -173,8 +205,7 @@ export default function DayNoteDictationButton({
     clearStartTimeout();
     setStarting(false);
     setListening(true);
-    sessionOpenRef.current = true;
-    setSessionOpen(true);
+    setSession(true);
     setError(null);
   });
 
@@ -188,9 +219,14 @@ export default function DayNoteDictationButton({
 
   useSpeechRecognitionEvent('result', (event) => {
     if (!activeRef.current) return;
-    if (!event.isFinal) return;
     const text = bestRecognitionTranscript(event.results);
-    if (text) sessionPartsRef.current.push(text);
+    if (!event.isFinal) {
+      publishInterim(text || null);
+      return;
+    }
+    // Final segment — clear wet ink and commit into the note immediately.
+    publishInterim(null);
+    if (text) commitPhrase(text);
   });
 
   useSpeechRecognitionEvent('error', (event) => {
@@ -208,10 +244,11 @@ export default function DayNoteDictationButton({
       return;
     }
     const mapped = messageForSpeechRecognitionError(event.error, event.message);
-    // Benign codes (no-speech / aborted) during an open session: keep finals, stay on Done.
+    // Benign codes (no-speech / aborted) during an open session: keep commits, stay on Done.
     if (mapped == null) {
       setListening(false);
       setStarting(false);
+      clearInterim();
       setError(null);
       return;
     }
@@ -234,7 +271,7 @@ export default function DayNoteDictationButton({
 
     setError(null);
     setStarting(true);
-    sessionPartsRef.current = [];
+    clearInterim();
     finishingRef.current = false;
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -283,6 +320,7 @@ export default function DayNoteDictationButton({
       resetSession();
     }
   }, [
+    clearInterim,
     clearStartTimeout,
     listening,
     resetSession,
@@ -341,11 +379,11 @@ export default function DayNoteDictationButton({
 
   const busy = disabled || !active || starting;
   const showDone = sessionOpen;
-  const micColor = listening
-    ? theme.colors.onPrimary
-    : availability.ok
-      ? theme.colors.primary
-      : theme.colors.onSurfaceVariant;
+  const live = listening || starting;
+  const idleMicColor = availability.ok
+    ? theme.colors.onSurfaceVariant
+    : theme.colors.onSurfaceVariant;
+  const liveMicColor = theme.dark ? '#8B7BB8' : '#5B4B8A';
 
   return (
     <View style={styles.row}>
@@ -360,17 +398,18 @@ export default function DayNoteDictationButton({
           {t('actions.done')}
         </Button>
       ) : null}
-      <IconButton
-        icon={listening ? 'microphone' : 'microphone-outline'}
-        size={22}
-        mode={listening ? 'contained' : 'outlined'}
-        iconColor={micColor}
-        containerColor={listening ? theme.colors.primary : undefined}
-        onPress={() => void start()}
-        disabled={busy || sessionOpen}
-        accessibilityLabel={t('note.dictateWithMic')}
-        style={styles.mic}
-      />
+      <DictationMicHalo active={live} color={liveMicColor}>
+        <IconButton
+          icon={live ? 'microphone' : 'microphone-outline'}
+          size={22}
+          mode={live ? 'contained-tonal' : 'outlined'}
+          iconColor={live ? liveMicColor : idleMicColor}
+          onPress={() => void start()}
+          disabled={busy || sessionOpen}
+          accessibilityLabel={t('note.dictateWithMic')}
+          style={styles.mic}
+        />
+      </DictationMicHalo>
     </View>
   );
 }

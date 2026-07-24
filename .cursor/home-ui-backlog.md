@@ -2,13 +2,14 @@
 
 - **Persist last Home tab** — only if Counters bouncing becomes common; default Habits stays correct.
 
-## Track 2 pointer (see `.cursor/ideas-master-plan.md`)
+## Track 2 / capture pointer (see `.cursor/ideas-master-plan.md`)
 
 | Chunk | Status |
 |-------|--------|
 | **T2b** Home habit/counter cards + drag-reorder | Mostly done |
 | **T2d** Weather chrome (mood chip, strip, fling, confetti) | **Done — leave alone** |
-| **T2c** Tracker editor / settings menus | **Next** |
+| **B5** Dictation Echo + Afterglow | **Active** — `feature/dictation-capture-feedback` |
+| **T2c** Tracker editor / settings menus | After dictation certainty |
 | **T2e** Sheet transitions + journal expand | After T2c |
 | **T2f** Haptics/sound taste | Last |
 

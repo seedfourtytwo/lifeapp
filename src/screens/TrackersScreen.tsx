@@ -6,9 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import TrackerEditorDialog from '../components/TrackerEditorDialog';
-import TrackerLibraryCard, {
-  type TrackerLibraryBadge,
-} from '../components/TrackerLibraryCard';
+import TrackerLibraryCard from '../components/TrackerLibraryCard';
 import TrackersCollapsibleSection from '../components/TrackersCollapsibleSection';
 import {
   editorSessionFromCounter,
@@ -138,47 +136,70 @@ export default function TrackersScreen() {
     (element: ElementDefinition, archived: boolean) => {
       const kindLabel = t(element.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit');
       const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
-      const badges: TrackerLibraryBadge[] =
-        element.kind === 'counter'
-          ? [{ label: t('card.counterBadge'), tone: archived ? 'muted' : 'accent' }]
-          : (() => {
-              const config = HabitConfigSchema.parse(element.config);
-              return [
-                {
-                  label:
-                    config.trackingMode === 'timer'
-                      ? t('card.timerBadge')
-                      : t('card.checkOffBadge'),
-                  tone: archived ? 'muted' : 'accent',
-                },
-              ];
-            })();
 
-      const metaLines =
-        element.kind === 'counter'
-          ? counterMetaLines(CounterConfigSchema.parse(element.config))
-          : habitMetaLines(HabitConfigSchema.parse(element.config));
+      if (element.kind === 'counter') {
+        const config = CounterConfigSchema.parse(element.config);
+        return (
+          <TrackerLibraryCard
+            key={element.id}
+            kind={element.kind}
+            accentColor={accentColor}
+            name={element.name}
+            icon={config.icon}
+            badges={[{ label: t('card.counterBadge'), tone: archived ? 'muted' : 'accent' }]}
+            metaLines={counterMetaLines(config)}
+            archived={archived}
+            onEdit={() =>
+              setEditorSession(editorSessionFromCounter(element.id, element.name, config))
+            }
+            onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
+            onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
+            onArchive={
+              archived
+                ? undefined
+                : () =>
+                    confirmArchive(
+                      element.name,
+                      kindLabel,
+                      () => archiveElement(element.id),
+                      t,
+                      tCommon,
+                    )
+            }
+            onRestore={
+              archived
+                ? () =>
+                    runElementMutation(
+                      () => restoreElement(element.id),
+                      tCommon('alerts.couldNotRestore'),
+                      tCommon,
+                    )
+                : undefined
+            }
+          />
+        );
+      }
 
-      const openEditor = () => {
-        if (element.kind === 'counter') {
-          const config = CounterConfigSchema.parse(element.config);
-          setEditorSession(editorSessionFromCounter(element.id, element.name, config));
-          return;
-        }
-        const config = HabitConfigSchema.parse(element.config);
-        setEditorSession(editorSessionFromHabit(element.id, element.name, config));
-      };
-
+      const config = HabitConfigSchema.parse(element.config);
       return (
         <TrackerLibraryCard
           key={element.id}
           kind={element.kind}
           accentColor={accentColor}
           name={element.name}
-          badges={badges}
-          metaLines={metaLines}
+          icon={config.icon}
+          badges={[
+            {
+              label:
+                config.trackingMode === 'timer'
+                  ? t('card.timerBadge')
+                  : t('card.checkOffBadge'),
+              tone: archived ? 'muted' : 'accent',
+            },
+          ]}
+          metaLines={habitMetaLines(config)}
           archived={archived}
-          onEdit={openEditor}
+          onEdit={() => setEditorSession(editorSessionFromHabit(element.id, element.name, config))}
           onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
           onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
           onArchive={

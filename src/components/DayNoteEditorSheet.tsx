@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import {
   Button,
   IconButton,
+  Menu,
   Modal,
   Portal,
   Text,
@@ -27,7 +29,9 @@ import {
 } from '../notes/noteBodyLimits';
 import { appendTranscript } from '../utils/appendTranscript';
 import { formatFullDate } from '../utils/dates';
+import { playDictationCommitHaptic } from '../utils/habitHaptics';
 import DayNoteDictationButton from './DayNoteDictationButton';
+import { DictationStageGlow } from './dictation/DictationPresence';
 
 export interface DayNoteEditorSheetProps {
   visible: boolean;
@@ -53,6 +57,8 @@ function clampNoteBody(text: string): string {
     ? text
     : text.slice(0, NOTE_BODY_MAX_LENGTH);
 }
+
+const COMMIT_FLASH_MS = 900;
 
 export default function DayNoteEditorSheet({
   visible,
@@ -80,10 +86,15 @@ export default function DayNoteEditorSheet({
   const [dictationHint, setDictationHint] = useState<string | null>(null);
   const [dictationError, setDictationError] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  /** Live Echo — wet ink while the engine is still hypothesizing. */
+  const [liveEcho, setLiveEcho] = useState<string | null>(null);
+  const [dictationSessionOpen, setDictationSessionOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const seededSessionKeyRef = useRef<string | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitFlash = useRef(new Animated.Value(0)).current;
   const isJournal = kind === 'journal';
   const noun = isJournal ? t('note.journalNoun') : t('note.noteNoun');
   const displayHeading = heading ?? (isJournal ? t('note.journalHeading') : t('note.noteHeading'));
@@ -103,6 +114,22 @@ export default function DayNoteEditorSheet({
     }
   };
 
+  const pulseCommitFlash = () => {
+    commitFlash.setValue(0);
+    Animated.sequence([
+      Animated.timing(commitFlash, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(commitFlash, {
+        toValue: 0,
+        duration: COMMIT_FLASH_MS,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   // Seed when the sheet opens for a target+day — not when the parent refreshes mid-edit.
   // Uncontrolled TextInput (defaultValue + remount): controlled `value` fights phone IME.
   useEffect(() => {
@@ -112,6 +139,9 @@ export default function DayNoteEditorSheet({
         setTextEditing(false);
         clearCopyFeedbackTimer();
         setCopyFeedback(null);
+        setLiveEcho(null);
+        setDictationSessionOpen(false);
+        setMenuOpen(false);
       }
       setDictationHint(null);
       setDictationError(null);
@@ -124,6 +154,9 @@ export default function DayNoteEditorSheet({
     setDictationError(null);
     clearCopyFeedbackTimer();
     setCopyFeedback(null);
+    setLiveEcho(null);
+    setDictationSessionOpen(false);
+    setMenuOpen(false);
     seededSessionKeyRef.current = sessionKey;
     // Mic-first: don't pop the keyboard on open — only when the user edits text.
     Keyboard.dismiss();
@@ -142,6 +175,7 @@ export default function DayNoteEditorSheet({
   const nearLimit = remaining <= NOTE_BODY_APPROACHING_REMAINING;
   const urgentLimit = remaining <= NOTE_BODY_URGENT_REMAINING;
   const atLimit = remaining <= 0;
+  const listening = dictationSessionOpen;
 
   const requestDismiss = () => {
     if (saving) return;
@@ -149,10 +183,12 @@ export default function DayNoteEditorSheet({
   };
 
   const handleClear = () => {
+    setMenuOpen(false);
     setDictationHint(null);
     setDictationError(null);
     clearCopyFeedbackTimer();
     setCopyFeedback(null);
+    setLiveEcho(null);
     if (hasStoredNote) {
       onSave('');
       return;
@@ -161,6 +197,7 @@ export default function DayNoteEditorSheet({
   };
 
   const handleCopy = async () => {
+    setMenuOpen(false);
     if (saving) return;
     const body = draftRef.current;
     if (!body.trim()) return;
@@ -185,7 +222,8 @@ export default function DayNoteEditorSheet({
   };
 
   const enterTextEditing = () => {
-    if (saving) return;
+    if (saving || listening) return;
+    setMenuOpen(false);
     remountField(draftRef.current);
     setTextEditing(true);
   };
@@ -203,9 +241,16 @@ export default function DayNoteEditorSheet({
     // Remount so dictation text appears without driving a controlled `value`.
     remountField(result.text);
     Keyboard.dismiss();
+    pulseCommitFlash();
+    void playDictationCommitHaptic();
   };
 
-  /** Quick Home capture: Done finishes speech, saves, and closes. */
+  const handleSessionChange = (open: boolean) => {
+    setDictationSessionOpen(open);
+    if (!open) setLiveEcho(null);
+  };
+
+  /** Quick Home capture: Done finishes speech, then saves and closes when dirty. */
   const handleDictationFinished = () => {
     if (!autoStartDictation || saving) return;
     const body = draftRef.current;
@@ -219,6 +264,13 @@ export default function DayNoteEditorSheet({
   const previewPlaceholder = isJournal
     ? t('note.previewPlaceholderJournal')
     : t('note.previewPlaceholderNote');
+
+  const flashOpacity = commitFlash.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.08],
+  });
+
+  const showSave = !autoStartDictation || textEditing || isDirty;
 
   return (
     <Portal>
@@ -259,9 +311,51 @@ export default function DayNoteEditorSheet({
                 autoStartDictation && sessionKey ? `${sessionKey}:dictate` : null
               }
               onTranscript={handleTranscript}
+              onInterim={setLiveEcho}
+              onSessionChange={handleSessionChange}
               onFinished={autoStartDictation ? handleDictationFinished : undefined}
               onError={setDictationError}
             />
+            {!listening && (showClear || hasDraftText || !textEditing) ? (
+              <Menu
+                visible={menuOpen}
+                onDismiss={() => setMenuOpen(false)}
+                anchor={
+                  <IconButton
+                    icon="dots-vertical"
+                    onPress={() => setMenuOpen(true)}
+                    disabled={saving}
+                    accessibilityLabel={t('note.moreActions')}
+                    style={styles.headerIcon}
+                  />
+                }
+              >
+                {showClear ? (
+                  <Menu.Item
+                    onPress={handleClear}
+                    title={t('note.clear')}
+                    leadingIcon="delete-outline"
+                    titleStyle={{ color: theme.colors.error }}
+                  />
+                ) : null}
+                {hasDraftText ? (
+                  <Menu.Item
+                    onPress={() => void handleCopy()}
+                    title={copyFeedback ?? t('note.copy')}
+                    leadingIcon="content-copy"
+                    disabled={saving}
+                  />
+                ) : null}
+                {!textEditing ? (
+                  <Menu.Item
+                    onPress={enterTextEditing}
+                    title={t('note.editText')}
+                    leadingIcon="pencil-outline"
+                    disabled={saving}
+                  />
+                ) : null}
+              </Menu>
+            ) : null}
             <IconButton
               icon="close"
               onPress={requestDismiss}
@@ -311,36 +405,79 @@ export default function DayNoteEditorSheet({
               spellCheck
             />
           ) : (
-            <Pressable
-              onPress={enterTextEditing}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel={
-                hasDraftText
-                  ? t('note.editNoteAccessible', { noun })
-                  : t('note.editNoteEmptyAccessible', { noun })
-              }
-              accessibilityHint={t('note.editNoteHint')}
+            <DictationStageGlow
+              active={listening}
+              color={theme.dark ? '#8B7BB8' : '#5B4B8A'}
+              borderRadius={10}
               style={[
                 styles.preview,
                 isJournal && styles.journalPreview,
                 {
                   borderColor: theme.colors.outline,
+                  borderWidth: StyleSheet.hairlineWidth * 2,
                   backgroundColor: theme.colors.surface,
                 },
               ]}
             >
-              <Text
-                variant="bodyMedium"
-                style={{
-                  color: hasDraftText
-                    ? theme.colors.onSurface
-                    : theme.colors.onSurfaceVariant,
-                }}
+              <Pressable
+                onPress={enterTextEditing}
+                disabled={saving || listening}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  hasDraftText
+                    ? t('note.editNoteAccessible', { noun })
+                    : t('note.editNoteEmptyAccessible', { noun })
+                }
+                accessibilityHint={t('note.editNoteHint')}
+                style={[
+                  styles.previewPress,
+                  isJournal && styles.journalPreviewPress,
+                ]}
               >
-                {hasDraftText ? draft : previewPlaceholder}
-              </Text>
-            </Pressable>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      backgroundColor: theme.colors.onSurface,
+                      opacity: flashOpacity,
+                      borderRadius: 3,
+                    },
+                  ]}
+                />
+                {hasDraftText || liveEcho ? (
+                  <View>
+                    {hasDraftText ? (
+                      <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                        {draft}
+                      </Text>
+                    ) : null}
+                    {liveEcho ? (
+                      <Text
+                        variant="bodyMedium"
+                        style={{
+                          color: theme.colors.onSurfaceVariant,
+                          fontStyle: 'italic',
+                          marginTop: hasDraftText ? 8 : 0,
+                          opacity: 0.75,
+                        }}
+                        accessibilityLiveRegion="polite"
+                        accessibilityLabel={t('note.liveEchoA11y', { text: liveEcho })}
+                      >
+                        {liveEcho}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : (
+                  <Text
+                    variant="bodyMedium"
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                  >
+                    {previewPlaceholder}
+                  </Text>
+                )}
+              </Pressable>
+            </DictationStageGlow>
           )}
 
           {nearLimit ? (
@@ -398,49 +535,25 @@ export default function DayNoteEditorSheet({
 
           <View style={styles.actions}>
             <View style={styles.actionsLeft}>
-              {showClear ? (
-                <Button
-                  mode="text"
-                  textColor={theme.colors.error}
-                  onPress={handleClear}
-                  disabled={saving}
-                  compact
+              {copyFeedback && !menuOpen ? (
+                <Text
+                  variant="labelSmall"
+                  style={{ color: theme.colors.primary, paddingHorizontal: 8 }}
                 >
-                  {t('note.clear')}
-                </Button>
-              ) : null}
-              {hasDraftText ? (
-                <Button
-                  mode="text"
-                  onPress={() => void handleCopy()}
-                  disabled={saving}
-                  compact
-                  accessibilityLabel={t('note.copyA11y', { noun })}
-                >
-                  {copyFeedback ?? t('note.copy')}
-                </Button>
-              ) : null}
-              {!textEditing ? (
-                <Button
-                  mode="text"
-                  onPress={enterTextEditing}
-                  disabled={saving}
-                  compact
-                >
-                  {t('note.editText')}
-                </Button>
+                  {copyFeedback}
+                </Text>
               ) : null}
             </View>
             <View style={styles.actionsRight}>
-              <Button mode="text" onPress={requestDismiss} disabled={saving}>
+              <Button mode="text" onPress={requestDismiss} disabled={saving || listening}>
                 {autoStartDictation ? t('note.close') : t('note.cancel')}
               </Button>
-              {!autoStartDictation || textEditing || isDirty ? (
+              {showSave ? (
                 <Button
                   mode="contained"
                   onPress={handleSave}
                   loading={saving}
-                  disabled={saving || !canSave}
+                  disabled={saving || !canSave || listening}
                 >
                   {t('note.save')}
                 </Button>
@@ -476,15 +589,19 @@ const styles = StyleSheet.create({
   preview: {
     minHeight: 140,
     maxHeight: 280,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
   },
   journalPreview: {
     minHeight: 180,
     maxHeight: 320,
+  },
+  previewPress: {
+    flexGrow: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 140,
+  },
+  journalPreviewPress: {
+    minHeight: 180,
   },
   input: {
     minHeight: 140,

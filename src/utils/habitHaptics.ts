@@ -48,6 +48,11 @@ export async function playChartSelectHaptic(): Promise<void> {
   }
 }
 
+/** Soft tick when a dictated phrase commits into the note (Live Echo). */
+export async function playDictationCommitHaptic(): Promise<void> {
+  await playChartSelectHaptic();
+}
+
 /** Medium impact when a Home list drag-reorder activates. */
 export async function playReorderDragHaptic(): Promise<void> {
   const Haptics = await getHaptics();

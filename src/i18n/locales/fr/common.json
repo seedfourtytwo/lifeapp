@@ -87,6 +87,8 @@
     "dictateHint": "Appui long pour ouvrir et modifier sans dicter",
     "finishDictation": "Terminer la dictée",
     "dictateWithMic": "Dicter avec le micro",
+    "moreActions": "Autres actions de note",
+    "liveEchoA11y": "Entendu : {{text}}",
     "tapToAddNote": "Appuyez pour ajouter une note",
     "addNote": "Ajouter une note",
     "editNoteFor": "Modifier la note de {{name}}",

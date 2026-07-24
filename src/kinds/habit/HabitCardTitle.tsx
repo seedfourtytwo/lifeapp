@@ -6,10 +6,13 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
+import type { TrackerIconId } from '../../protocol';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 
 type Props = {
   name: string;
+  /** Optional curated tracker icon shown before the name. */
+  icon?: TrackerIconId | null;
   /** Compact streak day count shown inline after the name. */
   streakDays?: number | null;
   /** Full streak phrase for screen readers. */
@@ -30,6 +33,7 @@ type Props = {
  */
 export function HabitCardTitle({
   name,
+  icon = null,
   streakDays = null,
   streakAccessibilityLabel = null,
   onOpenDetails,
@@ -99,6 +103,16 @@ export function HabitCardTitle({
       accessibilityLabel={label}
       accessibilityHint={onLongPressReorder ? reorderHint : undefined}
     >
+      {icon ? (
+        <MaterialCommunityIcons
+          name={icon}
+          size={20}
+          color={theme.colors.primary}
+          style={styles.titleIcon}
+          accessible={false}
+          importantForAccessibility="no"
+        />
+      ) : null}
       <Text
         variant="titleMedium"
         numberOfLines={1}

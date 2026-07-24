@@ -4,6 +4,7 @@ import { Button, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
+import type { TrackerIconId } from '../protocol';
 
 export type TrackerLibraryBadge = {
   label: string;
@@ -14,6 +15,7 @@ type Props = {
   kind: 'counter' | 'habit';
   accentColor: string;
   name: string;
+  icon?: TrackerIconId | null;
   badges: TrackerLibraryBadge[];
   metaLines: string[];
   archived?: boolean;
@@ -32,6 +34,7 @@ export default function TrackerLibraryCard({
   kind,
   accentColor,
   name,
+  icon = null,
   badges,
   metaLines,
   archived = false,
@@ -44,6 +47,7 @@ export default function TrackerLibraryCard({
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const { decorations: deco, isCartoon } = useAppTheme();
+  const displayIcon = icon ?? kindIcon(kind);
 
   const badgeColors = (tone: TrackerLibraryBadge['tone']) => {
     switch (tone) {
@@ -80,7 +84,7 @@ export default function TrackerLibraryCard({
     >
       <View style={styles.content}>
         <View style={[styles.kindIcon, { backgroundColor: `${accentColor}18` }]}>
-          <MaterialCommunityIcons name={kindIcon(kind)} size={20} color={accentColor} />
+          <MaterialCommunityIcons name={displayIcon} size={20} color={accentColor} />
         </View>
         <View style={styles.main}>
           <Text variant="titleMedium" style={styles.name}>

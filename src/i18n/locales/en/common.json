@@ -87,6 +87,8 @@
     "dictateHint": "Long press to open and edit without dictating",
     "finishDictation": "Finish dictation",
     "dictateWithMic": "Dictate with microphone",
+    "moreActions": "More note actions",
+    "liveEchoA11y": "Hearing: {{text}}",
     "tapToAddNote": "Tap to add a note",
     "addNote": "Add note",
     "editNoteFor": "Edit note for {{name}}",

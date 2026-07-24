@@ -24,11 +24,13 @@ import CounterEditorFields from './trackerEditor/CounterEditorFields';
 import { newEditorSession } from './trackerEditor/trackerEditorSession';
 import FormSection from './trackerEditor/FormSection';
 import HabitEditorFields from './trackerEditor/HabitEditorFields';
+import IconPickerField from './trackerEditor/IconPickerField';
 import type {
   TrackerEditorSaveData,
   TrackerEditorSession,
   HabitEditorFieldState,
 } from './trackerEditor/types';
+import type { TrackerIconId } from '../protocol';
 
 type Props = {
   session: TrackerEditorSession | null;
@@ -85,6 +87,7 @@ export default function TrackerEditorDialog({
   const sessionId = session?.sessionId;
 
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState<TrackerIconId | null>(null);
   const [increments, setIncrements] = useState('5, 10');
   const [dailyTarget, setDailyTarget] = useState('');
   const [showStreakOnCard, setShowStreakOnCard] = useState(true);
@@ -93,6 +96,7 @@ export default function TrackerEditorDialog({
   useEffect(() => {
     if (!session) return;
     setName(session.name);
+    setIcon(session.icon);
     setIncrements(session.increments);
     setDailyTarget(session.dailyTarget);
     setShowStreakOnCard(session.showStreakOnCard);
@@ -107,12 +111,13 @@ export default function TrackerEditorDialog({
   const handleSave = () => {
     void stopHabitSound();
     if (mode === 'counter') {
-      onSave({ mode: 'counter', name, increments, dailyTarget, showStreakOnCard });
+      onSave({ mode: 'counter', name, icon, increments, dailyTarget, showStreakOnCard });
       return;
     }
     onSave({
       mode: 'habit',
       name,
+      icon,
       ...habitFields,
     });
   };
@@ -181,6 +186,8 @@ export default function TrackerEditorDialog({
                   autoCorrect={false}
                 />
               </FormSection>
+
+              <IconPickerField value={icon} onChange={setIcon} />
 
               {mode === 'counter' ? (
                 <CounterEditorFields

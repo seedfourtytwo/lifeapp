@@ -9,6 +9,7 @@ export function newEditorSession(
     sessionId: newId(),
     editingId: null,
     name: '',
+    icon: null,
     increments: '1, 5, 10',
     dailyTarget: '',
     targetLabel: '',
@@ -42,6 +43,7 @@ export function editorSessionFromCounter(
     name,
     increments: config.quickIncrements.join(', '),
     dailyTarget: config.dailyTarget ? String(config.dailyTarget) : '',
+    icon: config.icon ?? null,
     showStreakOnCard: config.showStreakOnCard !== false,
   });
 }
@@ -57,6 +59,7 @@ export function editorSessionFromHabit(
     mode: 'habit',
     editingId: id,
     name,
+    icon: config.icon ?? null,
     targetLabel: config.targetLabel ?? '',
     habitTrackingMode: config.trackingMode,
     habitDailyGoalMinutes: config.dailyTargetSeconds

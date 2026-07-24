@@ -20,6 +20,10 @@ import {
   type ActiveTimerSession,
   activeTimerElapsedSeconds,
 } from '../activeTimerSession';
+import {
+  OptionalTrackerIconSchema,
+  type TrackerIconId,
+} from '../trackerIcons';
 
 export { HabitScheduleSchema, type HabitSchedule, formatScheduleDescription };
 
@@ -60,6 +64,8 @@ export const HabitConfigSchema = z.object({
   remindMinutesBefore: z.number().int().nonnegative().optional(),
   /** Show current success or failure streak on the habit card */
   showStreakOnCard: z.boolean().optional(),
+  /** Optional curated Material Community Icon for Home / library identity. */
+  icon: OptionalTrackerIconSchema,
 });
 
 export type HabitConfig = z.infer<typeof HabitConfigSchema>;
@@ -114,6 +120,7 @@ export type HabitInput = {
   schedule?: HabitSchedule;
   remindMinutesBefore?: number;
   showStreakOnCard?: boolean;
+  icon?: TrackerIconId;
 };
 
 export function shouldShowHabitStreakOnCard(config: HabitConfig): boolean {
@@ -143,6 +150,7 @@ export function buildHabitConfig(
     ...(input.showStreakOnCard === false
       ? { showStreakOnCard: false }
       : { showStreakOnCard: true }),
+    ...(input.icon ? { icon: input.icon } : {}),
   };
 }
 

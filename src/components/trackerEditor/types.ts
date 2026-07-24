@@ -1,4 +1,4 @@
-import type { HabitSchedule, HabitTrackingMode, HabitTimerPlaybackMode } from '../../protocol';
+import type { HabitSchedule, HabitTrackingMode, HabitTimerPlaybackMode, TrackerIconId } from '../../protocol';
 
 export type HabitScheduleType = HabitSchedule['type'];
 
@@ -9,6 +9,7 @@ export type TrackerEditorSession = {
   mode: TrackerEditorMode;
   editingId: string | null;
   name: string;
+  icon: TrackerIconId | null;
   increments: string;
   dailyTarget: string;
   targetLabel: string;
@@ -33,6 +34,7 @@ export type TrackerEditorSaveData =
   | {
       mode: 'counter';
       name: string;
+      icon: TrackerIconId | null;
       increments: string;
       dailyTarget: string;
       showStreakOnCard: boolean;
@@ -40,6 +42,7 @@ export type TrackerEditorSaveData =
   | {
       mode: 'habit';
       name: string;
+      icon: TrackerIconId | null;
       targetLabel: string;
       habitTrackingMode: HabitTrackingMode;
       habitDailyGoalMinutes: string;

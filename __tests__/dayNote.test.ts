@@ -273,10 +273,11 @@ describe('bestRecognitionTranscript', () => {
 });
 
 describe('buildLocalNoteDictationOptions', () => {
-  it('forces on-device recognition with punctuation and dictation hint', () => {
+  it('forces on-device recognition with punctuation, interim echo, and dictation hint', () => {
     const options = buildLocalNoteDictationOptions('en-US');
     expect(options.requiresOnDeviceRecognition).toBe(true);
     expect(options.addsPunctuation).toBe(true);
+    expect(options.interimResults).toBe(true);
     expect(options.maxAlternatives).toBe(5);
     expect(options.iosTaskHint).toBe('dictation');
     expect(options.lang).toBe('en-US');

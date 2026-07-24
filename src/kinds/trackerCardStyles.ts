@@ -30,6 +30,9 @@ export const trackerCardStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  titleIcon: {
+    flexShrink: 0,
+  },
   pressed: {
     opacity: 0.7,
   },

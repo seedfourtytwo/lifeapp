@@ -1,0 +1,45 @@
+---
+description: Keep Expo Metro healthy and periodically QA its logs while working in this project
+alwaysApply: true
+---
+
+# Metro health monitor (Life Dashboard)
+
+When the user asks to run/monitor the server, or when actively debugging the running app:
+
+## Ensure Metro is up
+
+1. Check `http://localhost:8081/status` → expect `packager-status:running`.
+2. If down, start (do not kill a healthy existing instance):
+
+   `CI=0 EXPO_NO_TELEMETRY=1 npx expo start --dev-client --lan --port 8081`
+
+3. Prefer the existing live terminal under the Cursor terminals folder over starting a duplicate.
+
+## Interval monitoring (this chat)
+
+- Arm a **10-minute** Cursor loop (`AGENT_LOOP_TICK_metro`) that:
+  - curls `:8081/status`
+  - samples Metro + jest-worker RSS via `ps`
+  - scans **new** Metro log lines for `ERROR` / `TransformError` / Rules-of-Hooks / OOM
+- **Stay quiet on healthy ticks** unless the user asked for a verification ping.
+- Report when: status down, new real errors, or Metro RSS jumps **>150 MB** vs the session baseline.
+- Baseline (typical long session): Metro ~800–900 MB RSS; workers add ~1–1.5 GB total — note, don’t panic unless climbing.
+
+Also keep a live `tail -F` on the active Metro terminal with notify on `ERROR|TransformError|Bundling failed|EADDRINUSE`.
+
+## Log QA priorities
+
+| Severity | Pattern | Likely cause |
+|---|---|---|
+| High | Rules of Hooks / “Rendered more hooks” | Conditional hooks in UI rework |
+| High | `NativeDatabase.execAsync` rejected / SQLite released | DB lifecycle race at startup |
+| Medium | `Component is not a function (it is Object)` | Bad export or stale HMR — suggest reload |
+| Medium | Duplicate declaration / SyntaxError TransformError | Mid-edit broken file — usually transient |
+| Low | `[expo-av] deprecated` | Expected until fully on expo-audio/video |
+
+When reporting, separate **transient mid-edit** noise from **recurring** crashes. Prefer small fixes for recurring high-severity issues; don’t restart Metro for every TransformError during active edits.
+
+## Out of scope for cloud Automations
+
+Local Metro on `:8081` is **device/host-local**. Scheduled cloud agents cannot health-check it. Use this rule + an in-chat loop for live monitoring; use a separate scheduled automation only for repo/architecture review if desired.

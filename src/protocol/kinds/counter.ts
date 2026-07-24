@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  OptionalTrackerIconSchema,
+  type TrackerIconId,
+} from '../trackerIcons';
 
 export const CounterConfigSchema = z.object({
   unit: z.string().min(1),
@@ -8,6 +12,8 @@ export const CounterConfigSchema = z.object({
   dailyTarget: z.number().int().positive().optional(),
   /** Show target-hit streak under the name (only meaningful with dailyTarget). */
   showStreakOnCard: z.boolean().optional(),
+  /** Optional curated Material Community Icon for Home / library identity. */
+  icon: OptionalTrackerIconSchema,
 });
 
 export type CounterConfig = z.infer<typeof CounterConfigSchema>;
@@ -29,6 +35,7 @@ export type CounterInput = {
   quickIncrements: number[];
   dailyTarget?: number;
   showStreakOnCard?: boolean;
+  icon?: TrackerIconId;
 };
 
 export function formatCounterUnit(count: number, unit: string): string {
@@ -50,7 +57,7 @@ export function shouldShowCounterStreakOnCard(config: CounterConfig): boolean {
 
 export function buildCounterConfig(
   existing: Partial<CounterConfig>,
-  input: Pick<CounterInput, 'quickIncrements' | 'dailyTarget' | 'showStreakOnCard'>,
+  input: Pick<CounterInput, 'quickIncrements' | 'dailyTarget' | 'showStreakOnCard' | 'icon'>,
 ): CounterConfig {
   const hasTarget = Boolean(input.dailyTarget && input.dailyTarget > 0);
   return {
@@ -63,5 +70,6 @@ export function buildCounterConfig(
         ? { showStreakOnCard: false }
         : { showStreakOnCard: true }
       : {}),
+    ...(input.icon ? { icon: input.icon } : {}),
   };
 }

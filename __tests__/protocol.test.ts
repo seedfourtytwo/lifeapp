@@ -66,6 +66,38 @@ describe('CounterConfigSchema', () => {
       CounterConfigSchema.parse({ unit: 'reps', quickIncrements: [] }),
     ).toThrow();
   });
+
+  it('accepts curated icon and drops unknown glyph names', () => {
+    expect(
+      CounterConfigSchema.parse({
+        unit: 'reps',
+        quickIncrements: [1],
+        icon: 'dumbbell',
+      }).icon,
+    ).toBe('dumbbell');
+    expect(
+      CounterConfigSchema.parse({
+        unit: 'reps',
+        quickIncrements: [1],
+        icon: 'not-a-real-icon',
+      }).icon,
+    ).toBeUndefined();
+  });
+
+  it('builds counter config with optional icon', () => {
+    expect(
+      buildCounterConfig(DEFAULT_COUNTER_CONFIG, {
+        quickIncrements: [1],
+        icon: 'arm-flex',
+      }).icon,
+    ).toBe('arm-flex');
+    expect(
+      buildCounterConfig(
+        { ...DEFAULT_COUNTER_CONFIG, icon: 'dumbbell' },
+        { quickIncrements: [1] },
+      ).icon,
+    ).toBeUndefined();
+  });
 });
 
 describe('HabitConfigSchema', () => {
@@ -156,6 +188,16 @@ describe('HabitConfigSchema', () => {
       showStreakOnCard: false,
     });
     expect(result.showStreakOnCard).toBe(false);
+  });
+
+  it('accepts curated habit icon and drops unknown glyph names', () => {
+    expect(HabitConfigSchema.parse({ icon: 'meditation' }).icon).toBe('meditation');
+    expect(HabitConfigSchema.parse({ icon: 'totally-fake' }).icon).toBeUndefined();
+  });
+
+  it('builds habit config with optional icon', () => {
+    expect(buildHabitConfig({ icon: 'book-open-variant' }).icon).toBe('book-open-variant');
+    expect(buildHabitConfig({}).icon).toBeUndefined();
   });
 });
 

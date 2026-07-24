@@ -6,6 +6,7 @@ const habitSaveData = (
 ): Extract<TrackerEditorSaveData, { mode: 'habit' }> => ({
   mode: 'habit',
   name: 'Meditation',
+  icon: null,
   targetLabel: '',
   habitTrackingMode: 'boolean',
   habitDailyGoalMinutes: '',
@@ -30,6 +31,7 @@ describe('parseTrackerEditorSave', () => {
     const result = parseTrackerEditorSave({
       mode: 'counter',
       name: ' Pushups',
+      icon: 'dumbbell',
       increments: '5, 10',
       dailyTarget: '50',
       showStreakOnCard: true,
@@ -39,6 +41,7 @@ describe('parseTrackerEditorSave', () => {
       kind: 'counter',
       input: {
         name: ' Pushups',
+        icon: 'dumbbell',
         quickIncrements: [5, 10],
         dailyTarget: 50,
         showStreakOnCard: true,
@@ -50,6 +53,7 @@ describe('parseTrackerEditorSave', () => {
     const result = parseTrackerEditorSave({
       mode: 'counter',
       name: 'Steps',
+      icon: null,
       increments: '1000',
       dailyTarget: '8000',
       showStreakOnCard: false,
@@ -57,6 +61,7 @@ describe('parseTrackerEditorSave', () => {
     expect(result.kind).toBe('counter');
     if (result.kind !== 'counter') return;
     expect(result.input.showStreakOnCard).toBe(false);
+    expect(result.input.icon).toBeUndefined();
   });
 
   it('parses timer sound from bundled track', () => {
@@ -122,11 +127,24 @@ describe('parseTrackerEditorSave', () => {
     expect(result.input.showStreakOnCard).toBe(true);
   });
 
+  it('parses habit icon when selected', () => {
+    const result = parseTrackerEditorSave(
+      habitSaveData({
+        icon: 'meditation',
+      }),
+    );
+
+    expect(result.kind).toBe('habit');
+    if (result.kind !== 'habit') return;
+    expect(result.input.icon).toBe('meditation');
+  });
+
   it('rejects invalid increments', () => {
     expect(() =>
       parseTrackerEditorSave({
         mode: 'counter',
         name: 'Test',
+        icon: null,
         increments: 'abc',
         dailyTarget: '',
         showStreakOnCard: true,

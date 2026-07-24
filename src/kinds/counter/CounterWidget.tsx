@@ -163,6 +163,7 @@ export function CounterWidget({
         <View style={cardStyles.oneLineRow}>
           <HabitCardTitle
             name={element.name}
+            icon={config.icon}
             streakDays={streakDays}
             streakAccessibilityLabel={streakLabel}
             onOpenDetails={onOpenDetails}

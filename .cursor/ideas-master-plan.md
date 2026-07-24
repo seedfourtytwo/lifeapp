@@ -1,6 +1,6 @@
 # Ideas master plan — review draft
 
-**Status:** Track 1 easy wins **complete**. Track 2 UI rework **in progress** on `feature/track2-ui-rework`. **T2d weather chrome is done** (pause further bubble polish). **Next:** **T2c** tracker editor / settings menus (then **T2e** sheets / journal expand).  
+**Status:** Track 1 easy wins **complete**. Track 2 UI rework **in progress** (`feature/track2-ui-rework`: T2b cards + **T2d weather done**). **Active now:** dictation capture feedback (**Echo + Afterglow**) on `feature/dictation-capture-feedback` (B5 visual certainty — not voice commands yet). After that: **T2c** tracker editor.  
 **Native builds:** **local Android SDK** (default). Debug app = package `…dashboard.dev`, launcher **dev**. EAS optional backup.  
 **Sources (2026-07-22 export):** journal (hit 4k) + Study habit note + Workout habit note + `.cursor/product-ideas.md` + competitor scout.
 
@@ -46,7 +46,7 @@ Small, high leverage, mostly isolated. **Finished** before the big visual rework
 
 **Explicitly not in Track 1:** voice “Done done” commands, undo/redo stacks, Proton Drive, drag-reorder, hold-+5/+10, Insights rewrite, new kinds (todos/food/idea inbox), **W5** copy clutter (Track 2), **export/import** (Session Export), **lock screen** (Session Lock).
 
-**Next action:** **T2c** — Tracker editor / settings menus (visual structure & clearer sections). Skip further weather-bubble work. After T2c: **T2e** sheets + journal expand, then **T2f** haptics/sound.
+**Next action:** **Dictation Echo + Afterglow** on `feature/dictation-capture-feedback` (see **B5** visual chunks). Then **T2c** tracker editor / settings menus. Skip further weather-bubble work.
 
 ---
 
@@ -124,7 +124,7 @@ Former **W7** / **W8** were too small as “easy wins” — each belongs to a f
 | Bucket | Items |
 |--------|-------|
 | Interaction upgrades | C4 hold-+N · D4 shake refresh |
-| Notes power | B2 undo/redo · B5 voice commands + last-sentence confirm · B6 FR/EN dictation policy |
+| Notes power | B2 undo/redo · B5 voice commands (after Echo/Afterglow) · B6 FR/EN dictation policy |
 | Data | **Session Export** (G1/G2/B4) · G3 Proton/scheduled backup |
 | Stats follow-ups | Counter **target-hit streak in History / Insights** (Home card cache is not stats — recompute or surface there when Insights content is planned) |
 | Native | **Session Lock** (A4) · then H1 lock-screen dictation · home widgets (K/E) |
@@ -247,17 +247,17 @@ Things that already hurt daily use. Prefer these before big redesigns.
 
 ---
 
-### B5 · Voice commands in dictation
+### B5 · Voice commands in dictation / capture certainty
 
 **Idea:** Voice “Done” / “Done done” to finish capture; optional voice formatting (“next chapter” → section break / dashes). Visual confirmation of last captured sentence so nothing is truncated unnoticed.
 
 **Chunks:**
-1. Voice command: Done / stop (locale-aware).
-2. Last-sentence / end-of-capture flicker confirmation.
+1. **In progress (`feature/dictation-capture-feedback`):** Live Echo (interim wet ink) + commit-as-you-go finals + discreet listening presence + calmer overflow menu. Quick-capture Done still saves/closes (edit if wrong).
+2. Voice command: Done / stop (locale-aware) — **after** visual certainty.
 3. Formatting keywords (“next chapter”, section rules) — polish after core reliability.
 4. Discrete pause/stop that feels instant.
 
-**Verdict:** **Later** · **Size:** M–L · **Layer:** UI / speech  
+**Verdict:** visual certainty **active** · voice commands **Later** · **Size:** M–L · **Layer:** UI / speech  
 **Note:** Dictation language already follows app language — keep that.
 
 ---
