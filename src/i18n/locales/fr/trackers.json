@@ -58,6 +58,10 @@
     "delete": "Supprimer",
     "itemsCountA11y": "{{title}}, {{count}} éléments"
   },
+  "homeIdentity": {
+    "doubleTapHistoryHint": "Appuyer deux fois pour ouvrir l’historique",
+    "openHistoryAction": "Ouvrir l’historique"
+  },
   "editor": {
     "newCounterTitle": "Nouveau compteur",
     "editCounterTitle": "Modifier le compteur",
@@ -174,7 +178,7 @@
     "streakMany": "Série de {{count}} jours",
     "addIncrementA11y": "Ajouter {{count}}",
     "expandIncrementsHint": "Appui long pour afficher d'autres incréments",
-    "reorderLongPressHint": "Appui long pour glisser et réordonner"
+    "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner"
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Terminé. Appuyez pour annuler",
@@ -187,7 +191,7 @@
     "finishSessionA11y": "Terminer la session",
     "resetTodayA11y": "Réinitialiser aujourd'hui",
     "playLongPressResetHint": "Appui long pour réinitialiser aujourd'hui",
-    "reorderLongPressHint": "Appui long pour glisser et réordonner",
+    "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner",
     "couldNotFinishTimerTitle": "Impossible de terminer le minuteur",
     "couldNotResetTodayTitle": "Impossible de réinitialiser aujourd'hui",
     "streakOne": "Série de 1 jour",

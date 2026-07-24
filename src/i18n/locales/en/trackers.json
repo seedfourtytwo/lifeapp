@@ -58,6 +58,10 @@
     "delete": "Delete",
     "itemsCountA11y": "{{title}}, {{count}} items"
   },
+  "homeIdentity": {
+    "doubleTapHistoryHint": "Double tap to open history",
+    "openHistoryAction": "Open history"
+  },
   "editor": {
     "newCounterTitle": "New counter",
     "editCounterTitle": "Edit counter",
@@ -174,7 +178,7 @@
     "streakMany": "{{count}}-day streak",
     "addIncrementA11y": "Add {{count}}",
     "expandIncrementsHint": "Long press to show more increments",
-    "reorderLongPressHint": "Long press to drag and reorder"
+    "reorderLongPressHint": "Hold to see the name; keep holding to reorder"
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Completed. Tap to undo",
@@ -187,7 +191,7 @@
     "finishSessionA11y": "Finish timer session",
     "resetTodayA11y": "Reset today",
     "playLongPressResetHint": "Long press to reset today",
-    "reorderLongPressHint": "Long press to drag and reorder",
+    "reorderLongPressHint": "Hold to see the name; keep holding to reorder",
     "couldNotFinishTimerTitle": "Could not finish timer",
     "couldNotResetTodayTitle": "Could not reset today",
     "streakOne": "1-day streak",
