@@ -47,6 +47,7 @@ jest.mock('../src/db/repositories/dailyJournalRepository', () => ({
 
 jest.mock('../src/db/repositories/settingsRepository', () => ({
   getSetting: jest.fn(),
+  getSettings: jest.fn(),
   setSetting: jest.fn(),
   deleteSetting: jest.fn(),
 }));
@@ -163,12 +164,18 @@ describe('protocol backup settings', () => {
   });
 
   it('reads theme and evening check-in settings from SQLite', async () => {
-    (settingsRepo.getSetting as jest.Mock).mockImplementation(
-      async (_db: unknown, key: string) => {
-        if (key === 'theme_mode') return 'dark';
-        if (key === 'evening_check_in_enabled') return 'true';
-        if (key === 'evening_check_in_time') return '19:45';
-        return null;
+    const values: Record<string, string | null> = {
+      theme_mode: 'dark',
+      evening_check_in_enabled: 'true',
+      evening_check_in_time: '19:45',
+    };
+    (settingsRepo.getSettings as jest.Mock).mockImplementation(
+      async (_db: unknown, keys: readonly string[]) => {
+        const map = new Map<string, string | null>();
+        for (const key of keys) {
+          map.set(key, values[key] ?? null);
+        }
+        return map;
       },
     );
 
@@ -180,11 +187,17 @@ describe('protocol backup settings', () => {
   });
 
   it('falls back to legacy habit_reminders_enabled when reading settings', async () => {
-    (settingsRepo.getSetting as jest.Mock).mockImplementation(
-      async (_db: unknown, key: string) => {
-        if (key === 'theme_mode') return 'dark';
-        if (key === 'habit_reminders_enabled') return 'true';
-        return null;
+    const values: Record<string, string | null> = {
+      theme_mode: 'dark',
+      habit_reminders_enabled: 'true',
+    };
+    (settingsRepo.getSettings as jest.Mock).mockImplementation(
+      async (_db: unknown, keys: readonly string[]) => {
+        const map = new Map<string, string | null>();
+        for (const key of keys) {
+          map.set(key, values[key] ?? null);
+        }
+        return map;
       },
     );
 

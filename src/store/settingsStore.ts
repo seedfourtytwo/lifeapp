@@ -100,104 +100,119 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   load: async () => {
     const generation = ++settingsLoadGeneration;
-    try {
-      const db = await getDatabase();
-      // Sequential reads — concurrent prepareAsync on the same DB can release statements early.
-      const storedMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
-      const storedLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
-      const storedEveningEnabled = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.eveningCheckInEnabled,
-      );
-      const storedEveningTime = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.eveningCheckInTime,
-      );
-      const storedLegacyReminders = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.habitRemindersEnabled,
-      );
-      const storedWeatherEnabled = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.weatherWidgetEnabled,
-      );
-      const storedCalendarEnabled = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.calendarWidgetEnabled,
-      );
-      const storedLocationMode = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.weatherLocationMode,
-      );
-      const storedPlaceName = await settingsRepo.getSetting(
-        db,
-        APP_SETTING_KEYS.weatherPlaceName,
-      );
-      const storedLat = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat);
-      const storedLon = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLon);
-      const storedBubbleX = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleX);
-      const storedBubbleY = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleY);
 
-      let themeMode: ThemeMode = 'light';
-      if (storedMode && isThemeMode(storedMode)) {
-        themeMode = storedMode;
-      } else {
-        const legacyDark = await settingsRepo.getSetting(db, LEGACY_DARK_MODE_KEY);
-        themeMode = legacyDark === 'true' ? 'dark' : 'light';
-      }
-
-      const appLanguage: AppLanguage =
-        storedLanguage && isAppLanguage(storedLanguage) ? storedLanguage : 'system';
-
-      const weatherLocationMode =
-        storedLocationMode && isWeatherLocationMode(storedLocationMode)
-          ? storedLocationMode
-          : 'manual';
-
-      const eveningCheckInEnabled =
-        storedEveningEnabled != null
-          ? parseBool(storedEveningEnabled)
-          : parseBool(storedLegacyReminders);
-      const eveningCheckInTime =
-        parseEveningCheckInTime(storedEveningTime) ?? DEFAULT_EVENING_CHECK_IN_TIME;
-
-      // One-time migrate legacy habit_reminders_enabled → evening_check_in_enabled.
-      if (storedEveningEnabled == null && storedLegacyReminders != null) {
-        await settingsRepo.setSetting(
-          db,
+    const readOnce = async () => {
+      await withDbWriteLock(async () => {
+        if (generation !== settingsLoadGeneration) return;
+        const db = await getDatabase();
+        const stored = await settingsRepo.getSettings(db, [
+          APP_SETTING_KEYS.themeMode,
+          APP_SETTING_KEYS.appLanguage,
           APP_SETTING_KEYS.eveningCheckInEnabled,
-          eveningCheckInEnabled ? 'true' : 'false',
-        );
-      }
-      if (storedEveningTime == null) {
-        await settingsRepo.setSetting(
-          db,
           APP_SETTING_KEYS.eveningCheckInTime,
+          APP_SETTING_KEYS.habitRemindersEnabled,
+          APP_SETTING_KEYS.weatherWidgetEnabled,
+          APP_SETTING_KEYS.calendarWidgetEnabled,
+          APP_SETTING_KEYS.weatherLocationMode,
+          APP_SETTING_KEYS.weatherPlaceName,
+          APP_SETTING_KEYS.weatherLat,
+          APP_SETTING_KEYS.weatherLon,
+          APP_SETTING_KEYS.weatherBubbleX,
+          APP_SETTING_KEYS.weatherBubbleY,
+          LEGACY_DARK_MODE_KEY,
+        ]);
+
+        const storedMode = stored.get(APP_SETTING_KEYS.themeMode) ?? null;
+        const storedLanguage = stored.get(APP_SETTING_KEYS.appLanguage) ?? null;
+        const storedEveningEnabled =
+          stored.get(APP_SETTING_KEYS.eveningCheckInEnabled) ?? null;
+        const storedEveningTime = stored.get(APP_SETTING_KEYS.eveningCheckInTime) ?? null;
+        const storedLegacyReminders =
+          stored.get(APP_SETTING_KEYS.habitRemindersEnabled) ?? null;
+        const storedWeatherEnabled =
+          stored.get(APP_SETTING_KEYS.weatherWidgetEnabled) ?? null;
+        const storedCalendarEnabled =
+          stored.get(APP_SETTING_KEYS.calendarWidgetEnabled) ?? null;
+        const storedLocationMode =
+          stored.get(APP_SETTING_KEYS.weatherLocationMode) ?? null;
+        const storedPlaceName = stored.get(APP_SETTING_KEYS.weatherPlaceName) ?? null;
+        const storedLat = stored.get(APP_SETTING_KEYS.weatherLat) ?? null;
+        const storedLon = stored.get(APP_SETTING_KEYS.weatherLon) ?? null;
+        const storedBubbleX = stored.get(APP_SETTING_KEYS.weatherBubbleX) ?? null;
+        const storedBubbleY = stored.get(APP_SETTING_KEYS.weatherBubbleY) ?? null;
+
+        let themeMode: ThemeMode = 'light';
+        if (storedMode && isThemeMode(storedMode)) {
+          themeMode = storedMode;
+        } else {
+          const legacyDark = stored.get(LEGACY_DARK_MODE_KEY) ?? null;
+          themeMode = legacyDark === 'true' ? 'dark' : 'light';
+        }
+
+        const appLanguage: AppLanguage =
+          storedLanguage && isAppLanguage(storedLanguage) ? storedLanguage : 'system';
+
+        const weatherLocationMode =
+          storedLocationMode && isWeatherLocationMode(storedLocationMode)
+            ? storedLocationMode
+            : 'manual';
+
+        const eveningCheckInEnabled =
+          storedEveningEnabled != null
+            ? parseBool(storedEveningEnabled)
+            : parseBool(storedLegacyReminders);
+        const eveningCheckInTime =
+          parseEveningCheckInTime(storedEveningTime) ?? DEFAULT_EVENING_CHECK_IN_TIME;
+
+        // One-time migrate legacy habit_reminders_enabled → evening_check_in_enabled.
+        if (storedEveningEnabled == null && storedLegacyReminders != null) {
+          await settingsRepo.setSetting(
+            db,
+            APP_SETTING_KEYS.eveningCheckInEnabled,
+            eveningCheckInEnabled ? 'true' : 'false',
+          );
+        }
+        if (storedEveningTime == null) {
+          await settingsRepo.setSetting(
+            db,
+            APP_SETTING_KEYS.eveningCheckInTime,
+            eveningCheckInTime,
+          );
+        }
+
+        if (generation !== settingsLoadGeneration) return;
+
+        set({
+          themeMode,
+          appLanguage,
+          eveningCheckInEnabled,
           eveningCheckInTime,
-        );
-      }
-
-      if (generation !== settingsLoadGeneration) return;
-
-      set({
-        themeMode,
-        appLanguage,
-        eveningCheckInEnabled,
-        eveningCheckInTime,
-        weatherWidgetEnabled: parseBool(storedWeatherEnabled),
-        calendarWidgetEnabled: parseBool(storedCalendarEnabled),
-        weatherLocationMode,
-        weatherPlaceName: storedPlaceName,
-        weatherLat: parseOptionalNumber(storedLat),
-        weatherLon: parseOptionalNumber(storedLon),
-        weatherBubbleX: parseNorm(storedBubbleX, DEFAULT_BUBBLE.x),
-        weatherBubbleY: parseNorm(storedBubbleY, DEFAULT_BUBBLE.y),
-        isLoaded: true,
+          weatherWidgetEnabled: parseBool(storedWeatherEnabled),
+          calendarWidgetEnabled: parseBool(storedCalendarEnabled),
+          weatherLocationMode,
+          weatherPlaceName: storedPlaceName,
+          weatherLat: parseOptionalNumber(storedLat),
+          weatherLon: parseOptionalNumber(storedLon),
+          weatherBubbleX: parseNorm(storedBubbleX, DEFAULT_BUBBLE.x),
+          weatherBubbleY: parseNorm(storedBubbleY, DEFAULT_BUBBLE.y),
+          isLoaded: true,
+        });
       });
+    };
+
+    try {
+      await readOnce();
     } catch (error) {
       console.error('Failed to load settings', error);
       if (generation !== settingsLoadGeneration) return;
-      set({ isLoaded: true });
+      try {
+        await readOnce();
+      } catch (retryError) {
+        console.error('Failed to load settings (retry)', retryError);
+        if (generation !== settingsLoadGeneration) return;
+        // Degraded boot with defaults — avoid an infinite splash spinner.
+        set({ isLoaded: true });
+      }
     }
   },
 

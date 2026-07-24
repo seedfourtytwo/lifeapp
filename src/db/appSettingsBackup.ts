@@ -29,38 +29,35 @@ function parseStoredBool(value: string | null): boolean | undefined {
 }
 
 export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> {
-  // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
-  const themeMode = await settingsRepo.getSetting(db, APP_SETTING_KEYS.themeMode);
-  const appLanguage = await settingsRepo.getSetting(db, APP_SETTING_KEYS.appLanguage);
-  const eveningCheckInEnabled = await settingsRepo.getSetting(
-    db,
+  const stored = await settingsRepo.getSettings(db, [
+    APP_SETTING_KEYS.themeMode,
+    APP_SETTING_KEYS.appLanguage,
     APP_SETTING_KEYS.eveningCheckInEnabled,
-  );
-  const eveningCheckInTime = await settingsRepo.getSetting(
-    db,
     APP_SETTING_KEYS.eveningCheckInTime,
-  );
-  const legacyHabitReminders = await settingsRepo.getSetting(
-    db,
     APP_SETTING_KEYS.habitRemindersEnabled,
-  );
-  const weatherWidgetEnabled = await settingsRepo.getSetting(
-    db,
     APP_SETTING_KEYS.weatherWidgetEnabled,
-  );
-  const calendarWidgetEnabled = await settingsRepo.getSetting(
-    db,
     APP_SETTING_KEYS.calendarWidgetEnabled,
-  );
-  const weatherLocationMode = await settingsRepo.getSetting(
-    db,
     APP_SETTING_KEYS.weatherLocationMode,
-  );
-  const weatherPlaceName = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherPlaceName);
-  const weatherLat = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLat);
-  const weatherLon = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherLon);
-  const weatherBubbleX = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleX);
-  const weatherBubbleY = await settingsRepo.getSetting(db, APP_SETTING_KEYS.weatherBubbleY);
+    APP_SETTING_KEYS.weatherPlaceName,
+    APP_SETTING_KEYS.weatherLat,
+    APP_SETTING_KEYS.weatherLon,
+    APP_SETTING_KEYS.weatherBubbleX,
+    APP_SETTING_KEYS.weatherBubbleY,
+  ]);
+
+  const themeMode = stored.get(APP_SETTING_KEYS.themeMode) ?? null;
+  const appLanguage = stored.get(APP_SETTING_KEYS.appLanguage) ?? null;
+  const eveningCheckInEnabled = stored.get(APP_SETTING_KEYS.eveningCheckInEnabled) ?? null;
+  const eveningCheckInTime = stored.get(APP_SETTING_KEYS.eveningCheckInTime) ?? null;
+  const legacyHabitReminders = stored.get(APP_SETTING_KEYS.habitRemindersEnabled) ?? null;
+  const weatherWidgetEnabled = stored.get(APP_SETTING_KEYS.weatherWidgetEnabled) ?? null;
+  const calendarWidgetEnabled = stored.get(APP_SETTING_KEYS.calendarWidgetEnabled) ?? null;
+  const weatherLocationMode = stored.get(APP_SETTING_KEYS.weatherLocationMode) ?? null;
+  const weatherPlaceName = stored.get(APP_SETTING_KEYS.weatherPlaceName) ?? null;
+  const weatherLat = stored.get(APP_SETTING_KEYS.weatherLat) ?? null;
+  const weatherLon = stored.get(APP_SETTING_KEYS.weatherLon) ?? null;
+  const weatherBubbleX = stored.get(APP_SETTING_KEYS.weatherBubbleX) ?? null;
+  const weatherBubbleY = stored.get(APP_SETTING_KEYS.weatherBubbleY) ?? null;
 
   const settings: AppSettings = {};
 

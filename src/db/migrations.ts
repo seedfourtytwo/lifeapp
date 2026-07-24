@@ -212,6 +212,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   }
 
   let version = row.version;
+  const needsRepair = version < CURRENT_SCHEMA_VERSION;
   while (version < CURRENT_SCHEMA_VERSION) {
     const next = version + 1;
     const migrate = MIGRATIONS[next];
@@ -220,6 +221,12 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     }
     version = next;
     await db.runAsync('UPDATE schema_version SET version = ?', version);
+  }
+
+  // Steady-state boots already match CURRENT_SCHEMA_VERSION — skip PRAGMA/DDL repair.
+  // Repair runs after applying migrations (and on first insert above).
+  if (!needsRepair) {
+    return;
   }
 
   await ensureElementsSchema(db);

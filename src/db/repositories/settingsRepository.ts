@@ -11,6 +11,28 @@ export async function getSetting(
   return row?.value ?? null;
 }
 
+/** One round-trip for many keys — missing keys map to `null`. */
+export async function getSettings(
+  db: SQLiteDatabase,
+  keys: readonly string[],
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  for (const key of keys) {
+    result.set(key, null);
+  }
+  if (keys.length === 0) return result;
+
+  const placeholders = keys.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ key: string; value: string }>(
+    `SELECT key, value FROM app_settings WHERE key IN (${placeholders})`,
+    ...keys,
+  );
+  for (const row of rows) {
+    result.set(row.key, row.value);
+  }
+  return result;
+}
+
 export async function setSetting(
   db: SQLiteDatabase,
   key: string,

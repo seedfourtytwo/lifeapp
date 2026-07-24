@@ -28,8 +28,9 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
 }
 
 export async function getDatabase(): Promise<SQLiteDatabase> {
+  // Migrate only on open (openAndMigrate). Re-running DDL on every get races
+  // concurrent startup loads (calendar/weather/settings) and crashes expo-sqlite.
   if (dbInstance) {
-    await runMigrations(dbInstance);
     return dbInstance;
   }
 
