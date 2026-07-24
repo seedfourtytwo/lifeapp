@@ -10,6 +10,7 @@ import * as dayNoteRepo from './repositories/dayNoteRepository';
 import * as dailyJournalRepo from './repositories/dailyJournalRepository';
 import * as settingsRepo from './repositories/settingsRepository';
 import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
+import { clearCornerScore } from './repositories/cornerScoreRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
@@ -113,9 +114,10 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
       }
       if (options.weather) {
         await weatherRepo.clearWeatherDaily(db);
-        // Forecast JSON lives in app_settings; drop it even when prefs are kept.
+        // Forecast JSON + fun corner tally live in app_settings.
         if (!options.preferences) {
           await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
+          await clearCornerScore();
         }
       }
       if (options.preferences) {
