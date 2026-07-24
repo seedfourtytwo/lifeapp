@@ -1,4 +1,5 @@
 import type { ThemeMode } from '../theme/types';
+import { clamp01 } from './clamp01';
 
 export function parseHex(hex: string): [number, number, number] {
   const normalized = hex.replace('#', '');
@@ -10,7 +11,7 @@ export function parseHex(hex: string): [number, number, number] {
 }
 
 export function lerpHex(from: string, to: string, amount: number): string {
-  const t = Math.min(1, Math.max(0, amount));
+  const t = clamp01(amount);
   const [r1, g1, b1] = parseHex(from);
   const [r2, g2, b2] = parseHex(to);
   const channels = [
@@ -40,7 +41,7 @@ export function getCounterProgressBarColors(mode: ThemeMode): CounterProgressBar
 export function withHexAlpha(hex: string, alpha: number): string {
   const normalized = hex.replace('#', '');
   if (normalized.length !== 6) return hex;
-  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+  const a = Math.round(clamp01(alpha) * 255)
     .toString(16)
     .padStart(2, '0');
   return `#${normalized}${a}`;

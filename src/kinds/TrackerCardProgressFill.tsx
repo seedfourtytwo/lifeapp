@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { withHexAlpha } from '../utils/color';
+import { clamp01 } from '../utils/clamp01';
 
 type Props = {
   progress: number;
@@ -18,7 +19,7 @@ export function TrackerCardProgressFill({
   color,
   borderRadius,
 }: Props) {
-  const t = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
+  const t = clamp01(progress);
   if (t <= 0) return null;
 
   return (

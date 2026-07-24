@@ -142,7 +142,6 @@ export default function TrackersScreen() {
         return (
           <TrackerLibraryCard
             key={element.id}
-            kind={element.kind}
             accentColor={accentColor}
             name={element.name}
             icon={config.icon}
@@ -184,7 +183,6 @@ export default function TrackersScreen() {
       return (
         <TrackerLibraryCard
           key={element.id}
-          kind={element.kind}
           accentColor={accentColor}
           name={element.name}
           icon={config.icon}

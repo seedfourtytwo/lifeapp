@@ -10,7 +10,8 @@ import {
   formatHabitStreakLabel,
   getHabitStreakDays,
 } from './habitCardLabels';
-import { HabitCardTitle } from './HabitCardTitle';
+import { TrackerCardTitle } from '../TrackerCardTitle';
+import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 
 const ACTION_ICON_SIZE = 30;
@@ -41,18 +42,22 @@ export function HabitBooleanWidget({
   return (
     <TrackerCard>
       <View style={styles.oneLineRow}>
-        <HabitCardTitle
+        <TrackerCardTitle
           name={element.name}
           icon={config.icon}
+          progress={done ? 1 : 0}
+          complete={done}
           streakDays={streakDays}
           streakAccessibilityLabel={streakLabel}
-          onOpenDetails={onOpenDetails}
-          onLongPressReorder={onLongPressReorder}
-          delayLongPressReorder={delayLongPressReorder}
-          onReorderTouchMove={onReorderTouchMove}
-          onReorderTouchEnd={onReorderTouchEnd}
-          onReorderTouchCancel={onReorderTouchCancel}
-          reorderHint={reorderHint}
+          {...trackerCardTitleInteractions({
+            onOpenDetails,
+            onLongPressReorder,
+            onReorderTouchMove,
+            onReorderTouchEnd,
+            onReorderTouchCancel,
+            delayLongPressReorder,
+            reorderHint,
+          })}
         />
 
         <View style={styles.trailingCluster}>

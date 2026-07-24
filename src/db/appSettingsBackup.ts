@@ -8,6 +8,7 @@ import {
   parseEveningCheckInTime,
   type AppSettings,
 } from '../protocol/appSettings';
+import { clamp01 } from '../utils/clamp01';
 import * as settingsRepo from './repositories/settingsRepository';
 
 function parseOptionalNumber(value: string | null): number | undefined {
@@ -19,7 +20,7 @@ function parseOptionalNumber(value: string | null): number | undefined {
 function parseNorm(value: string | null): number | undefined {
   const n = parseOptionalNumber(value);
   if (n == null) return undefined;
-  return Math.min(1, Math.max(0, n));
+  return clamp01(n);
 }
 
 function parseStoredBool(value: string | null): boolean | undefined {

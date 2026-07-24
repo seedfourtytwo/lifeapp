@@ -21,11 +21,6 @@ type Props = {
   progress?: TrackerCardProgress | null;
 };
 
-function clampProgress(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(1, Math.max(0, value));
-}
-
 /**
  * Shared Home tracker card shell.
  * Same outer border for every card; progress is an inner wash/edge glow.
@@ -43,7 +38,7 @@ export default function TrackerCard({ children, progress = null }: Props) {
     <View style={[styles.card, chrome]}>
       {progress ? (
         <TrackerCardProgressFill
-          progress={clampProgress(progress.value)}
+          progress={progress.value}
           color={progress.color}
           borderRadius={deco.radius.md}
         />

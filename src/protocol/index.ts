@@ -82,11 +82,16 @@ export type { CounterConfig, CounterEventMeta, CounterInput } from './kinds/coun
 
 export {
   TRACKER_ICON_IDS,
+  TRACKER_ICON_FEATURED_IDS,
+  TRACKER_ICON_MORE_IDS,
+  CUSTOM_TRACKER_ICON_IDS,
   TrackerIconIdSchema,
   OptionalTrackerIconSchema,
   isTrackerIconId,
+  isFeaturedTrackerIconId,
+  isCustomTrackerIconId,
 } from './trackerIcons';
-export type { TrackerIconId } from './trackerIcons';
+export type { TrackerIconId, CustomTrackerIconId } from './trackerIcons';
 
 export {
   HabitConfigSchema,

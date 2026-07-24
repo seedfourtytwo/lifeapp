@@ -27,7 +27,8 @@ import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
-import { HabitCardTitle } from '../habit/HabitCardTitle';
+import { TrackerCardTitle } from '../TrackerCardTitle';
+import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import {
   formatCounterStreakLabel,
   getCounterStreakDays,
@@ -161,18 +162,22 @@ export function CounterWidget({
         }
       >
         <View style={cardStyles.oneLineRow}>
-          <HabitCardTitle
+          <TrackerCardTitle
             name={element.name}
             icon={config.icon}
+            progress={hasTarget ? progress : null}
+            complete={isComplete}
             streakDays={streakDays}
             streakAccessibilityLabel={streakLabel}
-            onOpenDetails={onOpenDetails}
-            onLongPressReorder={onLongPressReorder}
-            delayLongPressReorder={delayLongPressReorder}
-            onReorderTouchMove={onReorderTouchMove}
-            onReorderTouchEnd={onReorderTouchEnd}
-            onReorderTouchCancel={onReorderTouchCancel}
-            reorderHint={reorderHint}
+            {...trackerCardTitleInteractions({
+              onOpenDetails,
+              onLongPressReorder,
+              onReorderTouchMove,
+              onReorderTouchEnd,
+              onReorderTouchCancel,
+              delayLongPressReorder,
+              reorderHint,
+            })}
           />
 
           <View style={cardStyles.trailingCluster}>

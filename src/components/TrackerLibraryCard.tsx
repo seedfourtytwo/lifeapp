@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 import type { TrackerIconId } from '../protocol';
+import { TrackerIcon } from './trackerIcons/TrackerIcon';
 
 export type TrackerLibraryBadge = {
   label: string;
@@ -12,7 +12,6 @@ export type TrackerLibraryBadge = {
 };
 
 type Props = {
-  kind: 'counter' | 'habit';
   accentColor: string;
   name: string;
   icon?: TrackerIconId | null;
@@ -26,12 +25,11 @@ type Props = {
   onRestore?: () => void;
 };
 
-function kindIcon(kind: 'counter' | 'habit'): keyof typeof MaterialCommunityIcons.glyphMap {
-  return kind === 'counter' ? 'counter' : 'checkbox-marked-circle-outline';
-}
-
+/**
+ * Trackers library row — same identity rule as Home:
+ * custom icon → icon only; otherwise text name only (never both).
+ */
 export default function TrackerLibraryCard({
-  kind,
   accentColor,
   name,
   icon = null,
@@ -47,7 +45,6 @@ export default function TrackerLibraryCard({
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const { decorations: deco, isCartoon } = useAppTheme();
-  const displayIcon = icon ?? kindIcon(kind);
 
   const badgeColors = (tone: TrackerLibraryBadge['tone']) => {
     switch (tone) {
@@ -81,15 +78,20 @@ export default function TrackerLibraryCard({
         },
         isCartoon && { borderWidth: deco.borderWidth },
       ]}
+      accessibilityLabel={name}
     >
       <View style={styles.content}>
-        <View style={[styles.kindIcon, { backgroundColor: `${accentColor}18` }]}>
-          <MaterialCommunityIcons name={displayIcon} size={20} color={accentColor} />
-        </View>
+        {icon ? (
+          <View style={[styles.identityWell, { backgroundColor: `${accentColor}18` }]}>
+            <TrackerIcon name={icon} size={22} color={accentColor} />
+          </View>
+        ) : null}
         <View style={styles.main}>
-          <Text variant="titleMedium" style={styles.name}>
-            {name}
-          </Text>
+          {!icon ? (
+            <Text variant="titleMedium" style={styles.name}>
+              {name}
+            </Text>
+          ) : null}
           {badges.length > 0 ? (
             <View style={styles.badges}>
               {badges.map((badge) => {
@@ -179,14 +181,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 14,
     gap: 12,
+    alignItems: 'flex-start',
   },
-  kindIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  identityWell: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   main: {
     flex: 1,

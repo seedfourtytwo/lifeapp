@@ -1,4 +1,5 @@
 import type { WeatherCondition } from '../../weather/types';
+import { clamp01 } from '../../utils/clamp01';
 
 export type WeatherMoodVariant = 'normal' | 'offline' | 'error';
 
@@ -115,10 +116,6 @@ const MUTED: WeatherMood = {
   inkSoft: '#94A3AF',
   borderWidth: 1.5,
 };
-
-function clamp01(n: number): number {
-  return Math.min(1, Math.max(0, n));
-}
 
 function hexToRgb(hex: string): [number, number, number] | null {
   const raw = hex.replace('#', '');

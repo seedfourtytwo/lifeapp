@@ -70,6 +70,8 @@
     "iconNone": "Aucune",
     "iconNoneA11y": "Aucune icône",
     "iconChoiceA11y": "Icône {{icon}}",
+    "iconShowMore": "Plus d’icônes",
+    "iconShowLess": "Moins d’icônes",
     "close": "Fermer",
     "delete": "Supprimer",
     "cancel": "Annuler",

@@ -13,6 +13,7 @@ import {
   type WeatherLocationMode,
 } from '../protocol/appSettings';
 import { isThemeMode, type ThemeMode } from '../theme/types';
+import { clamp01 } from '../utils/clamp01';
 import { defaultBubblePosition } from '../weather/bubblePosition';
 import { getEventDataEpoch } from './eventStore';
 
@@ -50,7 +51,7 @@ function parseOptionalNumber(value: string | null): number | null {
 function parseNorm(value: string | null, fallback: number): number {
   const n = parseOptionalNumber(value);
   if (n == null) return fallback;
-  return Math.min(1, Math.max(0, n));
+  return clamp01(n);
 }
 
 interface SettingsState {
@@ -299,8 +300,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
 
   setWeatherBubblePosition: async (x, y) => {
-    const clampedX = Math.min(1, Math.max(0, x));
-    const clampedY = Math.min(1, Math.max(0, y));
+    const clampedX = clamp01(x);
+    const clampedY = clamp01(y);
     // Optimistic UI — persist after so dragging stays smooth
     set({ weatherBubbleX: clampedX, weatherBubbleY: clampedY });
     try {

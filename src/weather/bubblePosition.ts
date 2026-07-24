@@ -1,4 +1,5 @@
 import { DOCK_RESERVE, EDGE_PAD } from '../ui/homeInsets';
+import { clamp01 } from '../utils/clamp01';
 
 /** Collapsed weather chip — rounded box (not a circle). */
 const BUBBLE_WIDTH = 112;
@@ -73,7 +74,7 @@ export function clampBubblePosition(
 ): { x: number; y: number } {
   const { width, height } = layout;
   if (width <= 0 || height <= 0) {
-    return { x: Math.min(1, Math.max(0, xNorm)), y: Math.min(1, Math.max(0, yNorm)) };
+    return { x: clamp01(xNorm), y: clamp01(yNorm) };
   }
 
   const bounds = getBubblePixelBounds(layout, chip);

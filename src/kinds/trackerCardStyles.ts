@@ -11,15 +11,15 @@ export const trackerCardStyles = StyleSheet.create({
   },
   cardContent: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 6,
     gap: 0,
   },
-  /** Habit one-liner: name/streak · meta · actions (titles share a left edge). */
+  /** Tracker one-liner: identity · spacer · trailing actions. */
   oneLineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    minHeight: 52,
+    gap: 8,
+    minHeight: 56,
   },
   titlePress: {
     flex: 1,
@@ -30,9 +30,6 @@ export const trackerCardStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  titleIcon: {
-    flexShrink: 0,
-  },
   pressed: {
     opacity: 0.7,
   },
@@ -40,29 +37,28 @@ export const trackerCardStyles = StyleSheet.create({
     fontWeight: '600',
     flexShrink: 1,
   },
-  streakInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    flexShrink: 0,
+  /** Whispered label while reordering an icon-only row. */
+  reorderNameWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 4,
   },
-  streakCount: {
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+  reorderName: {
+    fontWeight: '500',
   },
-  /** Timer/meta cluster on a one-liner — stable right rail with breathing room. */
+  /** Timer/meta cluster — tight right rail. */
   trailingCluster: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 8,
+    gap: 4,
   },
   timerLabel: {
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
-    marginRight: 4,
+    marginRight: 2,
     flexShrink: 1,
-    maxWidth: 120,
+    maxWidth: 100,
     textAlign: 'right',
   },
   /** Primary habit/counter actions — fill more of the card height. */
