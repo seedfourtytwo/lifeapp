@@ -50,7 +50,8 @@ export async function getDeviceCoords(): Promise<WeatherCoords | null> {
   if (!permission.granted) return null;
 
   const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
+    // ~1 km — enough for city weather without requesting fine GPS.
+    accuracy: Location.Accuracy.Low,
   });
 
   const lat = position.coords.latitude;

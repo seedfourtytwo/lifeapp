@@ -22,8 +22,7 @@ import {
 } from '../src/utils/speechRecognitionOptions';
 import {
   ANDROID_ASI_PACKAGE,
-  ANDROID_GOOGLE_TTS_PACKAGE,
-  androidPackageUsesAsiOfflineApis,
+  isAndroidOnDeviceSpeechPackage,
   pickAndroidRecognitionPackage,
 } from '../src/utils/speechRecognitionAndroid';
 import {
@@ -283,35 +282,33 @@ describe('buildLocalNoteDictationOptions', () => {
     expect(options.lang).toBe('en-US');
   });
 
-  it('allows Google TTS path without forcing on-device recognition', () => {
-    const options = buildLocalNoteDictationOptions(
-      'en-US',
-      ANDROID_GOOGLE_TTS_PACKAGE,
-      false,
-    );
-    expect(options.requiresOnDeviceRecognition).toBe(false);
+  it('keeps Android dictation on-device when pointing at ASI', () => {
+    const options = buildLocalNoteDictationOptions('en-US', ANDROID_ASI_PACKAGE);
+    expect(options.requiresOnDeviceRecognition).toBe(true);
     expect(options.lang).toBe('en-US');
   });
 });
 
 describe('pickAndroidRecognitionPackage', () => {
-  it('prefers Android System Intelligence when both backends are installed', () => {
+  it('only accepts Android System Intelligence', () => {
     expect(
-      pickAndroidRecognitionPackage([ANDROID_GOOGLE_TTS_PACKAGE, ANDROID_ASI_PACKAGE]),
+      pickAndroidRecognitionPackage([
+        'com.google.android.tts',
+        ANDROID_ASI_PACKAGE,
+        'com.example.other',
+      ]),
     ).toBe(ANDROID_ASI_PACKAGE);
   });
 
-  it('falls back to Google speech synthesis on GrapheneOS', () => {
-    expect(pickAndroidRecognitionPackage([ANDROID_GOOGLE_TTS_PACKAGE])).toBe(
-      ANDROID_GOOGLE_TTS_PACKAGE,
-    );
+  it('ignores Google Speech Recognition & synthesis', () => {
+    expect(pickAndroidRecognitionPackage(['com.google.android.tts'])).toBeUndefined();
   });
 });
 
-describe('androidPackageUsesAsiOfflineApis', () => {
+describe('isAndroidOnDeviceSpeechPackage', () => {
   it('is true only for Android System Intelligence', () => {
-    expect(androidPackageUsesAsiOfflineApis(ANDROID_ASI_PACKAGE)).toBe(true);
-    expect(androidPackageUsesAsiOfflineApis(ANDROID_GOOGLE_TTS_PACKAGE)).toBe(false);
+    expect(isAndroidOnDeviceSpeechPackage(ANDROID_ASI_PACKAGE)).toBe(true);
+    expect(isAndroidOnDeviceSpeechPackage('com.google.android.tts')).toBe(false);
   });
 });
 

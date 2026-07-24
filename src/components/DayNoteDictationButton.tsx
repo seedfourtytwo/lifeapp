@@ -88,9 +88,6 @@ export default function DayNoteDictationButton({
 }: Props) {
   const { t } = useTranslation('common');
   const theme = useTheme();
-  const [availability, setAvailability] = useState<SpeechAvailability>(() =>
-    probeSpeechAvailability(),
-  );
   const [listening, setListening] = useState(false);
   const [starting, setStarting] = useState(false);
   /** Open until Done (or the sheet closes). */
@@ -179,7 +176,6 @@ export default function DayNoteDictationButton({
   }, [clearInterim, clearStartTimeout, commitPhrase, setSession]);
 
   useEffect(() => {
-    setAvailability(probeSpeechAvailability());
     return () => {
       clearStartTimeout();
       abortRecognitionQuietly();
@@ -263,7 +259,6 @@ export default function DayNoteDictationButton({
     }
 
     const probe = probeSpeechAvailability();
-    setAvailability(probe);
     if (!probe.ok) {
       setError(probe.reason);
       return;
@@ -306,11 +301,7 @@ export default function DayNoteDictationButton({
         }
       }, START_TIMEOUT_MS);
       ExpoSpeechRecognitionModule.start(
-        buildLocalNoteDictationOptions(
-          prep.locale,
-          prep.androidPackage,
-          prep.requiresOnDeviceRecognition,
-        ),
+        buildLocalNoteDictationOptions(prep.locale, prep.androidPackage),
       );
     } catch {
       clearAndroidRecognitionPackageCache();
@@ -380,9 +371,7 @@ export default function DayNoteDictationButton({
   const busy = disabled || !active || starting;
   const showDone = sessionOpen;
   const live = listening || starting;
-  const idleMicColor = availability.ok
-    ? theme.colors.onSurfaceVariant
-    : theme.colors.onSurfaceVariant;
+  const idleMicColor = theme.colors.onSurfaceVariant;
   const liveMicColor = theme.dark ? '#8B7BB8' : '#5B4B8A';
 
   return (

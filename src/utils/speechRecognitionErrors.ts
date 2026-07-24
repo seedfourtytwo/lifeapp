@@ -1,6 +1,6 @@
 /**
  * User-facing dictation errors — short, actionable, no jargon.
- * Keep GrapheneOS / sandboxed Google speech in mind (separate mic permission).
+ * Local-first: guide on-device install, never suggest Google Play speech.
  */
 import { i18n } from '../i18n';
 
@@ -8,7 +8,7 @@ const SPEECH_MSG_KEYS = [
   'webOnly',
   'moduleMissing',
   'notAvailable',
-  'installTts',
+  'installOnDevice',
   'micLifeApp',
   'micBoth',
   'offlineModel',

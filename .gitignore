@@ -29,8 +29,13 @@ yarn-error.*
 *.pem
 *.swp
 
-# local env files
-.env*.local
+# secrets / credentials — never commit
+.env
+.env.*
+!.env.example
+credentials.json
+google-services.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo

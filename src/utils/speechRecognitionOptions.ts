@@ -27,13 +27,11 @@ export function bestRecognitionTranscript(results: readonly ResultLike[]): strin
 
 /**
  * Recognition options for journal/note dictation.
- * Prefer on-device when the engine supports it (`requiresOnDeviceRecognition`).
- * Google TTS fallbacks may use the engine default path (local packs when present).
+ * Always on-device — Life Dashboard does not use network speech recognition.
  */
 export function buildLocalNoteDictationOptions(
   locale = speechRecognitionLocale(),
   androidPackage?: string,
-  requiresOnDeviceRecognition = true,
 ): ExpoSpeechRecognitionOptions {
   return {
     lang: locale,
@@ -42,7 +40,7 @@ export function buildLocalNoteDictationOptions(
     continuous: supportsContinuousDictation(),
     addsPunctuation: true,
     maxAlternatives: 5,
-    requiresOnDeviceRecognition,
+    requiresOnDeviceRecognition: true,
     iosTaskHint: 'dictation',
     ...(Platform.OS === 'android' && androidPackage
       ? { androidRecognitionServicePackage: androidPackage }

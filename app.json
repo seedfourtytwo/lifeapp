@@ -27,12 +27,15 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "allowBackup": false,
       "package": "com.lifeapp.dashboard",
       "versionCode": 18,
       "permissions": [
         "WAKE_LOCK",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -67,8 +70,7 @@
           "microphonePermission": "Allow Life Dashboard to use the microphone to dictate notes.",
           "speechRecognitionPermission": "Allow Life Dashboard to transcribe dictated notes.",
           "androidSpeechServicePackages": [
-            "com.google.android.as",
-            "com.google.android.tts"
+            "com.google.android.as"
           ]
         }
       ],

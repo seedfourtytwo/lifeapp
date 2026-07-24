@@ -1,10 +1,7 @@
 import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { getSpeechLocaleCandidates } from '../i18n';
-import {
-  androidPackageUsesAsiOfflineApis,
-  pickAndroidRecognitionPackage,
-} from './speechRecognitionAndroid';
+import { pickAndroidRecognitionPackage } from './speechRecognitionAndroid';
 import { SPEECH_MSG } from './speechRecognitionErrors';
 import {
   normalizeSpeechLocaleTag,
@@ -16,7 +13,8 @@ export type LocalDictationPrep =
       ready: true;
       locale: string;
       androidPackage?: string;
-      requiresOnDeviceRecognition: boolean;
+      /** Always true — Life Dashboard never sends audio off-device. */
+      requiresOnDeviceRecognition: true;
     }
   | { ready: false; message: string };
 
@@ -43,8 +41,7 @@ export function clearAndroidRecognitionPackageCache(): void {
   cachedAndroidPackage = undefined;
 }
 
-/** Google TTS / sandboxed Play — voice packs live in that app’s settings. */
-function prepGoogleTtsDictation(
+function readyOnDevice(
   locale: string,
   androidPackage: string,
 ): LocalDictationPrep {
@@ -52,16 +49,20 @@ function prepGoogleTtsDictation(
     ready: true,
     locale,
     androidPackage,
-    // ASI offline-download APIs do not apply; may use local packs or network.
-    requiresOnDeviceRecognition: false,
+    requiresOnDeviceRecognition: true,
   };
 }
 
+/**
+ * On-device ASI only. If the offline pack is missing, guide install/download —
+ * never fall back to a network or Google Play speech engine.
+ */
 async function prepAsiOfflineDictation(
   candidates: readonly string[],
   androidPackage: string,
 ): Promise<LocalDictationPrep> {
-  const downloadLocale = normalizeSpeechLocaleTag(candidates[0] ?? 'en-US');
+  const preferred = normalizeSpeechLocaleTag(candidates[0] ?? 'en-US');
+  let localeProbeFailed = false;
 
   try {
     const { installedLocales } = await ExpoSpeechRecognitionModule.getSupportedLocales({
@@ -70,25 +71,31 @@ async function prepAsiOfflineDictation(
 
     const installed = pickInstalledSpeechLocale(candidates, installedLocales);
     if (installed) {
-      return {
-        ready: true,
-        locale: installed,
-        androidPackage,
-        requiresOnDeviceRecognition: true,
-      };
+      return readyOnDevice(installed, androidPackage);
     }
+  } catch {
+    // Locale probe can fail on some ROMs — fall through to download / optimistic start.
+    localeProbeFailed = true;
+  }
 
+  try {
     const download = await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
-      locale: downloadLocale,
+      locale: preferred,
     });
 
     if (download.status === 'download_success') {
-      return {
-        ready: true,
-        locale: downloadLocale,
-        androidPackage,
-        requiresOnDeviceRecognition: true,
-      };
+      try {
+        const { installedLocales } = await ExpoSpeechRecognitionModule.getSupportedLocales({
+          androidRecognitionServicePackage: androidPackage,
+        });
+        const installed = pickInstalledSpeechLocale(candidates, installedLocales);
+        if (installed) {
+          return readyOnDevice(installed, androidPackage);
+        }
+      } catch {
+        // Use the requested locale if re-probe fails after a successful download.
+      }
+      return readyOnDevice(preferred, androidPackage);
     }
 
     if (download.status === 'opened_dialog') {
@@ -97,30 +104,17 @@ async function prepAsiOfflineDictation(
 
     return { ready: false, message: SPEECH_MSG.offlineCanceled };
   } catch {
-    // ASI prep can throw on non-stock ROMs — still attempt on-device start.
-    return {
-      ready: true,
-      locale: downloadLocale,
-      androidPackage,
-      requiresOnDeviceRecognition: true,
-    };
+    // Pack confirmed missing → guide the user. Probe failed → still attempt on-device.
+    if (!localeProbeFailed) {
+      return { ready: false, message: SPEECH_MSG.offlineModel };
+    }
+    return readyOnDevice(preferred, androidPackage);
   }
-}
-
-async function prepareAndroidDictation(
-  candidates: readonly string[],
-  androidPackage: string,
-): Promise<LocalDictationPrep> {
-  const preferred = normalizeSpeechLocaleTag(candidates[0] ?? 'en-US');
-  if (!androidPackageUsesAsiOfflineApis(androidPackage)) {
-    return prepGoogleTtsDictation(preferred, androidPackage);
-  }
-  return prepAsiOfflineDictation(candidates, androidPackage);
 }
 
 /**
- * Prepare the best available speech backend for note dictation.
- * Prefers Android System Intelligence; falls back to Google TTS (GrapheneOS).
+ * Prepare on-device speech for note dictation.
+ * Local-first: no network speech, no Google Play TTS fallback.
  */
 export async function ensureLocalDictationReady(
   locale?: string,
@@ -146,9 +140,9 @@ export async function ensureLocalDictationReady(
   }
 
   const androidPackage = resolveAndroidRecognitionPackage();
-  if (androidPackage) {
-    return prepareAndroidDictation(uniqueCandidates, androidPackage);
+  if (!androidPackage) {
+    return { ready: false, message: SPEECH_MSG.installOnDevice };
   }
 
-  return { ready: false, message: SPEECH_MSG.installTts };
+  return prepAsiOfflineDictation(uniqueCandidates, androidPackage);
 }
