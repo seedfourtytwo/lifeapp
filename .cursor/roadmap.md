@@ -4,6 +4,8 @@ Active plan for Life Dashboard. Intent only — do not scaffold protocol, DB, or
 
 **North star:** phone-first Android, local SQLite, Habits + Counters as equals, Life Protocol kinds only when UX diverges, ambient features outside protocol, EN+FR together, ship small chunks.
 
+**Protocol:** [protocol-plan.md](./protocol-plan.md) — trackers vs catalogs vs ambient; full backup vs granular export vs share packs. Keep features on that model.
+
 **Native builds:** local Android SDK by default (`dev` + Metro; `prod` release APK for standalone). See `.cursor/rules/android-build-workflow.mdc`.
 
 ---
@@ -55,6 +57,8 @@ Ordered for day-to-day work. Skip or reorder when a bug blocks use.
 ### Session Export
 
 Settings flow for export/import by data type (same spirit as Clear data…), optional date range, formats as needed (JSON backup + plain text/markdown for notes). Merge vs replace rules on import. Not Proton/cloud.
+
+Align with [protocol-plan.md](./protocol-plan.md): **data slice** (events/notes/… ± range) vs later **share pack** (tracker templates ± catalogs, no events by default; toggles for taste fields e.g. timer sound). Same schemas — no parallel definition format.
 
 ### Session Lock
 

@@ -6,12 +6,26 @@ alwaysApply: false
 
 # Protocol & Database
 
-- Every persisted entity carries `protocolVersion: 1`.
-- Config JSON in SQLite must pass kind-specific Zod schema before insert.
-- Use parameterized queries (`runAsync('... WHERE id = ?', id)`). Never interpolate user input.
-- Schema changes: add migration step in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
-- Soft-hide via `elements.archived_at` (null = active). Home shows non-archived only; `dashboard_items` stores sort order for active elements.
-- Events are facts for a calendar day; some habit/counter flows replace that day's rows (not strictly append-only for the same date).
-- Export/import uses `ProtocolBundle` — same shape for backup. Dashboard rows must not reference archived elements.
-- Schema **v14** current (v12 lean wipe; v13 day_notes; v14 daily_journals). Prefer additive migrations unless intentionally resetting local data.
-- If a column can be missing after a version bump, repair with an idempotent helper (see `schemaIntegrity.ts`).
+North star: `.cursor/protocol-plan.md` (trackers vs catalogs vs ambient; backup vs share pack).
+
+## Persistence
+
+- Every persisted protocol entity carries `protocolVersion: 1` (bump only on breaking interchange).
+- Config JSON in SQLite must pass kind-specific Zod before insert.
+- Parameterized queries only. Never interpolate user input.
+- Schema changes: migration in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
+- Soft-hide via `elements.archived_at`. Home = non-archived; `dashboard_items` = sort for active only.
+- Events are day facts; prefer append. Some same-day flows replace that day’s rows for one element — never rewrite cross-day history.
+- Schema **v14** (v12 lean wipe; v13 day_notes; v14 daily_journals). Prefer additive migrations. Missing columns → idempotent repair (`schemaIntegrity.ts`).
+
+## Interchange
+
+- **Full backup** = `ProtocolBundle` (personal snapshot). Dashboard rows must not reference archived elements.
+- **Granular export / share packs** specialize the same schemas — do not invent a parallel definition format. Share packs = templates ± catalogs, no events by default; device taste (e.g. timer sound) opt-in.
+- Catalogs (food/recipes later) are protocol entities **outside** `ElementKind` until Home UX truly needs a kind.
+
+## Do not
+
+- Add speculative kinds, catalog tables, or bundle fields before that feature is scheduled.
+- Put ambient data (calendar, weather, theme) into `ElementKind`.
+- Bypass Zod or store a second ad-hoc JSON shape for the same entity.

@@ -2,7 +2,7 @@
 
 Intent only. Do not add protocol schemas, DB tables, or UI until a feature is actively being built.
 
-Scheduled work (Session Export, Session Lock, Track 2 leftovers) lives in [roadmap.md](./roadmap.md) — not here.
+Scheduled work (Session Export, Session Lock, Track 2 leftovers) lives in [roadmap.md](./roadmap.md) — not here. Protocol shape for any future data: [protocol-plan.md](./protocol-plan.md).
 
 ---
 
@@ -26,9 +26,9 @@ Open: curated local pack vs user-added; EN/FR; dismiss / next; offline only.
 
 ## Food tracking
 
-Meals / intake. Scope TBD — light log vs nutrition detail.
+**Catalogs first:** food items + recipes as user-owned libraries (edit, remix, bake-in packs) — not `ElementKind`s. Meal / intake logging later can reference catalog ids.
 
-Open: protocol kind vs ambient; daily aggregates; dictation; photos later.
+Open: nutrition depth; dictation; photos; whether any Home tracker kind is ever needed vs log-only UI. Share via share packs (see protocol-plan), not full personal backup.
 
 ## Remote / scheduled backup
 

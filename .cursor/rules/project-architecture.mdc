@@ -7,6 +7,8 @@ alwaysApply: true
 
 Local-first personal dashboard. Data lives in SQLite on device. Trackable items follow **Life Protocol v1**.
 
+**Protocol north star:** `.cursor/protocol-plan.md` — read before adding kinds, catalogs, export shapes, or food/recipes.
+
 ## Architecture layers (never skip)
 
 1. **protocol/** — Zod schemas, types, validation. No React, no SQLite.
@@ -15,22 +17,33 @@ Local-first personal dashboard. Data lives in SQLite on device. Trackable items 
 4. **store/** — Zustand for UI state. Reload from DB after mutations.
 5. **screens/** — Thin; compose widgets from kind handlers.
 
+## Protocol data classes (do not collapse)
+
+| Class | What | Examples |
+|-------|------|----------|
+| **Trackers** | `ElementKind` + events | habit, counter |
+| **Catalogs** | User libraries outside `ElementKind` | food items, recipes (later) |
+| **Ambient / app** | Convenience; backup-optional | calendar, weather, theme |
+
+Share later via **share packs** (templates ± catalogs, no events by default; taste like timer sound opt-in). Full backup stays `ProtocolBundle`. Granular export specializes schemas — does not fork them.
+
 ## Adding a new element kind
 
-1. Add Zod config schema in `src/protocol/kinds/<kind>.ts`
-2. Add kind to `ElementKindSchema` in `src/protocol/element.ts`
-3. Create `src/kinds/<kind>/handler.ts` + `Widget.tsx`
-4. Register in `src/kinds/registry.ts`
+1. Confirm Home tracking UX diverges from habit/counter (else extend config or use catalog/ambient).
+2. Add Zod config in `src/protocol/kinds/<kind>.ts` + `ElementKindSchema`.
+3. Handler + `Widget.tsx` + `kinds/registry.ts`.
+4. Define `event.value` + daily completion in `semantics` / kind helpers.
 
-Do not add kinds until UX genuinely diverges from habit/counter.
+Do not add kinds (or catalog tables) until that feature is scheduled and in progress.
 
 ## Data rules
 
-- **Events** are append-only facts (`value` + `timestamp`). Never mutate past events.
-- **Elements** are definitions; the manage UI is **Trackers**. **dashboard_items** are pinned sort order for active elements.
+- **Events** are day facts (`value` + `timestamp`). Prefer append; never rewrite cross-day history.
+- **Elements** are definitions; manage UI = **Trackers**. **dashboard_items** = Home sort for active elements.
 - Home tabs: **Habits** / **Counters**. Calendar-day aggregates stay `daily*` in protocol/code.
 - Validate config on write with Zod, not TypeScript alone.
-- Bump `PROTOCOL_VERSION` only on breaking schema changes; add DB migrations for storage changes.
+- Bump `PROTOCOL_VERSION` only on breaking interchange; DB migrations for storage changes.
+- Tracker config: **identity** (schedule, targets, icon) vs **device taste** (sound, remind-before) — share defaults identity only.
 
 ## Code style
 
@@ -44,5 +57,5 @@ Do not add kinds until UX genuinely diverges from habit/counter.
 - **Two element kinds** for now: `counter`, `habit`.
 - **Home = Dashboard.** No splash; no extra tabs beyond essentials.
 - Do not add Zod schemas or DB tables for future features until that feature is being built.
-- Planning intent: `.cursor/roadmap.md` and `.cursor/product-ideas.md` — not code to scaffold early.
+- Planning: `.cursor/roadmap.md`, `.cursor/product-ideas.md`, `.cursor/protocol-plan.md` — not code to scaffold early.
 - Events are facts; derived scores/points stay computed later if gamification ships.
