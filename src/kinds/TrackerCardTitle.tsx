@@ -34,10 +34,9 @@ type Props = TrackerCardTitleInteractionProps & {
 };
 
 /**
- * Home leading identity:
- * - Double-tap → open history
- * - With icon → short hold peeks name; longer hold starts reorder
- * - Without icon → text title; long-press reorders
+ * Home card title / identity.
+ * With icon: mark only; short hold peeks the name; longer hold starts reorder.
+ * Without icon: text title; long-press reorders. Double-tap opens history.
  */
 export function TrackerCardTitle({
   name,

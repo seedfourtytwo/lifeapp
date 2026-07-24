@@ -1,6 +1,6 @@
 /**
- * User-facing dictation errors — short, actionable, no jargon.
- * Local-first: guide on-device install, never suggest Google Play speech.
+ * User-facing dictation errors — short and actionable.
+ * Point at on-device install; do not suggest cloud speech.
  */
 import { i18n } from '../i18n';
 

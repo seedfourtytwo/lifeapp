@@ -54,8 +54,8 @@ function readyOnDevice(
 }
 
 /**
- * On-device ASI only. If the offline pack is missing, guide install/download —
- * never fall back to a network or Google Play speech engine.
+ * Prepare ASI offline recognition. Missing pack → install/download guidance.
+ * Never falls back to a network speech engine.
  */
 async function prepAsiOfflineDictation(
   candidates: readonly string[],
@@ -113,8 +113,7 @@ async function prepAsiOfflineDictation(
 }
 
 /**
- * Prepare on-device speech for note dictation.
- * Local-first: no network speech, no Google Play TTS fallback.
+ * Prepare on-device speech for note dictation (ASI offline only).
  */
 export async function ensureLocalDictationReady(
   locale?: string,

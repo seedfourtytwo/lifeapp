@@ -1,42 +1,56 @@
-# CI/CD
+# CI / CD
 
 ## CI (`.github/workflows/ci.yml`)
 
-Runs on push/PR to `main` and `develop`:
+On push/PR to `main` and `develop`:
 
 1. ESLint
 2. TypeScript (`npm run type-check`)
 3. Jest (`npm test`)
 4. `expo-doctor`
 
-### Local checks
-
 ```bash
 npm run type-check
 npm run lint
-npm run lint:fix
 npm test
 ```
 
-## Android builds (GrapheneOS-friendly)
+## Android builds (local default)
 
-Expo Go may not work on GrapheneOS. Use EAS builds:
+Expo Go is unreliable on GrapheneOS. Prefer a local SDK build:
+
+| Profile | Gradle | Package | Label | Metro |
+|---------|--------|---------|-------|-------|
+| Dev client | `assembleDebug` | `com.lifeapp.dashboard.dev` | **dev** | Yes |
+| Standalone | `assembleRelease` | `com.lifeapp.dashboard` | **prod** | No (JS embedded) |
 
 ```bash
-# Dev client — hot reload via Metro; required for backup import testing
-eas build --platform android --profile development
+export ANDROID_HOME="$HOME/Android/Sdk"
+export JAVA_HOME="$HOME/.local/jdk-21"   # if present
 
-# Standalone APK for daily use (no Metro)
-eas build --platform android --profile preview
+cd android && ./gradlew assembleDebug assembleRelease \
+  -PreactNativeArchitectures=arm64-v8a \
+  --max-workers=2
 
-# Local EAS build (no Expo cloud queue)
-eas build --platform android --profile preview --local
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+Day-to-day JS: `CI=0 EXPO_NO_TELEMETRY=1 npx expo start --dev-client --lan --port 8081`.
+
+Full notes: `.cursor/rules/android-build-workflow.mdc`.
+
+## EAS (optional)
+
+Use only if the local SDK is unavailable or you need a cloud APK link (free-plan quota applies):
+
+```bash
+npx eas-cli build --platform android --profile development   # dev client
+npx eas-cli build --platform android --profile preview       # standalone APK
 ```
 
 Cancel a queued cloud build: `eas build:cancel`.
 
-After a new **development** APK is installed, start Metro with `--dev-client --lan` and open `http://<laptop-ip>:8081` on the phone.
+## Legacy
 
-## Legacy code
-
-Pre-v2 app is tagged `legacy-v1` in git.
+Pre-v2 app: git tag `legacy-v1`.

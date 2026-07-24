@@ -27,7 +27,7 @@ export function bestRecognitionTranscript(results: readonly ResultLike[]): strin
 
 /**
  * Recognition options for journal/note dictation.
- * Always on-device — Life Dashboard does not use network speech recognition.
+ * Always on-device (`requiresOnDeviceRecognition: true`).
  */
 export function buildLocalNoteDictationOptions(
   locale = speechRecognitionLocale(),

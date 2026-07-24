@@ -1,6 +1,6 @@
 /**
- * On-device Android speech only — Android System Intelligence (local offline packs).
- * No Google Speech Recognition & synthesis / network engines.
+ * On-device Android speech — Android System Intelligence + offline voice packs.
+ * Does not use Google Play Speech Recognition & synthesis or network engines.
  */
 export const ANDROID_ASI_PACKAGE = 'com.google.android.as';
 

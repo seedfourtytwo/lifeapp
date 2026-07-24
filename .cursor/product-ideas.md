@@ -1,43 +1,43 @@
-# Product ideas (later)
+# Product ideas (parking lot)
 
-Intent-only backlog — do not scaffold protocol, DB, or UI until a feature is actively being built.
+Intent only. Do not add protocol schemas, DB tables, or UI until a feature is actively being built.
+
+Scheduled work (Session Export, Session Lock, Track 2 leftovers) lives in [roadmap.md](./roadmap.md) — not here.
+
+---
 
 ## Idea inbox
 
-Notes-like capture that is **not** day-bound (unlike journal / daily notes). A simple list for parking ideas — brainstorms, product thoughts, things to come back to — without tying them to a calendar day.
+Capture that is **not** day-bound (unlike journal / day notes). A simple list for parking thoughts.
 
-Open questions: separate screen vs section; archive/done; link to habits/todos later?
+Open: separate screen vs section; archive/done; link to habits later?
 
 ## To-dos (one-off tasks)
 
-Tasks that are **not** habits and usually have **no specific date** — e.g. “Clean the car”, “Buy batteries”. Distinct from:
+Tasks that are **not** habits and usually have **no** date — e.g. “Buy batteries”. Distinct from habits, calendar events, and counters.
 
-- **Habits** — recurring daily contract
-- **Calendar events** — dated / scheduled
-- **Counters** — quantity logging
+Open: Home vs Settings; check-off + archive vs delete; optional due date without becoming calendar.
 
-Open questions: how they sit in Home vs Settings; completion model (check off + archive vs delete); optional due date later without becoming calendar; relationship to idea inbox.
+## Daily quotes
 
-## Daily quotes / motivators
+Rotating short quote on Home (ambient, not a protocol kind).
 
-Surface a rotating cool quote or short motivator each day (ambient, not a protocol kind). Could live on Home near the weather/calendar bubble or as a quiet Home accent.
-
-Open questions: curated local pack vs user-added; language (EN/FR); dismiss / “show another”; offline-only.
-
-## Lock screen widget — fix & improve
-
-Fix the existing habit-timer lock-screen controls/widget, then improve the experience. Include **dictation** so you can capture or act from the lock screen (or related quick-entry flow) by voice — not only tap Play/Pause/Done.
-
-Open questions: reliability of current media-session / lock-screen UI; what actions belong there (timer, habit Done, dictation → note/idea/todo); Android constraints for lock-screen input; reuse in-app speech recognition locale / continuous dictation.
+Open: curated local pack vs user-added; EN/FR; dismiss / next; offline only.
 
 ## Food tracking
 
-Track meals / food intake. Scope TBD — light logging (what/when) vs nutrition detail; how it relates to habits/counters vs a dedicated surface.
+Meals / intake. Scope TBD — light log vs nutrition detail.
 
-Open questions: protocol kind vs ambient feature; daily aggregates; dictation for quick log; photos optional later.
+Open: protocol kind vs ambient; daily aggregates; dictation; photos later.
 
-## Granular import / export by data type
+## Remote / scheduled backup
 
-Split backup **export** and **import** by data type the way **Clear data…** already does for deletion — e.g. history, calendar, notes/journals, preferences, tracker definitions — instead of only all-or-nothing JSON.
+Optional upload (e.g. Proton Drive) when connected; otherwise local file first. Never required for core use.
 
-Open questions: same category list as Clear data; partial import merge vs replace per type; versioning / missing sections in older backups.
+## Other Later
+
+- Home widgets / Tasker intents
+- Ambient audio library / breathing variants
+- ICS / CalDAV / partner calendar sync
+- Persist last Home tab (only if Counters bounce becomes common)
+- Online AI recap path

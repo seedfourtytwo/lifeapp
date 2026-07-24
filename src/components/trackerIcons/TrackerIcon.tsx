@@ -28,7 +28,7 @@ type Props = {
 };
 
 /**
- * Renders a curated tracker icon — MCI glyph or local custom SVG.
+ * Renders a curated tracker icon (MCI glyph or local SVG for custom ids).
  */
 export function TrackerIcon({ name, size = 22, color }: Props) {
   if (isCustomTrackerIconId(name)) {

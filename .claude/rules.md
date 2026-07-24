@@ -1,58 +1,36 @@
 # Life Dashboard — Development Guidelines
 
-## Overview
+Local-first personal dashboard. SQLite is the source of truth; Zustand mirrors it. Trackable items follow **Life Protocol v1**.
 
-Local-first personal dashboard. Trackable items follow **Life Protocol v1**. SQLite is the source of truth; Zustand mirrors it in memory.
-
-**Principles:** privacy, offline-first, protocol-driven extensibility, strict TypeScript.
+Canonical conventions for agents: `.cursor/rules/` (especially `project-architecture.mdc`). Active plan: `.cursor/roadmap.md`.
 
 ## Stack
 
-- Expo SDK 54, React Native, TypeScript (strict)
-- expo-sqlite, Zod, Zustand, React Native Paper
-- Jest for protocol and kind logic tests
+Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zustand · React Native Paper · Jest
 
-## Folder Structure
+## Layers
 
-```
-src/
-├── protocol/           # Schemas, types — no React, no SQL
-├── db/                 # Migrations, repositories, export
-├── kinds/              # Per-kind handlers + dashboard widgets
-├── store/              # Zustand
-├── screens/
-└── navigation/
-```
+1. **protocol/** — schemas; no React, no SQL
+2. **repositories** — all SQL
+3. **kinds** — kind-specific UI and aggregation (`counter`, `habit`)
+4. **stores** — reload after mutate
+5. **screens** — thin composition
 
-## Architecture Rules
+## Rules
 
-1. **Protocol layer** validates all external and persisted structured data.
-2. **Repositories** own all SQL. Screens and stores call repositories, never `db.runAsync` directly.
-3. **Kind handlers** own kind-specific UI and aggregation logic.
-4. **Events are append-only.** Corrections = new events or a dedicated undo flow later.
-5. **Reload after mutate:** stores call `load()` after repository writes.
+- Events are append-only.
+- Screens/stores never call `db.runAsync` directly.
+- Do not scaffold future protocol/DB features early.
+- Phone-first Android; web is secondary.
 
-## Adding an Element Kind
-
-1. `src/protocol/kinds/<kind>.ts` — Zod config schema
-2. Extend `ElementKindSchema` in `src/protocol/element.ts`
-3. `src/kinds/<kind>/` — handler + widget
-4. Register in `src/kinds/registry.ts`
-
-## Testing
+## Checks
 
 ```bash
-npm test              # Jest
-npm run type-check    # tsc
+npm test
+npm run type-check
 npm run lint
 ```
 
-Test protocol parsing and pure functions without SQLite. Repository tests can use expo-sqlite mocks when needed.
+## Legacy
 
-## Legacy Code
-
-Pre-v2 activity timer, stats, points, and features code: `git tag legacy-v1`
-
-## Cursor Rules
-
-See `.cursor/rules/` for AI-assisted development conventions.
+Pre-v2 code: `git tag legacy-v1`

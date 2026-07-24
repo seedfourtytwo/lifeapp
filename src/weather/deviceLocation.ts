@@ -50,7 +50,7 @@ export async function getDeviceCoords(): Promise<WeatherCoords | null> {
   if (!permission.granted) return null;
 
   const position = await Location.getCurrentPositionAsync({
-    // ~1 km — enough for city weather without requesting fine GPS.
+    // ~1 km — enough for city weather without fine GPS.
     accuracy: Location.Accuracy.Low,
   });
 

@@ -73,7 +73,7 @@ function abortRecognitionQuietly(): void {
 
 /**
  * Mic dictation for notes — transcript only (no audio stored).
- * Tap mic to record; finals commit as they land; Done stops + Afterglow.
+ * Tap mic to listen; finals commit as they arrive; Done ends the session.
  */
 export default function DayNoteDictationButton({
   disabled,

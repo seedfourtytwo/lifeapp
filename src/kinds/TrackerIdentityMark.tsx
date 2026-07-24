@@ -22,8 +22,7 @@ type Props = {
 };
 
 /**
- * Home identity mark — Streaks-inspired icon well + progress ring.
- * Gives icon-only rows visual weight so the leading edge feels intentional.
+ * Home leading mark: icon in a well with an optional progress ring and streak badge.
  */
 export function TrackerIdentityMark({
   icon,
