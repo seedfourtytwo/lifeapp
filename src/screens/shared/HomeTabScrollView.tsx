@@ -20,6 +20,8 @@ import {
 
 const RUBBER = 0.28;
 const MAX_PULL = 64;
+/** Treat as fitting when content is within 1px of the viewport (subpixel noise). */
+const FITS_EPSILON = 1;
 
 export type HomeTabScrollViewHandle = {
   getScrollOffsetY: () => number;
@@ -36,9 +38,15 @@ type Props = Omit<
   scrollLocked?: boolean;
 };
 
+function contentFitsViewport(contentHeight: number, layoutHeight: number): boolean {
+  if (layoutHeight <= 0 || contentHeight <= 0) return false;
+  return contentHeight <= layoutHeight + FITS_EPSILON;
+}
+
 /**
- * Home Habits/Counters list: light rubber-band feedback when the user drags
- * vertically with nowhere to scroll (short lists) or past a scroll edge.
+ * Home Habits/Counters list: light rubber-band when the list fits on screen
+ * (nowhere to scroll). When content overflows, the ScrollView scrolls normally
+ * and the bounce pan is detached so it cannot steal vertical gestures.
  * Native Android overscroll is unreliable inside the Home horizontal pager.
  */
 export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
@@ -60,17 +68,23 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     const translateY = useRef(new Animated.Value(0)).current;
     const scrollY = useRef(0);
     const contentH = useRef(0);
+    const innerContentH = useRef(0);
+    const contentSizeH = useRef(0);
     const layoutH = useRef(0);
     const windowTop = useRef(0);
     const dragOrigin = useRef(0);
     const scrollLockedRef = useRef(scrollLocked);
     scrollLockedRef.current = scrollLocked;
-    /** False until measured so long lists are not briefly non-scrollable. */
+    /** False until measured so long lists stay scrollable. */
     const [fitsViewport, setFitsViewport] = useState(false);
+    const fitsViewportRef = useRef(fitsViewport);
+    fitsViewportRef.current = fitsViewport;
 
     const recomputeFits = useCallback(() => {
-      if (layoutH.current <= 0 || contentH.current <= 0) return;
-      setFitsViewport(contentH.current <= layoutH.current + 1);
+      // Prefer the larger measurement: flexGrow can make content-size ≈ viewport
+      // while the inner children are taller (or the reverse on some ROMs).
+      contentH.current = Math.max(innerContentH.current, contentSizeH.current);
+      setFitsViewport(contentFitsViewport(contentH.current, layoutH.current));
     }, []);
 
     const springHome = useCallback(() => {
@@ -122,18 +136,11 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, gesture) => {
           if (scrollLockedRef.current) return false;
+          // Only rubber-band short lists. Long lists must leave gestures to ScrollView.
+          if (!fitsViewportRef.current) return false;
           if (Math.abs(gesture.dy) < 6) return false;
           if (Math.abs(gesture.dy) <= Math.abs(gesture.dx)) return false;
-
-          const fits = contentH.current <= layoutH.current + 1;
-          if (fits) return true;
-
-          const top = scrollY.current <= 0.5;
-          const bottom =
-            scrollY.current + layoutH.current >= contentH.current - 1;
-          if (top && gesture.dy > 0) return true;
-          if (bottom && gesture.dy < 0) return true;
-          return false;
+          return true;
         },
         onPanResponderGrant: () => {
           translateY.stopAnimation((value) => {
@@ -141,16 +148,8 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
           });
         },
         onPanResponderMove: (_, gesture) => {
-          if (scrollLockedRef.current) return;
+          if (scrollLockedRef.current || !fitsViewportRef.current) return;
           let next = dragOrigin.current + gesture.dy * RUBBER;
-          const fits = contentH.current <= layoutH.current + 1;
-          if (!fits) {
-            const top = scrollY.current <= 0.5;
-            const bottom =
-              scrollY.current + layoutH.current >= contentH.current - 1;
-            if (top && !bottom) next = Math.max(0, next);
-            if (bottom && !top) next = Math.min(0, next);
-          }
           next = Math.max(-MAX_PULL, Math.min(MAX_PULL, next));
           translateY.setValue(next);
         },
@@ -160,12 +159,14 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     ).current;
 
     const scrollEnabled = !scrollLocked && !fitsViewport;
+    /** Attach bounce pan only when the list fits — never compete with overflow scroll. */
+    const rubberBandActive = !scrollLocked && fitsViewport;
 
     return (
       <View
         ref={rootRef}
         style={[styles.fill, style]}
-        {...(scrollLocked ? {} : pan.panHandlers)}
+        {...(rubberBandActive ? pan.panHandlers : {})}
         onLayout={measureWindowTop}
         collapsable={false}
       >
@@ -195,12 +196,20 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
               onLayout?.(event);
             }}
             onContentSizeChange={(width, height) => {
-              contentH.current = height;
+              contentSizeH.current = height;
               recomputeFits();
               onContentSizeChange?.(width, height);
             }}
           >
-            {children}
+            <View
+              collapsable={false}
+              onLayout={(event: LayoutChangeEvent) => {
+                innerContentH.current = event.nativeEvent.layout.height;
+                recomputeFits();
+              }}
+            >
+              {children}
+            </View>
           </ScrollView>
         </Animated.View>
       </View>

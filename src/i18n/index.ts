@@ -106,13 +106,19 @@ export function getDateLocale(): string {
   return i18next.resolvedLanguage === 'fr' ? 'fr-FR' : 'en-US';
 }
 
+const SPEECH_LOCALE_DEFAULTS: Record<'en' | 'fr', readonly string[]> = {
+  en: ['en-US', 'en-GB', 'en-AU', 'en-IE'],
+  fr: ['fr-FR', 'fr-CA', 'fr-BE', 'fr-CH'],
+};
+
 /**
- * Preferred speech-recognition locale tags for the active app language.
- * Puts the device region first when it matches (en-GB phone + English UI → en-GB).
+ * Preferred speech-recognition locale tags for a language.
+ * Puts the device region first when it matches (en-GB phone + English → en-GB).
  */
-export function getSpeechLocaleCandidates(): string[] {
-  const language = i18next.resolvedLanguage === 'fr' ? 'fr' : 'en';
-  const defaults = language === 'fr' ? ['fr-FR', 'fr-CA', 'fr-BE', 'fr-CH'] : ['en-US', 'en-GB', 'en-AU', 'en-IE'];
+export function getSpeechLocaleCandidatesForLanguage(
+  language: 'en' | 'fr',
+): string[] {
+  const defaults = SPEECH_LOCALE_DEFAULTS[language];
   const candidates: string[] = [];
 
   try {
@@ -131,6 +137,14 @@ export function getSpeechLocaleCandidates(): string[] {
     }
   }
   return candidates;
+}
+
+/**
+ * Preferred speech-recognition locale tags for the active app language.
+ */
+export function getSpeechLocaleCandidates(): string[] {
+  const language = i18next.resolvedLanguage === 'fr' ? 'fr' : 'en';
+  return getSpeechLocaleCandidatesForLanguage(language);
 }
 
 /** Best-effort BCP-47 tag for speech recognition (first preferred candidate). */

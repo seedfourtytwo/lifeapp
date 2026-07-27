@@ -19,7 +19,10 @@ import {
   clearAndroidRecognitionPackageCache,
   ensureLocalDictationReady,
 } from '../utils/speechRecognitionLocal';
-import { speechRecognitionLocale } from '../utils/speechRecognitionLocale';
+import {
+  normalizeSpeechLocaleTag,
+  speechRecognitionLocale,
+} from '../utils/speechRecognitionLocale';
 import { DictationMicHalo } from './dictation/DictationPresence';
 
 /** How long to wait for the native `start` event before aborting. */
@@ -54,7 +57,13 @@ function probeSpeechAvailability(): SpeechAvailability {
     return { ok: false, reason: SPEECH_MSG.webOnly };
   }
   try {
-    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+    const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+    const onDevice =
+      Platform.OS === 'android'
+        ? ExpoSpeechRecognitionModule.supportsOnDeviceRecognition()
+        : true;
+    // Prod / GrapheneOS: service listing can be empty while on-device still works.
+    if (!available && !onDevice) {
       return { ok: false, reason: SPEECH_MSG.notAvailable };
     }
     return { ok: true };
@@ -110,6 +119,8 @@ export default function DayNoteDictationButton({
   const sessionOpenRef = useRef(false);
   /** Latest interim hypothesis — committed on Done if the engine never finals it. */
   const interimRef = useRef('');
+  /** Active recognition locale (app language, then Android languagedetection). */
+  const recognitionLocaleRef = useRef(speechRecognitionLocale());
   const finishingRef = useRef(false);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutoStartTokenRef = useRef<string | null>(null);
@@ -140,8 +151,7 @@ export default function DayNoteDictationButton({
   }, []);
 
   const commitPhrase = useCallback((raw: string) => {
-    const locale = speechRecognitionLocale();
-    const text = polishDictationTranscript(raw, locale);
+    const text = polishDictationTranscript(raw, recognitionLocaleRef.current);
     if (!text) return;
     onTranscriptRef.current(text);
   }, []);
@@ -156,6 +166,7 @@ export default function DayNoteDictationButton({
     clearStartTimeout();
     clearInterim();
     finishingRef.current = false;
+    recognitionLocaleRef.current = speechRecognitionLocale();
     setSession(false);
     setListening(false);
     setStarting(false);
@@ -225,6 +236,11 @@ export default function DayNoteDictationButton({
     if (text) commitPhrase(text);
   });
 
+  useSpeechRecognitionEvent('languagedetection', (event) => {
+    if (!event.detectedLanguage) return;
+    recognitionLocaleRef.current = normalizeSpeechLocaleTag(event.detectedLanguage);
+  });
+
   useSpeechRecognitionEvent('error', (event) => {
     if (!activeRef.current) {
       resetSession();
@@ -290,6 +306,7 @@ export default function DayNoteDictationButton({
         resetSession();
         return;
       }
+      recognitionLocaleRef.current = prep.locale;
       clearStartTimeout();
       startTimeoutRef.current = setTimeout(() => {
         startTimeoutRef.current = null;
@@ -301,7 +318,11 @@ export default function DayNoteDictationButton({
         }
       }, START_TIMEOUT_MS);
       ExpoSpeechRecognitionModule.start(
-        buildLocalNoteDictationOptions(prep.locale, prep.androidPackage),
+        buildLocalNoteDictationOptions(
+          prep.locale,
+          prep.androidPackage,
+          prep.switchLocales,
+        ),
       );
     } catch {
       clearAndroidRecognitionPackageCache();

@@ -46,7 +46,6 @@ Ordered for day-to-day work. Skip or reorder when a bug blocks use.
 - Insights content redesign (not just chrome)
 - Note undo/redo
 - Voice “Done” / formatting keywords (after Echo — Echo is shipped)
-- Mixed FR/EN dictation policy
 - Calendar: event-type UI, weekly BYDAY multi-select, native pickers
 - Competitor pick (one session): skip day, heatmap, EMA, widgets — not mixed into UI polish
 

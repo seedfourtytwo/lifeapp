@@ -1,27 +1,30 @@
 /**
  * Light, on-device cleanup for dictated note text — no network / LLM.
- * English: drop common fillers; all locales: normalize spacing, soft stutter,
+ * Locale-aware fillers; all locales: normalize spacing, soft stutter,
  * capitalize, and ensure sentence-ending punctuation.
  */
 
 /** Standalone vocal fillers (English). */
-const FILLER_WORD = /\b(?:um+|uh+|uhm+|erm+|er+|ah+|eh+|hmm+|m+hmm*)\b/gi;
+const EN_FILLER_WORD = /\b(?:um+|uh+|uhm+|erm+|er+|ah+|eh+|hmm+|m+hmm*)\b/gi;
 
 /** Spoken padding phrases — keep this list conservative. */
-const FILLER_PHRASES: RegExp[] = [
+const EN_FILLER_PHRASES: RegExp[] = [
   /\byou know\b/gi,
   /\by'know\b/gi,
 ];
 
+/** Common French hesitation sounds (conservative — avoid real words like « ben »). */
+const FR_FILLER_WORD = /\b(?:euh+|heu+|hum+)\b/gi;
+
 /** Ends with sentence punctuation (optional trailing quotes/brackets). */
 const ENDS_WITH_SENTENCE_PUNCT = /[.!?…]["')\]]*$/;
 
-/** Short function words STT often doubles ("the the", "and and"). */
+/** Short function words STT often doubles ("the the", "and and" / "je je"). */
 const STUTTER_WORD =
-  /\b(the|a|an|and|or|to|of|i|it|my|is|in|on)(?:\s+\1\b)+/gi;
+  /\b(the|a|an|and|or|to|of|i|it|my|is|in|on|je|tu|il|de|le|la|les|et|ou)(?:\s+\1\b)+/gi;
 
-function isEnglishLocale(locale: string): boolean {
-  return locale.toLowerCase().startsWith('en');
+function languagePrefix(locale: string): string {
+  return locale.trim().toLowerCase().split(/[-_]/)[0] ?? '';
 }
 
 /** Ensure a dictated chunk reads as a finished sentence. */
@@ -40,11 +43,14 @@ export function polishDictationTranscript(
   let out = text.trim();
   if (!out) return out;
 
-  if (isEnglishLocale(locale)) {
-    for (const pattern of FILLER_PHRASES) {
+  const lang = languagePrefix(locale);
+  if (lang === 'en') {
+    for (const pattern of EN_FILLER_PHRASES) {
       out = out.replace(pattern, ' ');
     }
-    out = out.replace(FILLER_WORD, ' ');
+    out = out.replace(EN_FILLER_WORD, ' ');
+  } else if (lang === 'fr') {
+    out = out.replace(FR_FILLER_WORD, ' ');
   }
 
   out = out.replace(/\s{2,}/g, ' ');

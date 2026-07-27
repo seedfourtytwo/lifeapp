@@ -26,12 +26,46 @@ export function bestRecognitionTranscript(results: readonly ResultLike[]): strin
 }
 
 /**
+ * Android 14+ on-device bilingual extras.
+ * `quick_response` switches at the earliest confident detection — better for
+ * mixed FR/EN in one breath than `balanced` / `high_precision`.
+ * Do not set MAX_SWITCHES or INITIAL_ACTIVE_DURATION (those cap mid-note switching).
+ */
+export function buildBilingualAndroidIntentOptions(
+  switchLocales: readonly string[],
+): NonNullable<ExpoSpeechRecognitionOptions['androidIntentOptions']> {
+  const locales = [...switchLocales];
+  return {
+    EXTRA_ENABLE_LANGUAGE_DETECTION: true,
+    EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES: locales,
+    // RecognizerIntentEnableLanguageSwitch.LANGUAGE_SWITCH_QUICK_RESPONSE
+    EXTRA_ENABLE_LANGUAGE_SWITCH: 'quick_response',
+    EXTRA_LANGUAGE_SWITCH_ALLOWED_LANGUAGES: locales,
+  };
+}
+
+/** Shared Android intent extras for note dictation (API 33+ where applicable). */
+export function buildAndroidDictationIntentOptions(
+  switchLocales?: readonly string[],
+): NonNullable<ExpoSpeechRecognitionOptions['androidIntentOptions']> {
+  return {
+    // Default is true — masks swear words as s**t / ****. Notes are personal; keep verbatim.
+    EXTRA_MASK_OFFENSIVE_WORDS: false,
+    ...(switchLocales != null && switchLocales.length >= 2
+      ? buildBilingualAndroidIntentOptions(switchLocales)
+      : {}),
+  };
+}
+
+/**
  * Recognition options for journal/note dictation.
  * Always on-device (`requiresOnDeviceRecognition: true`).
+ * When `switchLocales` has EN+FR packs, enable Android 14+ language switch.
  */
 export function buildLocalNoteDictationOptions(
   locale = speechRecognitionLocale(),
   androidPackage?: string,
+  switchLocales?: readonly string[],
 ): ExpoSpeechRecognitionOptions {
   return {
     lang: locale,
@@ -42,8 +76,13 @@ export function buildLocalNoteDictationOptions(
     maxAlternatives: 5,
     requiresOnDeviceRecognition: true,
     iosTaskHint: 'dictation',
-    ...(Platform.OS === 'android' && androidPackage
-      ? { androidRecognitionServicePackage: androidPackage }
+    ...(Platform.OS === 'android'
+      ? {
+          ...(androidPackage
+            ? { androidRecognitionServicePackage: androidPackage }
+            : {}),
+          androidIntentOptions: buildAndroidDictationIntentOptions(switchLocales),
+        }
       : {}),
   };
 }

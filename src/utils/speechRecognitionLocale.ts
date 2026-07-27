@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
-import { getSpeechLocaleCandidates } from '../i18n';
+import {
+  getSpeechLocaleCandidates,
+  getSpeechLocaleCandidatesForLanguage,
+} from '../i18n';
 
 /** Normalize a raw locale tag for on-device speech recognition. */
 export function normalizeSpeechLocaleTag(raw: string, fallback = 'en-US'): string {
@@ -12,10 +15,16 @@ export function normalizeSpeechLocaleTag(raw: string, fallback = 'en-US'): strin
     if (locale.toLowerCase() === 'fr') return 'fr-FR';
     return `${locale}-${locale.toUpperCase()}`;
   }
+
+  // ASI languagedetection often returns lowercase ("en-us").
+  const parts = locale.split('-');
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}${parts.length > 2 ? `-${parts.slice(2).join('-')}` : ''}`;
+  }
   return locale;
 }
 
-function languageCode(tag: string): string {
+export function languageCode(tag: string): string {
   return normalizeSpeechLocaleTag(tag).split('-')[0]?.toLowerCase() ?? '';
 }
 
@@ -92,9 +101,52 @@ export function pickInstalledSpeechLocale(
   return sameLanguage?.norm ?? null;
 }
 
+/**
+ * EN+FR locales for mid-session switch, ordered with the primary language first.
+ * Returns undefined unless both language packs appear installed.
+ */
+export function resolveBilingualSwitchLocales(
+  primaryLocale: string,
+  installedLocales: readonly string[],
+): string[] | undefined {
+  const en = pickInstalledSpeechLocale(
+    getSpeechLocaleCandidatesForLanguage('en'),
+    installedLocales,
+  );
+  const fr = pickInstalledSpeechLocale(
+    getSpeechLocaleCandidatesForLanguage('fr'),
+    installedLocales,
+  );
+  if (!en || !fr) return undefined;
+  return languageCode(primaryLocale) === 'fr' ? [fr, en] : [en, fr];
+}
+
+/**
+ * Fallback EN+FR pair when locale listing fails but on-device recognition works
+ * (some ROMs / package-visibility quirks return an empty installed list).
+ */
+export function defaultBilingualSwitchLocales(primaryLocale: string): string[] {
+  const en = normalizeSpeechLocaleTag(
+    getSpeechLocaleCandidatesForLanguage('en')[0] ?? 'en-US',
+  );
+  const fr = normalizeSpeechLocaleTag(
+    getSpeechLocaleCandidatesForLanguage('fr')[0] ?? 'fr-FR',
+  );
+  return languageCode(primaryLocale) === 'fr' ? [fr, en] : [en, fr];
+}
+
 /** Long-form dictation (record until Done) needs continuous recognition (Android 13+). */
 export function supportsContinuousDictation(): boolean {
   if (Platform.OS === 'web') return false;
   if (Platform.OS === 'ios') return true;
   return Number(Platform.Version) >= 33;
+}
+
+/**
+ * Mid-session EN↔FR switch (same note) needs Android 14+ on-device language switch.
+ * Both offline language packs must also be installed — checked at prep time.
+ */
+export function supportsBilingualDictationSwitch(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return Number(Platform.Version) >= 34;
 }
