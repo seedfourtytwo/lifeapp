@@ -8,7 +8,7 @@ type Props = {
 
 /** One sheet for tracker notes and the daily journal. */
 export default function NoteEditorHost({ session }: Props) {
-  const { sheet, dismiss, save, saving } = session;
+  const { sheet, dismiss, persist, save, share, saving } = session;
   return (
     <NoteEditorSheet
       visible={sheet.visible}
@@ -18,10 +18,13 @@ export default function NoteEditorHost({ session }: Props) {
       kind={sheet.kind}
       trackerName={sheet.trackerName}
       initialBody={sheet.initialBody}
+      shareFingerprint={sheet.shareFingerprint}
       autoStartDictation={sheet.autoStartDictation}
       saving={saving}
       onDismiss={dismiss}
+      onPersist={(body) => void persist(body)}
       onSave={(body) => void save(body)}
+      onShare={(body) => void share(body)}
     />
   );
 }

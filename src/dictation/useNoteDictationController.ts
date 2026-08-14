@@ -53,7 +53,10 @@ export type NoteDictationController = {
   finishing: boolean;
   sessionOpen: boolean;
   start: () => Promise<void>;
+  /** Commit the current take (Done). */
   finish: () => void;
+  /** Drop the current take without committing (Clear while mic is open). */
+  cancel: () => void;
   supported: boolean;
 };
 
@@ -633,6 +636,15 @@ export function useNoteDictationController({
 
   finishRef.current = finish;
 
+  const cancel = useCallback(() => {
+    if (finishingRef.current || didEndRef.current) return;
+    if (!sessionOpenRef.current && !startingRef.current) return;
+    abortSessionQuietly();
+    resetSession();
+    setStatus(null);
+    setError(null);
+  }, [abortSessionQuietly, resetSession, setError, setStatus]);
+
   return {
     listening,
     capturing,
@@ -641,6 +653,7 @@ export function useNoteDictationController({
     sessionOpen,
     start,
     finish,
+    cancel,
     supported: isMoonshineDictationSupported(),
   };
 }

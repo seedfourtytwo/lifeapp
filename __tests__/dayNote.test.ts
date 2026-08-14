@@ -8,7 +8,7 @@ import {
   validateBundleDayNoteLinks,
 } from '../src/protocol';
 import { applyAppLanguage } from '../src/i18n';
-import { appendTranscript, joinDictationParts } from '../src/utils/appendTranscript';
+import { appendTranscript, joinDictationParts, splitAddedTake } from '../src/utils/appendTranscript';
 import { polishDictationTranscript } from '../src/utils/polishDictationTranscript';
 import {
   normalizeSpeechLocaleTag,
@@ -211,6 +211,32 @@ describe('appendTranscript', () => {
     const result = appendTranscript(almostFull, 'more text here');
     expect(result.truncated).toBe(true);
     expect(result.text.length).toBeLessThanOrEqual(DAY_NOTE_BODY_MAX_LENGTH);
+  });
+});
+
+describe('splitAddedTake', () => {
+  it('returns null when there was no previous text', () => {
+    expect(splitAddedTake('', 'Hello\n')).toBeNull();
+    expect(splitAddedTake('   ', 'Hello\n')).toBeNull();
+  });
+
+  it('splits the new paragraph after a prior body', () => {
+    const prior = 'Felt calm today.\n';
+    const next = appendTranscript(prior, 'Had coffee with Sam.').text;
+    expect(splitAddedTake(prior, next)).toEqual({
+      base: 'Felt calm today.\n',
+      added: 'Had coffee with Sam.\n',
+    });
+  });
+
+  it('keeps every take since the saved body, not only the last paste', () => {
+    const saved = 'Felt calm today.\n';
+    const afterFirst = appendTranscript(saved, 'Had coffee with Sam.').text;
+    const afterSecond = appendTranscript(afterFirst, 'Walked the dog.').text;
+    expect(splitAddedTake(saved, afterSecond)).toEqual({
+      base: 'Felt calm today.\n',
+      added: 'Had coffee with Sam.\nWalked the dog.\n',
+    });
   });
 });
 

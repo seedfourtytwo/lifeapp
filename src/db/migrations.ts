@@ -13,10 +13,11 @@ import {
   ensureDailyJournalsSchema,
   ensureDayNotesSchema,
   ensureElementsSchema,
+  ensureNoteShareStateSchema,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 14;
+const CURRENT_SCHEMA_VERSION = 15;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -25,6 +26,7 @@ const CURRENT_SCHEMA_VERSION = 14;
 /** v12: destructive clean slate — drop unused columns; wipe local data. */
 /** v13: per-tracker per-day notes (day_notes). */
 /** v14: daily journals (daily_journals) — one general note per calendar day. */
+/** v15: note_share_state — local last-shared fingerprint (Android share sheet). */
 
 interface HabitElementRow {
   id: string;
@@ -192,6 +194,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   14: async (db) => {
     await ensureDailyJournalsSchema(db);
   },
+  15: async (db) => {
+    await ensureNoteShareStateSchema(db);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -208,6 +213,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await ensureCalendarSchema(db);
     await ensureDayNotesSchema(db);
     await ensureDailyJournalsSchema(db);
+    await ensureNoteShareStateSchema(db);
     return;
   }
 
@@ -234,4 +240,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await ensureCalendarSchema(db);
   await ensureDayNotesSchema(db);
   await ensureDailyJournalsSchema(db);
+  await ensureNoteShareStateSchema(db);
 }

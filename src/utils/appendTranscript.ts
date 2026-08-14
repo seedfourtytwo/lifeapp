@@ -47,3 +47,22 @@ export function appendTranscript(
     truncated: true,
   };
 }
+
+/**
+ * Split unsaved additions from the last saved (or last committed baseline) body.
+ * Returns null when there was no previous body, or the join can't be matched.
+ */
+export function splitAddedTake(
+  prior: string,
+  next: string,
+): { base: string; added: string } | null {
+  if (!prior.trim() || !next.trim()) return null;
+  const base = prior.trimEnd();
+  if (!next.startsWith(base)) return null;
+  let added = next.slice(base.length);
+  if (added.startsWith('\n')) {
+    added = added.slice(1);
+  }
+  if (!added.trim()) return null;
+  return { base: `${base}\n`, added };
+}

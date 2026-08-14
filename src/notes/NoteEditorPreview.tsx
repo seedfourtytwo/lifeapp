@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,10 +12,14 @@ import {
   DictationStageGlow,
   DICTATION_LIVE_COLOR,
   DICTATION_LIVE_COLOR_DARK,
+  DICTATION_PRESENCE_COLOR,
+  DICTATION_PRESENCE_COLOR_DARK,
 } from '../components/dictation/DictationPresence';
 import type { DictationLivePreview } from '../dictation/livePreview';
 
 const FOLLOW_BOTTOM_PX = 48;
+const REVIEW_ADDED_WASH = 'rgba(91, 75, 138, 0.10)';
+const REVIEW_ADDED_WASH_DARK = 'rgba(155, 139, 196, 0.18)';
 
 function joinCommittedDraft(draft: string, liveCommitted: string): string {
   if (!liveCommitted) return draft;
@@ -31,15 +34,18 @@ type Props = {
   live: DictationLivePreview | null;
   listening: boolean;
   capturing: boolean;
-  capturedReview: boolean;
+  /** Prior saved body + unsaved additions. */
+  reviewHighlight?: { base: string; added: string } | null;
   placeholder: string;
-  flashOpacity: Animated.AnimatedInterpolation<number>;
+  minHeight?: number;
+  maxHeight?: number;
   saving: boolean;
+  editLocked?: boolean;
   onEdit: () => void;
 };
 
 /**
- * Mic-first note body. Live tail stays italic and inline with committed text.
+ * Mic-first note body. Live tail stays italic; unsaved additions tint after Done.
  */
 export function NoteEditorPreview({
   noun,
@@ -48,22 +54,29 @@ export function NoteEditorPreview({
   live,
   listening,
   capturing,
-  capturedReview,
+  reviewHighlight = null,
   placeholder,
-  flashOpacity,
+  minHeight,
+  maxHeight,
   saving,
+  editLocked = false,
   onEdit,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('common');
   const scrollRef = useRef<ScrollView>(null);
   const followRef = useRef(true);
+  const wasListeningRef = useRef(listening);
   const liveCommitted = live?.committed ?? '';
   const liveTail = live?.tail ?? '';
   const committedBody = joinCommittedDraft(draft, liveCommitted);
   const hasDraft = draft.trim().length > 0;
   const hasLive = Boolean(liveCommitted || liveTail);
   const ink = theme.dark ? DICTATION_LIVE_COLOR_DARK : DICTATION_LIVE_COLOR;
+  const addedInk = theme.dark ? DICTATION_PRESENCE_COLOR_DARK : DICTATION_PRESENCE_COLOR;
+  const addedWash = theme.dark ? REVIEW_ADDED_WASH_DARK : REVIEW_ADDED_WASH;
+  const showReviewHighlight =
+    Boolean(reviewHighlight?.added) && !listening && !hasLive;
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -83,13 +96,15 @@ export function NoteEditorPreview({
   }, [listening, hasLive, liveTail, liveCommitted, draft]);
 
   useEffect(() => {
-    if (!capturedReview) return;
+    const ended = wasListeningRef.current && !listening;
+    wasListeningRef.current = listening;
+    if (!ended) return;
     followRef.current = true;
     const frame = requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
     return () => cancelAnimationFrame(frame);
-  }, [capturedReview]);
+  }, [listening]);
 
   const tailPrefix =
     liveTail && committedBody ? (liveCommitted ? ' ' : committedBody.endsWith('\n') ? '' : '\n') : '';
@@ -98,13 +113,16 @@ export function NoteEditorPreview({
     <DictationStageGlow
       active={capturing && listening}
       color={ink}
-      borderRadius={10}
+      borderRadius={12}
       style={[
         styles.preview,
         isJournal && styles.journalPreview,
+        minHeight != null || maxHeight != null
+          ? { minHeight: minHeight ?? undefined, maxHeight: maxHeight ?? undefined }
+          : null,
         {
           borderColor: theme.colors.outline,
-          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderWidth: StyleSheet.hairlineWidth,
           backgroundColor: theme.colors.surface,
         },
       ]}
@@ -115,6 +133,7 @@ export function NoteEditorPreview({
         contentContainerStyle={[
           styles.previewPress,
           isJournal && styles.journalPreviewPress,
+          minHeight != null ? { minHeight } : null,
         ]}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
@@ -123,15 +142,11 @@ export function NoteEditorPreview({
         scrollEventThrottle={16}
         onContentSizeChange={() => {
           if (listening || hasLive) scrollToEnd(false);
-          else if (capturedReview) {
-            followRef.current = true;
-            scrollRef.current?.scrollToEnd({ animated: true });
-          }
         }}
       >
         <Pressable
           onPress={onEdit}
-          disabled={saving || listening}
+          disabled={saving || listening || editLocked}
           accessibilityRole="button"
           accessibilityLabel={
             hasDraft
@@ -140,17 +155,6 @@ export function NoteEditorPreview({
           }
           accessibilityHint={t('note.editNoteHint')}
         >
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: theme.colors.onSurface,
-                opacity: flashOpacity,
-                borderRadius: 3,
-              },
-            ]}
-          />
           {hasDraft || hasLive ? (
             <Text
               variant="bodyMedium"
@@ -158,8 +162,21 @@ export function NoteEditorPreview({
               accessibilityLiveRegion={hasLive ? 'polite' : 'none'}
               accessibilityLabel={hasLive ? t('note.dictatingA11y') : undefined}
             >
-              {committedBody}
-              {liveTail ? (
+              {showReviewHighlight && reviewHighlight
+                ? reviewHighlight.base
+                : committedBody}
+              {showReviewHighlight && reviewHighlight ? (
+                <Text
+                  variant="bodyMedium"
+                  accessibilityLabel={t('note.reviewAddedA11y')}
+                  style={{
+                    color: addedInk,
+                    backgroundColor: addedWash,
+                  }}
+                >
+                  {reviewHighlight.added}
+                </Text>
+              ) : liveTail ? (
                 <Text
                   variant="bodyMedium"
                   style={{
@@ -186,11 +203,11 @@ export function NoteEditorPreview({
 
 const styles = StyleSheet.create({
   preview: {
-    minHeight: 140,
+    minHeight: 144,
     maxHeight: 280,
   },
   journalPreview: {
-    minHeight: 180,
+    minHeight: 184,
     maxHeight: 320,
   },
   previewScroll: {
@@ -198,11 +215,11 @@ const styles = StyleSheet.create({
   },
   previewPress: {
     flexGrow: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    minHeight: 140,
+    minHeight: 144,
   },
   journalPreviewPress: {
-    minHeight: 180,
+    minHeight: 184,
   },
 });

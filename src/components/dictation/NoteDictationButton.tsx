@@ -1,11 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, IconButton, useTheme } from 'react-native-paper';
-import {
-  useNoteDictationController,
-  type NoteDictationControllerProps,
-} from '../../dictation/useNoteDictationController';
+import { IconButton, useTheme } from 'react-native-paper';
 import {
   DictationMicHalo,
   DICTATION_ARMED_FILL,
@@ -18,22 +14,33 @@ import {
   DICTATION_PRESENCE_COLOR_DARK,
 } from './DictationPresence';
 
-type Props = NoteDictationControllerProps;
+type Props = {
+  listening: boolean;
+  capturing: boolean;
+  starting: boolean;
+  finishing: boolean;
+  sessionOpen: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+};
 
 /**
  * Mic for notes and journals. Transcript only — no audio is stored.
+ * Done lives in the sheet footer (thumb reach), not beside the mic.
  */
-export default function NoteDictationButton(props: Props) {
+export default function NoteDictationButton({
+  listening,
+  capturing,
+  starting,
+  finishing,
+  sessionOpen,
+  disabled = false,
+  onPress,
+}: Props) {
   const { t } = useTranslation('common');
   const theme = useTheme();
-  const { listening, capturing, starting, finishing, sessionOpen, start, finish, supported } =
-    useNoteDictationController(props);
 
-  if (!supported) {
-    return null;
-  }
-
-  const busy = Boolean(props.disabled) || props.active === false || starting;
+  const busy = disabled || starting;
   const live = listening || starting || finishing;
   const hearing = capturing && listening && !finishing;
   const idleMicColor = theme.colors.onSurfaceVariant;
@@ -46,17 +53,6 @@ export default function NoteDictationButton(props: Props) {
 
   return (
     <View style={styles.row} collapsable={false}>
-      {sessionOpen ? (
-        <Button
-          mode="contained-tonal"
-          compact
-          onPress={finish}
-          disabled={starting || finishing}
-          accessibilityLabel={t('note.finishDictation')}
-        >
-          {t('actions.done')}
-        </Button>
-      ) : null}
       <DictationMicHalo
         preparing={starting}
         listening={listening}
@@ -71,7 +67,7 @@ export default function NoteDictationButton(props: Props) {
           mode={live ? 'contained' : 'outlined'}
           containerColor={live ? fill : undefined}
           iconColor={live ? ink : idleMicColor}
-          onPress={() => void start()}
+          onPress={onPress}
           disabled={busy || sessionOpen || finishing}
           accessibilityLabel={t('note.dictateWithMic')}
           style={styles.mic}
@@ -85,7 +81,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     overflow: 'visible',
   },
   mic: {

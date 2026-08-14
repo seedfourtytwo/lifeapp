@@ -66,6 +66,15 @@ CREATE TABLE IF NOT EXISTS daily_journals (
 
 CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
 
+CREATE TABLE IF NOT EXISTS note_share_state (
+  kind TEXT NOT NULL,
+  element_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  body_fp TEXT NOT NULL,
+  shared_at TEXT NOT NULL,
+  PRIMARY KEY (kind, element_id, date)
+);
+
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
