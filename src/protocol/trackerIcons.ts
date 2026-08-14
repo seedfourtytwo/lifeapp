@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Featured icons shown first in the picker (covers current habits/counters).
- * Keep this short — full set expands via “More”.
+ * Keep this short — the rest is searchable in the scrollable grid.
  */
 export const TRACKER_ICON_FEATURED_IDS = [
   'meditation',
@@ -19,7 +19,7 @@ export const TRACKER_ICON_FEATURED_IDS = [
   'timer',
 ] as const;
 
-/** Extra curated icons revealed when the user taps More. */
+/** Extra curated icons in the picker (not the full Material Community set). */
 export const TRACKER_ICON_MORE_IDS = [
   // Mind / body
   'spa',
@@ -27,21 +27,58 @@ export const TRACKER_ICON_MORE_IDS = [
   'heart',
   'heart-pulse',
   'weather-windy',
+  'sleep',
+  'hospital-box',
   // Fitness
   'arm-flex',
   'kettlebell',
   'run',
   'walk',
   'bike',
+  'hiking',
+  'soccer',
+  'basketball',
+  'tennis',
+  'swim',
   // Daily
   'notebook-outline',
   'water',
   'coffee',
   'food-apple',
+  'food',
+  'pizza',
   'bed',
   'leaf',
+  'pine-tree',
   'target',
   'check-circle',
+  // Work / home
+  'home',
+  'sofa',
+  'laptop',
+  'code-tags',
+  'briefcase-outline',
+  'lightbulb-outline',
+  'pencil-outline',
+  'calendar',
+  // Creative
+  'music',
+  'guitar-acoustic',
+  'palette',
+  'camera',
+  'gamepad-variant',
+  // People / travel
+  'account-group',
+  'paw',
+  'airplane',
+  'car',
+  'map-marker',
+  'phone',
+  'gift-outline',
+  'star-outline',
+  'fire',
+  'rocket-launch',
+  'fish',
 ] as const;
 
 /** Local SVG stickmen — not Material Community Icon glyph names. */
@@ -74,6 +111,15 @@ export function isFeaturedTrackerIconId(value: string): boolean {
 
 export function isCustomTrackerIconId(value: string): value is CustomTrackerIconId {
   return CUSTOM_TRACKER_ICON_ID_SET.has(value);
+}
+
+/** Filter picker glyphs by slug (`push-up`) or spaced words (`push up`). */
+export function iconIdMatchesQuery(id: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const compact = q.replace(/\s+/g, '-');
+  const hay = id.toLowerCase();
+  return hay.includes(compact) || hay.replace(/-/g, ' ').includes(q);
 }
 
 /** Strict id for writes / picker selection. */

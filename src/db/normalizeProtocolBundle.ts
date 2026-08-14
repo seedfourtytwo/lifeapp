@@ -1,4 +1,11 @@
 import { isBundledHabitSoundId } from '../protocol/habitSoundCatalog';
+import {
+  DEFAULT_JOURNAL_NOTEBOOK_COLOR,
+  DEFAULT_JOURNAL_NOTEBOOK_NAME,
+  joinJournalDayBodies,
+  PROTOCOL_VERSION,
+} from '../protocol';
+import { newId } from '../utils/id';
 import { buildLegacyHabitTimerSoundFromLibrary } from './migrations/habitSoundLegacy';
 import {
   parseLegacySoundLibrary,
@@ -137,5 +144,97 @@ export function normalizeProtocolBundleInput(raw: unknown): unknown {
     : bundle.dashboard;
 
   const { soundLibrary: _removed, ...rest } = bundle;
-  return { ...rest, elements, dashboard };
+  return normalizeJournalNotebooksAndEntries({ ...rest, elements, dashboard });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
+}
+
+/** Older backups: one journal per date, no notebooks. Attach a default catalog. */
+function normalizeJournalNotebooksAndEntries(
+  bundle: Record<string, unknown>,
+): Record<string, unknown> {
+  const rawJournals = Array.isArray(bundle.dailyJournals) ? bundle.dailyJournals : null;
+  const rawNotebooks = Array.isArray(bundle.journalNotebooks)
+    ? bundle.journalNotebooks
+    : null;
+
+  if (!rawJournals && !rawNotebooks) return bundle;
+
+  let notebooks = rawNotebooks ? [...rawNotebooks] : [];
+  let defaultId = '';
+  const firstNotebook = notebooks.find(
+    (row) => isRecord(row) && typeof row.id === 'string' && row.id.length > 0,
+  );
+  if (isRecord(firstNotebook) && typeof firstNotebook.id === 'string') {
+    defaultId = firstNotebook.id;
+  } else {
+    const now =
+      typeof bundle.exportedAt === 'string' ? bundle.exportedAt : new Date().toISOString();
+    defaultId = newId();
+    notebooks = [
+      {
+        id: defaultId,
+        name: DEFAULT_JOURNAL_NOTEBOOK_NAME,
+        color: DEFAULT_JOURNAL_NOTEBOOK_COLOR,
+        sortOrder: 0,
+        createdAt: now,
+        protocolVersion: PROTOCOL_VERSION,
+      },
+    ];
+  }
+
+  const dailyJournals = rawJournals
+    ? mergeDailyJournalsByNotebookDay(
+        rawJournals.map((row) => {
+          if (!isRecord(row)) return row;
+          const notebookId =
+            typeof row.notebookId === 'string' && row.notebookId.length > 0
+              ? row.notebookId
+              : defaultId;
+          const createdAt =
+            typeof row.createdAt === 'string' && row.createdAt.length > 0
+              ? row.createdAt
+              : typeof row.updatedAt === 'string'
+                ? row.updatedAt
+                : new Date().toISOString();
+          return { ...row, notebookId, createdAt };
+        }),
+      )
+    : rawJournals;
+
+  return {
+    ...bundle,
+    journalNotebooks: notebooks,
+    ...(dailyJournals ? { dailyJournals } : {}),
+  };
+}
+
+function mergeDailyJournalsByNotebookDay(rows: unknown[]): unknown[] {
+  const groups = new Map<string, Record<string, unknown>[]>();
+  const passthrough: unknown[] = [];
+  for (const row of rows) {
+    if (!isRecord(row) || typeof row.notebookId !== 'string' || typeof row.date !== 'string') {
+      passthrough.push(row);
+      continue;
+    }
+    const key = `${row.notebookId}:${row.date}`;
+    const list = groups.get(key) ?? [];
+    list.push(row);
+    groups.set(key, list);
+  }
+  const merged: unknown[] = [];
+  for (const list of groups.values()) {
+    list.sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')));
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (!first) continue;
+    merged.push({
+      ...first,
+      body: joinJournalDayBodies(list.map((row) => String(row.body ?? ''))),
+      updatedAt: last?.updatedAt ?? first.updatedAt,
+    });
+  }
+  return [...merged, ...passthrough];
 }

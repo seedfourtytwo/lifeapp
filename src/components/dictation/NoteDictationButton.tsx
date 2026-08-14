@@ -26,7 +26,7 @@ type Props = {
 
 /**
  * Mic for notes and journals. Transcript only — no audio is stored.
- * Done lives in the sheet footer (thumb reach), not beside the mic.
+ * Lives in the thumb row next to Done/Save.
  */
 export default function NoteDictationButton({
   listening,

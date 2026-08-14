@@ -5,6 +5,11 @@ import { ElementDefinitionSchema } from './element';
 import { EventSchema } from './event';
 import { DayNoteSchema, validateBundleDayNoteLinks, type DayNote } from './dayNote';
 import { DailyJournalSchema, validateBundleDailyJournals, type DailyJournal } from './dailyJournal';
+import {
+  JournalNotebookSchema,
+  validateBundleJournalNotebooks,
+  type JournalNotebook,
+} from './journalNotebook';
 import { validateBundleEventLinks } from './eventMeta';
 import { CalendarBackupSchema, type CalendarBackup } from '../calendar/types';
 import type { AppSettings } from './appSettings';
@@ -32,6 +37,8 @@ export const ProtocolBundleSchema = z.object({
   dayNotes: z.array(DayNoteSchema).optional(),
   /** Whole-day journals — optional for older backups. */
   dailyJournals: z.array(DailyJournalSchema).optional(),
+  /** Journal notebooks — optional for older backups. */
+  journalNotebooks: z.array(JournalNotebookSchema).optional(),
   settings: AppSettingsSchema.optional(),
   /** Ambient calendar data — optional for older backups. */
   calendar: CalendarBackupSchema.optional(),
@@ -45,8 +52,11 @@ export function parseProtocolBundle(raw: unknown): ProtocolBundle {
   if (bundle.dayNotes) {
     validateBundleDayNoteLinks(bundle.elements, bundle.dayNotes);
   }
+  if (bundle.journalNotebooks) {
+    validateBundleJournalNotebooks(bundle.journalNotebooks);
+  }
   if (bundle.dailyJournals) {
-    validateBundleDailyJournals(bundle.dailyJournals);
+    validateBundleDailyJournals(bundle.dailyJournals, bundle.journalNotebooks);
   }
   return bundle;
 }
@@ -57,6 +67,7 @@ export function createProtocolBundle(input: {
   events: LifeEvent[];
   dayNotes?: DayNote[];
   dailyJournals?: DailyJournal[];
+  journalNotebooks?: JournalNotebook[];
   settings?: AppSettings;
   calendar?: CalendarBackup;
 }): ProtocolBundle {
@@ -70,6 +81,9 @@ export function createProtocolBundle(input: {
     ...(input.dailyJournals && input.dailyJournals.length > 0
       ? { dailyJournals: input.dailyJournals }
       : {}),
+    ...(input.journalNotebooks && input.journalNotebooks.length > 0
+      ? { journalNotebooks: input.journalNotebooks }
+      : {}),
     ...(input.settings ? { settings: input.settings } : {}),
     ...(input.calendar ? { calendar: input.calendar } : {}),
   };
@@ -77,8 +91,11 @@ export function createProtocolBundle(input: {
   if (bundle.dayNotes) {
     validateBundleDayNoteLinks(bundle.elements, bundle.dayNotes);
   }
+  if (bundle.journalNotebooks) {
+    validateBundleJournalNotebooks(bundle.journalNotebooks);
+  }
   if (bundle.dailyJournals) {
-    validateBundleDailyJournals(bundle.dailyJournals);
+    validateBundleDailyJournals(bundle.dailyJournals, bundle.journalNotebooks);
   }
   return bundle;
 }

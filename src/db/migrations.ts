@@ -13,11 +13,12 @@ import {
   ensureDailyJournalsSchema,
   ensureDayNotesSchema,
   ensureElementsSchema,
+  ensureJournalNotebooksSchema,
   ensureNoteShareStateSchema,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 15;
+const CURRENT_SCHEMA_VERSION = 18;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -27,6 +28,9 @@ const CURRENT_SCHEMA_VERSION = 15;
 /** v13: per-tracker per-day notes (day_notes). */
 /** v14: daily journals (daily_journals) — one general note per calendar day. */
 /** v15: note_share_state — local last-shared fingerprint (Android share sheet). */
+/** v16: journal notebooks + journal entries as a dated feed; share state keyed by entry id. */
+/** v17: one journal document per notebook per day (merge fragments; unique notebook+date). */
+/** v18: drop empty journal rows that still lit Home icons. */
 
 interface HabitElementRow {
   id: string;
@@ -197,6 +201,17 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   15: async (db) => {
     await ensureNoteShareStateSchema(db);
   },
+  16: async (db) => {
+    await ensureJournalNotebooksSchema(db);
+    await ensureDailyJournalsSchema(db);
+    await ensureNoteShareStateSchema(db);
+  },
+  17: async (db) => {
+    await ensureDailyJournalsSchema(db);
+  },
+  18: async (db) => {
+    await db.runAsync(`DELETE FROM daily_journals WHERE trim(body) = ''`);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -212,6 +227,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await ensureWeatherDailySchema(db);
     await ensureCalendarSchema(db);
     await ensureDayNotesSchema(db);
+    await ensureJournalNotebooksSchema(db);
     await ensureDailyJournalsSchema(db);
     await ensureNoteShareStateSchema(db);
     return;
@@ -239,6 +255,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await ensureWeatherDailySchema(db);
   await ensureCalendarSchema(db);
   await ensureDayNotesSchema(db);
+  await ensureJournalNotebooksSchema(db);
   await ensureDailyJournalsSchema(db);
   await ensureNoteShareStateSchema(db);
 }

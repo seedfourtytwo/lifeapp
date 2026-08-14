@@ -20,6 +20,7 @@ export async function presentNoteShare(opts: {
   if (!directory) shareUnavailable();
 
   const path = `${directory}${opts.fileName}`;
+  await FileSystem.deleteAsync(path, { idempotent: true });
   await FileSystem.writeAsStringAsync(path, body, {
     encoding: FileSystem.EncodingType.UTF8,
   });

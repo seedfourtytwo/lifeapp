@@ -10,10 +10,25 @@ describe('noteEditorSessionKey', () => {
     ).toBe('tracker:a:2025-01-02');
   });
 
-  it('keys journals by date', () => {
-    expect(noteEditorSessionKey({ kind: 'journal' }, '2025-01-02')).toBe(
-      'journal:2025-01-02',
-    );
+  it('keys a journal by notebook and date', () => {
+    const date = '2025-01-02';
+    expect(
+      noteEditorSessionKey(
+        { kind: 'journal', notebookId: 'nb', label: 'Ideas' },
+        date,
+      ),
+    ).toBe('journal:nb:2025-01-02');
+    expect(
+      noteEditorSessionKey(
+        {
+          kind: 'journal',
+          notebookId: 'nb',
+          entryId: 'entry-1',
+          label: 'Ideas',
+        },
+        date,
+      ),
+    ).toBe('journal:nb:2025-01-02');
   });
 
   it('differs for two trackers on the same day', () => {

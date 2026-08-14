@@ -7,6 +7,7 @@ import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
 import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
+import type { HomeNotebookChip } from '../notes';
 import {
   filterHabitsDueToday,
   orderHabitsList,
@@ -28,9 +29,9 @@ import {
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 type Props = {
-  hasTodayJournal: boolean;
-  onOpenJournal: () => void;
-  onEditJournal?: () => void;
+  notebooks: HomeNotebookChip[];
+  onDictateNotebook: (notebookId: string) => void;
+  onEditNotebook: (notebookId: string) => void;
   /** True while Home's journal sheet is open — dismisses this screen's tracker note sheet. */
   journalOpen?: boolean;
   /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
@@ -44,9 +45,9 @@ type Props = {
 };
 
 export default function HabitsScreen({
-  hasTodayJournal,
-  onOpenJournal,
-  onEditJournal,
+  notebooks,
+  onDictateNotebook,
+  onEditNotebook,
   journalOpen = false,
   notesActive = true,
   onBeforeOpenTrackerNote,
@@ -127,9 +128,18 @@ export default function HabitsScreen({
     },
   });
 
+  const notesWereOpenRef = useRef(false);
   useEffect(() => {
     if (journalOpen || !notesActive) noteEditor.dismiss();
   }, [journalOpen, notesActive, noteEditor.dismiss]);
+
+  useEffect(() => {
+    const open = noteEditor.session != null;
+    if (notesWereOpenRef.current && !open) {
+      void reloadNotesToday();
+    }
+    notesWereOpenRef.current = open;
+  }, [noteEditor.session, reloadNotesToday]);
 
   useEffect(() => {
     if (!notesActive) return;
@@ -150,9 +160,9 @@ export default function HabitsScreen({
   const editorHost = <NoteEditorHost session={noteEditor} />;
   const journalMeta = (
     <HomeTabMetaRow
-      hasTodayJournal={hasTodayJournal}
-      onOpenJournal={onOpenJournal}
-      onEditJournal={onEditJournal}
+      notebooks={notebooks}
+      onDictateNotebook={onDictateNotebook}
+      onEditNotebook={onEditNotebook}
     />
   );
 
@@ -223,9 +233,9 @@ export default function HabitsScreen({
       ) : null}
 
       <HomeTabMetaRow
-        hasTodayJournal={hasTodayJournal}
-        onOpenJournal={onOpenJournal}
-        onEditJournal={onEditJournal}
+        notebooks={notebooks}
+        onDictateNotebook={onDictateNotebook}
+        onEditNotebook={onEditNotebook}
         leading={
           habits.length > 0 && statusLabel ? (
             <Text

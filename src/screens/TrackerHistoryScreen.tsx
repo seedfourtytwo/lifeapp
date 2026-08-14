@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Card, Chip, Text, useTheme } from 'react-native-paper';
@@ -157,6 +157,15 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
       }
     }
   }, [elementId, rangeDays, t]);
+
+  const wasEditingRef = useRef(false);
+  useEffect(() => {
+    const open = noteEditor.session != null;
+    if (wasEditingRef.current && !open) {
+      void load({ silent: true });
+    }
+    wasEditingRef.current = open;
+  }, [noteEditor.session, load]);
 
   useFocusEffect(
     useCallback(() => {

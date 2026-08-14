@@ -16,6 +16,7 @@ export default function NoteEditorHost({ session }: Props) {
       sessionKey={sheet.sessionKey}
       heading={sheet.heading}
       kind={sheet.kind}
+      headingIcon={sheet.headingIcon}
       trackerName={sheet.trackerName}
       initialBody={sheet.initialBody}
       shareFingerprint={sheet.shareFingerprint}

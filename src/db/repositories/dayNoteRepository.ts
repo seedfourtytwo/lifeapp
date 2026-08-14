@@ -119,6 +119,24 @@ export async function getDatesWithTrackerNotesOnly(
   return rows.map((row) => row.date);
 }
 
+/** Dates that have at least one tracker note for the given elements. */
+export async function getDatesWithTrackerNotes(
+  db: SQLiteDatabase,
+  elementIds: string[],
+): Promise<string[]> {
+  if (elementIds.length === 0) return [];
+
+  const placeholders = elementIds.map(() => '?').join(', ');
+  const rows = await db.getAllAsync<{ date: string }>(
+    `SELECT DISTINCT dn.date AS date
+     FROM day_notes dn
+     WHERE dn.element_id IN (${placeholders})
+     ORDER BY dn.date DESC`,
+    ...elementIds,
+  );
+  return rows.map((row) => row.date);
+}
+
 export async function getAllNotes(db: SQLiteDatabase): Promise<DayNote[]> {
   const rows = await db.getAllAsync<DayNoteRow>(
     'SELECT * FROM day_notes ORDER BY date ASC, updated_at ASC',

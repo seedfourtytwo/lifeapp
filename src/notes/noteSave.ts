@@ -6,11 +6,16 @@ import { withDbWriteLock } from '../db/writeLock';
 import { noteBodyFingerprint } from './noteShareStatus';
 import type { NoteEditorTarget } from './types';
 
+export type SavedNote = {
+  body: string;
+  id: string;
+};
+
 function shareTarget(target: NoteEditorTarget) {
   if (target.kind === 'tracker') {
-    return { kind: 'tracker' as const, elementId: target.elementId };
+    return { kind: 'tracker' as const, elementId: target.elementId, entryId: '' };
   }
-  return { kind: 'journal' as const, elementId: '' };
+  return { kind: 'journal' as const, elementId: '', entryId: target.notebookId };
 }
 
 /** Load note body for a target+date. Empty string when none. */
@@ -23,37 +28,46 @@ export async function loadNoteBody(
     const note = await dayNoteRepo.getNote(db, target.elementId, date);
     return note?.body ?? '';
   }
-  const journal = await dailyJournalRepo.getJournal(db, date);
+  const journal = await dailyJournalRepo.getJournalForNotebookOnDate(
+    db,
+    target.notebookId,
+    date,
+  );
   return journal?.body ?? '';
 }
 
 /**
  * Persist note body. Whitespace-only clears the row.
- * Returns the trimmed body, or null when cleared.
+ * Returns the saved body+id, or null when cleared.
  */
 export async function saveNoteBody(
   target: NoteEditorTarget,
   date: string,
   body: string,
-): Promise<string | null> {
+): Promise<SavedNote | null> {
   return withDbWriteLock(async () => {
     const db = await getDatabase();
-    let savedBody: string | null;
+    let saved: SavedNote | null;
     if (target.kind === 'tracker') {
-      const saved = await dayNoteRepo.upsertNote(db, {
+      const row = await dayNoteRepo.upsertNote(db, {
         elementId: target.elementId,
         date,
         body,
       });
-      savedBody = saved?.body ?? null;
+      saved = row ? { body: row.body, id: row.id } : null;
     } else {
-      const saved = await dailyJournalRepo.upsertJournal(db, { date, body });
-      savedBody = saved?.body ?? null;
+      const row = await dailyJournalRepo.upsertJournal(db, {
+        id: target.entryId,
+        notebookId: target.notebookId,
+        date,
+        body,
+      });
+      saved = row ? { body: row.body, id: row.id } : null;
     }
-    if (savedBody == null) {
+    if (saved == null) {
       await noteShareRepo.deleteShareState(db, shareTarget(target), date);
     }
-    return savedBody;
+    return saved;
   });
 }
 
@@ -61,6 +75,7 @@ export async function loadNoteShareFingerprint(
   target: NoteEditorTarget,
   date: string,
 ): Promise<string | null> {
+  if (target.kind === 'journal' && !target.notebookId) return null;
   const db = await getDatabase();
   return noteShareRepo.getShareFingerprint(db, shareTarget(target), date);
 }
