@@ -9,8 +9,9 @@ import type { ElementDefinition } from './element';
  */
 
 /**
- * Absolute max body length for day notes (and daily journals — keep in sync).
- * Editor UX only warns near this ceiling; see `notes/noteBodyLimits.ts`.
+ * Absolute max body length for tracker notes and daily journals.
+ * A single dictation take is capped separately (`src/dictation/limits.ts`);
+ * start another take to continue. Editor UX warns near this ceiling.
  */
 export const DAY_NOTE_BODY_MAX_LENGTH = 128_000;
 

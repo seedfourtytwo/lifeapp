@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { loadNoteBody, saveNoteBody } from './noteSave';
+import { loadNoteBody, loadNoteShareFingerprint, markNoteShared, saveNoteBody } from './noteSave';
+import { presentNoteShare } from './presentNoteShare';
+import { noteShareFileName } from './noteShareFileName';
 import {
   noteEditorHeading,
   noteEditorKind,
@@ -14,6 +16,8 @@ export type NoteEditorSessionState = {
   target: NoteEditorTarget;
   date: string;
   initialBody: string;
+  /** Fingerprint of the last body handed to the system share sheet, if any. */
+  shareFingerprint: string | null;
   /** Open the sheet and start mic dictation immediately. */
   autoStartDictation?: boolean;
 };
@@ -52,9 +56,18 @@ export function useNoteEditorSession(options: Options = {}) {
       );
       const autoStartDictation = openOptions?.dictate === true;
       try {
-        const body = await loadNoteBody(target, date);
+        const [body, shareFingerprint] = await Promise.all([
+          loadNoteBody(target, date),
+          loadNoteShareFingerprint(target, date).catch(() => null),
+        ]);
         if (generation !== openGenerationRef.current) return;
-        setSession({ target, date, initialBody: body, autoStartDictation });
+        setSession({
+          target,
+          date,
+          initialBody: body,
+          shareFingerprint,
+          autoStartDictation,
+        });
       } catch (error) {
         if (generation !== openGenerationRef.current) return;
         Alert.alert(
@@ -71,6 +84,23 @@ export function useNoteEditorSession(options: Options = {}) {
     // Invalidate any in-flight open() so a late load cannot resurrect this sheet.
     openGenerationRef.current += 1;
     setSession(null);
+  }, []);
+
+  /** Write to SQLite without closing. Highlight still uses the body from when the sheet opened. */
+  const persist = useCallback(async (body: string) => {
+    const current = sessionRef.current;
+    if (!current || savingRef.current) return;
+    try {
+      const saved = await saveNoteBody(current.target, current.date, body);
+      if (saved == null) {
+        setSession((s) =>
+          s && s.shareFingerprint != null ? { ...s, shareFingerprint: null } : s,
+        );
+      }
+      onSavedRef.current?.(current.date, saved, current.target);
+    } catch {
+      // Explicit Save still retries; don't interrupt dictation.
+    }
   }, []);
 
   const save = useCallback(async (body: string) => {
@@ -97,13 +127,45 @@ export function useNoteEditorSession(options: Options = {}) {
     }
   }, [t]);
 
+  const share = useCallback(
+    async (body: string) => {
+      const current = sessionRef.current;
+      const message = body.trim();
+      if (!current || savingRef.current || !message) return;
+      const generation = openGenerationRef.current;
+      const heading = noteEditorHeading(current.target);
+      const label = noteEditorLabel(current.target);
+      const title = [heading, label, current.date].filter(Boolean).join(' · ');
+      const fileName = noteShareFileName({
+        kind: noteEditorKind(current.target),
+        label,
+        date: current.date,
+      });
+      try {
+        await presentNoteShare({ title, body: message, fileName });
+        const fingerprint = await markNoteShared(current.target, current.date, message);
+        if (generation !== openGenerationRef.current) return;
+        setSession((s) => (s ? { ...s, shareFingerprint: fingerprint } : s));
+      } catch (error) {
+        if (generation !== openGenerationRef.current) return;
+        Alert.alert(
+          t('note.couldNotShareTitle'),
+          error instanceof Error ? error.message : t('note.couldNotShareBody'),
+        );
+      }
+    },
+    [t],
+  );
+
   return {
     session,
     saving,
     open,
     dismiss,
+    persist,
     save,
-    /** Props for DayNoteEditorSheet / NoteEditorHost */
+    share,
+    /** Props for NoteEditorSheet / NoteEditorHost */
     sheet: session
       ? {
           visible: true as const,
@@ -113,6 +175,7 @@ export function useNoteEditorSession(options: Options = {}) {
           kind: noteEditorKind(session.target),
           trackerName: noteEditorLabel(session.target),
           initialBody: session.initialBody,
+          shareFingerprint: session.shareFingerprint,
           autoStartDictation: session.autoStartDictation === true,
           saving,
         }
@@ -124,6 +187,7 @@ export function useNoteEditorSession(options: Options = {}) {
           kind: 'note' as const,
           trackerName: '',
           initialBody: '',
+          shareFingerprint: null,
           autoStartDictation: false,
           saving: false,
         },

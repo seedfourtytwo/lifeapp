@@ -2,8 +2,9 @@ import { DAY_NOTE_BODY_MAX_LENGTH } from '../protocol';
 
 /**
  * Note / journal body length UX thresholds.
- * Hard max is protocol `DAY_NOTE_BODY_MAX_LENGTH` (Zod + DB). The editor always
- * allows up to that max and only surfaces warnings when remaining is low.
+ * Hard max is protocol `DAY_NOTE_BODY_MAX_LENGTH`. One dictation take is
+ * smaller (`DICTATION_TAKE_MAX_CHARS`) so a long session can be split
+ * across takes without blocking the JS thread.
  */
 
 /** Absolute max — same as protocol Zod / repository checks. */

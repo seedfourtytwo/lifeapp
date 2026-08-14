@@ -227,13 +227,15 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     };
   }, [element, days]);
 
+  const editorHost = <NoteEditorHost session={noteEditor} />;
+
   if (loading) {
     return (
       <>
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
         </View>
-        <NoteEditorHost session={noteEditor} />
+        {editorHost}
       </>
     );
   }
@@ -249,7 +251,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
             {t('common:actions.retry')}
           </Button>
         </View>
-        <NoteEditorHost session={noteEditor} />
+        {editorHost}
       </>
     );
   }
@@ -260,7 +262,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         <View style={styles.centered}>
           <Text variant="bodyLarge">{t('history.trackerNotFound')}</Text>
         </View>
-        <NoteEditorHost session={noteEditor} />
+        {editorHost}
       </>
     );
   }
@@ -424,7 +426,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         )}
       </ScrollView>
 
-      <NoteEditorHost session={noteEditor} />
+      {editorHost}
     </>
   );
 }

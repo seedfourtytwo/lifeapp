@@ -118,9 +118,23 @@ export async function playBubbleThrowHaptic(charge: number): Promise<void> {
   vibrateFallback(c >= 0.75 ? 18 : 10);
 }
 
-/** Soft tick when a dictated phrase commits into the note (Live Echo). */
+/** Success tick when Done commits a dictated take into the note. */
 export async function playDictationCommitHaptic(): Promise<void> {
-  await playChartSelectHaptic();
+  const Haptics = await getHaptics();
+  if (Haptics) {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return;
+    } catch {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      } catch {
+        // fall through
+      }
+    }
+  }
+  vibrateFallback([0, 12, 40, 18]);
 }
 
 /** Medium impact when a Home list drag-reorder activates. */

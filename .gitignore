@@ -44,6 +44,11 @@ GoogleService-Info.plist
 /ios
 /android
 
+# Local Expo module build output
+modules/**/android/build/
+modules/**/android/.cxx/
+modules/**/ios/build/
+
 # test coverage
 coverage/
 

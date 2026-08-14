@@ -16,7 +16,7 @@ North star: `.cursor/protocol-plan.md` (trackers vs catalogs vs ambient; backup 
 - Schema changes: migration in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
 - Soft-hide via `elements.archived_at`. Home = non-archived; `dashboard_items` = sort for active only.
 - Events are day facts; prefer append. Some same-day flows replace that day’s rows for one element — never rewrite cross-day history.
-- Schema **v14** (v12 lean wipe; v13 day_notes; v14 daily_journals). Prefer additive migrations. Missing columns → idempotent repair (`schemaIntegrity.ts`).
+- Schema **v15** (v12 lean wipe; v13 day_notes; v14 daily_journals; v15 note_share_state). Prefer additive migrations. Missing columns → idempotent repair (`schemaIntegrity.ts`).
 
 ## Interchange
 

@@ -1,16 +1,16 @@
 import React from 'react';
-import DayNoteEditorSheet from '../components/DayNoteEditorSheet';
+import NoteEditorSheet from './NoteEditorSheet';
 import type { NoteEditorSession } from './useNoteEditorSession';
 
 type Props = {
   session: NoteEditorSession;
 };
 
-/** Renders the shared note/journal sheet from a useNoteEditorSession instance. */
+/** One sheet for tracker notes and the daily journal. */
 export default function NoteEditorHost({ session }: Props) {
-  const { sheet, dismiss, save, saving } = session;
+  const { sheet, dismiss, persist, save, share, saving } = session;
   return (
-    <DayNoteEditorSheet
+    <NoteEditorSheet
       visible={sheet.visible}
       date={sheet.date}
       sessionKey={sheet.sessionKey}
@@ -18,10 +18,13 @@ export default function NoteEditorHost({ session }: Props) {
       kind={sheet.kind}
       trackerName={sheet.trackerName}
       initialBody={sheet.initialBody}
+      shareFingerprint={sheet.shareFingerprint}
       autoStartDictation={sheet.autoStartDictation}
       saving={saving}
       onDismiss={dismiss}
+      onPersist={(body) => void persist(body)}
       onSave={(body) => void save(body)}
+      onShare={(body) => void share(body)}
     />
   );
 }

@@ -117,3 +117,17 @@ export async function ensureDailyJournalsSchema(db: SQLiteDatabase): Promise<voi
     CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
   `);
 }
+
+/** Local share fingerprint for notes/journals — not protocol, not backed up. */
+export async function ensureNoteShareStateSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS note_share_state (
+      kind TEXT NOT NULL,
+      element_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      body_fp TEXT NOT NULL,
+      shared_at TEXT NOT NULL,
+      PRIMARY KEY (kind, element_id, date)
+    );
+  `);
+}
