@@ -23,11 +23,13 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import {
   isHabitDayComplete,
   parseHabitConfig,
   type ElementDefinition,
+  type TrackerIconId,
 } from '../protocol';
 import {
   DEFAULT_HISTORY_RANGE,
@@ -74,6 +76,12 @@ export default function InsightsScreen() {
   const [showWeather, setShowWeather] = useState(false);
   const [notesByElement, setNotesByElement] = useState<Map<string, string>>(new Map());
   const [journalBody, setJournalBody] = useState<string | null>(null);
+  const [journalEntryId, setJournalEntryId] = useState<string | null>(null);
+  const [defaultNotebookId, setDefaultNotebookId] = useState<string | null>(null);
+  const [defaultNotebookName, setDefaultNotebookName] = useState<string | null>(null);
+  const [defaultNotebookIcon, setDefaultNotebookIcon] = useState<TrackerIconId | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadGenerationRef = useRef(0);
@@ -84,6 +92,7 @@ export default function InsightsScreen() {
       if (selectedDateRef.current !== date) return;
       if (target.kind === 'journal') {
         setJournalBody(body);
+        setJournalEntryId(target.entryId ?? null);
         return;
       }
       setNotesByElement((prev) => {
@@ -166,6 +175,7 @@ export default function InsightsScreen() {
   useEffect(() => {
     if (!selectedDate) {
       setJournalBody(null);
+      setJournalEntryId(null);
       setNotesByElement(new Map());
       return;
     }
@@ -174,19 +184,26 @@ export default function InsightsScreen() {
     void (async () => {
       try {
         const db = await getDatabase();
-        const journal = await dailyJournalRepo.getJournal(db, selectedDate);
+        const entries = await dailyJournalRepo.getJournalsForDate(db, selectedDate);
+        const notebooks = await journalNotebookRepo.getAllNotebooks(db);
         const notes =
           selectedIds.length > 0
             ? await dayNoteRepo.getNotesForElementsOnDate(db, selectedIds, selectedDate)
             : new Map();
         if (cancelled) return;
-        setJournalBody(journal?.body ?? null);
+        const latest = entries[0] ?? null;
+        setJournalBody(latest?.body ?? null);
+        setJournalEntryId(latest?.id ?? null);
+        setDefaultNotebookId(notebooks[0]?.id ?? null);
+        setDefaultNotebookName(notebooks[0]?.name ?? null);
+        setDefaultNotebookIcon(notebooks[0]?.icon);
         const map = new Map<string, string>();
         for (const [id, note] of notes) map.set(id, note.body);
         setNotesByElement(map);
       } catch {
         if (!cancelled) {
           setJournalBody(null);
+          setJournalEntryId(null);
           setNotesByElement(new Map());
         }
       }
@@ -245,7 +262,17 @@ export default function InsightsScreen() {
   };
 
   const openJournal = (date: string) => {
-    void noteEditor.open({ kind: 'journal' }, date);
+    if (!defaultNotebookId) return;
+    void noteEditor.open(
+      {
+        kind: 'journal',
+        notebookId: defaultNotebookId,
+        entryId: journalEntryId ?? undefined,
+        label: defaultNotebookName ?? undefined,
+        icon: defaultNotebookIcon,
+      },
+      date,
+    );
   };
 
   const editorHost = <NoteEditorHost session={noteEditor} />;

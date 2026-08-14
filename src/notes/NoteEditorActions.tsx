@@ -4,84 +4,64 @@ import { Button } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
-  noun: string;
-  showShare: boolean;
+  leading?: React.ReactNode;
+  mic: React.ReactNode;
   showDone: boolean;
   showSave: boolean;
-  sharing: boolean;
   saving: boolean;
-  isDirty: boolean;
-  shareTextColor: string;
-  shareStatusA11y: string;
   dictationStarting: boolean;
   dictationFinishing: boolean;
-  onShare: () => void;
   onDone: () => void;
   onSave: () => void;
 };
 
-/** Thumb-zone Share + Done/Save for the note sheet. */
+/**
+ * Thumb-zone capture row: undo/redo on the left, mic + Done/Save on the right.
+ * Share and overflow stay in the header.
+ */
 export function NoteEditorActions({
-  noun,
-  showShare,
+  leading,
+  mic,
   showDone,
   showSave,
-  sharing,
   saving,
-  isDirty,
-  shareTextColor,
-  shareStatusA11y,
   dictationStarting,
   dictationFinishing,
-  onShare,
   onDone,
   onSave,
 }: Props) {
   const { t } = useTranslation('common');
-  if (!showShare && !showDone && !showSave) return null;
 
   return (
-    <View style={[styles.actions, !showShare ? styles.actionsPrimaryOnly : null]}>
-      {showShare ? (
-        <Button
-          mode="text"
-          compact
-          icon="share-variant"
-          onPress={onShare}
-          loading={sharing}
-          disabled={sharing}
-          textColor={shareTextColor}
-          accessibilityLabel={`${t('note.shareA11y', { noun })}. ${shareStatusA11y}`}
-          style={styles.shareButton}
-          labelStyle={styles.shareLabel}
-        >
-          {t('note.share')}
-        </Button>
-      ) : null}
-      {showDone ? (
-        <Button
-          mode="contained"
-          onPress={onDone}
-          loading={dictationFinishing}
-          disabled={dictationStarting || dictationFinishing}
-          accessibilityLabel={t('note.finishDictation')}
-          contentStyle={styles.primaryContent}
-          style={styles.primaryAction}
-        >
-          {t('actions.done')}
-        </Button>
-      ) : showSave ? (
-        <Button
-          mode="contained"
-          onPress={onSave}
-          loading={saving}
-          disabled={saving || !isDirty}
-          contentStyle={styles.primaryContent}
-          style={styles.primaryAction}
-        >
-          {t('note.save')}
-        </Button>
-      ) : null}
+    <View style={styles.actions}>
+      <View style={styles.leading}>{leading}</View>
+      <View style={styles.primary}>
+        {mic}
+        {showDone ? (
+          <Button
+            mode="contained"
+            onPress={onDone}
+            loading={dictationFinishing}
+            disabled={dictationStarting || dictationFinishing}
+            accessibilityLabel={t('note.finishDictation')}
+            contentStyle={styles.primaryContent}
+            style={styles.primaryAction}
+          >
+            {t('actions.done')}
+          </Button>
+        ) : showSave ? (
+          <Button
+            mode="contained"
+            onPress={onSave}
+            loading={saving}
+            disabled={saving}
+            contentStyle={styles.primaryContent}
+            style={styles.primaryAction}
+          >
+            {t('note.save')}
+          </Button>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -91,21 +71,20 @@ const styles = StyleSheet.create({
     marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    minHeight: 48,
     gap: 8,
-    minHeight: 44,
   },
-  actionsPrimaryOnly: {
+  leading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  primary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'flex-end',
-  },
-  shareButton: {
-    marginHorizontal: 0,
-    marginLeft: -8,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  shareLabel: {
-    marginLeft: 4,
+    gap: 8,
   },
   primaryAction: {
     flexShrink: 0,

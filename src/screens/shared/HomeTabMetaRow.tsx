@@ -1,39 +1,43 @@
 import React from 'react';
 import { View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { NoteIconButton } from '../../notes/NoteIconButton';
+import type { HomeNotebookChip } from '../../notes/types';
 import { homeTabScreenStyles as styles } from './screenStyles';
 
 type Props = {
-  hasTodayJournal: boolean;
-  /** Tap: open today's journal and dictate. */
-  onOpenJournal: () => void;
-  /** Long-press: open today's journal for edit. */
-  onEditJournal?: () => void;
+  notebooks: HomeNotebookChip[];
+  /** Tap: today's latest (or a new entry) + dictate. */
+  onDictateNotebook: (notebookId: string) => void;
+  /** Long-press: today's latest (or a blank editor), no auto-dictate. */
+  onEditNotebook: (notebookId: string) => void;
   /** Leading status text / empty spacer. */
   leading?: React.ReactNode;
 };
 
-/** Shared Habits/Counters top row: status · journal note. */
+/** Shared Habits/Counters top row: status · notebook icons. */
 export default function HomeTabMetaRow({
-  hasTodayJournal,
-  onOpenJournal,
-  onEditJournal,
+  notebooks,
+  onDictateNotebook,
+  onEditNotebook,
   leading,
 }: Props) {
-  const { t } = useTranslation('common');
   return (
     <View style={styles.metaRow}>
       <View style={styles.metaStatus}>{leading}</View>
       <View style={styles.metaRight}>
-        <NoteIconButton
-          hasNote={hasTodayJournal}
-          onPress={onOpenJournal}
-          onLongPress={onEditJournal}
-          accessibilityNoun={t('note.journalNoun')}
-          size={22}
-          style={styles.metaIconButton}
-        />
+        {notebooks.map((notebook) => (
+          <NoteIconButton
+            key={notebook.id}
+            hasNote={notebook.hasToday}
+            accentColor={notebook.color}
+            icon={notebook.icon}
+            onPress={() => onDictateNotebook(notebook.id)}
+            onLongPress={() => onEditNotebook(notebook.id)}
+            accessibilityNoun={notebook.name}
+            size={22}
+            style={styles.metaIconButton}
+          />
+        ))}
       </View>
     </View>
   );

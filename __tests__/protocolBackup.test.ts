@@ -45,6 +45,19 @@ jest.mock('../src/db/repositories/dailyJournalRepository', () => ({
   deleteJournalsBeforeDate: jest.fn(async () => undefined),
 }));
 
+jest.mock('../src/db/repositories/journalNotebookRepository', () => ({
+  getAllNotebooks: jest.fn(async () => []),
+  insertNotebook: jest.fn(async () => undefined),
+  ensureDefaultNotebook: jest.fn(async () => ({
+    id: '550e8400-e29b-41d4-a716-446655440030',
+    name: 'Journal',
+    color: '#64748B',
+    sortOrder: 0,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    protocolVersion: 1,
+  })),
+}));
+
 jest.mock('../src/db/repositories/settingsRepository', () => ({
   getSetting: jest.fn(),
   getSettings: jest.fn(),
@@ -287,20 +300,35 @@ describe('protocol backup settings', () => {
     };
     const journal = {
       id: '550e8400-e29b-41d4-a716-446655440040',
+      notebookId: '550e8400-e29b-41d4-a716-446655440030',
       date: '2025-01-02',
       body: 'Quiet morning',
+      createdAt: '2025-01-02T21:00:00.000Z',
       updatedAt: '2025-01-02T21:00:00.000Z',
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const notebook = {
+      id: '550e8400-e29b-41d4-a716-446655440030',
+      name: 'Journal',
+      color: '#64748B' as const,
+      sortOrder: 0,
+      createdAt: '2025-01-01T00:00:00.000Z',
       protocolVersion: PROTOCOL_VERSION,
     };
     const bundle = createProtocolBundle({
       elements: [],
       dashboard: [],
       events: [],
+      journalNotebooks: [notebook],
       dailyJournals: [journal],
     });
 
     await importProtocolBundle(bundle);
 
+    const notebookRepo = jest.requireMock(
+      '../src/db/repositories/journalNotebookRepository',
+    ) as { insertNotebook: jest.Mock };
+    expect(notebookRepo.insertNotebook).toHaveBeenCalled();
     expect(dailyJournalRepo.insertJournal).toHaveBeenCalledWith(db, journal);
   });
 
@@ -308,6 +336,7 @@ describe('protocol backup settings', () => {
     await clearAllAppData();
 
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM daily_journals');
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM journal_notebooks');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM day_notes');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM events');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM dashboard_items');

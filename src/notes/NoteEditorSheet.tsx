@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
   Platform,
   StyleSheet,
   useWindowDimensions,
@@ -27,9 +28,12 @@ import {
   NOTE_BODY_APPROACHING_REMAINING,
   NOTE_BODY_MAX_LENGTH,
   NOTE_BODY_URGENT_REMAINING,
+  clampNoteBody,
 } from './noteBodyLimits';
 import { NoteEditorPreview } from './NoteEditorPreview';
 import { NoteEditorActions } from './NoteEditorActions';
+import { NoteEditorHistoryBar } from './NoteEditorHistoryBar';
+import { useNoteEditorPersist } from './useNoteEditorPersist';
 import { appendTranscript, splitAddedTake } from '../utils/appendTranscript';
 import { formatFullDate } from '../utils/dates';
 import { playDictationCommitHaptic } from '../utils/habitHaptics';
@@ -40,6 +44,8 @@ import {
   type DictationLivePreview,
 } from '../dictation/livePreview';
 import type { DictationTakeLimitReason } from '../dictation/types';
+import type { TrackerIconId } from '../protocol';
+import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
 import {
   canShowNoteShare,
   NOTE_SHARE_STALE_DARK,
@@ -51,9 +57,11 @@ import {
 export type NoteEditorSheetProps = {
   visible: boolean;
   date: string | null;
-  /** Already localized ("Note" or "Journal"). */
+  /** Sheet title — notebook or tracker name. */
   heading?: string;
   kind?: 'note' | 'journal';
+  /** Optional glyph beside a journal title. */
+  headingIcon?: TrackerIconId;
   trackerName: string;
   initialBody: string;
   /** Last successfully shared body fingerprint, if any. */
@@ -69,18 +77,11 @@ export type NoteEditorSheetProps = {
   onShare?: (body: string) => void | Promise<void>;
 };
 
-function clampNoteBody(text: string): string {
-  return text.length <= NOTE_BODY_MAX_LENGTH
-    ? text
-    : text.slice(0, NOTE_BODY_MAX_LENGTH);
-}
-
 const DICTATION_WAKE_TAG = 'lifeapp-note-dictation';
 /** Paper Menu overlay animation (~220ms) plus a beat so Alert/remount don't race it. */
 const MENU_SETTLE_MS = 280;
 const SHEET_MAX_WIDTH = 400;
 const SHEET_GUTTER = 24;
-const PERSIST_DEBOUNCE_MS = 1600;
 
 function DictationKeepAwake() {
   useKeepAwake(DICTATION_WAKE_TAG);
@@ -90,13 +91,14 @@ function DictationKeepAwake() {
 /**
  * Shared editor for tracker notes and the daily journal.
  * Mic-first preview; tap the body to type. Header X dismisses.
- * Thumb-zone Done morphs into Save.
+ * Done stops the mic; Save writes and closes when there is draft text.
  */
 export default function NoteEditorSheet({
   visible,
   date,
   heading,
   kind = 'note',
+  headingIcon,
   sessionKey = null,
   trackerName,
   initialBody,
@@ -116,10 +118,15 @@ export default function NoteEditorSheet({
   const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.max(280, windowWidth - SHEET_GUTTER * 2));
   const previewMaxHeight = Math.round(Math.min(windowHeight * 0.52, windowHeight - 320));
   const previewMinHeight = Math.round(Math.min(windowHeight * 0.28, previewMaxHeight));
-  const [draft, setDraft] = useState(() => clampNoteBody(initialBody));
-  const [fieldSeed, setFieldSeed] = useState(() => clampNoteBody(initialBody));
-  const [fieldEpoch, setFieldEpoch] = useState(0);
-  const [textEditing, setTextEditing] = useState(false);
+
+  const persist = useNoteEditorPersist({
+    visible,
+    date,
+    sessionKey,
+    initialBody,
+    onPersist,
+  });
+
   const [dictationHint, setDictationHint] = useState<string | null>(null);
   const [dictationHintTone, setDictationHintTone] = useState<'error' | 'notice'>('notice');
   const [dictationError, setDictationError] = useState<string | null>(null);
@@ -129,50 +136,23 @@ export default function NoteEditorSheet({
   const [live, setLive] = useState<DictationLivePreview | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuEpoch, setMenuEpoch] = useState(0);
-  const [canUndoLastTake, setCanUndoLastTake] = useState(false);
   const [sharing, setSharing] = useState(false);
   const sharingRef = useRef(false);
   const [shareAvailable, setShareAvailable] = useState(true);
-  const [persistedBody, setPersistedBody] = useState(() => clampNoteBody(initialBody));
-  const seededSessionKeyRef = useRef<string | null>(null);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
-  const preTakeDraftRef = useRef('');
+  const chromeSeededKeyRef = useRef<string | null>(null);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuActionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keepTakeLimitHintRef = useRef(false);
-  const lastPersistedRef = useRef(initialBody);
-  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onPersistRef = useRef(onPersist);
-  onPersistRef.current = onPersist;
+
   const isJournal = kind === 'journal';
   const noun = isJournal ? t('note.journalNoun') : t('note.noteNoun');
-  const displayHeading = heading ?? (isJournal ? t('note.journalHeading') : t('note.noteHeading'));
-
-  const remountField = (text: string) => {
-    const next = clampNoteBody(text);
-    draftRef.current = next;
-    setFieldSeed(next);
-    setDraft(next);
-    setFieldEpoch((n) => n + 1);
-  };
-
-  const persistDraft = (body: string) => {
-    if (body === lastPersistedRef.current) return;
-    lastPersistedRef.current = body;
-    setPersistedBody(body);
-    onPersistRef.current?.(body);
-  };
-
-  const schedulePersist = () => {
-    if (persistTimerRef.current) {
-      clearTimeout(persistTimerRef.current);
-    }
-    persistTimerRef.current = setTimeout(() => {
-      persistTimerRef.current = null;
-      persistDraft(draftRef.current);
-    }, PERSIST_DEBOUNCE_MS);
-  };
+  const displayHeading =
+    heading?.trim() ||
+    trackerName.trim() ||
+    (isJournal ? t('note.journalHeading') : t('note.noteHeading'));
+  const titleIcon: TrackerIconId | undefined = isJournal
+    ? (headingIcon ?? 'notebook-outline')
+    : headingIcon;
 
   const clearCopyFeedbackTimer = () => {
     if (copyFeedbackTimerRef.current) {
@@ -191,8 +171,6 @@ export default function NoteEditorSheet({
     setCopyFeedback(null);
     setLive(null);
     setMenuOpen(false);
-    setCanUndoLastTake(false);
-    preTakeDraftRef.current = '';
   };
 
   const closeMenuThen = (action: () => void) => {
@@ -210,8 +188,7 @@ export default function NoteEditorSheet({
   useEffect(() => {
     if (!visible || !date || !sessionKey) {
       if (!visible) {
-        seededSessionKeyRef.current = null;
-        setTextEditing(false);
+        chromeSeededKeyRef.current = null;
         setSharing(false);
         sharingRef.current = false;
         resetChrome();
@@ -223,17 +200,12 @@ export default function NoteEditorSheet({
       }
       return;
     }
-    if (seededSessionKeyRef.current === sessionKey) return;
-    remountField(initialBody);
-    lastPersistedRef.current = initialBody;
-    setPersistedBody(clampNoteBody(initialBody));
+    if (chromeSeededKeyRef.current === sessionKey) return;
     setSharing(false);
     sharingRef.current = false;
-    setTextEditing(false);
     resetChrome();
-    seededSessionKeyRef.current = sessionKey;
-    Keyboard.dismiss();
-  }, [visible, date, sessionKey, initialBody]);
+    chromeSeededKeyRef.current = sessionKey;
+  }, [visible, date, sessionKey]);
 
   useEffect(() => {
     if (!visible) return;
@@ -253,16 +225,12 @@ export default function NoteEditorSheet({
         clearTimeout(menuActionTimerRef.current);
         menuActionTimerRef.current = null;
       }
-      if (persistTimerRef.current) {
-        clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
     },
     [],
   );
 
   const handleTranscript = (text: string) => {
-    const result = appendTranscript(draftRef.current, text, NOTE_BODY_MAX_LENGTH);
+    const result = appendTranscript(persist.draftRef.current, text, NOTE_BODY_MAX_LENGTH);
     if (result.truncated) {
       keepTakeLimitHintRef.current = false;
       setDictationHintTone('error');
@@ -274,18 +242,15 @@ export default function NoteEditorSheet({
     } else if (!keepTakeLimitHintRef.current) {
       setDictationHint(null);
     }
-    remountField(result.text);
-    persistDraft(result.text);
-    setCanUndoLastTake(preTakeDraftRef.current.trim().length > 0);
+    persist.remountField(result.text);
+    persist.persistDraft(result.text);
     void playDictationCommitHaptic();
   };
 
   const handleSessionChange = (open: boolean) => {
     if (open) {
-      preTakeDraftRef.current = draftRef.current;
-      setCanUndoLastTake(false);
       keepTakeLimitHintRef.current = false;
-      setTextEditing(false);
+      persist.setTextEditing(false);
       Keyboard.dismiss();
       setDictationHint(null);
       setDictationError(null);
@@ -312,7 +277,7 @@ export default function NoteEditorSheet({
 
   const handleDictationFinished = () => {
     if (!autoStartDictation || saving) return;
-    if (!draftRef.current.trim()) {
+    if (!persist.draftRef.current.trim()) {
       onDismiss();
     }
   };
@@ -320,7 +285,7 @@ export default function NoteEditorSheet({
   const dictation = useNoteDictationController({
     active: visible,
     disabled: saving || !visible,
-    noteRoomChars: Math.max(0, NOTE_BODY_MAX_LENGTH - draft.length),
+    noteRoomChars: Math.max(0, NOTE_BODY_MAX_LENGTH - persist.draft.length),
     autoStart: autoStartDictation && visible,
     autoStartToken:
       autoStartDictation && sessionKey ? `${sessionKey}:dictate` : null,
@@ -345,13 +310,13 @@ export default function NoteEditorSheet({
 
   const listening = dictation.sessionOpen;
   const dictationBusy = dictation.starting || dictation.sessionOpen || dictation.finishing;
+  const historyLocked = saving || sharing || dictationBusy;
 
   const hasStoredNote = initialBody.trim().length > 0;
-  const hasDraftText = draft.trim().length > 0;
-  const isDirty = draft.trim() !== initialBody.trim();
+  const hasDraftText = persist.draft.trim().length > 0;
   const titleDate = date ? formatFullDate(date) : '';
   const liveChars = listening ? livePreviewLength(live) : 0;
-  const remaining = Math.max(0, NOTE_BODY_MAX_LENGTH - draft.length - liveChars);
+  const remaining = Math.max(0, NOTE_BODY_MAX_LENGTH - persist.draft.length - liveChars);
   const atLimit = remaining <= 0;
   const nearLimit = remaining <= NOTE_BODY_APPROACHING_REMAINING;
   const urgentLimit = remaining <= NOTE_BODY_URGENT_REMAINING;
@@ -359,11 +324,11 @@ export default function NoteEditorSheet({
     ? hasDraftText || liveChars > 0
     : hasStoredNote || hasDraftText;
   const showMenu = showClear || hasDraftText;
-  const showDone = listening || dictation.finishing;
-  const showSave = !showDone && isDirty;
+  const showDone = dictation.starting || listening || dictation.finishing;
+  const showSave = !showDone && hasDraftText;
   const shareStatus = noteShareStatus({
-    draft,
-    persisted: persistedBody,
+    draft: persist.draft,
+    persisted: persist.persistedBody,
     lastSharedFingerprint: shareFingerprint,
   });
   const showShare =
@@ -374,8 +339,9 @@ export default function NoteEditorSheet({
       saving,
     }) || sharing;
   const reviewHighlight =
-    !listening && !textEditing ? splitAddedTake(initialBody, draft) : null;
-  const blockDismiss = saving || dictationBusy || sharing;
+    !listening && !persist.textEditing
+      ? splitAddedTake(initialBody, persist.draft)
+      : null;
   const englishOnlyHint = i18n.language.toLowerCase().startsWith('fr');
   const shareStatusA11y =
     shareStatus === 'current'
@@ -394,68 +360,17 @@ export default function NoteEditorSheet({
   });
 
   const requestDismiss = () => {
-    if (saving) return;
-    if (isDirty) {
-      Alert.alert(
-        t('note.discardUnsavedTitle', { noun }),
-        t('note.discardUnsavedBody'),
-        [
-          { text: t('note.cancel'), style: 'cancel' },
-          {
-            text: t('note.discardUnsavedAction'),
-            style: 'destructive',
-            onPress: () => {
-              lastPersistedRef.current = initialBody;
-              setPersistedBody(initialBody);
-              onPersistRef.current?.(initialBody);
-              onDismiss();
-            },
-          },
-        ],
-      );
-      return;
-    }
+    persist.flushPendingPersist();
     onDismiss();
   };
 
   const applyClearAll = () => {
-    remountField('');
-    preTakeDraftRef.current = '';
-    setCanUndoLastTake(false);
-    persistDraft('');
-    if (!listening) {
-      setDictationHint(null);
+    if (listening) {
+      dictation.cancel();
       setLive(null);
     }
-  };
-
-  const applyClearLastTake = () => {
-    remountField(preTakeDraftRef.current);
-    setCanUndoLastTake(false);
+    persist.clearAll();
     setDictationHint(null);
-    persistDraft(preTakeDraftRef.current);
-  };
-
-  const applyClearWhileListening = () => {
-    remountField('');
-    preTakeDraftRef.current = '';
-    setCanUndoLastTake(false);
-    setDictationHint(null);
-    setLive(null);
-    persistDraft('');
-    dictation.cancel();
-    void dictation.start();
-  };
-
-  const confirmClearAll = () => {
-    Alert.alert(t('note.clearConfirmTitle', { noun }), t('note.clearConfirmBody', { noun }), [
-      { text: t('note.cancel'), style: 'cancel' },
-      {
-        text: t('note.clear'),
-        style: 'destructive',
-        onPress: applyClearAll,
-      },
-    ]);
   };
 
   const handleClear = () => {
@@ -467,30 +382,25 @@ export default function NoteEditorSheet({
         {
           text: t('note.clearExistingAction'),
           style: 'destructive',
-          onPress: applyClearWhileListening,
-        },
-      ]);
-      return;
-    }
-    if (!showClear) return;
-    if (canUndoLastTake) {
-      Alert.alert(t('note.clearChooseTitle', { noun }), t('note.clearChooseBody'), [
-        { text: t('note.cancel'), style: 'cancel' },
-        { text: t('note.clearLastAction'), onPress: applyClearLastTake },
-        {
-          text: t('note.clearEntireAction', { noun }),
-          style: 'destructive',
           onPress: applyClearAll,
         },
       ]);
       return;
     }
-    confirmClearAll();
+    if (!showClear) return;
+    Alert.alert(t('note.clearConfirmTitle', { noun }), t('note.clearConfirmBody', { noun }), [
+      { text: t('note.cancel'), style: 'cancel' },
+      {
+        text: t('note.clear'),
+        style: 'destructive',
+        onPress: applyClearAll,
+      },
+    ]);
   };
 
   const handleCopy = async () => {
     if (saving || sharing) return;
-    const body = draftRef.current;
+    const body = persist.draftRef.current;
     if (!body.trim()) return;
     try {
       await Clipboard.setStringAsync(body);
@@ -507,25 +417,15 @@ export default function NoteEditorSheet({
 
   const handleSave = () => {
     if (saving) return;
-    if (persistTimerRef.current) {
-      clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
-    const body = draftRef.current;
-    lastPersistedRef.current = body;
-    setPersistedBody(body);
-    onSave(body);
+    persist.flushPendingPersist();
+    onSave(persist.draftRef.current);
   };
 
   const handleShare = async () => {
     if (sharingRef.current || saving || dictationBusy || !onShare) return;
-    if (persistTimerRef.current) {
-      clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
-    const body = draftRef.current;
+    persist.flushPendingPersist();
+    const body = persist.draftRef.current;
     if (!body.trim()) return;
-    persistDraft(body);
     sharingRef.current = true;
     setSharing(true);
     try {
@@ -538,20 +438,31 @@ export default function NoteEditorSheet({
 
   const enterTextEditing = () => {
     if (saving || sharing || dictationBusy) return;
-    remountField(draftRef.current);
-    setTextEditing(true);
+    persist.remountField(persist.draftRef.current);
+    persist.setTextEditing(true);
   };
 
   const leaveTextEditing = () => {
     Keyboard.dismiss();
-    if (!textEditing) return;
-    remountField(draftRef.current);
-    setTextEditing(false);
+    if (!persist.textEditing) return;
+    persist.remountField(persist.draftRef.current);
+    persist.flushPendingPersist();
+    persist.setTextEditing(false);
   };
 
   const handleMicPress = () => {
     leaveTextEditing();
     void dictation.start();
+  };
+
+  const handleUndo = () => {
+    if (historyLocked) return;
+    persist.undoChunk();
+  };
+
+  const handleRedo = () => {
+    if (historyLocked) return;
+    persist.redoChunk();
   };
 
   const previewPlaceholder = isJournal
@@ -569,7 +480,7 @@ export default function NoteEditorSheet({
       {visible && dictationBusy ? <DictationKeepAwake /> : null}
       <Modal
         visible={visible}
-        onDismiss={blockDismiss ? undefined : requestDismiss}
+        onDismiss={requestDismiss}
         style={styles.modalWrap}
         contentContainerStyle={[
           styles.modal,
@@ -586,25 +497,44 @@ export default function NoteEditorSheet({
           },
         ]}
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardAvoid}
+        >
           <View style={styles.header}>
             <View style={styles.headerText}>
-              <Text variant="titleMedium">{displayHeading}</Text>
-              <Text
-                variant="bodySmall"
-                style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}
-              >
-                {[trackerName, titleDate].filter(Boolean).join(' · ')}
-              </Text>
+              <View style={styles.headerTitleRow}>
+                {titleIcon ? (
+                  <TrackerIcon
+                    name={titleIcon}
+                    size={20}
+                    color={theme.colors.onSurface}
+                  />
+                ) : null}
+                <Text variant="titleMedium" numberOfLines={1} style={styles.headerTitle}>
+                  {displayHeading}
+                </Text>
+              </View>
+              {titleDate ? (
+                <Text
+                  variant="bodySmall"
+                  style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}
+                >
+                  {titleDate}
+                </Text>
+              ) : null}
             </View>
-            <NoteDictationButton
-              listening={dictation.listening}
-              capturing={dictation.capturing}
-              starting={dictation.starting}
-              finishing={dictation.finishing}
-              sessionOpen={dictation.sessionOpen}
-              disabled={micDisabled}
-              onPress={handleMicPress}
-            />
+            {showShare ? (
+              <IconButton
+                icon="share-variant"
+                onPress={() => void handleShare()}
+                disabled={sharing}
+                iconColor={shareTextColor}
+                accessibilityLabel={`${t('note.shareA11y', { noun })}. ${shareStatusA11y}`}
+                style={styles.headerIcon}
+              />
+            ) : null}
+            {showMenu ? (
             <Menu
               key={menuEpoch}
               visible={menuOpen}
@@ -612,36 +542,17 @@ export default function NoteEditorSheet({
               anchor={
                 <IconButton
                   icon="dots-vertical"
-                  onPress={() => {
-                    if (!showMenu) return;
-                    setMenuOpen((open) => !open);
-                  }}
-                  disabled={saving || sharing || !showMenu}
+                  onPress={() => setMenuOpen((open) => !open)}
+                  disabled={saving || sharing}
                   accessibilityLabel={t('note.moreActions')}
                   style={styles.headerIcon}
                 />
               }
             >
-              {canUndoLastTake && !listening ? (
-                <Menu.Item
-                  onPress={() => closeMenuThen(applyClearLastTake)}
-                  title={t('note.clearLastAction')}
-                  leadingIcon="undo"
-                  titleStyle={{ color: theme.colors.error }}
-                />
-              ) : null}
               {showClear ? (
                 <Menu.Item
-                  onPress={() =>
-                    closeMenuThen(
-                      canUndoLastTake && !listening ? confirmClearAll : handleClear,
-                    )
-                  }
-                  title={
-                    canUndoLastTake && !listening
-                      ? t('note.clearEntireAction', { noun })
-                      : t('note.clear')
-                  }
+                  onPress={() => closeMenuThen(handleClear)}
+                  title={t('note.clear')}
                   leadingIcon="delete-outline"
                   titleStyle={{ color: theme.colors.error }}
                 />
@@ -655,10 +566,10 @@ export default function NoteEditorSheet({
                 />
               ) : null}
             </Menu>
+            ) : null}
             <IconButton
               icon="close"
               onPress={requestDismiss}
-              disabled={blockDismiss}
               accessibilityLabel={
                 isJournal ? t('note.closeJournalAccessible') : t('note.closeNoteAccessible')
               }
@@ -704,22 +615,22 @@ export default function NoteEditorSheet({
             </Text>
           ) : null}
 
-          {textEditing && !dictationBusy ? (
+          {persist.textEditing && !dictationBusy ? (
             <TextInput
-              key={`${sessionKey ?? 'closed'}-${fieldEpoch}`}
+              key={`${sessionKey ?? 'closed'}-${persist.fieldEpoch}`}
               mode="outlined"
               multiline
               numberOfLines={isJournal ? 8 : 6}
-              defaultValue={fieldSeed}
+              defaultValue={persist.fieldSeed}
               onChangeText={(next) => {
                 setDictationHint(null);
                 setDictationError(null);
                 setDictationStatus(null);
                 setDictationProgress(null);
                 const clamped = clampNoteBody(next);
-                draftRef.current = clamped;
-                setDraft(clamped);
-                schedulePersist();
+                persist.draftRef.current = clamped;
+                persist.setDraft(clamped);
+                persist.schedulePersist();
               }}
               style={[
                 styles.input,
@@ -740,7 +651,7 @@ export default function NoteEditorSheet({
             <NoteEditorPreview
               noun={noun}
               isJournal={isJournal}
-              draft={draft}
+              draft={persist.draft}
               live={live}
               listening={listening}
               capturing={dictation.capturing}
@@ -778,7 +689,7 @@ export default function NoteEditorSheet({
                     ? 'note.characterCountLimitReachedA11y'
                     : 'note.characterCountApproachingLimitA11y',
                   {
-                    count: (draft.length + liveChars).toLocaleString(),
+                    count: (persist.draft.length + liveChars).toLocaleString(),
                     max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
                   },
                 )}
@@ -790,7 +701,7 @@ export default function NoteEditorSheet({
                 }}
               >
                 {t('note.characterCount', {
-                  count: (draft.length + liveChars).toLocaleString(),
+                  count: (persist.draft.length + liveChars).toLocaleString(),
                   max: NOTE_BODY_MAX_LENGTH.toLocaleString(),
                 })}
               </Text>
@@ -823,21 +734,35 @@ export default function NoteEditorSheet({
           ) : null}
 
           <NoteEditorActions
-            noun={noun}
-            showShare={showShare}
+            leading={
+              <NoteEditorHistoryBar
+                canUndo={persist.canUndo}
+                canRedo={persist.canRedo}
+                hidden={historyLocked}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+              />
+            }
+            mic={
+              <NoteDictationButton
+                listening={dictation.listening}
+                capturing={dictation.capturing}
+                starting={dictation.starting}
+                finishing={dictation.finishing}
+                sessionOpen={dictation.sessionOpen}
+                disabled={micDisabled}
+                onPress={handleMicPress}
+              />
+            }
             showDone={showDone}
             showSave={showSave}
-            sharing={sharing}
             saving={saving}
-            isDirty={isDirty}
-            shareTextColor={shareTextColor}
-            shareStatusA11y={shareStatusA11y}
             dictationStarting={dictation.starting}
             dictationFinishing={dictation.finishing}
-            onShare={() => void handleShare()}
             onDone={dictation.finish}
             onSave={handleSave}
           />
+        </KeyboardAvoidingView>
       </Modal>
     </Portal>
   );
@@ -863,6 +788,9 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
+  keyboardAvoid: {
+    flexGrow: 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -872,6 +800,15 @@ const styles = StyleSheet.create({
   headerText: {
     flex: 1,
     paddingRight: 8,
+    minWidth: 0,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    flex: 1,
   },
   headerIcon: {
     margin: 0,

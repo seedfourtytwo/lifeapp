@@ -10,6 +10,12 @@ import { DAY_NOTE_BODY_MAX_LENGTH } from '../protocol';
 /** Absolute max — same as protocol Zod / repository checks. */
 export const NOTE_BODY_MAX_LENGTH = DAY_NOTE_BODY_MAX_LENGTH;
 
+export function clampNoteBody(text: string): string {
+  return text.length <= NOTE_BODY_MAX_LENGTH
+    ? text
+    : text.slice(0, NOTE_BODY_MAX_LENGTH);
+}
+
 /** Show remaining/count UI when this many characters (or fewer) remain. */
 export const NOTE_BODY_APPROACHING_REMAINING = 500;
 

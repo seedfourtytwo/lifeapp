@@ -3,7 +3,9 @@
     "today": "Aujourd'hui",
     "journalLabel": "Journal",
     "tapToWriteJournal": "Appuyez pour écrire le journal",
+    "tapToWriteNotebook": "Appuyez pour écrire dans {{name}}",
     "trackerNotesLabel": "Notes de suivi",
+    "filterAll": "Tout",
     "noTrackerNotes": "Aucune note de suivi ce jour-là.",
     "daysLabel": "Jours",
     "noJournalYet": "Pas encore de journal",
@@ -16,22 +18,29 @@
     "editNoteForA11y": "Modifier la note de {{name}}",
     "couldNotLoadJournalsFallback": "Impossible de charger les journaux"
   },
+  "notebooks": {
+    "title": "Carnets",
+    "add": "Ajouter",
+    "maxReached": "Max. {{count}}",
+    "nameLabel": "Nom",
+    "colorLabel": "Couleur",
+    "colorA11y": "Couleur {{color}}",
+    "editA11y": "Modifier le carnet {{name}}",
+    "moveUpA11y": "Monter {{name}}",
+    "moveDownA11y": "Descendre {{name}}",
+    "deleteA11y": "Supprimer le carnet {{name}}",
+    "nameRequiredTitle": "Nom requis",
+    "nameRequiredBody": "Donnez un nom à ce carnet.",
+    "couldNotSaveTitle": "Impossible d'enregistrer le carnet",
+    "couldNotDeleteTitle": "Impossible de supprimer le carnet",
+    "cannotDeleteLastTitle": "Garder un carnet",
+    "cannotDeleteLastBody": "Il faut au moins un carnet pour les notes du jour.",
+    "deleteTitle": "Supprimer {{name}} ?",
+    "deleteBody": "Ses notes iront dans un autre carnet. Cette action est définitive.",
+    "deleteAction": "Supprimer"
+  },
   "editorSheet": {
-    "noteHeading": "Note",
-    "journalHeading": "Journal",
-    "previewPlaceholderNote": "Appuyez sur le micro pour dicter une note",
-    "previewPlaceholderJournal": "Appuyez sur le micro pour dicter le journal du jour",
-    "clear": "Effacer",
-    "editText": "Modifier le texte",
-    "close": "Fermer",
     "cancel": "Annuler",
     "save": "Enregistrer"
-  },
-  "noteIconButton": {
-    "dictateNote": "Dicter la note",
-    "dictateNewNote": "Dicter une nouvelle note",
-    "dictateJournal": "Dicter le journal",
-    "dictateNewJournal": "Dicter un nouveau journal",
-    "longPressHint": "Appui long pour ouvrir et modifier sans dicter"
   }
 }

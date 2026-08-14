@@ -3,7 +3,9 @@
     "today": "Today",
     "journalLabel": "Journal",
     "tapToWriteJournal": "Tap to write journal",
+    "tapToWriteNotebook": "Tap to write in {{name}}",
     "trackerNotesLabel": "Tracker notes",
+    "filterAll": "All",
     "noTrackerNotes": "No tracker notes this day.",
     "daysLabel": "Days",
     "noJournalYet": "No journal yet",
@@ -16,22 +18,29 @@
     "editNoteForA11y": "Edit note for {{name}}",
     "couldNotLoadJournalsFallback": "Could not load journals"
   },
+  "notebooks": {
+    "title": "Notebooks",
+    "add": "Add",
+    "maxReached": "Max {{count}}",
+    "nameLabel": "Name",
+    "colorLabel": "Color",
+    "colorA11y": "Color {{color}}",
+    "editA11y": "Edit notebook {{name}}",
+    "moveUpA11y": "Move {{name}} up",
+    "moveDownA11y": "Move {{name}} down",
+    "deleteA11y": "Delete notebook {{name}}",
+    "nameRequiredTitle": "Name needed",
+    "nameRequiredBody": "Give this notebook a name.",
+    "couldNotSaveTitle": "Could not save notebook",
+    "couldNotDeleteTitle": "Could not delete notebook",
+    "cannotDeleteLastTitle": "Keep one notebook",
+    "cannotDeleteLastBody": "You need at least one notebook for daily notes.",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteBody": "Its notes move to another notebook. This cannot be undone.",
+    "deleteAction": "Delete"
+  },
   "editorSheet": {
-    "noteHeading": "Note",
-    "journalHeading": "Journal",
-    "previewPlaceholderNote": "Tap the mic to dictate a note",
-    "previewPlaceholderJournal": "Tap the mic to dictate today's journal",
-    "clear": "Clear",
-    "editText": "Edit text",
-    "close": "Close",
     "cancel": "Cancel",
     "save": "Save"
-  },
-  "noteIconButton": {
-    "dictateNote": "Dictate note",
-    "dictateNewNote": "Dictate new note",
-    "dictateJournal": "Dictate journal",
-    "dictateNewJournal": "Dictate new journal",
-    "longPressHint": "Long press to open and edit without dictating"
   }
 }

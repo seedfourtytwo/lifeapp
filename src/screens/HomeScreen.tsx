@@ -21,11 +21,12 @@ import { useTranslation } from 'react-i18next';
 import HomeChromeBubble from '../components/HomeChromeBubble';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
+import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
-import { NoteEditorHost, useNoteEditorSession } from '../notes';
+import { NoteEditorHost, useNoteEditorSession, type HomeNotebookChip } from '../notes';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -58,7 +59,7 @@ export default function HomeScreen() {
   const tabRef = useRef<HomeTab>('habits');
   const [tab, setTab] = useState<HomeTab>('habits');
   const [pagerHeight, setPagerHeight] = useState(0);
-  const [hasTodayJournal, setHasTodayJournal] = useState(false);
+  const [notebooks, setNotebooks] = useState<HomeNotebookChip[]>([]);
   /** Tracker note sheet open on the active Habits/Counters tab. */
   const [trackerNotesOpen, setTrackerNotesOpen] = useState(false);
   /** Row drag-reorder active — lock Habit↔Counter pager. */
@@ -68,15 +69,40 @@ export default function HomeScreen() {
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
+  const reloadTodayNotebooks = useCallback(async () => {
+    const today = currentAppCalendarDate(now);
+    try {
+      const db = await getDatabase();
+      const rows = await journalNotebookRepo.getAllNotebooks(db);
+      const todayIds = await dailyJournalRepo.getNotebookIdsWithJournalsOnDate(db, today);
+      setNotebooks(
+        rows.map((notebook) => ({
+          id: notebook.id,
+          name: notebook.name,
+          color: notebook.color,
+          icon: notebook.icon,
+          hasToday: todayIds.has(notebook.id),
+        })),
+      );
+    } catch {
+      // Non-fatal — icons stay empty until next focus.
+    }
+  }, [now]);
+
   const noteEditor = useNoteEditorSession({
-    onSaved: (date, body, target) => {
+    onSaved: (date, _body, target) => {
       if (target.kind !== 'journal') return;
       if (date !== currentAppCalendarDate(now)) return;
-      setHasTodayJournal(body != null && body.length > 0);
+      void reloadTodayNotebooks();
     },
   });
-
   const journalOpen = noteEditor.session != null;
+
+  useEffect(() => {
+    if (journalOpen) return;
+    void reloadTodayNotebooks();
+  }, [journalOpen, reloadTodayNotebooks]);
+
   const notesSheetOpen = journalOpen || trackerNotesOpen;
   const pagerLocked = notesSheetOpen || trackerDragActive;
 
@@ -88,26 +114,15 @@ export default function HomeScreen() {
 
   useDayRolloverRefresh();
 
-  const reloadTodayJournal = useCallback(async () => {
-    const today = currentAppCalendarDate(now);
-    try {
-      const db = await getDatabase();
-      const journal = await dailyJournalRepo.getJournal(db, today);
-      setHasTodayJournal((journal?.body.length ?? 0) > 0);
-    } catch {
-      // Non-fatal — icon stays empty until next focus.
-    }
-  }, [now]);
-
   useFocusEffect(
     useCallback(() => {
-      void reloadTodayJournal();
-    }, [reloadTodayJournal]),
+      void reloadTodayNotebooks();
+    }, [reloadTodayNotebooks]),
   );
 
   useEffect(() => {
-    void reloadTodayJournal();
-  }, [reloadTodayJournal]);
+    void reloadTodayNotebooks();
+  }, [reloadTodayNotebooks]);
 
   useEffect(() => {
     if (!weatherWidgetEnabled) return;
@@ -149,11 +164,22 @@ export default function HomeScreen() {
         ? (StatusBar.currentHeight ?? 28)
         : 0;
 
-  const openTodayJournal = (opts?: { dictate?: boolean }) => {
+  const openTodayNotebook = async (
+    notebookId: string,
+    opts?: { dictate?: boolean },
+  ) => {
+    const today = currentAppCalendarDate(now);
+    const chip = notebooks.find((notebook) => notebook.id === notebookId);
+    const openOpts = opts?.dictate ? { dictate: true } : undefined;
     void noteEditor.open(
-      { kind: 'journal' },
-      currentAppCalendarDate(now),
-      opts?.dictate ? { dictate: true } : undefined,
+      {
+        kind: 'journal',
+        notebookId,
+        label: chip?.name,
+        icon: chip?.icon,
+      },
+      today,
+      openOpts,
     );
   };
 
@@ -215,9 +241,9 @@ export default function HomeScreen() {
             }
           >
             <HabitsScreen
-              hasTodayJournal={hasTodayJournal}
-              onOpenJournal={() => openTodayJournal({ dictate: true })}
-              onEditJournal={() => openTodayJournal()}
+              notebooks={notebooks}
+              onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
+              onEditNotebook={(id) => void openTodayNotebook(id)}
               journalOpen={journalOpen}
               notesActive={tab === 'habits'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}
@@ -237,9 +263,9 @@ export default function HomeScreen() {
             }
           >
             <CountersScreen
-              hasTodayJournal={hasTodayJournal}
-              onOpenJournal={() => openTodayJournal({ dictate: true })}
-              onEditJournal={() => openTodayJournal()}
+              notebooks={notebooks}
+              onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
+              onEditNotebook={(id) => void openTodayNotebook(id)}
               journalOpen={journalOpen}
               notesActive={tab === 'counters'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}

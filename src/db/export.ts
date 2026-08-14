@@ -7,6 +7,7 @@ import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
+import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import * as calendarRepo from '../db/repositories/calendarRepository';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
@@ -26,6 +27,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     const dashboard = await dashboardRepo.getDashboardItems(db);
     const events = await eventRepo.getAllEvents(db);
     const dayNotesRaw = await dayNoteRepo.getAllNotes(db);
+    const journalNotebooks = await journalNotebookRepo.getAllNotebooks(db);
     const dailyJournals = await dailyJournalRepo.getAllJournals(db);
     const settings = await readAppSettings(db);
     const calendars = await calendarRepo.getAllCalendars(db);
@@ -45,6 +47,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
       events,
       dayNotes,
       dailyJournals,
+      journalNotebooks,
       settings,
       calendar: {
         schemaVersion: CALENDAR_BACKUP_VERSION,
@@ -110,6 +113,12 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       for (const note of bundle.dayNotes ?? []) {
         if (!elementIds.has(note.elementId)) continue;
         await dayNoteRepo.insertNote(db, note);
+      }
+      for (const notebook of bundle.journalNotebooks ?? []) {
+        await journalNotebookRepo.insertNotebook(db, notebook);
+      }
+      if ((bundle.journalNotebooks ?? []).length === 0) {
+        await journalNotebookRepo.ensureDefaultNotebook(db);
       }
       for (const journal of bundle.dailyJournals ?? []) {
         await dailyJournalRepo.insertJournal(db, journal);

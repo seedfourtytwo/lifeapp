@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -8,39 +7,43 @@ import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
+import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
-import { type DailyJournal, type ElementDefinition } from '../protocol';
+import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
 import { currentAppCalendarDate } from '../utils/dayRollover';
-import { formatFullDate } from '../utils/dates';
-import { truncateNotePreview } from '../utils/trackerHistoryFormat';
+import JournalDayPanel, { type TrackerNoteRow } from './journal/JournalDayPanel';
+import JournalDaysList from './journal/JournalDaysList';
+import JournalNotebooksSection from './journal/JournalNotebooksSection';
 
-type TrackerNoteRow = {
-  elementId: string;
-  name: string;
-  body: string;
-};
+type DayFilter = 'all' | 'trackers' | string;
 
 export default function JournalScreen() {
   const theme = useTheme();
   const { t } = useTranslation('journal');
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
+  const [notebooks, setNotebooks] = useState<JournalNotebook[]>([]);
   const [journals, setJournals] = useState<DailyJournal[]>([]);
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [filter, setFilter] = useState<DayFilter>('all');
   const [trackerNotes, setTrackerNotes] = useState<TrackerNoteRow[]>([]);
   const [noteOnlyDates, setNoteOnlyDates] = useState<string[]>([]);
+  const [trackerNoteDates, setTrackerNoteDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const noteEditor = useNoteEditorSession({
-    onSaved: () => {
-      void reload();
-    },
-  });
+  const noteEditor = useNoteEditorSession();
   const editingRef = useRef(false);
+  const wasEditingRef = useRef(false);
   editingRef.current = noteEditor.session != null;
+
+  const notebookById = useMemo(() => {
+    const map = new Map<string, JournalNotebook>();
+    for (const notebook of notebooks) map.set(notebook.id, notebook);
+    return map;
+  }, [notebooks]);
 
   const loadTrackerNotes = useCallback(
     async (date: string, activeElements: ElementDefinition[]) => {
@@ -72,13 +75,15 @@ export default function JournalScreen() {
       const allElements = await elementRepo.getAllElements(db);
       const active = allElements.filter((el) => !el.archivedAt);
       const activeIds = active.map((el) => el.id);
-      const [rows, noteOnly] = await Promise.all([
-        dailyJournalRepo.getAllJournals(db),
-        dayNoteRepo.getDatesWithTrackerNotesOnly(db, activeIds, today),
-      ]);
+      const nb = await journalNotebookRepo.getAllNotebooks(db);
+      const rows = await dailyJournalRepo.getAllJournals(db);
+      const noteOnly = await dayNoteRepo.getDatesWithTrackerNotesOnly(db, activeIds, today);
+      const trackerDates = await dayNoteRepo.getDatesWithTrackerNotes(db, activeIds);
+      setNotebooks(nb);
       setJournals(rows);
       setElements(active);
       setNoteOnlyDates(noteOnly);
+      setTrackerNoteDates(trackerDates);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('screen.couldNotLoadJournalsFallback'));
     } finally {
@@ -98,14 +103,30 @@ export default function JournalScreen() {
     setSelectedDate(today);
   }, [today]);
 
-  // Skip reload while editing so mid-edit body isn't overwritten; refresh when the sheet closes.
+  useEffect(() => {
+    const open = noteEditor.session != null;
+    if (wasEditingRef.current && !open) {
+      void reload();
+    }
+    wasEditingRef.current = open;
+  }, [noteEditor.session, reload]);
+
   useEffect(() => {
     if (noteEditor.session != null) return;
     void loadTrackerNotes(selectedDate, elements);
   }, [selectedDate, elements, loadTrackerNotes, noteEditor.session]);
 
-  const openJournal = (date: string) => {
-    void noteEditor.open({ kind: 'journal' }, date);
+  const openJournalDay = (notebookId: string, date: string) => {
+    const notebook = notebookById.get(notebookId);
+    void noteEditor.open(
+      {
+        kind: 'journal',
+        notebookId,
+        label: notebook?.name,
+        icon: notebook?.icon,
+      },
+      date,
+    );
   };
 
   const openTrackerNote = (row: TrackerNoteRow, date: string) => {
@@ -115,57 +136,46 @@ export default function JournalScreen() {
     );
   };
 
-  const journalForSelected = journals.find((j) => j.date === selectedDate);
-  const todayJournal = journals.find((j) => j.date === today);
-  const hasJournal = journalForSelected != null;
-  const pastJournals = journals.filter((j) => j.date !== today);
+  const showTrackerNotes = filter === 'all' || filter === 'trackers';
+  const extraDates =
+    filter === 'trackers'
+      ? trackerNoteDates.filter((date) => date !== today)
+      : filter === 'all'
+        ? noteOnlyDates
+        : [];
+
   const editorHost = <NoteEditorHost session={noteEditor} />;
 
-  const renderDayPickerRow = (
-    date: string,
-    title: string,
-    preview: string,
-    hasJournalEntry: boolean,
-  ) => {
-    const selected = date === selectedDate;
+  const renderFilterChip = (id: DayFilter, label: string) => {
+    const selected = filter === id;
     return (
       <Pressable
-        key={date}
-        onPress={() => setSelectedDate(date)}
+        key={id}
+        onPress={() => setFilter(id)}
         style={[
-          styles.row,
-          selected && styles.rowSelected,
+          styles.chip,
           {
             borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
-            backgroundColor: theme.colors.surface,
+            backgroundColor: selected
+              ? theme.colors.primaryContainer
+              : theme.colors.surface,
           },
         ]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={t('screen.viewDayA11y', { title })}
+        accessibilityLabel={label}
       >
-        <MaterialCommunityIcons
-          name={hasJournalEntry ? 'notebook' : 'notebook-outline'}
-          size={22}
-          color={
-            hasJournalEntry
-              ? theme.colors.primary
-              : selected
-                ? theme.colors.primary
-                : theme.colors.onSurfaceVariant
-          }
-        />
-        <View style={styles.rowText}>
-          <Text variant="titleSmall">{title}</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {preview}
-          </Text>
-        </View>
+        <Text
+          variant="labelMedium"
+          style={{ color: selected ? theme.colors.primary : theme.colors.onSurface }}
+        >
+          {label}
+        </Text>
       </Pressable>
     );
   };
 
-  if (loading && journals.length === 0 && !error) {
+  if (loading && journals.length === 0 && notebooks.length === 0 && !error) {
     return (
       <>
         <View style={styles.centered}>
@@ -188,119 +198,39 @@ export default function JournalScreen() {
           </View>
         ) : null}
 
-        <View
-          style={[
-            styles.dayPanel,
-            {
-              borderColor: theme.colors.outlineVariant,
-              backgroundColor: theme.colors.surface,
-            },
-          ]}
+        <JournalNotebooksSection notebooks={notebooks} onChanged={() => void reload()} />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
         >
-          <Text variant="titleSmall" style={styles.dayTitle}>
-            {selectedDate === today ? t('screen.today') : formatFullDate(selectedDate)}
-          </Text>
+          {renderFilterChip('all', t('screen.filterAll'))}
+          {notebooks.map((notebook) => renderFilterChip(notebook.id, notebook.name))}
+          {renderFilterChip('trackers', t('screen.trackerNotesLabel'))}
+        </ScrollView>
 
-          <Pressable
-            onPress={() => openJournal(selectedDate)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              hasJournal
-                ? t('screen.editJournalForA11y', { date: formatFullDate(selectedDate) })
-                : t('screen.addJournalForA11y', { date: formatFullDate(selectedDate) })
-            }
-            style={styles.journalRow}
-          >
-            <MaterialCommunityIcons
-              name={hasJournal ? 'notebook' : 'notebook-outline'}
-              size={16}
-              color={hasJournal ? theme.colors.primary : theme.colors.onSurfaceVariant}
-              style={styles.noteIcon}
-            />
-            <View style={styles.journalText}>
-              <Text variant="labelMedium">{t('screen.journalLabel')}</Text>
-              <Text
-                variant="bodySmall"
-                numberOfLines={3}
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                {hasJournal
-                  ? truncateNotePreview(journalForSelected?.body ?? '', 160)
-                  : t('screen.tapToWriteJournal')}
-              </Text>
-            </View>
-          </Pressable>
+        <JournalDayPanel
+          selectedDate={selectedDate}
+          today={today}
+          notebooks={notebooks}
+          journals={journals}
+          trackerNotes={trackerNotes}
+          showTrackerNotes={showTrackerNotes}
+          filter={filter}
+          onOpenJournal={openJournalDay}
+          onOpenTrackerNote={openTrackerNote}
+        />
 
-          {trackerNotes.length > 0 ? (
-            <View style={styles.trackerNotesSection}>
-              <Text variant="labelMedium" style={styles.trackerNotesLabel}>
-                {t('screen.trackerNotesLabel')}
-              </Text>
-              {trackerNotes.map((row) => (
-                <Pressable
-                  key={row.elementId}
-                  onPress={() => openTrackerNote(row, selectedDate)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
-                  style={styles.trackerNoteRow}
-                >
-                  <MaterialCommunityIcons
-                    name="note-text-outline"
-                    size={14}
-                    color={theme.colors.primary}
-                    style={styles.noteIcon}
-                  />
-                  <View style={styles.trackerNoteText}>
-                    <Text variant="bodyMedium">{row.name}</Text>
-                    <Text
-                      variant="bodySmall"
-                      numberOfLines={2}
-                      style={{ color: theme.colors.onSurfaceVariant }}
-                    >
-                      {truncateNotePreview(row.body, 120)}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text variant="bodySmall" style={styles.noTrackerNotes}>
-              {t('screen.noTrackerNotes')}
-            </Text>
-          )}
-        </View>
-
-        <Text variant="labelLarge" style={styles.sectionLabel}>
-          {t('screen.daysLabel')}
-        </Text>
-
-        {renderDayPickerRow(
-          today,
-          t('screen.today'),
-          todayJournal
-            ? truncateNotePreview(todayJournal.body, 80)
-            : t('screen.noJournalYet'),
-          todayJournal != null,
-        )}
-
-        {pastJournals.length === 0 && !todayJournal && noteOnlyDates.length === 0 ? (
-          <Text variant="bodyMedium" style={styles.empty}>
-            {t('screen.emptyHint')}
-          </Text>
-        ) : null}
-
-        {pastJournals.map((journal) =>
-          renderDayPickerRow(
-            journal.date,
-            formatFullDate(journal.date),
-            truncateNotePreview(journal.body, 80),
-            true,
-          ),
-        )}
-
-        {noteOnlyDates.map((date) =>
-          renderDayPickerRow(date, formatFullDate(date), t('screen.trackerNotesOnly'), false),
-        )}
+        <JournalDaysList
+          today={today}
+          selectedDate={selectedDate}
+          journals={journals}
+          filter={filter}
+          extraDates={extraDates}
+          todayTrackerPreview={trackerNotes.length > 0}
+          onSelectDate={setSelectedDate}
+        />
       </ScrollView>
 
       {editorHost}
@@ -324,75 +254,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  dayPanel: {
-    padding: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    gap: 4,
-  },
-  dayTitle: {
-    marginBottom: 6,
-  },
-  journalRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#00000022',
-  },
-  journalText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  trackerNotesSection: {
+  chipRow: {
     gap: 8,
-    paddingTop: 10,
+    paddingVertical: 2,
   },
-  trackerNotesLabel: {
-    opacity: 0.85,
-  },
-  trackerNoteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  trackerNoteText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  noTrackerNotes: {
-    opacity: 0.6,
-    paddingTop: 10,
-  },
-  noteIcon: {
-    marginRight: 8,
-    marginTop: 1,
-  },
-  sectionLabel: {
-    marginTop: 4,
-    opacity: 0.8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 14,
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-  },
-  rowSelected: {
-    borderWidth: 1.5,
-  },
-  rowText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  empty: {
-    opacity: 0.6,
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 16,
   },
 });

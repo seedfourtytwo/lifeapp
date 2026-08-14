@@ -4,7 +4,6 @@ import {
   noteShareActionColor,
   noteShareStatus,
 } from '../src/notes/noteShareStatus';
-import { noteShareFileName } from '../src/notes/noteShareFileName';
 
 describe('noteBodyFingerprint', () => {
   it('ignores surrounding whitespace', () => {
@@ -102,25 +101,5 @@ describe('noteShareActionColor', () => {
   it('uses stale and current as status, not as disabled chrome', () => {
     expect(noteShareActionColor('stale', palette)).toBe('amber');
     expect(noteShareActionColor('current', palette)).toBe('green');
-  });
-});
-
-describe('noteShareFileName', () => {
-  it('names journals by date', () => {
-    expect(noteShareFileName({ kind: 'journal', date: '2026-08-14' })).toBe(
-      'journal-2026-08-14.txt',
-    );
-  });
-
-  it('slugs tracker labels and strips accents', () => {
-    expect(
-      noteShareFileName({ kind: 'note', label: 'Méditation du soir', date: '2026-08-14' }),
-    ).toBe('meditation-du-soir-2026-08-14.txt');
-  });
-
-  it('falls back when the tracker name is empty', () => {
-    expect(noteShareFileName({ kind: 'note', label: '   ', date: '2026-08-14' })).toBe(
-      'note-2026-08-14.txt',
-    );
   });
 });

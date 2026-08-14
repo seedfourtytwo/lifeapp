@@ -33,6 +33,7 @@ export {
 async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
   // events + dashboard_items + day_notes cascade from elements, but clear explicitly for clarity.
   await db.runAsync('DELETE FROM daily_journals');
+  await db.runAsync('DELETE FROM journal_notebooks');
   await db.runAsync('DELETE FROM day_notes');
   await noteShareRepo.deleteAllShareState(db);
   await db.runAsync('DELETE FROM events');

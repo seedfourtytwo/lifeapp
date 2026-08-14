@@ -74,7 +74,17 @@
     "clearConfirmDefinitionsTitle": "Remove habits & counters?",
     "clearConfirmSuffix": "This cannot be undone.",
     "clearConfirmAction": "Clear",
-    "clearConfirmDefinitionsAction": "Remove everything selected"
+    "clearConfirmDefinitionsAction": "Remove everything selected",
+    "clearNotebookTitle": "Clear a notebook…",
+    "clearNotebookDescription": "Delete every day in one journal. The notebook stays.",
+    "clearNotebookConfirmTitle": "Clear all of {{name}}?",
+    "clearNotebookConfirmBody": "Every day in this notebook is deleted. The notebook itself stays. This cannot be undone.",
+    "clearNotebookConfirmAction": "Clear notebook",
+    "clearNotebookCancel": "Cancel",
+    "clearNotebookClose": "Close",
+    "clearNotebookDoneTitle": "Notebook cleared",
+    "clearNotebookDoneBody": "All days in {{name}} were deleted.",
+    "clearNotebookFailedTitle": "Could not clear notebook"
   },
   "about": {
     "sectionTitle": "About",

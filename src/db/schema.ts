@@ -3,6 +3,10 @@ export const DB_NAME = 'lifeapp.db';
 /**
  * Lean Life Protocol v1 + ambient tables.
  * No unused columns (category/parent_id/overrides). Fresh installs and schema v12+ wipe.
+ *
+ * Boot-safe: this string runs on every open, including pre-v16 databases.
+ * Do not index daily_journals(notebook_id) here — that column exists only after
+ * ensureDailyJournalsSchema rebuilds the old UNIQUE(date) table.
  */
 export const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -56,12 +60,28 @@ CREATE TABLE IF NOT EXISTS day_notes (
 
 CREATE INDEX IF NOT EXISTS idx_day_notes_element_date ON day_notes(element_id, date);
 
+CREATE TABLE IF NOT EXISTS journal_notebooks (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL,
+  icon TEXT,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  protocol_version INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_journal_notebooks_sort ON journal_notebooks(sort_order);
+
 CREATE TABLE IF NOT EXISTS daily_journals (
   id TEXT PRIMARY KEY NOT NULL,
-  date TEXT NOT NULL UNIQUE,
+  notebook_id TEXT NOT NULL,
+  date TEXT NOT NULL,
   body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  protocol_version INTEGER NOT NULL
+  protocol_version INTEGER NOT NULL,
+  FOREIGN KEY (notebook_id) REFERENCES journal_notebooks(id),
+  UNIQUE (notebook_id, date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
@@ -69,10 +89,11 @@ CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
 CREATE TABLE IF NOT EXISTS note_share_state (
   kind TEXT NOT NULL,
   element_id TEXT NOT NULL,
+  entry_id TEXT NOT NULL,
   date TEXT NOT NULL,
   body_fp TEXT NOT NULL,
   shared_at TEXT NOT NULL,
-  PRIMARY KEY (kind, element_id, date)
+  PRIMARY KEY (kind, element_id, entry_id, date)
 );
 
 CREATE TABLE IF NOT EXISTS app_settings (

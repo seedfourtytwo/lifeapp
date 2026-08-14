@@ -18,9 +18,24 @@ export type { DayNote } from './dayNote';
 export {
   DailyJournalSchema,
   DAILY_JOURNAL_BODY_MAX_LENGTH,
+  joinJournalDayBodies,
   validateBundleDailyJournals,
 } from './dailyJournal';
 export type { DailyJournal } from './dailyJournal';
+
+export {
+  JournalNotebookSchema,
+  JournalNotebookColorSchema,
+  JOURNAL_NOTEBOOK_MAX,
+  JOURNAL_NOTEBOOK_NAME_MAX,
+  JOURNAL_NOTEBOOK_COLORS,
+  DEFAULT_JOURNAL_NOTEBOOK_COLOR,
+  DEFAULT_JOURNAL_NOTEBOOK_NAME,
+  isJournalNotebookColor,
+  nextJournalNotebookColor,
+  validateBundleJournalNotebooks,
+} from './journalNotebook';
+export type { JournalNotebook, JournalNotebookColor } from './journalNotebook';
 
 export {
   AppSettingsSchema,
@@ -90,6 +105,7 @@ export {
   isTrackerIconId,
   isFeaturedTrackerIconId,
   isCustomTrackerIconId,
+  iconIdMatchesQuery,
 } from './trackerIcons';
 export type { TrackerIconId, CustomTrackerIconId } from './trackerIcons';
 

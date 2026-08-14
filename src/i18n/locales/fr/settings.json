@@ -74,7 +74,17 @@
     "clearConfirmDefinitionsTitle": "Supprimer les habitudes et compteurs ?",
     "clearConfirmSuffix": "Cette action est irréversible.",
     "clearConfirmAction": "Effacer",
-    "clearConfirmDefinitionsAction": "Supprimer tout ce qui est sélectionné"
+    "clearConfirmDefinitionsAction": "Supprimer tout ce qui est sélectionné",
+    "clearNotebookTitle": "Effacer un carnet…",
+    "clearNotebookDescription": "Supprimer tous les jours d’un journal. Le carnet reste.",
+    "clearNotebookConfirmTitle": "Effacer tout « {{name}} » ?",
+    "clearNotebookConfirmBody": "Tous les jours de ce carnet sont supprimés. Le carnet lui-même reste. Cette action est irréversible.",
+    "clearNotebookConfirmAction": "Effacer le carnet",
+    "clearNotebookCancel": "Annuler",
+    "clearNotebookClose": "Fermer",
+    "clearNotebookDoneTitle": "Carnet effacé",
+    "clearNotebookDoneBody": "Tous les jours de {{name}} ont été supprimés.",
+    "clearNotebookFailedTitle": "Impossible d’effacer le carnet"
   },
   "about": {
     "sectionTitle": "À propos",

@@ -15,6 +15,7 @@ import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
 import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
+import type { HomeNotebookChip } from '../notes';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
@@ -29,9 +30,9 @@ import {
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 type Props = {
-  hasTodayJournal: boolean;
-  onOpenJournal: () => void;
-  onEditJournal?: () => void;
+  notebooks: HomeNotebookChip[];
+  onDictateNotebook: (notebookId: string) => void;
+  onEditNotebook: (notebookId: string) => void;
   journalOpen?: boolean;
   /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
   notesActive?: boolean;
@@ -43,9 +44,9 @@ type Props = {
 };
 
 export default function CountersScreen({
-  hasTodayJournal,
-  onOpenJournal,
-  onEditJournal,
+  notebooks,
+  onDictateNotebook,
+  onEditNotebook,
   journalOpen = false,
   notesActive = true,
   onBeforeOpenTrackerNote,
@@ -98,9 +99,18 @@ export default function CountersScreen({
     },
   });
 
+  const notesWereOpenRef = useRef(false);
   useEffect(() => {
     if (journalOpen || !notesActive) noteEditor.dismiss();
   }, [journalOpen, notesActive, noteEditor.dismiss]);
+
+  useEffect(() => {
+    const open = noteEditor.session != null;
+    if (notesWereOpenRef.current && !open) {
+      void reloadNotesToday();
+    }
+    notesWereOpenRef.current = open;
+  }, [noteEditor.session, reloadNotesToday]);
 
   useEffect(() => {
     if (!notesActive) return;
@@ -128,9 +138,9 @@ export default function CountersScreen({
   const editorHost = <NoteEditorHost session={noteEditor} />;
   const journalMeta = (
     <HomeTabMetaRow
-      hasTodayJournal={hasTodayJournal}
-      onOpenJournal={onOpenJournal}
-      onEditJournal={onEditJournal}
+      notebooks={notebooks}
+      onDictateNotebook={onDictateNotebook}
+      onEditNotebook={onEditNotebook}
     />
   );
 
@@ -179,9 +189,9 @@ export default function CountersScreen({
         ) : null}
 
         <HomeTabMetaRow
-          hasTodayJournal={hasTodayJournal}
-          onOpenJournal={onOpenJournal}
-          onEditJournal={onEditJournal}
+          notebooks={notebooks}
+          onDictateNotebook={onDictateNotebook}
+          onEditNotebook={onEditNotebook}
           leading={
             counters.length > 0 ? (
               <Text variant="bodyMedium" numberOfLines={1}>

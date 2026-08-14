@@ -5,9 +5,9 @@ import { loadNoteBody, loadNoteShareFingerprint, markNoteShared, saveNoteBody } 
 import { presentNoteShare } from './presentNoteShare';
 import { noteShareFileName } from './noteShareFileName';
 import {
-  noteEditorHeading,
   noteEditorKind,
   noteEditorLabel,
+  noteEditorTitle,
   type NoteEditorTarget,
 } from './types';
 import { noteEditorSessionKey } from './sessionKey';
@@ -16,6 +16,7 @@ export type NoteEditorSessionState = {
   target: NoteEditorTarget;
   date: string;
   initialBody: string;
+  sessionKey: string;
   /** Fingerprint of the last body handed to the system share sheet, if any. */
   shareFingerprint: string | null;
   /** Open the sheet and start mic dictation immediately. */
@@ -46,6 +47,9 @@ export function useNoteEditorSession(options: Options = {}) {
   const savingRef = useRef(false);
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  const persistTargetRef = useRef<{ target: NoteEditorTarget; date: string } | null>(
+    null,
+  );
   const openGenerationRef = useRef(0);
 
   const open = useCallback(
@@ -56,15 +60,17 @@ export function useNoteEditorSession(options: Options = {}) {
       );
       const autoStartDictation = openOptions?.dictate === true;
       try {
-        const [body, shareFingerprint] = await Promise.all([
-          loadNoteBody(target, date),
-          loadNoteShareFingerprint(target, date).catch(() => null),
-        ]);
+        const body = await loadNoteBody(target, date);
+        const shareFingerprint = await loadNoteShareFingerprint(target, date).catch(
+          () => null,
+        );
         if (generation !== openGenerationRef.current) return;
+        persistTargetRef.current = { target, date };
         setSession({
           target,
           date,
           initialBody: body,
+          sessionKey: noteEditorSessionKey(target, date),
           shareFingerprint,
           autoStartDictation,
         });
@@ -80,24 +86,26 @@ export function useNoteEditorSession(options: Options = {}) {
   );
 
   const dismiss = useCallback(() => {
-    if (savingRef.current) return;
-    // Invalidate any in-flight open() so a late load cannot resurrect this sheet.
+    // Always close — X must work even if a persist/save is in flight.
+    // Keep persistTargetRef so a hide-flush still writes the last note.
     openGenerationRef.current += 1;
     setSession(null);
   }, []);
 
-  /** Write to SQLite without closing. Highlight still uses the body from when the sheet opened. */
+  /** Write to SQLite without closing. Skip UI reload — concurrent SQLite crashes the app. */
   const persist = useCallback(async (body: string) => {
-    const current = sessionRef.current;
-    if (!current || savingRef.current) return;
+    const write = persistTargetRef.current;
+    if (!write) return;
+    const { target, date } = write;
     try {
-      const saved = await saveNoteBody(current.target, current.date, body);
-      if (saved == null) {
-        setSession((s) =>
-          s && s.shareFingerprint != null ? { ...s, shareFingerprint: null } : s,
-        );
+      const saved = await saveNoteBody(target, date, body);
+      if (saved && target.kind === 'journal') {
+        const nextTarget = { ...target, entryId: saved.id };
+        persistTargetRef.current = { target: nextTarget, date };
+        if (sessionRef.current) {
+          sessionRef.current = { ...sessionRef.current, target: nextTarget };
+        }
       }
-      onSavedRef.current?.(current.date, saved, current.target);
     } catch {
       // Explicit Save still retries; don't interrupt dictation.
     }
@@ -105,15 +113,20 @@ export function useNoteEditorSession(options: Options = {}) {
 
   const save = useCallback(async (body: string) => {
     const current = sessionRef.current;
-    if (!current || savingRef.current) return;
+    const write = persistTargetRef.current;
+    if (!current || !write || savingRef.current) return;
     const noun = t(
       current.target.kind === 'journal' ? 'note.journalNoun' : 'note.noteNoun',
     );
     savingRef.current = true;
     setSaving(true);
     try {
-      const saved = await saveNoteBody(current.target, current.date, body);
-      onSavedRef.current?.(current.date, saved, current.target);
+      const saved = await saveNoteBody(write.target, write.date, body);
+      const nextTarget =
+        saved && write.target.kind === 'journal' && !write.target.entryId
+          ? { ...write.target, entryId: saved.id }
+          : write.target;
+      onSavedRef.current?.(write.date, saved?.body ?? null, nextTarget);
       openGenerationRef.current += 1;
       setSession(null);
     } catch (error) {
@@ -130,20 +143,23 @@ export function useNoteEditorSession(options: Options = {}) {
   const share = useCallback(
     async (body: string) => {
       const current = sessionRef.current;
+      const write = persistTargetRef.current;
       const message = body.trim();
-      if (!current || savingRef.current || !message) return;
+      if (!current || !write || savingRef.current || !message) return;
       const generation = openGenerationRef.current;
-      const heading = noteEditorHeading(current.target);
-      const label = noteEditorLabel(current.target);
-      const title = [heading, label, current.date].filter(Boolean).join(' · ');
+      const label = noteEditorLabel(write.target);
+      const title = [noteEditorTitle(write.target), write.date]
+        .filter(Boolean)
+        .join(' · ');
       const fileName = noteShareFileName({
-        kind: noteEditorKind(current.target),
-        label,
-        date: current.date,
+        kind: noteEditorKind(write.target),
+        label: label || undefined,
+        date: write.date,
+        sharedAt: new Date(),
       });
       try {
         await presentNoteShare({ title, body: message, fileName });
-        const fingerprint = await markNoteShared(current.target, current.date, message);
+        const fingerprint = await markNoteShared(write.target, write.date, message);
         if (generation !== openGenerationRef.current) return;
         setSession((s) => (s ? { ...s, shareFingerprint: fingerprint } : s));
       } catch (error) {
@@ -170,10 +186,14 @@ export function useNoteEditorSession(options: Options = {}) {
       ? {
           visible: true as const,
           date: session.date,
-          sessionKey: noteEditorSessionKey(session.target, session.date),
-          heading: noteEditorHeading(session.target),
+          sessionKey: session.sessionKey,
+          heading: noteEditorTitle(session.target),
           kind: noteEditorKind(session.target),
-          trackerName: noteEditorLabel(session.target),
+          headingIcon:
+            session.target.kind === 'journal'
+              ? (session.target.icon ?? 'notebook-outline')
+              : undefined,
+          trackerName: '',
           initialBody: session.initialBody,
           shareFingerprint: session.shareFingerprint,
           autoStartDictation: session.autoStartDictation === true,
@@ -185,6 +205,7 @@ export function useNoteEditorSession(options: Options = {}) {
           sessionKey: null,
           heading: t('note.noteHeading'),
           kind: 'note' as const,
+          headingIcon: undefined,
           trackerName: '',
           initialBody: '',
           shareFingerprint: null,

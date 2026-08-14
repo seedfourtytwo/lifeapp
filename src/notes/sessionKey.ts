@@ -8,5 +8,5 @@ export function noteEditorSessionKey(
   if (target.kind === 'tracker') {
     return `tracker:${target.elementId}:${date}`;
   }
-  return `journal:${date}`;
+  return `journal:${target.notebookId}:${date}`;
 }
