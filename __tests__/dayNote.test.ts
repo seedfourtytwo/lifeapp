@@ -7,31 +7,27 @@ import {
   PROTOCOL_VERSION,
   validateBundleDayNoteLinks,
 } from '../src/protocol';
-import { Platform } from 'react-native';
 import { applyAppLanguage } from '../src/i18n';
 import { appendTranscript, joinDictationParts } from '../src/utils/appendTranscript';
 import { polishDictationTranscript } from '../src/utils/polishDictationTranscript';
 import {
-  localeIsInstalledForOffline,
   normalizeSpeechLocaleTag,
-  pickInstalledSpeechLocale,
-  resolveBilingualSwitchLocales,
-  defaultBilingualSwitchLocales,
+  speechLocaleCandidatesForLanguage,
   speechRecognitionLocale,
 } from '../src/utils/speechRecognitionLocale';
 import {
-  bestRecognitionTranscript,
-  buildLocalNoteDictationOptions,
-} from '../src/utils/speechRecognitionOptions';
+  messageForDictationError,
+  DICTATION_MSG,
+} from '../src/dictation/messages';
 import {
-  ANDROID_ASI_PACKAGE,
-  isAndroidOnDeviceSpeechPackage,
-  pickAndroidRecognitionPackage,
-} from '../src/utils/speechRecognitionAndroid';
+  DICTATION_TAKE_MAX_CHARS,
+  DICTATION_TAKE_MAX_MS,
+} from '../src/dictation/limits';
+import { livePreviewLength } from '../src/dictation/livePreview';
 import {
-  messageForSpeechRecognitionError,
-  SPEECH_MSG,
-} from '../src/utils/speechRecognitionErrors';
+  MOONSHINE_NOTE_STT_LOCALE,
+  MOONSHINE_NOTE_STT_MODEL_LABEL,
+} from '../src/dictation/moonshineModel';
 import { truncateNotePreview } from '../src/utils/trackerHistoryFormat';
 
 const habitElement = {
@@ -260,135 +256,59 @@ describe('polishDictationTranscript', () => {
   it('keeps meaningful repeated words like had had', () => {
     expect(polishDictationTranscript('I had had enough')).toBe('I had had enough.');
   });
-});
 
-describe('localeIsInstalledForOffline', () => {
-  it('matches exact and language-prefix locale tags', () => {
-    expect(localeIsInstalledForOffline('en-US', ['en-US'])).toBe(true);
-    expect(localeIsInstalledForOffline('en-GB', ['en-US'])).toBe(true);
-    expect(localeIsInstalledForOffline('fr-FR', ['en-US'])).toBe(false);
-  });
-});
-
-describe('bestRecognitionTranscript', () => {
-  it('prefers the highest-confidence alternative', () => {
+  it('converts LibriSpeech-style ALL CAPS into sentence case', () => {
+    expect(polishDictationTranscript('HELLO MY NAME IS CHRIS')).toBe(
+      'Hello my name is chris.',
+    );
     expect(
-      bestRecognitionTranscript([
-        { transcript: 'weak', confidence: 0.2 },
-        { transcript: 'strong', confidence: 0.9 },
-      ]),
-    ).toBe('strong');
+      polishDictationTranscript('I WENT TO THE STORE. THEN I CAME HOME'),
+    ).toBe('I went to the store. Then I came home.');
+  });
+
+  it('leaves already-cased text alone', () => {
+    expect(polishDictationTranscript('Felt calm today')).toBe('Felt calm today.');
   });
 });
 
-describe('buildLocalNoteDictationOptions', () => {
-  it('forces on-device recognition with punctuation, interim echo, and dictation hint', () => {
-    const options = buildLocalNoteDictationOptions('en-US');
-    expect(options.requiresOnDeviceRecognition).toBe(true);
-    expect(options.addsPunctuation).toBe(true);
-    expect(options.interimResults).toBe(true);
-    expect(options.maxAlternatives).toBe(5);
-    expect(options.iosTaskHint).toBe('dictation');
-    expect(options.lang).toBe('en-US');
-  });
-
-  it('keeps Android dictation on-device when pointing at ASI', () => {
-    const previous = Platform.OS;
-    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'android' });
-    try {
-      const options = buildLocalNoteDictationOptions('en-US', ANDROID_ASI_PACKAGE);
-      expect(options.requiresOnDeviceRecognition).toBe(true);
-      expect(options.lang).toBe('en-US');
-      expect(options.androidIntentOptions?.EXTRA_MASK_OFFENSIVE_WORDS).toBe(false);
-    } finally {
-      Object.defineProperty(Platform, 'OS', { configurable: true, get: () => previous });
-    }
-  });
-
-  it('enables EN↔FR language switch when both packs are provided', () => {
-    const previous = Platform.OS;
-    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'android' });
-    try {
-      const options = buildLocalNoteDictationOptions('en-US', ANDROID_ASI_PACKAGE, [
-        'en-US',
-        'fr-FR',
-      ]);
-      expect(options.androidIntentOptions?.EXTRA_MASK_OFFENSIVE_WORDS).toBe(false);
-      expect(options.androidIntentOptions?.EXTRA_ENABLE_LANGUAGE_DETECTION).toBe(true);
-      expect(options.androidIntentOptions?.EXTRA_ENABLE_LANGUAGE_SWITCH).toBe(
-        'quick_response',
-      );
-      expect(options.androidIntentOptions?.EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES).toEqual([
-        'en-US',
-        'fr-FR',
-      ]);
-      expect(options.androidIntentOptions?.EXTRA_LANGUAGE_SWITCH_ALLOWED_LANGUAGES).toEqual([
-        'en-US',
-        'fr-FR',
-      ]);
-      expect(options.androidIntentOptions?.EXTRA_LANGUAGE_SWITCH_MAX_SWITCHES).toBeUndefined();
-    } finally {
-      Object.defineProperty(Platform, 'OS', { configurable: true, get: () => previous });
-    }
-  });
-
-  it('omits language switch when only one locale is available', () => {
-    const previous = Platform.OS;
-    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'android' });
-    try {
-      const options = buildLocalNoteDictationOptions('fr-FR', undefined, ['fr-FR']);
-      expect(options.androidIntentOptions?.EXTRA_MASK_OFFENSIVE_WORDS).toBe(false);
-      expect(options.androidIntentOptions?.EXTRA_ENABLE_LANGUAGE_SWITCH).toBeUndefined();
-    } finally {
-      Object.defineProperty(Platform, 'OS', { configurable: true, get: () => previous });
-    }
+describe('moonshine note STT model', () => {
+  it('pins the English Small Streaming locale and label', () => {
+    expect(MOONSHINE_NOTE_STT_MODEL_LABEL).toBe('small-streaming-en');
+    expect(MOONSHINE_NOTE_STT_LOCALE).toBe('en-US');
   });
 });
 
-describe('pickAndroidRecognitionPackage', () => {
-  it('only accepts Android System Intelligence', () => {
-    expect(
-      pickAndroidRecognitionPackage([
-        'com.google.android.tts',
-        ANDROID_ASI_PACKAGE,
-        'com.example.other',
-      ]),
-    ).toBe(ANDROID_ASI_PACKAGE);
-  });
-
-  it('ignores Google Speech Recognition & synthesis', () => {
-    expect(pickAndroidRecognitionPackage(['com.google.android.tts'])).toBeUndefined();
-  });
-});
-
-describe('isAndroidOnDeviceSpeechPackage', () => {
-  it('is true only for Android System Intelligence', () => {
-    expect(isAndroidOnDeviceSpeechPackage(ANDROID_ASI_PACKAGE)).toBe(true);
-    expect(isAndroidOnDeviceSpeechPackage('com.google.android.tts')).toBe(false);
-  });
-});
-
-describe('messageForSpeechRecognitionError', () => {
+describe('messageForDictationError', () => {
   it('ignores benign stop codes', () => {
-    expect(messageForSpeechRecognitionError('aborted')).toBeNull();
-    expect(messageForSpeechRecognitionError('no-speech')).toBeNull();
+    expect(messageForDictationError('aborted')).toBeNull();
+    expect(messageForDictationError('no-speech')).toBeNull();
   });
 
   it('guides the user for permission failures', () => {
-    expect(messageForSpeechRecognitionError('not-allowed')).toBe(SPEECH_MSG.micLifeApp);
-    expect(messageForSpeechRecognitionError('client', 'Insufficient permissions')).toBe(
-      SPEECH_MSG.micBoth,
+    expect(messageForDictationError('not-allowed')).toBe(DICTATION_MSG.micLifeApp);
+    expect(messageForDictationError('client', 'Insufficient permissions')).toBe(
+      DICTATION_MSG.micLifeApp,
     );
   });
 
-  it('guides install / language / network cases', () => {
-    expect(messageForSpeechRecognitionError('service-not-allowed')).toBe(
-      SPEECH_MSG.notAvailable,
-    );
-    expect(messageForSpeechRecognitionError('language-not-supported')).toBe(
-      SPEECH_MSG.language,
-    );
-    expect(messageForSpeechRecognitionError('network')).toBe(SPEECH_MSG.network);
+  it('guides network cases for first-run model download', () => {
+    expect(messageForDictationError('network')).toBe(DICTATION_MSG.network);
+    expect(
+      messageForDictationError('client', 'Unable to resolve host'),
+    ).toBe(DICTATION_MSG.network);
+  });
+});
+
+describe('dictation take limits', () => {
+  it('caps one take well below the note body max', () => {
+    expect(DICTATION_TAKE_MAX_CHARS).toBeLessThan(DAY_NOTE_BODY_MAX_LENGTH);
+    expect(DICTATION_TAKE_MAX_MS).toBe(15 * 60 * 1000);
+  });
+
+  it('counts committed text plus a spaced tail', () => {
+    expect(livePreviewLength(null)).toBe(0);
+    expect(livePreviewLength({ committed: 'hello', tail: '' })).toBe(5);
+    expect(livePreviewLength({ committed: 'hello', tail: 'world' })).toBe(11);
   });
 });
 
@@ -418,30 +338,12 @@ describe('speechRecognitionLocale', () => {
     expect(speechRecognitionLocale().toLowerCase().startsWith('en')).toBe(true);
   });
 
-  it('remaps en-US requests to an installed en-GB pack', () => {
-    expect(pickInstalledSpeechLocale('en-US', ['en-GB', 'fr-FR'])).toBe('en-GB');
-    expect(localeIsInstalledForOffline('en-US', ['en-GB'])).toBe(true);
-  });
-
-  it('prefers an exact candidate when installed', () => {
-    expect(pickInstalledSpeechLocale(['en-US', 'en-GB'], ['en-GB', 'fr-FR'])).toBe('en-GB');
-    expect(pickInstalledSpeechLocale(['en-US', 'en-GB'], ['en-US', 'en-GB'])).toBe('en-US');
-  });
-
-  it('builds bilingual switch locales with primary language first', () => {
-    expect(resolveBilingualSwitchLocales('en-US', ['en-GB', 'fr-FR'])).toEqual([
-      'en-GB',
-      'fr-FR',
-    ]);
-    expect(resolveBilingualSwitchLocales('fr-CA', ['en-US', 'fr-FR'])).toEqual([
-      'fr-FR',
-      'en-US',
-    ]);
-    expect(resolveBilingualSwitchLocales('en-US', ['en-US'])).toBeUndefined();
-  });
-
-  it('defaults bilingual pair from primary language', () => {
-    expect(defaultBilingualSwitchLocales('fr-FR')[0]?.startsWith('fr')).toBe(true);
-    expect(defaultBilingualSwitchLocales('en-US')[0]?.startsWith('en')).toBe(true);
+  it('lists candidates for a language', () => {
+    expect(speechLocaleCandidatesForLanguage('en')[0]?.toLowerCase().startsWith('en')).toBe(
+      true,
+    );
+    expect(speechLocaleCandidatesForLanguage('fr')[0]?.toLowerCase().startsWith('fr')).toBe(
+      true,
+    );
   });
 });

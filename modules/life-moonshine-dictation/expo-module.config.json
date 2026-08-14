@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["LifeMoonshineDictationModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.moonshinedictation.LifeMoonshineDictationModule"]
+  }
+}

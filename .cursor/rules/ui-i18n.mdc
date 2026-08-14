@@ -14,7 +14,7 @@ Life Dashboard UI is localized with **i18next** (`src/i18n/`). English and Frenc
 3. Use the right namespace: `common`, `settings`, `home`, `trackers`, `calendar`, `journal`, `insights`, `notifications`. New product areas get a **new namespace file**, not a mega-JSON.
 4. In React: `useTranslation('ns')` + `t('key.path')`. Outside React: `i18n.t('ns:key.path')` from `src/i18n`.
 5. Dates/numbers: `getDateLocale()` from `src/i18n` — not `undefined` / device default alone.
-6. Dictation **starts** from the app language (`speechRecognitionLocale()`). On Android 14+, when both EN and FR offline packs are installed, recognition may auto-switch mid-note (see `speechRecognitionLocal` / `buildLocalNoteDictationOptions`).
+6. Dictation **starts** from the app language (`speechRecognitionLocale()`). v1 uses Moonshine English Small Streaming only.
 
 ## Do not translate
 

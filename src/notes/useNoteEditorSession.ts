@@ -103,7 +103,7 @@ export function useNoteEditorSession(options: Options = {}) {
     open,
     dismiss,
     save,
-    /** Props for DayNoteEditorSheet / NoteEditorHost */
+    /** Props for NoteEditorSheet / NoteEditorHost */
     sheet: session
       ? {
           visible: true as const,
