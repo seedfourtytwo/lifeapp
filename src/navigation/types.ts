@@ -1,8 +1,15 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
+export type SettingsStackParamList = {
+  AppSettingsHome: undefined;
+  WeatherLocation: undefined;
+};
+
 export type RootStackParamList = {
   Home: undefined;
   SettingsMenu: undefined;
   Trackers: undefined;
-  AppSettings: undefined;
+  AppSettings: NavigatorScreenParams<SettingsStackParamList> | undefined;
   TrackerHistory: { elementId: string };
   Insights: undefined;
   Journal: undefined;

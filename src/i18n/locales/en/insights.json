@@ -2,12 +2,11 @@
   "screen": {
     "emptyTitle": "No trackers yet",
     "emptyBody": "Add habits or counters, then compare them here.",
-    "trackersLabel": "Trackers",
-    "capHint": "Up to {{count}} series at once — untick one to add another.",
-    "weatherLabel": "Weather (high °C)",
-    "compareTitle": "Compare · last {{count}} days",
-    "tickToPlot": "Tick at least one tracker to plot.",
-    "tickToCompare": "Tick trackers above to compare values and notes.",
+    "trackersLabel": "Compare",
+    "capHint": "Max {{count}}",
+    "weatherLabel": "Weather overlay",
+    "tickToPlot": "Select a tracker to plot.",
+    "tickToCompare": "Select trackers above to compare.",
     "journalLabel": "Journal",
     "addJournal": "Add journal",
     "addNote": "Add note",
@@ -17,7 +16,6 @@
     "rainChanceSuffix": " · {{percent}}% rain",
     "noWeatherForDay": "No weather for this day",
     "dayRangeChip": "{{count}}d",
-    "chartFooter": "Lines are normalized (0–max) so unlike units can share a scale",
     "couldNotLoadFallback": "Could not load insights"
   },
   "history": {

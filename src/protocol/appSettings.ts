@@ -35,7 +35,9 @@ const EveningCheckInTimeSchema = z
 const AppSettingsObjectSchema = z.object({
   themeMode: z.enum(THEME_MODES).optional(),
   appLanguage: z.enum(APP_LANGUAGES).optional(),
+  /** Parked — no Settings UI or scheduler. Kept for backup import. */
   eveningCheckInEnabled: z.boolean().optional(),
+  /** Parked — no Settings UI or scheduler. Kept for backup import. */
   eveningCheckInTime: EveningCheckInTimeSchema.optional(),
   /** @deprecated Prefer eveningCheckInEnabled — kept for backup import. */
   habitRemindersEnabled: z.boolean().optional(),

@@ -1,17 +1,13 @@
 {
   "screen": {
-    "intro": "Active habits and counters appear on Home. Archive items to hide them without losing history or day notes — restore anytime from Archive below.",
     "countersTitle": "Counters",
-    "countersSubtitle": "Daily quantities with optional targets — totals reset each day",
     "countersAddLabel": "New counter",
-    "countersEmpty": "No active counters. Add one to track water, steps, or anything countable.",
+    "countersEmpty": "No counters yet",
     "habitsTitle": "Habits",
-    "habitsSubtitle": "Daily check-offs or timed sessions",
     "habitsAddLabel": "New habit",
-    "habitsEmpty": "No active habits. Add one for meditation, reading, or any daily routine.",
+    "habitsEmpty": "No habits yet",
     "archiveTitle": "Archive",
-    "archiveSubtitle": "Hidden from Home — history kept until deleted",
-    "archiveEmpty": "Nothing archived. Archive a counter or habit to pause it without deleting its history."
+    "archiveEmpty": "Nothing archived"
   },
   "kindLabel": {
     "counter": "counter",
@@ -56,6 +52,7 @@
     "archive": "Archive",
     "restore": "Restore",
     "delete": "Delete",
+    "moreA11y": "More actions for {{name}}",
     "itemsCountA11y": "{{title}}, {{count}} items"
   },
   "homeIdentity": {

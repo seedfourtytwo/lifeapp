@@ -1,13 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from './types';
+import { useStackScreenOptions } from './useStackScreenOptions';
 import HomeScreen from '../screens/HomeScreen';
-import SettingsMenuScreen from '../screens/SettingsMenuScreen';
+import SettingsMenuScreen from '../screens/settings/SettingsMenuScreen';
 import TrackersScreen from '../screens/TrackersScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import SettingsNavigator from './SettingsNavigator';
 import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import JournalScreen from '../screens/JournalScreen';
@@ -17,32 +16,13 @@ import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const screenOptions = useStackScreenOptions();
   // Subscribing to useTranslation ensures the navigator re-renders (and options
   // below re-evaluate) whenever the active language changes.
   const { t } = useTranslation();
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.surface,
-          ...(isCartoon
-            ? {
-                borderBottomWidth: deco.headerBorderWidth,
-                borderBottomColor: theme.colors.outline,
-              }
-            : {}),
-        },
-        headerTintColor: theme.colors.primary,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          color: theme.colors.onSurface,
-        },
-        contentStyle: { backgroundColor: theme.colors.background },
-      }}
-    >
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
         name="Home"
         component={HomeScreen}
@@ -60,8 +40,8 @@ export default function AppNavigator() {
       />
       <Stack.Screen
         name="AppSettings"
-        component={SettingsScreen}
-        options={{ title: t('settings:menu.settingsSectionTitle') }}
+        component={SettingsNavigator}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="TrackerHistory"

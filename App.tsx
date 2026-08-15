@@ -16,7 +16,6 @@ import { applyAppLanguage } from './src/i18n';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
-import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
 
@@ -32,7 +31,6 @@ function ThemedApp() {
   const [languageReady, setLanguageReady] = useState(false);
 
   useAppBootstrap();
-  useHabitReminderSync();
   useCalendarReminderSync();
 
   useEffect(() => {

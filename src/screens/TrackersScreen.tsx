@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { ActivityIndicator } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -138,15 +138,16 @@ export default function TrackersScreen() {
       const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
 
       if (element.kind === 'counter') {
-        const config = CounterConfigSchema.parse(element.config);
+        const parsed = CounterConfigSchema.safeParse(element.config);
+        if (!parsed.success) return null;
+        const config = parsed.data;
         return (
           <TrackerLibraryCard
             key={element.id}
             accentColor={accentColor}
             name={element.name}
             icon={config.icon}
-            badges={[{ label: t('card.counterBadge'), tone: archived ? 'muted' : 'accent' }]}
-            metaLines={counterMetaLines(config)}
+            description={counterMetaLines(config)[0]}
             archived={archived}
             onEdit={() =>
               setEditorSession(editorSessionFromCounter(element.id, element.name, config))
@@ -179,23 +180,21 @@ export default function TrackersScreen() {
         );
       }
 
-      const config = HabitConfigSchema.parse(element.config);
+      const parsed = HabitConfigSchema.safeParse(element.config);
+      if (!parsed.success) return null;
+      const config = parsed.data;
       return (
         <TrackerLibraryCard
           key={element.id}
           accentColor={accentColor}
           name={element.name}
           icon={config.icon}
-          badges={[
-            {
-              label:
-                config.trackingMode === 'timer'
-                  ? t('card.timerBadge')
-                  : t('card.checkOffBadge'),
-              tone: archived ? 'muted' : 'accent',
-            },
-          ]}
-          metaLines={habitMetaLines(config)}
+          description={[
+            config.trackingMode === 'timer' ? t('card.timerBadge') : t('card.checkOffBadge'),
+            habitMetaLines(config)[0],
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           archived={archived}
           onEdit={() => setEditorSession(editorSessionFromHabit(element.id, element.name, config))}
           onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
@@ -278,18 +277,12 @@ export default function TrackersScreen() {
   return (
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text variant="bodyMedium" style={styles.intro}>
-          {t('screen.intro')}
-        </Text>
-
         <TrackersCollapsibleSection
           title={t('screen.countersTitle')}
-          subtitle={t('screen.countersSubtitle')}
           icon="counter"
           accentColor={counterAccent}
           count={activeCounters.length}
           addLabel={t('screen.countersAddLabel')}
-          defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'counter' }))}
           emptyMessage={t('screen.countersEmpty')}
         >
@@ -298,12 +291,10 @@ export default function TrackersScreen() {
 
         <TrackersCollapsibleSection
           title={t('screen.habitsTitle')}
-          subtitle={t('screen.habitsSubtitle')}
           icon="checkbox-marked-circle-outline"
           accentColor={habitAccent}
           count={activeHabits.length}
           addLabel={t('screen.habitsAddLabel')}
-          defaultCollapsed
           onAdd={() => setEditorSession(newEditorSession({ mode: 'habit' }))}
           emptyMessage={t('screen.habitsEmpty')}
         >
@@ -312,7 +303,6 @@ export default function TrackersScreen() {
 
         <TrackersCollapsibleSection
           title={t('screen.archiveTitle')}
-          subtitle={t('screen.archiveSubtitle')}
           icon="archive-outline"
           accentColor="#64748B"
           count={archivedElements.length}
@@ -347,11 +337,6 @@ export default function TrackersScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 32 },
+  container: { padding: 16, paddingBottom: 32, gap: 16 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  intro: {
-    opacity: 0.75,
-    marginBottom: 16,
-    lineHeight: 22,
-  },
 });

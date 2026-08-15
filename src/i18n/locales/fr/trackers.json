@@ -1,17 +1,13 @@
 {
   "screen": {
-    "intro": "Les habitudes et compteurs actifs apparaissent sur l'accueil. Archivez des éléments pour les masquer sans perdre leur historique ni leurs notes — restaurez-les à tout moment depuis les archives ci-dessous.",
     "countersTitle": "Compteurs",
-    "countersSubtitle": "Quantités quotidiennes avec objectifs facultatifs — les totaux se réinitialisent chaque jour",
     "countersAddLabel": "Nouveau compteur",
-    "countersEmpty": "Aucun compteur actif. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte.",
+    "countersEmpty": "Aucun compteur",
     "habitsTitle": "Habitudes",
-    "habitsSubtitle": "Coches quotidiennes ou sessions chronométrées",
     "habitsAddLabel": "Nouvelle habitude",
-    "habitsEmpty": "Aucune habitude active. Ajoutez-en une pour la méditation, la lecture, ou toute routine quotidienne.",
+    "habitsEmpty": "Aucune habitude",
     "archiveTitle": "Archive",
-    "archiveSubtitle": "Masqué de l'accueil — historique conservé jusqu'à suppression",
-    "archiveEmpty": "Rien n'est archivé. Archivez un compteur ou une habitude pour le mettre en pause sans supprimer son historique."
+    "archiveEmpty": "Rien d’archivé"
   },
   "kindLabel": {
     "counter": "compteur",
@@ -56,6 +52,7 @@
     "archive": "Archiver",
     "restore": "Restaurer",
     "delete": "Supprimer",
+    "moreA11y": "Plus d’actions pour {{name}}",
     "itemsCountA11y": "{{title}}, {{count}} éléments"
   },
   "homeIdentity": {

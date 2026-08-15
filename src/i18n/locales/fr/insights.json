@@ -2,12 +2,11 @@
   "screen": {
     "emptyTitle": "Pas encore de suivi",
     "emptyBody": "Ajoutez des habitudes ou des compteurs, puis comparez-les ici.",
-    "trackersLabel": "Suivis",
-    "capHint": "Jusqu'à {{count}} séries à la fois — décochez-en une pour en ajouter une autre.",
-    "weatherLabel": "Météo (max °C)",
-    "compareTitle": "Comparer · {{count}} derniers jours",
-    "tickToPlot": "Cochez au moins un suivi pour tracer le graphique.",
-    "tickToCompare": "Cochez des suivis ci-dessus pour comparer valeurs et notes.",
+    "trackersLabel": "Comparer",
+    "capHint": "Max. {{count}}",
+    "weatherLabel": "Superposer la météo",
+    "tickToPlot": "Sélectionnez un suivi pour tracer.",
+    "tickToCompare": "Sélectionnez des suivis ci-dessus pour comparer.",
     "journalLabel": "Journal",
     "addJournal": "Ajouter un journal",
     "addNote": "Ajouter une note",
@@ -17,7 +16,6 @@
     "rainChanceSuffix": " · {{percent}}% de pluie",
     "noWeatherForDay": "Pas de météo pour ce jour",
     "dayRangeChip": "{{count}}j",
-    "chartFooter": "Les lignes sont normalisées (0–max) pour partager une échelle entre unités différentes",
     "couldNotLoadFallback": "Impossible de charger les statistiques"
   },
   "history": {

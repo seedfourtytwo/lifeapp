@@ -18,7 +18,7 @@ alwaysApply: false
 | `Home / Daily` | Habits tab | `HomeScreen.tsx` + `HabitsScreen.tsx` |
 | `Home / Counter` | Counters tab | `HomeScreen.tsx` + `CountersScreen.tsx` |
 | Counter card | Counter widget | `kinds/counter/CounterWidget.tsx` |
-| Elements / Settings | Trackers | `TrackersScreen.tsx`, `SettingsMenuScreen.tsx` |
+| Elements / Settings | Trackers | `TrackersScreen.tsx`, `screens/settings/SettingsMenuScreen.tsx` |
 
 ## Design tokens
 

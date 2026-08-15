@@ -1,8 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, useTheme } from 'react-native-paper';
+import { Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import type { DailyJournal, JournalNotebook } from '../../protocol';
 import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
@@ -25,7 +27,7 @@ type Props = {
   onOpenTrackerNote: (row: TrackerNoteRow, date: string) => void;
 };
 
-/** Selected-day card: one preview per notebook, plus tracker notes. */
+/** Selected-day writing surface: previews first, tap to open the editor. */
 export default function JournalDayPanel({
   selectedDate,
   today,
@@ -39,6 +41,7 @@ export default function JournalDayPanel({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
+  const { decorations: deco, isCartoon } = useAppTheme();
   const entriesForSelected = journals.filter((journal) => journal.date === selectedDate);
   const grouped = notebooks
     .map((notebook) => ({
@@ -51,54 +54,81 @@ export default function JournalDayPanel({
       return true;
     });
   const defaultNotebookId = notebooks[0]?.id;
+  const title = selectedDate === today ? t('screen.today') : formatFullDate(selectedDate);
+  const showEmptyTrackerNotes = showTrackerNotes && trackerNotes.length === 0 && filter === 'trackers';
 
   return (
-    <View
+    <Surface
       style={[
-        styles.dayPanel,
+        styles.panel,
         {
-          borderColor: theme.colors.outlineVariant,
           backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outlineVariant,
+          borderRadius: deco.radius.md,
+          borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
         },
       ]}
+      elevation={0}
     >
-      <Text variant="titleSmall" style={styles.dayTitle}>
-        {selectedDate === today ? t('screen.today') : formatFullDate(selectedDate)}
-      </Text>
+      <Text variant="titleMedium">{title}</Text>
 
-      {grouped.map(({ notebook, entries }) => (
-        <View
-          key={notebook.id}
-          style={[styles.notebookGroup, { borderBottomColor: theme.colors.outlineVariant }]}
-        >
-          <View style={styles.notebookHeader}>
-            <View style={[styles.swatch, { backgroundColor: notebook.color }]} />
-            <Text variant="labelMedium" style={styles.notebookTitle}>
-              {notebook.name}
-            </Text>
-          </View>
+      {grouped.map(({ notebook, entries }, index) => {
+        const body = entries[0]?.body;
+        const empty = !body;
+        return (
           <Pressable
+            key={notebook.id}
             onPress={() => onOpenJournal(notebook.id, selectedDate)}
             accessibilityRole="button"
             accessibilityLabel={
-              entries.length === 0
+              empty
                 ? t('screen.addJournalForA11y', { date: formatFullDate(selectedDate) })
                 : t('screen.editJournalForA11y', { date: formatFullDate(selectedDate) })
             }
-            style={styles.journalRow}
+            style={({ pressed }) => [
+              styles.entry,
+              index > 0 && {
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: theme.colors.outlineVariant,
+              },
+              pressed && styles.pressed,
+            ]}
           >
-            <Text
-              variant="bodySmall"
-              numberOfLines={entries.length === 0 ? 1 : 6}
-              style={{ color: theme.colors.onSurfaceVariant }}
+            <View
+              style={[
+                styles.well,
+                {
+                  backgroundColor: `${notebook.color}33`,
+                  borderRadius: isCartoon ? deco.radius.sm : 12,
+                },
+              ]}
             >
-              {entries.length === 0
-                ? t('screen.tapToWriteNotebook', { name: notebook.name })
-                : truncateNotePreview(entries[0]?.body ?? '', 400)}
-            </Text>
+              {notebook.icon ? (
+                <TrackerIcon name={notebook.icon} size={22} color={notebook.color} />
+              ) : (
+                <MaterialCommunityIcons
+                  name="notebook-outline"
+                  size={22}
+                  color={notebook.color}
+                />
+              )}
+            </View>
+            <View style={styles.entryText}>
+              <Text variant="labelLarge">{notebook.name}</Text>
+              <Text
+                variant="bodyMedium"
+                numberOfLines={empty ? 1 : 8}
+                style={{
+                  color: empty ? theme.colors.onSurfaceVariant : theme.colors.onSurface,
+                  opacity: empty ? 0.7 : 1,
+                }}
+              >
+                {empty ? t('screen.writeHint') : truncateNotePreview(body, 400)}
+              </Text>
+            </View>
           </Pressable>
-        </View>
-      ))}
+        );
+      })}
 
       {filter === 'all' && grouped.length === 0 && defaultNotebookId ? (
         <Pressable
@@ -107,111 +137,128 @@ export default function JournalDayPanel({
           accessibilityLabel={t('screen.addJournalForA11y', {
             date: formatFullDate(selectedDate),
           })}
-          style={styles.journalRow}
+          style={({ pressed }) => [styles.entry, pressed && styles.pressed]}
         >
-          <Text variant="labelMedium">{t('screen.journalLabel')}</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {t('screen.tapToWriteJournal')}
-          </Text>
+          <View
+            style={[
+              styles.well,
+              {
+                backgroundColor: theme.colors.primaryContainer,
+                borderRadius: isCartoon ? deco.radius.sm : 12,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="notebook-outline"
+              size={22}
+              color={theme.colors.onPrimaryContainer}
+            />
+          </View>
+          <View style={styles.entryText}>
+            <Text variant="labelLarge">{t('screen.journalLabel')}</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.7 }}>
+              {t('screen.writeHint')}
+            </Text>
+          </View>
         </Pressable>
       ) : null}
 
-      {showTrackerNotes ? (
-        trackerNotes.length > 0 ? (
-          <View style={styles.trackerNotesSection}>
-            <Text variant="labelMedium" style={styles.trackerNotesLabel}>
-              {t('screen.trackerNotesLabel')}
-            </Text>
-            {trackerNotes.map((row) => (
-              <Pressable
-                key={row.elementId}
-                onPress={() => onOpenTrackerNote(row, selectedDate)}
-                accessibilityRole="button"
-                accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
-                style={styles.trackerNoteRow}
-              >
-                <MaterialCommunityIcons
-                  name="note-text-outline"
-                  size={14}
-                  color={theme.colors.primary}
-                  style={styles.noteIcon}
-                />
-                <View style={styles.trackerNoteText}>
-                  <Text variant="bodyMedium">{row.name}</Text>
-                  <Text
-                    variant="bodySmall"
-                    numberOfLines={2}
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                  >
-                    {truncateNotePreview(row.body, 120)}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ) : (
-          <Text variant="bodySmall" style={styles.noTrackerNotes}>
-            {t('screen.noTrackerNotes')}
+      {showTrackerNotes && trackerNotes.length > 0 ? (
+        <View
+          style={[
+            styles.trackerBlock,
+            grouped.length > 0 && {
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
+          <Text
+            variant="labelMedium"
+            style={[styles.trackerLabel, { color: theme.colors.onSurfaceVariant }]}
+          >
+            {t('screen.trackerNotesLabel')}
           </Text>
-        )
+          {trackerNotes.map((row) => (
+            <Pressable
+              key={row.elementId}
+              onPress={() => onOpenTrackerNote(row, selectedDate)}
+              accessibilityRole="button"
+              accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
+              style={({ pressed }) => [styles.trackerRow, pressed && styles.pressed]}
+            >
+              <MaterialCommunityIcons
+                name="note-text-outline"
+                size={18}
+                color={theme.colors.primary}
+                style={styles.trackerIcon}
+              />
+              <View style={styles.entryText}>
+                <Text variant="bodyMedium">{row.name}</Text>
+                <Text
+                  variant="bodySmall"
+                  numberOfLines={2}
+                  style={{ color: theme.colors.onSurfaceVariant }}
+                >
+                  {truncateNotePreview(row.body, 120)}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
       ) : null}
-    </View>
+
+      {showEmptyTrackerNotes ? (
+        <Text variant="bodySmall" style={[styles.emptyTrackers, { color: theme.colors.onSurfaceVariant }]}>
+          {t('screen.noTrackerNotes')}
+        </Text>
+      ) : null}
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  dayPanel: {
-    padding: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    gap: 8,
+  panel: {
+    padding: 16,
+    gap: 4,
+    overflow: 'hidden',
   },
-  dayTitle: {
-    marginBottom: 2,
-  },
-  notebookGroup: {
-    gap: 6,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  notebookHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  notebookTitle: {
-    flex: 1,
-  },
-  swatch: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  journalRow: {
-    paddingBottom: 4,
-  },
-  trackerNotesSection: {
-    gap: 8,
-    paddingTop: 4,
-  },
-  trackerNotesLabel: {
-    opacity: 0.85,
-  },
-  trackerNoteRow: {
+  entry: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 12,
   },
-  trackerNoteText: {
+  pressed: { opacity: 0.7 },
+  well: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  entryText: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: 4,
   },
-  noTrackerNotes: {
-    opacity: 0.6,
-    paddingTop: 4,
+  trackerBlock: {
+    paddingTop: 8,
+    gap: 4,
   },
-  noteIcon: {
-    marginRight: 8,
-    marginTop: 1,
+  trackerLabel: {
+    marginBottom: 4,
+  },
+  trackerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  trackerIcon: {
+    marginTop: 2,
+  },
+  emptyTrackers: {
+    paddingTop: 8,
+    opacity: 0.75,
   },
 });

@@ -1,6 +1,6 @@
 {
   "name": "lifeapp",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -21,6 +21,7 @@
     "expo-audio": "~1.1.0",
     "expo-av": "~16.0.8",
     "expo-clipboard": "~8.0.8",
+    "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.23",

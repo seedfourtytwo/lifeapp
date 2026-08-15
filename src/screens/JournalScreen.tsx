@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -21,6 +24,7 @@ type DayFilter = 'all' | 'trackers' | string;
 export default function JournalScreen() {
   const theme = useTheme();
   const { t } = useTranslation('journal');
+  const { decorations: deco, isCartoon } = useAppTheme();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const [notebooks, setNotebooks] = useState<JournalNotebook[]>([]);
@@ -51,19 +55,23 @@ export default function JournalScreen() {
         setTrackerNotes([]);
         return;
       }
-      const db = await getDatabase();
-      const notes = await dayNoteRepo.getNotesForElementsOnDate(
-        db,
-        activeElements.map((el) => el.id),
-        date,
-      );
-      const rows: TrackerNoteRow[] = [];
-      for (const el of activeElements) {
-        const note = notes.get(el.id);
-        if (note) rows.push({ elementId: el.id, name: el.name, body: note.body });
+      try {
+        const db = await getDatabase();
+        const notes = await dayNoteRepo.getNotesForElementsOnDate(
+          db,
+          activeElements.map((el) => el.id),
+          date,
+        );
+        const rows: TrackerNoteRow[] = [];
+        for (const el of activeElements) {
+          const note = notes.get(el.id);
+          if (note) rows.push({ elementId: el.id, name: el.name, body: note.body });
+        }
+        rows.sort((a, b) => a.name.localeCompare(b.name));
+        setTrackerNotes(rows);
+      } catch {
+        setTrackerNotes([]);
       }
-      rows.sort((a, b) => a.name.localeCompare(b.name));
-      setTrackerNotes(rows);
     },
     [],
   );
@@ -102,6 +110,13 @@ export default function JournalScreen() {
   useEffect(() => {
     setSelectedDate(today);
   }, [today]);
+
+  useEffect(() => {
+    if (filter === 'all' || filter === 'trackers') return;
+    if (!notebooks.some((notebook) => notebook.id === filter)) {
+      setFilter('all');
+    }
+  }, [notebooks, filter]);
 
   useEffect(() => {
     const open = noteEditor.session != null;
@@ -146,31 +161,36 @@ export default function JournalScreen() {
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
 
-  const renderFilterChip = (id: DayFilter, label: string) => {
+  const renderFilterWell = (
+    id: DayFilter,
+    label: string,
+    icon: React.ReactNode,
+    tint?: string,
+  ) => {
     const selected = filter === id;
+    const bg = selected
+      ? tint
+        ? `${tint}33`
+        : theme.colors.primaryContainer
+      : theme.colors.surfaceVariant;
     return (
       <Pressable
         key={id}
         onPress={() => setFilter(id)}
         style={[
-          styles.chip,
+          styles.filterWell,
           {
-            borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
-            backgroundColor: selected
-              ? theme.colors.primaryContainer
-              : theme.colors.surface,
+            backgroundColor: bg,
+            borderRadius: isCartoon ? deco.radius.sm : 12,
+            borderColor: selected ? (tint ?? theme.colors.primary) : 'transparent',
+            borderWidth: selected ? (isCartoon ? deco.borderWidth : 1.5) : 0,
           },
         ]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={label}
       >
-        <Text
-          variant="labelMedium"
-          style={{ color: selected ? theme.colors.primary : theme.colors.onSurface }}
-        >
-          {label}
-        </Text>
+        {icon}
       </Pressable>
     );
   };
@@ -203,11 +223,44 @@ export default function JournalScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
+          contentContainerStyle={styles.filterRow}
         >
-          {renderFilterChip('all', t('screen.filterAll'))}
-          {notebooks.map((notebook) => renderFilterChip(notebook.id, notebook.name))}
-          {renderFilterChip('trackers', t('screen.trackerNotesLabel'))}
+          {renderFilterWell(
+            'all',
+            t('screen.filterAll'),
+            <MaterialCommunityIcons
+              name="view-grid-outline"
+              size={22}
+              color={filter === 'all' ? theme.colors.primary : theme.colors.onSurfaceVariant}
+            />,
+          )}
+          {notebooks.map((notebook) =>
+            renderFilterWell(
+              notebook.id,
+              notebook.name,
+              notebook.icon ? (
+                <TrackerIcon name={notebook.icon} size={22} color={notebook.color} />
+              ) : (
+                <MaterialCommunityIcons
+                  name="notebook-outline"
+                  size={22}
+                  color={notebook.color}
+                />
+              ),
+              notebook.color,
+            ),
+          )}
+          {renderFilterWell(
+            'trackers',
+            t('screen.trackerNotesLabel'),
+            <MaterialCommunityIcons
+              name="note-text-outline"
+              size={22}
+              color={
+                filter === 'trackers' ? theme.colors.primary : theme.colors.onSurfaceVariant
+              }
+            />,
+          )}
         </ScrollView>
 
         <JournalDayPanel
@@ -242,7 +295,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     paddingBottom: 32,
-    gap: 10,
+    gap: 16,
     flexGrow: 1,
   },
   centered: {
@@ -252,16 +305,15 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     gap: 8,
-    marginBottom: 8,
   },
-  chipRow: {
+  filterRow: {
     gap: 8,
-    paddingVertical: 2,
+    alignItems: 'center',
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+  filterWell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

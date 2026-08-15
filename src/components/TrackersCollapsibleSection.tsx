@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Button, Divider, Surface, Text, useTheme } from 'react-native-paper';
+import { Divider, Surface, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 type Props = {
   title: string;
-  subtitle: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   accentColor: string;
   count: number;
@@ -21,7 +20,6 @@ type Props = {
 
 export default function TrackersCollapsibleSection({
   title,
-  subtitle,
   icon,
   accentColor,
   count,
@@ -34,11 +32,10 @@ export default function TrackersCollapsibleSection({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { t: tCommon } = useTranslation('common');
   const { decorations: deco, isCartoon } = useAppTheme();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const isEmpty = count === 0;
-  const resolvedAddLabel = addLabel ?? tCommon('actions.add');
+  const items = React.Children.toArray(children).filter(Boolean);
 
   return (
     <Surface
@@ -48,8 +45,8 @@ export default function TrackersCollapsibleSection({
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
           borderRadius: deco.radius.md,
+          borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
         },
-        isCartoon && { borderWidth: deco.cardBorderWidth },
       ]}
       elevation={0}
     >
@@ -60,53 +57,65 @@ export default function TrackersCollapsibleSection({
         accessibilityState={{ expanded: !collapsed }}
         accessibilityLabel={t('card.itemsCountA11y', { title, count })}
       >
-        <View style={[styles.iconWrap, { backgroundColor: `${accentColor}22` }]}>
+        <View
+          style={[
+            styles.iconWrap,
+            {
+              backgroundColor: `${accentColor}22`,
+              borderRadius: isCartoon ? deco.radius.sm : 12,
+            },
+          ]}
+        >
           <MaterialCommunityIcons name={icon} size={22} color={accentColor} />
         </View>
-        <View style={styles.headerText}>
-          <Text variant="titleMedium" style={styles.title}>
-            {title}
-          </Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {subtitle}
-          </Text>
-        </View>
+        <Text variant="titleMedium" style={styles.title}>
+          {title}
+        </Text>
         <View style={[styles.countBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
             {count}
           </Text>
         </View>
+        {showAddButton && onAdd ? (
+          <View onStartShouldSetResponder={() => true}>
+            <Pressable
+              onPress={onAdd}
+              accessibilityRole="button"
+              accessibilityLabel={addLabel}
+              hitSlop={8}
+              style={styles.addHit}
+            >
+              <MaterialCommunityIcons name="plus" size={22} color={accentColor} />
+            </Pressable>
+          </View>
+        ) : null}
         <MaterialCommunityIcons
           name={collapsed ? 'chevron-down' : 'chevron-up'}
-          size={24}
+          size={22}
           color={theme.colors.onSurfaceVariant}
-          style={styles.chevron}
         />
       </Pressable>
 
       {!collapsed ? (
         <>
           <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
-          <View style={styles.body}>
-            {isEmpty ? (
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                {emptyMessage}
-              </Text>
-            ) : (
-              children
-            )}
-            {showAddButton && onAdd ? (
-              <Button
-                mode="outlined"
-                icon="plus"
-                onPress={onAdd}
-                style={styles.addButton}
-                contentStyle={styles.addButtonContent}
-              >
-                {resolvedAddLabel}
-              </Button>
-            ) : null}
-          </View>
+          {isEmpty ? (
+            <Text
+              variant="bodySmall"
+              style={[styles.empty, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {emptyMessage}
+            </Text>
+          ) : (
+            items.map((child, index) => (
+              <React.Fragment key={index}>
+                {index > 0 ? (
+                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                ) : null}
+                {child}
+              </React.Fragment>
+            ))
+          )}
         </>
       ) : null}
     </Surface>
@@ -115,30 +124,25 @@ export default function TrackersCollapsibleSection({
 
 const styles = StyleSheet.create({
   section: {
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    marginBottom: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     gap: 12,
+    minHeight: 52,
   },
   iconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerText: {
+  title: {
     flex: 1,
     minWidth: 0,
-  },
-  title: {
-    marginBottom: 2,
   },
   countBadge: {
     minWidth: 28,
@@ -148,20 +152,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  chevron: {
-    marginLeft: 4,
+  addHit: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  body: {
+  empty: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    gap: 12,
-  },
-  addButton: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  addButtonContent: {
-    paddingHorizontal: 4,
+    paddingVertical: 16,
+    opacity: 0.8,
   },
 });

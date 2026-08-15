@@ -15,6 +15,7 @@ import {
 } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
+import { cancelAllHabitReminders } from '../notifications/habitReminders';
 
 /**
  * Identity of active habits that should reload streaks / warm sounds.
@@ -56,6 +57,10 @@ export function useAppBootstrap(): void {
     void loadSettings();
     void warmupHabitSoundPlayback();
     void warmupHabitCompleteChime();
+    // Evening check-in is parked; clear any leftover OS notifications.
+    void cancelAllHabitReminders().catch((error) => {
+      console.warn('Parked habit reminder cancel skipped', error);
+    });
   }, [loadSettings]);
 
   useEffect(() => {
