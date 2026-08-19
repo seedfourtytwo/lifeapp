@@ -73,7 +73,7 @@ function schedulePersistActiveTimers(
 ): void {
   persistTimersChain = persistTimersChain
     .catch(() => undefined)
-    .then(() => persistActiveTimerSessions(sessions))
+    .then(async () => persistActiveTimerSessions(await getDatabase(), sessions))
     .catch((error) => {
       console.warn('Failed to persist active timer sessions', error);
     });
@@ -301,7 +301,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   counterTotalsReady: false,
 
   hydrateActiveTimerSessions: async () => {
-    const sessions = await loadPersistedActiveTimerSessions();
+    const sessions = await loadPersistedActiveTimerSessions(await getDatabase());
     if (Object.keys(sessions).length === 0) return;
     // Do not clobber a timer started before hydration finished.
     if (Object.keys(get().activeTimerSessions).length > 0) return;
@@ -545,21 +545,10 @@ export const useEventStore = create<EventState>((set, get) => ({
           return;
         }
         const db = await getDatabase();
-        await db.withTransactionAsync(async () => {
-          await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-
-          if (total > 0) {
-            const now = new Date();
-            await eventRepo.insertEvent(db, {
-              id: newId(),
-              elementId,
-              timestamp: now.toISOString(),
-              date,
-              value: total,
-              meta: { source: 'manual' },
-              protocolVersion: PROTOCOL_VERSION,
-            });
-          }
+        await eventRepo.setDailyTotalForElement(db, elementId, date, total, {
+          id: newId(),
+          timestamp: new Date().toISOString(),
+          meta: { source: 'manual' },
         });
 
         if (

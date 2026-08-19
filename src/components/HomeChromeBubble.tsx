@@ -22,6 +22,7 @@ import CornerConfettiBurst, {
 import WeatherDayFace from './weather/WeatherDayFace';
 import WeatherForecastStrip from './weather/WeatherForecastStrip';
 import { recordCornerHit, getTodayCornerCount } from '../db/repositories/cornerScoreRepository';
+import { getDatabase } from '../db/client';
 import {
   BUBBLE_HEIGHT,
   BUBBLE_WIDTH,
@@ -73,7 +74,8 @@ export default function HomeChromeBubble() {
 
   useEffect(() => {
     let alive = true;
-    void getTodayCornerCount()
+    void getDatabase()
+      .then((db) => getTodayCornerCount(db))
       .then((n) => {
         if (!alive) return;
         cornerScoreDateRef.current = toDateString(new Date());
@@ -145,7 +147,8 @@ export default function HomeChromeBubble() {
       cornerCountRef.current = optimistic;
       cornerHitsBeforeHydrate.current += 1;
       flashCornerScore(optimistic);
-      void recordCornerHit()
+      void getDatabase()
+        .then((db) => recordCornerHit(db))
         .then((n) => {
           // Queued writes are authoritative for today.
           cornerCountRef.current = n;

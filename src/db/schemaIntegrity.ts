@@ -259,6 +259,11 @@ async function mergeDuplicateJournalDays(db: SQLiteDatabase): Promise<void> {
 export async function ensureNoteShareStateSchema(db: SQLiteDatabase): Promise<void> {
   const columns = await tableColumns(db, 'note_share_state');
   if (columns.size > 0 && !columns.has('entry_id')) {
+    // Backfills entry_id from the (then-single) daily_journals row per date.
+    // Superseded by v17: runtime code now stores the notebook id in entry_id
+    // (see noteSave.ts shareTarget), not a daily_journals row id. Harmless —
+    // this is a local cache table, not backed up — but don't read this
+    // migration as documentation of the current entry_id meaning.
     await db.execAsync(`
       CREATE TABLE note_share_state_v16 (
         kind TEXT NOT NULL,

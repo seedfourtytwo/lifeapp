@@ -1,16 +1,15 @@
 import { z } from 'zod';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { ActiveTimerSessionSchema, type ActiveTimerSession } from '../../protocol';
-import { getDatabase } from '../client';
 import * as settingsRepo from './settingsRepository';
 
 export const ACTIVE_TIMER_SESSIONS_KEY = 'active_timer_sessions';
 
 const PersistedSessionsSchema = z.record(ActiveTimerSessionSchema);
 
-export async function loadPersistedActiveTimerSessions(): Promise<
-  Record<string, ActiveTimerSession>
-> {
-  const db = await getDatabase();
+export async function loadPersistedActiveTimerSessions(
+  db: SQLiteDatabase,
+): Promise<Record<string, ActiveTimerSession>> {
   const raw = await settingsRepo.getSetting(db, ACTIVE_TIMER_SESSIONS_KEY);
   if (!raw) return {};
 
@@ -23,9 +22,9 @@ export async function loadPersistedActiveTimerSessions(): Promise<
 }
 
 export async function persistActiveTimerSessions(
+  db: SQLiteDatabase,
   sessions: Record<string, ActiveTimerSession>,
 ): Promise<void> {
-  const db = await getDatabase();
   if (Object.keys(sessions).length === 0) {
     await settingsRepo.deleteSetting(db, ACTIVE_TIMER_SESSIONS_KEY);
     return;
@@ -33,7 +32,6 @@ export async function persistActiveTimerSessions(
   await settingsRepo.setSetting(db, ACTIVE_TIMER_SESSIONS_KEY, JSON.stringify(sessions));
 }
 
-export async function clearPersistedActiveTimerSessions(): Promise<void> {
-  const db = await getDatabase();
+export async function clearPersistedActiveTimerSessions(db: SQLiteDatabase): Promise<void> {
   await settingsRepo.deleteSetting(db, ACTIVE_TIMER_SESSIONS_KEY);
 }

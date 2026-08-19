@@ -80,6 +80,10 @@ CREATE TABLE IF NOT EXISTS daily_journals (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   protocol_version INTEGER NOT NULL,
+  -- No ON DELETE cascade on purpose: deleting a notebook must reassign its
+  -- entries first (see journalNotebooks.ts deleteJournalNotebook). Silently
+  -- cascading here would delete journal text; let the FK check fail loudly
+  -- if a future code path deletes a notebook without reassigning.
   FOREIGN KEY (notebook_id) REFERENCES journal_notebooks(id),
   UNIQUE (notebook_id, date)
 );

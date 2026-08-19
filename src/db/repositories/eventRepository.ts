@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { LifeEvent } from '../../protocol';
-import { PROTOCOL_VERSION } from '../../protocol';
+import { EventSchema, PROTOCOL_VERSION } from '../../protocol';
 
 /** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
 
@@ -15,7 +15,7 @@ interface EventRow {
 }
 
 function rowToEvent(row: EventRow): LifeEvent {
-  return {
+  return EventSchema.parse({
     id: row.id,
     elementId: row.element_id,
     timestamp: row.timestamp,
@@ -23,7 +23,23 @@ function rowToEvent(row: EventRow): LifeEvent {
     value: row.value,
     meta: row.meta_json ? (JSON.parse(row.meta_json) as Record<string, unknown>) : undefined,
     protocolVersion: PROTOCOL_VERSION,
-  };
+  });
+}
+
+/** Skip and log corrupt rows rather than let one bad event break every daily total that includes it. */
+function mapRowsToEvents(rows: EventRow[]): LifeEvent[] {
+  const events: LifeEvent[] = [];
+  for (const row of rows) {
+    try {
+      events.push(rowToEvent(row));
+    } catch (error) {
+      console.warn(
+        `Skipping corrupt event ${row.id} (element ${row.element_id}):`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  return events;
 }
 
 export async function deleteEventsForElementOnDate(
@@ -48,7 +64,7 @@ export async function getEventsForElementOnDate(
     elementId,
     date,
   );
-  return rows.map(rowToEvent);
+  return mapRowsToEvents(rows);
 }
 
 export async function getEventsForElementSince(
@@ -61,13 +77,12 @@ export async function getEventsForElementSince(
     elementId,
     sinceDate,
   );
-  return rows.map(rowToEvent);
+  return mapRowsToEvents(rows);
 }
 
 function groupEventsByElement(rows: EventRow[]): Map<string, LifeEvent[]> {
   const byElement = new Map<string, LifeEvent[]>();
-  for (const row of rows) {
-    const event = rowToEvent(row);
+  for (const event of mapRowsToEvents(rows)) {
     const list = byElement.get(event.elementId) ?? [];
     list.push(event);
     byElement.set(event.elementId, list);
@@ -137,6 +152,8 @@ export async function getDailyTotalsByElement(
 }
 
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
+  EventSchema.parse(event);
+
   await db.runAsync(
     `INSERT INTO events (id, element_id, timestamp, date, value, meta_json, protocol_version)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -148,6 +165,34 @@ export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise
     event.meta ? JSON.stringify(event.meta) : null,
     event.protocolVersion,
   );
+}
+
+/**
+ * Replace today's events for one element with a single total, atomically.
+ * The one same-day "replace" flow the protocol rules call out — never used
+ * to rewrite a past day's history.
+ */
+export async function setDailyTotalForElement(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+  total: number,
+  newEvent: { id: string; timestamp: string; meta?: Record<string, unknown> },
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await deleteEventsForElementOnDate(db, elementId, date);
+    if (total > 0) {
+      await insertEvent(db, {
+        id: newEvent.id,
+        elementId,
+        timestamp: newEvent.timestamp,
+        date,
+        value: total,
+        meta: newEvent.meta,
+        protocolVersion: PROTOCOL_VERSION,
+      });
+    }
+  });
 }
 
 export async function getDailyTotal(
@@ -223,7 +268,7 @@ export async function getAllEvents(db: SQLiteDatabase): Promise<LifeEvent[]> {
   const rows = await db.getAllAsync<EventRow>(
     'SELECT * FROM events ORDER BY timestamp ASC',
   );
-  return rows.map(rowToEvent);
+  return mapRowsToEvents(rows);
 }
 
 /** Wipe every protocol event (activity history). */

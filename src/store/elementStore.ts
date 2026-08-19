@@ -88,10 +88,7 @@ async function insertActiveElement(
     elementId: element.id,
     sortOrder: await dashboardRepo.getNextSortOrder(db),
   };
-  await db.withTransactionAsync(async () => {
-    await elementRepo.insertElement(db, element);
-    await dashboardRepo.insertDashboardItem(db, dashboardItem);
-  });
+  await elementRepo.insertElementWithDashboardItem(db, element, dashboardItem);
   return dashboardItem;
 }
 
@@ -336,10 +333,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
     await withGuardedElementWrite(async () => {
       const db = await getDatabase();
       try {
-        await db.withTransactionAsync(async () => {
-          await elementRepo.setElementArchivedAt(db, elementId, archivedAt);
-          await dashboardRepo.deleteDashboardItemForElement(db, elementId);
-        });
+        await elementRepo.archiveElementAndUnpin(db, elementId, archivedAt);
       } catch (error) {
         throw new Error(
           error instanceof Error ? error.message : i18n.t('common:errors.failedToArchiveElement'),
@@ -372,23 +366,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
     await withGuardedElementWrite(async () => {
       const db = await getDatabase();
       try {
-        await db.withTransactionAsync(async () => {
-          await elementRepo.setElementArchivedAt(db, elementId, null);
-          const alreadyActive = await dashboardRepo.isElementOnDashboard(db, elementId);
-          if (!alreadyActive) {
-            dashboardItem = {
-              id: newId(),
-              elementId,
-              sortOrder: await dashboardRepo.getNextSortOrder(db),
-            };
-            await dashboardRepo.insertDashboardItem(db, dashboardItem);
-          } else {
-            const existingPin = (await dashboardRepo.getDashboardItems(db)).find(
-              (item) => item.elementId === elementId,
-            );
-            dashboardItem = existingPin ?? null;
-          }
-        });
+        dashboardItem = await elementRepo.restoreElementAndPin(db, elementId, newId());
       } catch (error) {
         throw new Error(
           error instanceof Error ? error.message : i18n.t('common:errors.failedToRestoreElement'),

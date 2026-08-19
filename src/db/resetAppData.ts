@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { stopHabitTimerLockScreenTicker } from '../habits/habitTimerLockScreen';
+import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import * as weatherRepo from './repositories/weatherRepository';
@@ -80,7 +80,7 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     await stopHabitSound();
     await awaitPendingEventWrites();
     useEventStore.setState({ activeTimerSessions: {} });
-    await clearPersistedActiveTimerSessions();
+    await clearPersistedActiveTimerSessions(await getDatabase());
   }
   if (options.calendar) {
     bumpCalendarDataEpoch();
@@ -122,7 +122,7 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
         // Forecast JSON + fun corner tally live in app_settings.
         if (!options.preferences) {
           await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
-          await clearCornerScore();
+          await clearCornerScore(db);
         }
       }
       if (options.preferences) {

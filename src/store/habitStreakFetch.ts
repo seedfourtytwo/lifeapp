@@ -5,6 +5,7 @@ import {
   type LifeEvent,
 } from '../protocol';
 import * as eventRepo from '../db/repositories/eventRepository';
+import * as elementRepo from '../db/repositories/elementRepository';
 import { getDatabase } from '../db/client';
 import { streakHistorySinceDate } from '../utils/dates';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
@@ -101,11 +102,7 @@ export async function loadHabitStreakForElement(
   if (resolvedCreatedAt === undefined) {
     try {
       const db = await getDatabase();
-      const row = await db.getFirstAsync<{ created_at: string }>(
-        'SELECT created_at FROM elements WHERE id = ?',
-        elementId,
-      );
-      resolvedCreatedAt = row?.created_at ?? null;
+      resolvedCreatedAt = await elementRepo.getElementCreatedAt(db, elementId);
     } catch {
       resolvedCreatedAt = null;
     }

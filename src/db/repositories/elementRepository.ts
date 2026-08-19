@@ -1,7 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { ElementDefinition, ElementKind } from '../../protocol';
+import type { DashboardItem, ElementDefinition, ElementKind } from '../../protocol';
 import { PROTOCOL_VERSION, validateElementConfig } from '../../protocol';
 import { ensureElementsSchema } from '../schemaIntegrity';
+import * as dashboardRepo from './dashboardRepository';
 
 interface ElementRow {
   id: string;
@@ -44,6 +45,18 @@ export async function getAllElements(db: SQLiteDatabase): Promise<ElementDefinit
     }
   }
   return elements;
+}
+
+/** Lighter than getElementById — skips config validation when only createdAt is needed. */
+export async function getElementCreatedAt(
+  db: SQLiteDatabase,
+  id: string,
+): Promise<string | null> {
+  const row = await db.getFirstAsync<{ created_at: string }>(
+    'SELECT created_at FROM elements WHERE id = ?',
+    id,
+  );
+  return row?.created_at ?? null;
 }
 
 export async function getElementById(
@@ -112,4 +125,61 @@ export async function setElementArchivedAt(
 ): Promise<void> {
   await ensureElementsSchema(db);
   await db.runAsync('UPDATE elements SET archived_at = ? WHERE id = ?', archivedAt, id);
+}
+
+/** Insert a new active element and pin it to Home atomically. */
+export async function insertElementWithDashboardItem(
+  db: SQLiteDatabase,
+  element: ElementDefinition,
+  dashboardItem: DashboardItem,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await insertElement(db, element);
+    await dashboardRepo.insertDashboardItem(db, dashboardItem);
+  });
+}
+
+/** Archive an element and drop its Home pin atomically. */
+export async function archiveElementAndUnpin(
+  db: SQLiteDatabase,
+  id: string,
+  archivedAt: string,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await setElementArchivedAt(db, id, archivedAt);
+    await dashboardRepo.deleteDashboardItemForElement(db, id);
+  });
+}
+
+/**
+ * Unarchive an element and (re)pin it to Home atomically, returning its pin.
+ * `newPinId` is used only if the element needs a fresh pin (caller generates
+ * it — repositories don't mint ids).
+ */
+export async function restoreElementAndPin(
+  db: SQLiteDatabase,
+  id: string,
+  newPinId: string,
+): Promise<DashboardItem> {
+  let pin: DashboardItem | null = null;
+  await db.withTransactionAsync(async () => {
+    await setElementArchivedAt(db, id, null);
+    const alreadyActive = await dashboardRepo.isElementOnDashboard(db, id);
+    if (!alreadyActive) {
+      pin = {
+        id: newPinId,
+        elementId: id,
+        sortOrder: await dashboardRepo.getNextSortOrder(db),
+      };
+      await dashboardRepo.insertDashboardItem(db, pin);
+      return;
+    }
+    pin = (await dashboardRepo.getDashboardItems(db)).find(
+      (item) => item.elementId === id,
+    ) ?? null;
+  });
+  if (!pin) {
+    throw new Error(`Dashboard pin missing for restored element ${id}`);
+  }
+  return pin;
 }

@@ -6,7 +6,7 @@ export type NoteShareTarget = {
   kind: NoteShareKind;
   /** Empty string for journals. */
   elementId: string;
-  /** Journal entry id; empty string for tracker notes. */
+  /** Journal notebook id (not a daily_journals row id) for journals; empty string for tracker notes. */
   entryId: string;
 };
 
