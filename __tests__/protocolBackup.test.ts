@@ -106,6 +106,8 @@ describe('protocol backup settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getDatabase as jest.Mock).mockResolvedValue(db);
+    (settingsRepo.getSettings as jest.Mock).mockResolvedValue(new Map());
+    (settingsRepo.getSetting as jest.Mock).mockResolvedValue(null);
   });
 
   it('includes validated app settings in export bundles', () => {

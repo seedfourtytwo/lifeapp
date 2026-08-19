@@ -5,7 +5,7 @@ import {
 } from '../db/export';
 import { protocolBackupFileName } from './protocolBackupFileName';
 
-export type ExportBackupResult = 'saved' | 'shared';
+export type ExportBackupResult = 'saved' | 'shared' | 'cancelled';
 
 export function isImportBackupAvailable(): boolean {
   return true;

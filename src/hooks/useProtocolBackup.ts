@@ -23,10 +23,9 @@ export function useProtocolBackup() {
     setBusy(true);
     try {
       const result = await exportBackupToFile();
+      if (result === 'cancelled') return;
       if (result === 'saved') {
         Alert.alert(t('settings:data.backupSavedTitle'), t('settings:data.backupSavedBody'));
-      } else {
-        Alert.alert(t('settings:data.backupReadyTitle'), t('settings:data.backupReadyBody'));
       }
     } catch (error) {
       Alert.alert(
