@@ -19,11 +19,10 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
-import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
+import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import {
-  isHabitDayComplete,
-  parseHabitConfig,
+  chartPlotValue,
   type ElementDefinition,
   type TrackerIconId,
 } from '../protocol';
@@ -45,15 +44,6 @@ import { formatTempC } from '../weather/format';
 import { ensureWeatherDailyRange } from '../weather/ensureWeatherDailyRange';
 import type { WeatherDailySnapshot } from '../weather/types';
 import { conditionLabel } from '../weather/codes';
-
-function toPlotValue(element: ElementDefinition, total: number): number {
-  if (element.kind === 'habit') {
-    const config = parseHabitConfig(element.config);
-    if (config.trackingMode === 'timer') return Math.round(total / 60);
-    return isHabitDayComplete(total, config) ? 1 : 0;
-  }
-  return total;
-}
 
 function isHistoryRangeDays(value: number): value is HistoryRangeDays {
   return (HISTORY_RANGES as readonly number[]).includes(value);
@@ -183,7 +173,8 @@ export default function InsightsScreen() {
       try {
         const db = await getDatabase();
         const entries = await dailyJournalRepo.getJournalsForDate(db, selectedDate);
-        const notebooks = await journalNotebookRepo.getAllNotebooks(db);
+        await useJournalNotebookStore.getState().load();
+        const notebooks = useJournalNotebookStore.getState().notebooks;
         const notes =
           selectedIds.length > 0
             ? await dayNoteRepo.getNotesForElementsOnDate(db, selectedIds, selectedDate)
@@ -232,7 +223,7 @@ export default function InsightsScreen() {
 
   const chartSeries = useMemo(() => {
     const raw = selectedElements.map((el) =>
-      dates.map((date) => toPlotValue(el, totalsByElement.get(el.id)?.get(date) ?? 0)),
+      dates.map((date) => chartPlotValue(el, totalsByElement.get(el.id)?.get(date) ?? 0)),
     );
     const normalized = normalizeSeriesToUnit(raw);
     return selectedElements.map((el, i) => ({

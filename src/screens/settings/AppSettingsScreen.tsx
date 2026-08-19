@@ -13,11 +13,10 @@ import { useProtocolBackup } from '../../hooks/useProtocolBackup';
 import type { AppLanguage } from '../../protocol/appSettings';
 import type { JournalNotebook } from '../../protocol';
 import { applyAppLanguage } from '../../i18n';
+import { useJournalNotebookStore } from '../../store/journalNotebookStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useWeatherStore } from '../../store/weatherStore';
 import { APP_LANGUAGE_OPTIONS, THEME_MODE_OPTIONS, isThemeMode } from '../../theme';
-import { getDatabase } from '../../db/client';
-import * as journalNotebookRepo from '../../db/repositories/journalNotebookRepository';
 import { clearJournalNotebookEntries } from '../../notes/journalNotebooks';
 import { getAppVersion } from '../../utils/appVersion';
 import type { SettingsStackParamList } from '../../navigation/types';
@@ -39,7 +38,8 @@ export default function AppSettingsScreen() {
   const refreshWeather = useWeatherStore((s) => s.refresh);
   const clearWeather = useWeatherStore((s) => s.clear);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-  const [notebooks, setNotebooks] = useState<JournalNotebook[]>([]);
+  const notebooks = useJournalNotebookStore((s) => s.notebooks);
+  const reloadNotebooks = useJournalNotebookStore((s) => s.reload);
   const [clearNotebookVisible, setClearNotebookVisible] = useState(false);
   const [clearNotebookBusy, setClearNotebookBusy] = useState(false);
   const {
@@ -55,15 +55,8 @@ export default function AppSettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void (async () => {
-        try {
-          const db = await getDatabase();
-          setNotebooks(await journalNotebookRepo.getAllNotebooks(db));
-        } catch {
-          setNotebooks([]);
-        }
-      })();
-    }, []),
+      void reloadNotebooks();
+    }, [reloadNotebooks]),
   );
 
   const languageLabel =

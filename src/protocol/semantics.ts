@@ -47,3 +47,24 @@ export function isElementDayComplete(element: ElementDefinition, dailyTotal: num
   const config = HabitConfigSchema.parse(element.config);
   return isHabitDayComplete(dailyTotal, config);
 }
+
+/** History/Insights chart y-axis unit label — 'min' and 'done' are literal labels, not i18n keys. */
+export function chartUnitLabel(element: ElementDefinition): string {
+  if (element.kind === 'counter') {
+    return CounterConfigSchema.parse(element.config).unit;
+  }
+  const config = HabitConfigSchema.parse(element.config);
+  return config.trackingMode === 'timer' ? 'min' : 'done';
+}
+
+/** Raw daily total -> chart plot value (e.g. seconds -> minutes for a timer habit). */
+export function chartPlotValue(element: ElementDefinition, dailyTotal: number): number {
+  if (element.kind === 'counter') {
+    return dailyTotal;
+  }
+  const config = HabitConfigSchema.parse(element.config);
+  if (config.trackingMode === 'timer') {
+    return Math.round(dailyTotal / 60);
+  }
+  return isHabitDayComplete(dailyTotal, config) ? 1 : 0;
+}

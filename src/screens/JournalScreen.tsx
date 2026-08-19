@@ -9,11 +9,11 @@ import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
-import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
+import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import JournalDayPanel, { type TrackerNoteRow } from './journal/JournalDayPanel';
 import JournalDaysList from './journal/JournalDaysList';
@@ -27,7 +27,8 @@ export default function JournalScreen() {
   const { decorations: deco, isCartoon } = useAppTheme();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
-  const [notebooks, setNotebooks] = useState<JournalNotebook[]>([]);
+  const notebooks = useJournalNotebookStore((s) => s.notebooks);
+  const reloadNotebooks = useJournalNotebookStore((s) => s.reload);
   const [journals, setJournals] = useState<DailyJournal[]>([]);
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -83,11 +84,10 @@ export default function JournalScreen() {
       const allElements = await elementRepo.getAllElements(db);
       const active = allElements.filter((el) => !el.archivedAt);
       const activeIds = active.map((el) => el.id);
-      const nb = await journalNotebookRepo.getAllNotebooks(db);
+      await reloadNotebooks();
       const rows = await dailyJournalRepo.getAllJournals(db);
       const noteOnly = await dayNoteRepo.getDatesWithTrackerNotesOnly(db, activeIds, today);
       const trackerDates = await dayNoteRepo.getDatesWithTrackerNotes(db, activeIds);
-      setNotebooks(nb);
       setJournals(rows);
       setElements(active);
       setNoteOnlyDates(noteOnly);
@@ -97,7 +97,7 @@ export default function JournalScreen() {
     } finally {
       setLoading(false);
     }
-  }, [today, t]);
+  }, [today, t, reloadNotebooks]);
 
   useFocusEffect(
     useCallback(() => {

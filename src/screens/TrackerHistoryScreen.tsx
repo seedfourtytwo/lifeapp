@@ -14,10 +14,11 @@ import * as eventRepo from '../db/repositories/eventRepository';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import type { RootStackParamList } from '../navigation/types';
 import {
-  CounterConfigSchema,
+  chartPlotValue,
+  chartUnitLabel,
   completedDatesFromHabitEvents,
   formatHabitTimerDuration,
-  isHabitDayComplete,
+  isElementDayComplete,
   isHabitScheduledOnDate,
   parseHabitConfig,
   type ElementDefinition,
@@ -198,26 +199,10 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     const isHabit = element.kind === 'habit';
     const habitConfig = isHabit ? parseHabitConfig(element.config) : null;
     const isTimerHabit = habitConfig?.trackingMode === 'timer';
-    const counterConfig = !isHabit ? CounterConfigSchema.parse(element.config) : null;
 
-    const plotValues =
-      isHabit && habitConfig && habitConfig.trackingMode !== 'timer'
-        ? days.map((d) => (isHabitDayComplete(d.total, habitConfig) ? 1 : 0))
-        : days.map((d) => (isTimerHabit ? Math.round(d.total / 60) : d.total));
-
-    const completedFlags = days.map((d) => {
-      if (isHabit && habitConfig) return isHabitDayComplete(d.total, habitConfig);
-      if (counterConfig?.dailyTarget && counterConfig.dailyTarget > 0) {
-        return d.total >= counterConfig.dailyTarget;
-      }
-      return d.total > 0;
-    });
-
-    const chartUnit = isHabit
-      ? isTimerHabit
-        ? 'min'
-        : 'done'
-      : (counterConfig?.unit ?? '');
+    const plotValues = days.map((d) => chartPlotValue(element, d.total));
+    const completedFlags = days.map((d) => isElementDayComplete(element, d.total));
+    const chartUnit = chartUnitLabel(element);
 
     const activity = computeActivityStats(
       days.map((d) => d.date),

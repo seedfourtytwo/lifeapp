@@ -21,12 +21,12 @@ import { useTranslation } from 'react-i18next';
 import HomeChromeBubble from '../components/HomeChromeBubble';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
-import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost, useNoteEditorSession, type HomeNotebookChip } from '../notes';
+import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -69,12 +69,15 @@ export default function HomeScreen() {
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
 
+  const reloadNotebooksStore = useJournalNotebookStore((s) => s.reload);
+
   const reloadTodayNotebooks = useCallback(async () => {
     const today = currentAppCalendarDate(now);
     try {
+      await reloadNotebooksStore();
       const db = await getDatabase();
-      const rows = await journalNotebookRepo.getAllNotebooks(db);
       const todayIds = await dailyJournalRepo.getNotebookIdsWithJournalsOnDate(db, today);
+      const rows = useJournalNotebookStore.getState().notebooks;
       setNotebooks(
         rows.map((notebook) => ({
           id: notebook.id,
@@ -87,7 +90,7 @@ export default function HomeScreen() {
     } catch {
       // Non-fatal — icons stay empty until next focus.
     }
-  }, [now]);
+  }, [now, reloadNotebooksStore]);
 
   const noteEditor = useNoteEditorSession({
     onSaved: (date, _body, target) => {

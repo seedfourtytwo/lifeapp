@@ -82,7 +82,12 @@ export {
   validateBundleEventLinks,
 } from './eventMeta';
 
-export { getDailyValueSemantics, isElementDayComplete } from './semantics';
+export {
+  chartPlotValue,
+  chartUnitLabel,
+  getDailyValueSemantics,
+  isElementDayComplete,
+} from './semantics';
 export type { DailyValueSemantics, DailyValueUnit } from './semantics';
 
 export {
