@@ -17,8 +17,8 @@ export async function requestDictationMicPermission(): Promise<boolean> {
       );
       return result === PermissionsAndroid.RESULTS.GRANTED;
     }
-    const { Audio } = await import('expo-av');
-    const result = await Audio.requestPermissionsAsync();
+    const { requestRecordingPermissionsAsync } = await import('expo-audio');
+    const result = await requestRecordingPermissionsAsync();
     return result.granted === true;
   } catch {
     return false;

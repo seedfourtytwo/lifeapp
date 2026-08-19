@@ -1,37 +1,34 @@
 import { HABIT_COMPLETE_CHIME } from './habitCompleteSoundAssets.native';
 
-type AvSound = import('expo-av').Audio.Sound;
-type AvAudio = typeof import('expo-av').Audio;
+type ExpoAudioModule = typeof import('expo-audio');
+type AudioPlayer = import('expo-audio').AudioPlayer;
 
-let chimeSound: AvSound | null = null;
-let chimeLoading: Promise<AvSound | null> | null = null;
-let audioModule: AvAudio | null = null;
+let chimePlayer: AudioPlayer | null = null;
+let chimeLoading: Promise<AudioPlayer | null> | null = null;
+let audioModule: ExpoAudioModule | null = null;
 
-async function getAudio(): Promise<AvAudio | null> {
+async function getAudio(): Promise<ExpoAudioModule | null> {
   if (audioModule) return audioModule;
   try {
-    const { Audio } = await import('expo-av');
-    audioModule = Audio;
+    audioModule = await import('expo-audio');
     return audioModule;
   } catch {
     return null;
   }
 }
 
-async function loadChime(): Promise<AvSound | null> {
-  if (chimeSound) return chimeSound;
+async function loadChime(): Promise<AudioPlayer | null> {
+  if (chimePlayer) return chimePlayer;
   if (chimeLoading) return chimeLoading;
 
   chimeLoading = (async () => {
     const Audio = await getAudio();
     if (!Audio) return null;
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    const { sound } = await Audio.Sound.createAsync(HABIT_COMPLETE_CHIME, {
-      shouldPlay: false,
-      volume: 0.55,
-    });
-    chimeSound = sound;
-    return sound;
+    await Audio.setAudioModeAsync({ playsInSilentMode: true });
+    const player = Audio.createAudioPlayer(HABIT_COMPLETE_CHIME);
+    player.volume = 0.55;
+    chimePlayer = player;
+    return player;
   })();
 
   try {
@@ -44,10 +41,10 @@ async function loadChime(): Promise<AvSound | null> {
 /** Soft meditation-bowl chime when a habit reaches its goal or finishes a track. */
 export async function playHabitCompleteChime(): Promise<void> {
   try {
-    const sound = await loadChime();
-    if (!sound) return;
-    await sound.setPositionAsync(0);
-    await sound.playAsync();
+    const player = await loadChime();
+    if (!player) return;
+    await player.seekTo(0);
+    player.play();
   } catch {
     // Non-critical feedback — ignore playback errors.
   }
