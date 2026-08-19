@@ -1,4 +1,4 @@
-import { updateHabitTimerLockScreen } from '../audio/habitTimerSound';
+import { updateHabitTimerLockScreen } from '../../audio/habitTimerSound';
 import {
   buildHabitReadyLockScreenMeta,
   buildHabitTimerLockScreenMeta,

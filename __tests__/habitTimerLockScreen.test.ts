@@ -1,7 +1,7 @@
 import {
   buildHabitReadyLockScreenMeta,
   buildHabitTimerLockScreenMeta,
-} from '../src/habits/habitTimerLockScreenMeta';
+} from '../src/kinds/habit/habitTimerLockScreenMeta';
 import type { ActiveTimerSession, HabitConfig } from '../src/protocol';
 
 describe('buildHabitTimerLockScreenMeta', () => {

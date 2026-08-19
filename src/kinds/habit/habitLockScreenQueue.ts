@@ -4,11 +4,11 @@ import {
   parseHabitConfig,
   type ElementDefinition,
   type HabitConfig,
-} from '../protocol';
-import { getActiveHabits } from '../utils/dashboardElements';
-import { currentAppCalendarDate } from '../utils/dayRollover';
-import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
+} from '../../protocol';
+import { getActiveHabits } from '../../utils/dashboardElements';
+import { currentAppCalendarDate } from '../../utils/dayRollover';
+import { useElementStore } from '../../store/elementStore';
+import { useEventStore } from '../../store/eventStore';
 
 /** Habit currently shown on the lock-screen media controls (may or may not be timing). */
 let focusedHabitId: string | null = null;

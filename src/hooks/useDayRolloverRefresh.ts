@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { stopHabitTimerLockScreenTicker } from '../habits/habitTimerLockScreen';
+import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
 import { parseHabitConfig } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';

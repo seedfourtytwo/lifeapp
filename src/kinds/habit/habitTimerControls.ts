@@ -1,11 +1,11 @@
 import { Alert } from 'react-native';
-import { i18n } from '../i18n';
+import { i18n } from '../../i18n';
 import {
   pauseHabitSound,
   playHabitSound,
   resumeHabitSound,
   stopHabitSound,
-} from '../audio/habitTimerSound';
+} from '../../audio/habitTimerSound';
 import {
   getHabitTimerPlaybackMode,
   hasHabitTimerSound,
@@ -13,10 +13,10 @@ import {
   parseHabitConfig,
   type ActiveTimerSession,
   type HabitConfig,
-} from '../protocol';
-import { useElementStore } from '../store/elementStore';
-import { useEventStore, whenActiveTimersReady } from '../store/eventStore';
-import { currentAppCalendarDate } from '../utils/dayRollover';
+} from '../../protocol';
+import { useElementStore } from '../../store/elementStore';
+import { useEventStore, whenActiveTimersReady } from '../../store/eventStore';
+import { currentAppCalendarDate } from '../../utils/dayRollover';
 import {
   getFocusedHabitId,
   peekAdjacentHabit,

@@ -3,10 +3,10 @@ import {
   playHabitSound,
   stopHabitSound,
   updateHabitTimerLockScreen,
-} from '../audio/habitTimerSound';
-import { i18n } from '../i18n';
-import type { HabitConfig } from '../protocol';
-import { useEventStore } from '../store/eventStore';
+} from '../../audio/habitTimerSound';
+import { i18n } from '../../i18n';
+import type { HabitConfig } from '../../protocol';
+import { useEventStore } from '../../store/eventStore';
 import {
   getLockScreenHabitQueue,
   resolveFocusedHabit,

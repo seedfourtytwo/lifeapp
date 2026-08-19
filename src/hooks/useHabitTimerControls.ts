@@ -4,7 +4,7 @@ import {
   finishHabitTimer,
   pressHabitTimer,
   resetHabitTimerToday,
-} from '../habits/habitTimerControls';
+} from '../kinds/habit/habitTimerControls';
 
 /** Couples habit timer store actions with bundled sound + lock-screen media controls. */
 export function useHabitTimerControls() {

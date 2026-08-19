@@ -4,10 +4,10 @@ import {
   playHabitSound,
   setHabitTimerRemoteHandlers,
   stopHabitSound,
-} from '../audio/habitTimerSound';
-import { i18n } from '../i18n';
-import { getHabitTimerPlaybackMode, isActiveTimerPaused } from '../protocol';
-import { useEventStore, whenActiveTimersReady } from '../store/eventStore';
+} from '../../audio/habitTimerSound';
+import { i18n } from '../../i18n';
+import { getHabitTimerPlaybackMode, isActiveTimerPaused } from '../../protocol';
+import { useEventStore, whenActiveTimersReady } from '../../store/eventStore';
 import {
   peekAdjacentHabit,
   resolveFocusedHabit,
