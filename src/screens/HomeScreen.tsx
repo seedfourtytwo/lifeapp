@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, useTheme } from 'react-native-paper';
+import { useTheme } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,8 +32,9 @@ import { useWeatherStore } from '../store/weatherStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import CountersScreen from './CountersScreen';
 import HabitsScreen from './HabitsScreen';
+import NutritionScreen from './NutritionScreen';
 
-type HomeTab = 'habits' | 'counters';
+type HomeTab = 'habits' | 'counters' | 'nutrition';
 
 type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -41,11 +42,14 @@ type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
 let lastGpsRefreshAt = 0;
 
-const TAB_ORDER: HomeTab[] = ['habits', 'counters'];
+const TAB_ORDER: HomeTab[] = ['habits', 'counters', 'nutrition'];
 
-const TABS: { value: HomeTab; labelKey: 'dock.habitsTab' | 'dock.countersTab'; icon: DockIconName }[] = [
+type DockTabLabelKey = 'dock.habitsTab' | 'dock.countersTab' | 'dock.nutritionTab';
+
+const TABS: { value: HomeTab; labelKey: DockTabLabelKey; icon: DockIconName }[] = [
   { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
   { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
+  { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'cake-variant' },
 ];
 
 export default function HomeScreen() {
@@ -276,6 +280,19 @@ export default function HomeScreen() {
               onTrackerDragActiveChange={setTrackerDragActive}
             />
           </View>
+          <View
+            style={[
+              styles.page,
+              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
+            ]}
+            pointerEvents={tab === 'nutrition' ? 'auto' : 'none'}
+            accessibilityElementsHidden={tab !== 'nutrition'}
+            importantForAccessibility={
+              tab === 'nutrition' ? 'auto' : 'no-hide-descendants'
+            }
+          >
+            <NutritionScreen />
+          </View>
         </ScrollView>
       </View>
 
@@ -311,17 +328,7 @@ export default function HomeScreen() {
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
             >
-              <MaterialCommunityIcons name={icon} size={active ? 24 : 22} color={color} />
-              <Text
-                variant="labelSmall"
-                style={{
-                  color,
-                  fontWeight: active ? '700' : '500',
-                  marginTop: 2,
-                }}
-              >
-                {label}
-              </Text>
+              <MaterialCommunityIcons name={icon} size={active ? 26 : 24} color={color} />
             </Pressable>
           );
         })}
@@ -332,17 +339,7 @@ export default function HomeScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('dock.more')}
         >
-          <MaterialCommunityIcons name="dots-horizontal" size={22} color={quietColor} />
-          <Text
-            variant="labelSmall"
-            style={{
-              color: quietColor,
-              fontWeight: '500',
-              marginTop: 2,
-            }}
-          >
-            {t('dock.more')}
-          </Text>
+          <MaterialCommunityIcons name="dots-horizontal" size={24} color={quietColor} />
         </Pressable>
       </View>
 
@@ -375,8 +372,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 4,
-    minHeight: 52,
+    minHeight: 44,
   },
 });

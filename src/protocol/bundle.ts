@@ -10,6 +10,13 @@ import {
   validateBundleJournalNotebooks,
   type JournalNotebook,
 } from './journalNotebook';
+import {
+  FoodItemSchema,
+  FoodLogEntrySchema,
+  validateBundleFoodLinks,
+  type FoodItem,
+  type FoodLogEntry,
+} from './food';
 import { validateBundleEventLinks } from './eventMeta';
 import { CalendarBackupSchema, type CalendarBackup } from '../calendar/types';
 import type { AppSettings } from './appSettings';
@@ -39,6 +46,10 @@ export const ProtocolBundleSchema = z.object({
   dailyJournals: z.array(DailyJournalSchema).optional(),
   /** Journal notebooks — optional for older backups. */
   journalNotebooks: z.array(JournalNotebookSchema).optional(),
+  /** Food catalog — optional for older backups. */
+  foodItems: z.array(FoodItemSchema).optional(),
+  /** Food day log — optional for older backups. */
+  foodLog: z.array(FoodLogEntrySchema).optional(),
   settings: AppSettingsSchema.optional(),
   /** Ambient calendar data — optional for older backups. */
   calendar: CalendarBackupSchema.optional(),
@@ -58,6 +69,7 @@ export function parseProtocolBundle(raw: unknown): ProtocolBundle {
   if (bundle.dailyJournals) {
     validateBundleDailyJournals(bundle.dailyJournals, bundle.journalNotebooks);
   }
+  validateBundleFoodLinks(bundle.foodItems ?? [], bundle.foodLog ?? []);
   return bundle;
 }
 
@@ -68,6 +80,8 @@ export function createProtocolBundle(input: {
   dayNotes?: DayNote[];
   dailyJournals?: DailyJournal[];
   journalNotebooks?: JournalNotebook[];
+  foodItems?: FoodItem[];
+  foodLog?: FoodLogEntry[];
   settings?: AppSettings;
   calendar?: CalendarBackup;
 }): ProtocolBundle {
@@ -84,6 +98,8 @@ export function createProtocolBundle(input: {
     ...(input.journalNotebooks && input.journalNotebooks.length > 0
       ? { journalNotebooks: input.journalNotebooks }
       : {}),
+    ...(input.foodItems && input.foodItems.length > 0 ? { foodItems: input.foodItems } : {}),
+    ...(input.foodLog && input.foodLog.length > 0 ? { foodLog: input.foodLog } : {}),
     ...(input.settings ? { settings: input.settings } : {}),
     ...(input.calendar ? { calendar: input.calendar } : {}),
   };
@@ -97,5 +113,6 @@ export function createProtocolBundle(input: {
   if (bundle.dailyJournals) {
     validateBundleDailyJournals(bundle.dailyJournals, bundle.journalNotebooks);
   }
+  validateBundleFoodLinks(bundle.foodItems ?? [], bundle.foodLog ?? []);
   return bundle;
 }

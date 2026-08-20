@@ -5,7 +5,8 @@
     "calendarTitle": "Calendar",
     "trackersTitle": "Trackers",
     "settingsTitle": "Settings",
-    "backA11y": "Back"
+    "backA11y": "Back",
+    "ingredientsTitle": "Ingredients"
   },
   "appearance": {
     "sectionTitle": "Appearance",

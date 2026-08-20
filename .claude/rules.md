@@ -12,7 +12,7 @@ Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zust
 
 1. **protocol/** — schemas; no React, no SQL
 2. **repositories** — all SQL
-3. **kinds** — kind-specific UI and aggregation (`counter`, `habit`)
+3. **kinds** — kind-specific UI and aggregation (`counter`, `habit`); catalogs (e.g. `nutrition`) get their own domain folder
 4. **stores** — reload after mutate
 5. **screens** — thin composition
 

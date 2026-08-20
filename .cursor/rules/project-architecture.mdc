@@ -14,6 +14,11 @@ Local-first personal dashboard. Data lives in SQLite on device. Trackable items 
 1. **protocol/** — Zod schemas, types, validation. No React, no SQLite.
 2. **db/repositories/** — SQL only. UI and stores never write raw queries.
 3. **kinds/** — One handler per element kind. Today: `counter`, `habit`. Register in `kinds/registry.ts`.
+   Catalog features (e.g. `nutrition/`) get their own domain folder — they are not kinds.
+   Catalog definitions are managed from a screen under **More**, not from Trackers.
+   Home tabs show the *current* slice (e.g. this week's foods); browsing the full
+   catalogue belongs on its own screen, which must virtualise (`FlatList`).
+   Home pages all mount at once, so an unbounded Home list costs cold-start time.
 4. **store/** — Zustand for UI state. Reload from DB after mutations.
 5. **screens/** — Thin; compose widgets from kind handlers.
 
@@ -22,7 +27,7 @@ Local-first personal dashboard. Data lives in SQLite on device. Trackable items 
 | Class | What | Examples |
 |-------|------|----------|
 | **Trackers** | `ElementKind` + events | habit, counter |
-| **Catalogs** | User libraries outside `ElementKind` | food items, recipes (later) |
+| **Catalogs** | User libraries outside `ElementKind` | food items (built), recipes (later) |
 | **Ambient / app** | Convenience; backup-optional | calendar, weather, theme |
 
 Share later via **share packs** (templates ± catalogs, no events by default; taste like timer sound opt-in). Full backup stays `ProtocolBundle`. Granular export specializes schemas — does not fork them.

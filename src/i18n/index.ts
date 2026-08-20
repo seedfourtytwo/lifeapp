@@ -7,6 +7,7 @@ import enHome from './locales/en/home.json';
 import enInsights from './locales/en/insights.json';
 import enJournal from './locales/en/journal.json';
 import enNotifications from './locales/en/notifications.json';
+import enNutrition from './locales/en/nutrition.json';
 import enSettings from './locales/en/settings.json';
 import enTrackers from './locales/en/trackers.json';
 
@@ -16,6 +17,7 @@ import frHome from './locales/fr/home.json';
 import frInsights from './locales/fr/insights.json';
 import frJournal from './locales/fr/journal.json';
 import frNotifications from './locales/fr/notifications.json';
+import frNutrition from './locales/fr/nutrition.json';
 import frSettings from './locales/fr/settings.json';
 import frTrackers from './locales/fr/trackers.json';
 
@@ -33,6 +35,7 @@ export const resources = {
     journal: enJournal,
     insights: enInsights,
     notifications: enNotifications,
+    nutrition: enNutrition,
   },
   fr: {
     common: frCommon,
@@ -43,6 +46,7 @@ export const resources = {
     journal: frJournal,
     insights: frInsights,
     notifications: frNotifications,
+    nutrition: frNutrition,
   },
 } as const;
 

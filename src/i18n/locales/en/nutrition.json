@@ -1,0 +1,144 @@
+{
+  "week": {
+    "plantsHeading": "Plants this week",
+    "count": "{{count}} of {{target}}",
+    "remaining_one": "{{count}} more to reach {{target}}",
+    "remaining_other": "{{count}} more to reach {{target}}",
+    "targetMet": "Target reached — nice one.",
+    "totalFoods_one": "{{count}} distinct food logged",
+    "totalFoods_other": "{{count}} distinct foods logged",
+    "a11yProgress": "{{count}} of {{target}} distinct plants logged this week"
+  },
+  "day": {
+    "a11ySelect": "Log foods for {{date}}"
+  },
+  "search": {
+    "placeholder": "Search foods",
+    "noResults": "No food matches “{{query}}”.",
+    "addNamed": "Add “{{query}}”",
+    "tooMany": "Showing the first {{count}}. Keep typing to narrow it down."
+  },
+  "list": {
+    "a11yToggleOn": "Mark {{name}} as eaten",
+    "a11yToggleOff": "Remove {{name}} from this day",
+    "emptyCatalog": "Your catalogue is empty. Build it up under Ingredients, then pick from it here.",
+    "openIngredients": "Open Ingredients",
+    "emptyWeek": "Nothing logged this week yet. Search to add what you have eaten."
+  },
+  "nutrients": {
+    "per100g": "per 100 g",
+    "per100ml": "per 100 ml",
+    "energy": "{{value}} kcal",
+    "protein": "P {{value}} g",
+    "carbs": "C {{value}} g",
+    "sugars": "Sug {{value}} g",
+    "fat": "F {{value}} g",
+    "satFat": "Sat {{value}} g",
+    "fiber": "Fib {{value}} g",
+    "salt": "Salt {{value}} g",
+    "none": "No nutrition values yet",
+    "gi": "GI {{value}}",
+    "basisWithState": "{{basis}}, {{state}}"
+  },
+  "groups": {
+    "vegetable": "Vegetable",
+    "fruit": "Fruit",
+    "legume": "Legume",
+    "grain": "Grain",
+    "nut": "Nut",
+    "seed": "Seed",
+    "herbSpice": "Herb or spice",
+    "mushroom": "Mushroom",
+    "animal": "Meat, fish or egg",
+    "dairy": "Dairy",
+    "other": "Other"
+  },
+  "editor": {
+    "addTitle": "Add food",
+    "editTitle": "Edit food",
+    "nameLabel": "Name",
+    "groupLabel": "Group",
+    "countsAsPlantLabel": "Counts toward the plant target",
+    "save": "Save",
+    "nameRequired": "Give the food a name.",
+    "saveFailed": "Could not save this food.",
+    "countsAsPlantHint": "Turn off for refined foods that should not count toward the 30.",
+    "seasonLabel": "Season",
+    "seasonHint": "Months it is in season where you live.",
+    "peakLabel": "Peak months",
+    "nutritionLabel": "Nutrition per 100",
+    "carbsHint": "EU labelling: carbs exclude fibre. Reference tables usually include it — subtract fibre first.",
+    "giHint": "For the food as you actually eat it. Glycemic load is calculated from this.",
+    "portionsLabel": "Portions",
+    "portionsHint": "Named amounts, for when quantities arrive.",
+    "addPortion": "Add portion",
+    "matchingLabel": "Search and matching",
+    "aliasesHint": "Comma separated. Helps search find it.",
+    "diversityKeyHint": "Varieties sharing this key count as one plant per week. Leave blank unless you add varieties.",
+    "notANumber": "“{{field}}” must be a number.",
+    "portionIncomplete": "A portion needs both a name and a weight.",
+    "sugarsAboveCarbs": "Sugars cannot be more than carbs — sugars are part of the carbohydrate figure.",
+    "satFatAboveFat": "Saturated fat cannot be more than total fat."
+  },
+  "remove": {
+    "action": "Remove",
+    "confirmTitle": "Remove {{name}}?",
+    "confirmBody": "It disappears from the catalog.",
+    "failed": "Could not remove this food.",
+    "archivedTitle": "Hidden, not deleted",
+    "archivedBody": "This ingredient has been eaten before, so it is hidden instead of deleted — past weeks keep their counts."
+  },
+  "errors": {
+    "loadFailed": "Could not load the food catalog."
+  },
+  "season": {
+    "inSeason": "In season",
+    "peak": "Peak season"
+  },
+  "states": {
+    "raw": "raw",
+    "cooked": "cooked",
+    "dry": "dry",
+    "unset": "Unset"
+  },
+  "filters": {
+    "allGroups": "All groups",
+    "plantsOnly": "Plants",
+    "inSeason": "In season",
+    "clear": "Clear",
+    "resultCount_one": "{{count}} food",
+    "resultCount_other": "{{count}} foods",
+    "noMatches": "No food matches these filters."
+  },
+  "sort": {
+    "name": "Name",
+    "group": "Group",
+    "season": "In season first",
+    "a11y": "Sort: {{value}}"
+  },
+  "manage": {
+    "addAction": "Add ingredient",
+    "catalogTitle": "Catalog ({{count}})",
+    "catalogCaption": "Tap an ingredient to edit its details.",
+    "archivedTitle": "Hidden ({{count}})",
+    "archivedCaption": "Hidden because they have been eaten before — past weeks keep their counts.",
+    "emptyCatalog": "No ingredients yet. Add the things you actually eat, a few at a time.",
+    "seasonCount_one": "{{count}} month in season",
+    "seasonCount_other": "{{count}} months in season"
+  },
+  "fields": {
+    "energyKcal": "Energy (kcal)",
+    "proteinG": "Protein (g)",
+    "carbsG": "Carbs (g)",
+    "sugarsG": "Sugars (g)",
+    "fatG": "Fat (g)",
+    "satFatG": "Saturated (g)",
+    "fiberG": "Fibre (g)",
+    "saltG": "Salt (g)",
+    "glycemicIndex": "Glycemic index",
+    "aliases": "Other names",
+    "diversityKey": "Same-plant key",
+    "portionLabel": "Portion",
+    "portionGrams": "Grams"
+  }
+}

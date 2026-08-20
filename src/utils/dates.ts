@@ -38,3 +38,39 @@ export function formatFullDate(dateStr: string): string {
     day: 'numeric',
   });
 }
+
+/** Compact "Wed, 19 Aug" style date for home tab meta rows. */
+export function formatShortDate(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  return d.toLocaleDateString(getDateLocale(), {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/** Local noon avoids DST and UTC-offset drift when doing date arithmetic. */
+function parseLocalDate(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00`);
+}
+
+/** Monday of the ISO week containing `dateStr`. */
+export function startOfWeekDate(dateStr: string): string {
+  const d = parseLocalDate(dateStr);
+  // getDay(): 0 = Sunday. Sunday belongs to the week that started 6 days earlier.
+  const offset = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - offset);
+  return toDateString(d);
+}
+
+/** The seven dates, Monday first, of the week containing `dateStr`. */
+export function weekDates(dateStr: string): string[] {
+  const monday = parseLocalDate(startOfWeekDate(dateStr));
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + i);
+    dates.push(toDateString(d));
+  }
+  return dates;
+}

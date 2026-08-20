@@ -38,6 +38,41 @@ export {
 export type { JournalNotebook, JournalNotebookColor } from './journalNotebook';
 
 export {
+  FoodItemSchema,
+  FoodLogEntrySchema,
+  FoodGroupSchema,
+  FoodNutrientsSchema,
+  FoodNutrientBasisSchema,
+  FoodPortionSchema,
+  FoodStateSchema,
+  FOOD_GROUPS,
+  FOOD_NUTRIENT_BASES,
+  FOOD_STATES,
+  FOOD_NAME_MAX_LENGTH,
+  FOOD_ALIAS_MAX,
+  FOOD_PORTION_MAX,
+  PLANT_FOOD_GROUPS,
+  WEEKLY_PLANT_TARGET,
+  foodDiversityKey,
+  glycemicLoadPer100,
+  isFoodInPeakSeason,
+  isFoodInSeason,
+  isPlantFood,
+  isPlantFoodGroup,
+  validateBundleFoodLinks,
+} from './food';
+export type {
+  FoodItem,
+  FoodLogEntry,
+  FoodGroup,
+  FoodNutrients,
+  FoodNutrientsInput,
+  FoodNutrientBasis,
+  FoodPortion,
+  FoodState,
+} from './food';
+
+export {
   AppSettingsSchema,
   APP_SETTING_KEYS,
   DEFAULT_EVENING_CHECK_IN_TIME,

@@ -9,6 +9,8 @@ export type RootStackParamList = {
   Home: undefined;
   SettingsMenu: undefined;
   Trackers: undefined;
+  Ingredients: undefined;
+  IngredientEditor: { foodId?: string };
   AppSettings: NavigatorScreenParams<SettingsStackParamList> | undefined;
   TrackerHistory: { elementId: string };
   Insights: undefined;

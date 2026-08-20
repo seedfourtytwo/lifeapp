@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "note": "Starter foods, added gradually. One object per line. Only `slug`, `en` and `group` are required — everything else is filled in when it is known. Conventions: nutrients are per 100 g/ml and use the EU labelling basis, so `carbsG` EXCLUDES fibre (USDA-style tables include it — subtract `fiberG` first). Set `state` to raw/cooked/dry on anything where that changes the numbers, especially grains and pulses. `seasonMonths` are 1-12 and local to where you live. `glycemicIndex` describes the food as actually eaten; glycemic load is derived, never stored. `diversityKey` makes varieties of the same plant count once toward the weekly target.",
+  "example": { "slug": "carrot", "en": "Carrot", "fr": "Carotte", "group": "vegetable", "seasonMonths": [6, 7, 8, 9, 10], "peakMonths": [8, 9], "nutrients": { "basis": "per100g", "state": "raw", "energyKcal": 41, "proteinG": 0.9, "carbsG": 6.8, "sugarsG": 4.7, "fatG": 0.2, "fiberG": 2.8 }, "portions": [{ "label": "1 medium", "grams": 61 }] },
+  "items": []
+}

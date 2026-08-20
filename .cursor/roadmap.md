@@ -20,10 +20,11 @@ Active plan for Life Dashboard. Intent only — do not scaffold protocol, DB, or
 | Calendar | Local events, recurrence, reminders, Home peek (ambient) |
 | Weather | Home mood chip, forecast strip, fling physics (ambient); coarse location |
 | Data | Full JSON backup; granular Clear data… |
+| Nutrition | Food catalog standard (protocol catalog, not a kind) + day log. Home tab shows **this week's plate** with catalogue search to add; **Ingredients** manager (virtualised) under More builds the catalogue. Mon–Sun distinct-plant count toward 30. Catalogue starts empty. |
 | Privacy | No accounts/cloud; `allowBackup=false`; no Google speech / network dictation |
 | i18n | EN + FR |
 
-App **1.3.1** · DB schema **v14** · Protocol **v1**.
+App **1.4.2** · DB schema **v19** · Protocol **v1**.
 
 ---
 
@@ -38,6 +39,15 @@ Ordered for day-to-day work. Skip or reorder when a bug blocks use.
 | 3 | **T2f** Haptics / chime taste | After layouts settle |
 | 4 | **Session Lock** | One media-session for habit timers; no duplicate lock-screen controls. Then decide lock-screen dictation/Done. Worktree: `feature/lock-screen-media-controls` |
 | 5 | **Session Export** | Granular export/import by type (+ optional date range); plain journal/notes share as a preset |
+
+### Nutrition — next steps
+
+Catalog + weekly plant count shipped. In order:
+
+1. **Fill the catalog** — ships empty by design. Add in-app via More → Ingredients (full form: group, season, per-100 nutrients, GI, portions, aliases, same-plant key), or in bulk by editing the seed file. Bulk entries go into `src/nutrition/seed/foods.json` a few at a time. Required per item: `slug`, `en`, `group`. Optional: `fr`, season months, per-100 nutrients (**EU carbs — fibre excluded**), glycemic index, portions, diversity key. Seeding is one-shot per slug, so edits and deletions survive. Field conventions: protocol-plan.
+2. **Amounts** — nullable quantity column on `food_log`; the UNIQUE(food_id, date) row becomes a per-day total. `portions` is already on FoodItem to feed the picker.
+3. **Intake maths / graphs** — only once amounts exist and the catalog has real nutrient values.
+4. **Recipes** — compose catalog items; still a catalog, still not an `ElementKind`.
 
 ### Smaller leftovers
 
@@ -69,4 +79,4 @@ Diagnose media-session / lock-screen ownership → single session start/pause/do
 
 Vague or distant ideas live in [product-ideas.md](./product-ideas.md). Calendar Later list: [calendar-plan.md](./calendar-plan.md).
 
-Do not start: idea inbox, to-dos, food, quotes, Proton backup, home widgets, CalDAV, new protocol kinds — until intentionally scheduled.
+Do not start: idea inbox, to-dos, quotes, Proton backup, home widgets, CalDAV, new protocol kinds — until intentionally scheduled.

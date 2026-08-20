@@ -311,3 +311,60 @@ export async function ensureNoteShareStateSchema(db: SQLiteDatabase): Promise<vo
     );
   `);
 }
+
+/** Columns added to food_items after the table first shipped. */
+const FOOD_ITEM_ADDED_COLUMNS: Record<string, string> = {
+  diversity_key: 'TEXT',
+  season_months_json: 'TEXT',
+  peak_months_json: 'TEXT',
+  glycemic_index: 'REAL',
+  portions_json: 'TEXT',
+};
+
+/** Food catalog + day log — repairs hot-reload / skipped migration cases. */
+export async function ensureFoodSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS food_items (
+      id TEXT PRIMARY KEY NOT NULL,
+      slug TEXT UNIQUE,
+      name TEXT NOT NULL,
+      food_group TEXT NOT NULL,
+      counts_as_plant INTEGER,
+      diversity_key TEXT,
+      aliases_json TEXT,
+      season_months_json TEXT,
+      peak_months_json TEXT,
+      nutrients_json TEXT,
+      glycemic_index REAL,
+      portions_json TEXT,
+      created_at TEXT NOT NULL,
+      archived_at TEXT,
+      protocol_version INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_food_items_group ON food_items(food_group);
+
+    CREATE TABLE IF NOT EXISTS food_log (
+      id TEXT PRIMARY KEY NOT NULL,
+      food_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      logged_at TEXT NOT NULL,
+      protocol_version INTEGER NOT NULL,
+      FOREIGN KEY (food_id) REFERENCES food_items(id) ON DELETE CASCADE,
+      UNIQUE (food_id, date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_food_log_date ON food_log(date);
+  `);
+
+  // A dev database created before these columns existed keeps its old table.
+  const columns = await tableColumns(db, 'food_items');
+  for (const [name, type] of Object.entries(FOOD_ITEM_ADDED_COLUMNS)) {
+    if (!columns.has(name)) {
+      await db.execAsync(`ALTER TABLE food_items ADD COLUMN ${name} ${type}`);
+    }
+  }
+
+  // Drop orphans left behind if foreign_keys were off during an older wipe.
+  await db.runAsync('DELETE FROM food_log WHERE food_id NOT IN (SELECT id FROM food_items)');
+}

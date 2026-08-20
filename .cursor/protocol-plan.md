@@ -2,7 +2,7 @@
 
 Intent for how data is shaped and shared. Code stays in `src/protocol/`; this doc is the north star so features do not invent parallel models.
 
-**Status:** Protocol **v1** · kinds: `habit`, `counter` · full backup via `ProtocolBundle` · granular export / catalogs / marketplace = planned, not scaffolded.
+**Status:** Protocol **v1** · kinds: `habit`, `counter` · catalogs: `food` · full backup via `ProtocolBundle` · granular export / share packs / marketplace = planned, not scaffolded.
 
 Related: [roadmap.md](./roadmap.md) (Session Export), [product-ideas.md](./product-ideas.md) (food, etc.), rules `project-architecture.mdc` + `protocol-database.mdc`.
 
@@ -78,12 +78,33 @@ Import of share packs **installs new local UUIDs** (template → instance). Opti
 
 ## Catalogs (food, recipes, …)
 
+**Food is built** — `src/protocol/food.ts` + `food_items` / `food_log` (schema v19), domain logic in `src/nutrition/`. It is the reference shape for later catalogs:
+definitions in a catalog table, day facts in a dedicated log table (not `events`, which foreign-key to `elements`), both optional sections on `ProtocolBundle`.
+
+### FoodItem — conventions that are easy to get wrong
+
+| Field | Rule |
+|-------|------|
+| `nutrients.carbsG` | **EU labelling (Reg. 1169/2011): excludes fibre.** USDA-style reference tables include it — subtract `fiberG` before entering. |
+| `nutrients.state` | `raw` / `cooked` / `dry`. Dry vs cooked differs ~3× for grains and pulses; an unmarked row is the easiest way to be badly wrong. |
+| `sugarsG` / `satFatG` | Subsets of `carbsG` / `fatG`. Enforced by Zod — real source tables do sometimes contradict this. |
+| `seasonMonths` | 1–12, **relative to where the user lives**, not a global fact. `peakMonths` must be a subset. A share pack would need a region tag. |
+| `glycemicIndex` | The food *as typically eaten*, not the raw ingredient — cooking, ripeness and variety all move it. Only meaningful with carbohydrate present. |
+| Glycemic load | **Derived, never stored** (`GI × carbsG ÷ 100`). Storing both lets them drift. |
+| `diversityKey` | Dedupes the weekly plant count across varieties. Defaults to `slug`, then `id`. Same species → one plant, so wholemeal bread and wholewheat pasta share `wheat`. |
+| `countsAsPlant` | Override of the group default. The escape hatch for refined grains. |
+| `portions` | Named amounts (`1 medium` → 61 g). Populated ahead of the amounts phase on purpose: the cost here is data entry, not schema. |
+
+Only **`name` and `group` are required** — `group` stays mandatory because it decides whether an item counts toward the weekly plant target, and defaulting that silently would break the number the feature exists for. Everything else is filled in gradually; `nutrients.basis` defaults to `per100g`.
+
+The catalog **ships empty on purpose**. Foods are added by hand to `src/nutrition/seed/foods.json` (or in-app), applied **one-shot per slug**, so edits and deletions survive the file growing. `fr` is optional — an untranslated food shows its English name.
+
 - User-owned databases: create, edit, delete, organize.
 - May ship with optional baked-in starter packs.
 - Recipes compose food items; meal logging (when built) references catalog ids via events or a dedicated log — design when the feature is scheduled.
 - **Do not** add `food` / `recipe` to `ElementKindSchema` just because they are “things in the app.” Prefer catalog tables + protocol schemas; add a kind only if Home tracking UX diverges like habit vs counter.
 
-Open until scheduled: nutrition depth, photos, dictation for meals — see product-ideas.
+Open until scheduled: amounts / intake maths, photos, dictation for meals, recipes — see roadmap “Nutrition — next steps”.
 
 ---
 
@@ -111,7 +132,7 @@ When adding a feature, answer:
 
 ## Do not
 
-- Scaffold food/recipe/marketplace schemas before that work is scheduled.
+- Scaffold recipe/marketplace schemas before that work is scheduled.
 - Put calendar/weather/quotes/settings into `ElementKind`.
 - Treat `ProtocolBundle` as the only interchange forever — granular + share pack are planned specializations.
 - Upload events by default for “sharing.”

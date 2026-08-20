@@ -9,6 +9,8 @@ import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import * as calendarRepo from '../db/repositories/calendarRepository';
+import * as foodRepo from '../db/repositories/foodRepository';
+import { markSeedFoodsApplied } from '../nutrition/seedCatalog';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
@@ -34,6 +36,8 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     const calendarEvents = await calendarRepo.getAllEvents(db);
     const reminders = await calendarRepo.getAllReminders(db);
     const clears = await calendarRepo.getAllOccurrenceClears(db);
+    const foodItems = await foodRepo.getAllFoodItems(db);
+    const foodLog = await foodRepo.getAllFoodLog(db);
 
     const elementIds = new Set(elements.map((element) => element.id));
     const dayNotes = dayNotesRaw.filter((note) => elementIds.has(note.elementId));
@@ -48,6 +52,8 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
       dayNotes,
       dailyJournals,
       journalNotebooks,
+      foodItems,
+      foodLog,
       settings,
       calendar: {
         schemaVersion: CALENDAR_BACKUP_VERSION,
@@ -122,6 +128,19 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       }
       for (const journal of bundle.dailyJournals ?? []) {
         await dailyJournalRepo.insertJournal(db, journal);
+      }
+      for (const item of bundle.foodItems ?? []) {
+        await foodRepo.insertFoodItem(db, item);
+      }
+      const foodIds = new Set((bundle.foodItems ?? []).map((item) => item.id));
+      for (const entry of bundle.foodLog ?? []) {
+        if (!foodIds.has(entry.foodId)) continue;
+        await foodRepo.insertFoodLogEntry(db, entry);
+      }
+      if (bundle.foodItems) {
+        // The imported catalog is authoritative — do not re-seed starter foods
+        // the user had deleted before taking this backup.
+        await markSeedFoodsApplied(db);
       }
       await writeAppSettings(db, bundle.settings);
 

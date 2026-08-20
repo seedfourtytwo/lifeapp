@@ -1,0 +1,144 @@
+{
+  "week": {
+    "plantsHeading": "Végétaux cette semaine",
+    "count": "{{count}} sur {{target}}",
+    "remaining_one": "encore {{count}} pour atteindre {{target}}",
+    "remaining_other": "encore {{count}} pour atteindre {{target}}",
+    "targetMet": "Objectif atteint — bravo.",
+    "totalFoods_one": "{{count}} aliment distinct enregistré",
+    "totalFoods_other": "{{count}} aliments distincts enregistrés",
+    "a11yProgress": "{{count}} végétaux distincts sur {{target}} enregistrés cette semaine"
+  },
+  "day": {
+    "a11ySelect": "Enregistrer les aliments du {{date}}"
+  },
+  "search": {
+    "placeholder": "Rechercher un aliment",
+    "noResults": "Aucun aliment ne correspond à « {{query}} ».",
+    "addNamed": "Ajouter « {{query}} »",
+    "tooMany": "Affichage des {{count}} premiers. Continuez à taper pour affiner."
+  },
+  "list": {
+    "a11yToggleOn": "Marquer {{name}} comme mangé",
+    "a11yToggleOff": "Retirer {{name}} de cette journée",
+    "emptyCatalog": "Votre catalogue est vide. Constituez-le dans Ingrédients, puis choisissez ici.",
+    "openIngredients": "Ouvrir Ingrédients",
+    "emptyWeek": "Rien d’enregistré cette semaine. Recherchez pour ajouter ce que vous avez mangé."
+  },
+  "nutrients": {
+    "per100g": "pour 100 g",
+    "per100ml": "pour 100 ml",
+    "energy": "{{value}} kcal",
+    "protein": "P {{value}} g",
+    "carbs": "G {{value}} g",
+    "sugars": "Suc {{value}} g",
+    "fat": "L {{value}} g",
+    "satFat": "Sat {{value}} g",
+    "fiber": "Fib {{value}} g",
+    "salt": "Sel {{value}} g",
+    "none": "Pas encore de valeurs nutritionnelles",
+    "gi": "IG {{value}}",
+    "basisWithState": "{{basis}}, {{state}}"
+  },
+  "groups": {
+    "vegetable": "Légume",
+    "fruit": "Fruit",
+    "legume": "Légumineuse",
+    "grain": "Céréale",
+    "nut": "Fruit à coque",
+    "seed": "Graine",
+    "herbSpice": "Herbe ou épice",
+    "mushroom": "Champignon",
+    "animal": "Viande, poisson ou œuf",
+    "dairy": "Produit laitier",
+    "other": "Autre"
+  },
+  "editor": {
+    "addTitle": "Ajouter un aliment",
+    "editTitle": "Modifier l’aliment",
+    "nameLabel": "Nom",
+    "groupLabel": "Groupe",
+    "countsAsPlantLabel": "Compte pour l’objectif végétal",
+    "save": "Enregistrer",
+    "nameRequired": "Donnez un nom à l’aliment.",
+    "saveFailed": "Impossible d’enregistrer cet aliment.",
+    "countsAsPlantHint": "Désactivez pour les aliments raffinés qui ne doivent pas compter dans les 30.",
+    "seasonLabel": "Saison",
+    "seasonHint": "Mois de saison là où vous vivez.",
+    "peakLabel": "Pleine saison",
+    "nutritionLabel": "Nutrition pour 100",
+    "carbsHint": "Étiquetage UE : les glucides excluent les fibres. Les tables de référence les incluent — soustrayez les fibres.",
+    "giHint": "Pour l’aliment tel que consommé. La charge glycémique en est déduite.",
+    "portionsLabel": "Portions",
+    "portionsHint": "Quantités nommées, pour plus tard.",
+    "addPortion": "Ajouter une portion",
+    "matchingLabel": "Recherche et correspondance",
+    "aliasesHint": "Séparés par des virgules. Aide la recherche.",
+    "diversityKeyHint": "Les variétés partageant cette clé comptent pour un seul végétal par semaine. Laissez vide sauf si vous ajoutez des variétés.",
+    "notANumber": "« {{field}} » doit être un nombre.",
+    "portionIncomplete": "Une portion demande un nom et un poids.",
+    "sugarsAboveCarbs": "Les sucres ne peuvent pas dépasser les glucides — ils en font partie.",
+    "satFatAboveFat": "Les acides gras saturés ne peuvent pas dépasser les lipides totaux."
+  },
+  "remove": {
+    "action": "Retirer",
+    "confirmTitle": "Retirer {{name}} ?",
+    "confirmBody": "Il disparaît du catalogue.",
+    "failed": "Impossible de retirer cet aliment.",
+    "archivedTitle": "Masqué, pas supprimé",
+    "archivedBody": "Cet ingrédient a déjà été mangé : il est masqué plutôt que supprimé — les semaines passées gardent leurs comptes."
+  },
+  "errors": {
+    "loadFailed": "Impossible de charger le catalogue d’aliments."
+  },
+  "season": {
+    "inSeason": "De saison",
+    "peak": "Pleine saison"
+  },
+  "states": {
+    "raw": "cru",
+    "cooked": "cuit",
+    "dry": "sec",
+    "unset": "Non défini"
+  },
+  "filters": {
+    "allGroups": "Tous les groupes",
+    "plantsOnly": "Végétaux",
+    "inSeason": "De saison",
+    "clear": "Effacer",
+    "resultCount_one": "{{count}} aliment",
+    "resultCount_other": "{{count}} aliments",
+    "noMatches": "Aucun aliment ne correspond à ces filtres."
+  },
+  "sort": {
+    "name": "Nom",
+    "group": "Groupe",
+    "season": "De saison d’abord",
+    "a11y": "Tri : {{value}}"
+  },
+  "manage": {
+    "addAction": "Ajouter un ingrédient",
+    "catalogTitle": "Catalogue ({{count}})",
+    "catalogCaption": "Touchez un ingrédient pour modifier ses détails.",
+    "archivedTitle": "Masqués ({{count}})",
+    "archivedCaption": "Masqués car déjà mangés — les semaines passées gardent leurs comptes.",
+    "emptyCatalog": "Aucun ingrédient. Ajoutez ce que vous mangez vraiment, petit à petit.",
+    "seasonCount_one": "{{count}} mois de saison",
+    "seasonCount_other": "{{count}} mois de saison"
+  },
+  "fields": {
+    "energyKcal": "Énergie (kcal)",
+    "proteinG": "Protéines (g)",
+    "carbsG": "Glucides (g)",
+    "sugarsG": "Sucres (g)",
+    "fatG": "Lipides (g)",
+    "satFatG": "Saturés (g)",
+    "fiberG": "Fibres (g)",
+    "saltG": "Sel (g)",
+    "glycemicIndex": "Index glycémique",
+    "aliases": "Autres noms",
+    "diversityKey": "Clé même plante",
+    "portionLabel": "Portion",
+    "portionGrams": "Grammes"
+  }
+}

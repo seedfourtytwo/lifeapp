@@ -13,12 +13,13 @@ import {
   ensureDailyJournalsSchema,
   ensureDayNotesSchema,
   ensureElementsSchema,
+  ensureFoodSchema,
   ensureJournalNotebooksSchema,
   ensureNoteShareStateSchema,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 18;
+const CURRENT_SCHEMA_VERSION = 20;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -31,6 +32,11 @@ const CURRENT_SCHEMA_VERSION = 18;
 /** v16: journal notebooks + journal entries as a dated feed; share state keyed by entry id. */
 /** v17: one journal document per notebook per day (merge fragments; unique notebook+date). */
 /** v18: drop empty journal rows that still lit Home icons. */
+/** v19: food catalog (food_items) + day log (food_log) — a protocol catalog, not an element kind. */
+/** v20: food_items gains season / glycemic index / portions / diversity key.
+ *  Its own version rather than an edit to v19: a device that already ran v19
+ *  sits at the steady state, where SCHEMA_SQL's CREATE TABLE IF NOT EXISTS is a
+ *  no-op and the repair pass is skipped — so the columns would never arrive. */
 
 interface HabitElementRow {
   id: string;
@@ -212,6 +218,12 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   18: async (db) => {
     await db.runAsync(`DELETE FROM daily_journals WHERE trim(body) = ''`);
   },
+  19: async (db) => {
+    await ensureFoodSchema(db);
+  },
+  20: async (db) => {
+    await ensureFoodSchema(db);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -230,6 +242,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await ensureJournalNotebooksSchema(db);
     await ensureDailyJournalsSchema(db);
     await ensureNoteShareStateSchema(db);
+    await ensureFoodSchema(db);
     return;
   }
 
@@ -258,4 +271,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await ensureJournalNotebooksSchema(db);
   await ensureDailyJournalsSchema(db);
   await ensureNoteShareStateSchema(db);
+  await ensureFoodSchema(db);
 }

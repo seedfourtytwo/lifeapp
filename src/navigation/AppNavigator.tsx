@@ -6,6 +6,8 @@ import { useStackScreenOptions } from './useStackScreenOptions';
 import HomeScreen from '../screens/HomeScreen';
 import SettingsMenuScreen from '../screens/settings/SettingsMenuScreen';
 import TrackersScreen from '../screens/TrackersScreen';
+import IngredientsScreen from '../screens/IngredientsScreen';
+import IngredientEditorScreen from '../screens/IngredientEditorScreen';
 import SettingsNavigator from './SettingsNavigator';
 import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
 import InsightsScreen from '../screens/InsightsScreen';
@@ -37,6 +39,21 @@ export default function AppNavigator() {
         name="Trackers"
         component={TrackersScreen}
         options={{ title: t('settings:menu.trackersTitle') }}
+      />
+      <Stack.Screen
+        name="Ingredients"
+        component={IngredientsScreen}
+        options={{ title: t('settings:menu.ingredientsTitle') }}
+      />
+      <Stack.Screen
+        name="IngredientEditor"
+        component={IngredientEditorScreen}
+        getId={({ params }) => params?.foodId ?? 'new'}
+        options={({ route }) => ({
+          title: route.params?.foodId
+            ? t('nutrition:editor.editTitle')
+            : t('nutrition:editor.addTitle'),
+        })}
       />
       <Stack.Screen
         name="AppSettings"

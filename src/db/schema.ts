@@ -90,6 +90,40 @@ CREATE TABLE IF NOT EXISTS daily_journals (
 
 CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);
 
+CREATE TABLE IF NOT EXISTS food_items (
+  id TEXT PRIMARY KEY NOT NULL,
+  slug TEXT UNIQUE,
+  name TEXT NOT NULL,
+  food_group TEXT NOT NULL,
+  counts_as_plant INTEGER,
+  diversity_key TEXT,
+  aliases_json TEXT,
+  season_months_json TEXT,
+  peak_months_json TEXT,
+  nutrients_json TEXT,
+  glycemic_index REAL,
+  portions_json TEXT,
+  created_at TEXT NOT NULL,
+  archived_at TEXT,
+  protocol_version INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_food_items_group ON food_items(food_group);
+
+CREATE TABLE IF NOT EXISTS food_log (
+  id TEXT PRIMARY KEY NOT NULL,
+  food_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  logged_at TEXT NOT NULL,
+  protocol_version INTEGER NOT NULL,
+  FOREIGN KEY (food_id) REFERENCES food_items(id) ON DELETE CASCADE,
+  -- One row per food per day: v1 tracks "did I eat this", not how much.
+  -- Adding amounts later means an additive nullable column on this row.
+  UNIQUE (food_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_food_log_date ON food_log(date);
+
 CREATE TABLE IF NOT EXISTS note_share_state (
   kind TEXT NOT NULL,
   element_id TEXT NOT NULL,

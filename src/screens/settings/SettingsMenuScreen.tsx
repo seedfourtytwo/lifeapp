@@ -38,6 +38,12 @@ export default function SettingsMenuScreen() {
           chevron
           onPress={() => navigation.navigate('Trackers')}
         />
+        <SettingsRow
+          icon="food-apple-outline"
+          title={t('menu.ingredientsTitle')}
+          chevron
+          onPress={() => navigation.navigate('Ingredients')}
+        />
       </SettingsGroup>
 
       <SettingsGroup>

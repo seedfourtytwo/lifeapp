@@ -2,18 +2,19 @@
   "dock": {
     "habitsTab": "Habitudes",
     "countersTab": "Compteurs",
+    "nutritionTab": "Nutrition",
     "more": "Plus"
   },
+  "dayStatus": {
+    "a11y": "{{date}} · remise à zéro à {{time}}"
+  },
   "habitsTab": {
-    "remaining": "{{count}} restantes",
-    "doneOfTotal": "{{done}} sur {{total}}",
     "retry": "Réessayer",
     "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
     "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
     "emptyNothingDueToday": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis."
   },
   "countersTab": {
-    "resetsAtMidnight": "Aujourd'hui · remis à zéro à minuit",
     "retry": "Réessayer",
     "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
     "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",

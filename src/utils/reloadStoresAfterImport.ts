@@ -7,6 +7,7 @@ import { clearCachedForecast } from '../weather/forecastCache';
 import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
+import { useFoodStore } from '../store/foodStore';
 import {
   awaitHabitTimerStops,
   bumpEventDataEpoch,
@@ -16,6 +17,7 @@ import {
 } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
+import { currentAppCalendarDate } from './dayRollover';
 
 export type ReloadStoresOptions = {
   /** Full replace (import) — treat calendar + weather + activity as wiped. */
@@ -96,6 +98,17 @@ export async function reloadStoresAfterImport(
     ]);
 
     void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));
+
+    // Drop the loaded-week guard so the Nutrition tab refetches instead of
+    // showing the pre-clear catalog and counts.
+    useFoodStore.setState({
+      items: [],
+      weekEntries: [],
+      weekStart: null,
+      loaded: false,
+      error: null,
+    });
+    await useFoodStore.getState().loadWeek(currentAppCalendarDate());
   }
 
   if (preferencesCleared || weatherCleared || full) {
