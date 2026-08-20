@@ -1,4 +1,5 @@
 import {
+  APP_DAY_RESET_TIME_LABEL,
   currentAppCalendarDate,
   hasAppCalendarDayChanged,
   msUntilNextAppDay,
@@ -18,5 +19,14 @@ describe('dayRollover', () => {
   it('schedules refresh for the next local midnight', () => {
     const beforeMidnight = new Date(2026, 6, 15, 23, 30, 0);
     expect(msUntilNextAppDay(beforeMidnight)).toBe(30 * 60 * 1000);
+  });
+
+  it('labels the reset boundary with the hour msUntilNextAppDay actually targets', () => {
+    const now = new Date(2026, 6, 15, 9, 17, 42);
+    const boundary = new Date(now.getTime() + msUntilNextAppDay(now));
+    const label = `${String(boundary.getHours()).padStart(2, '0')}:${String(
+      boundary.getMinutes(),
+    ).padStart(2, '0')}`;
+    expect(APP_DAY_RESET_TIME_LABEL).toBe(label);
   });
 });

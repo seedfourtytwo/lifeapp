@@ -21,6 +21,7 @@ import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import EmptyTabState from './shared/EmptyTabState';
+import HomeTabDayStatus from './shared/HomeTabDayStatus';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
@@ -192,13 +193,7 @@ export default function CountersScreen({
           notebooks={notebooks}
           onDictateNotebook={onDictateNotebook}
           onEditNotebook={onEditNotebook}
-          leading={
-            counters.length > 0 ? (
-              <Text variant="bodyMedium" numberOfLines={1}>
-                {t('countersTab.resetsAtMidnight')}
-              </Text>
-            ) : null
-          }
+          leading={counters.length > 0 ? <HomeTabDayStatus now={now} /> : null}
         />
 
         {counters.length === 0 ? (

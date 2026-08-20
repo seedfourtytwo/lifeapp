@@ -9,6 +9,9 @@ export function hasAppCalendarDayChanged(previousDate: string, now = new Date())
   return currentAppCalendarDate(now) !== previousDate;
 }
 
+/** Display label for the daily reset boundary — must match `msUntilNextAppDay`. */
+export const APP_DAY_RESET_TIME_LABEL = '00:00';
+
 /** Milliseconds until the next local midnight (minimum 1s). */
 export function msUntilNextAppDay(now = new Date()): number {
   const nextMidnight = new Date(now);

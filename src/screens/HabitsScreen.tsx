@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
 import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
@@ -20,6 +19,7 @@ import { getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
+import HomeTabDayStatus from './shared/HomeTabDayStatus';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
@@ -58,7 +58,6 @@ export default function HabitsScreen({
   const { t } = useTranslation('home');
   const { t: tCommon } = useTranslation('common');
   const { t: tTrackers } = useTranslation('trackers');
-  const { isCartoon } = useAppTheme();
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const isLoading = useElementStore((s) => s.isLoading);
@@ -195,15 +194,6 @@ export default function HabitsScreen({
     );
   }
 
-  const doneCount = dueTodayHabits.filter((h) => habitDoneToday[h.id]).length;
-  const remainingCount = dueTodayHabits.length - doneCount;
-  const statusLabel =
-    dueTodayHabits.length === 0
-      ? null
-      : remainingCount > 0
-        ? t('habitsTab.remaining', { count: remainingCount })
-        : t('habitsTab.doneOfTotal', { done: doneCount, total: dueTodayHabits.length });
-
   let emptyMessage: string | null = null;
   let emptyWithCta = false;
   if (totalHabitCount === 0) {
@@ -236,23 +226,7 @@ export default function HabitsScreen({
         notebooks={notebooks}
         onDictateNotebook={onDictateNotebook}
         onEditNotebook={onEditNotebook}
-        leading={
-          habits.length > 0 && statusLabel ? (
-            <Text
-              variant="bodyMedium"
-              style={[
-                styles.statusText,
-                isCartoon && {
-                  color: theme.colors.onSecondaryContainer,
-                  fontWeight: '600',
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {statusLabel}
-            </Text>
-          ) : null
-        }
+        leading={habits.length > 0 ? <HomeTabDayStatus now={now} /> : null}
       />
 
       {emptyMessage ? (
@@ -336,9 +310,6 @@ const styles = {
       flex: 1,
       paddingHorizontal: 16,
       paddingTop: 8,
-    },
-    statusText: {
-      opacity: 0.85,
     },
   }),
 };
