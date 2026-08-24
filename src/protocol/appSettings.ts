@@ -28,6 +28,13 @@ export function isWeatherLocationMode(value: string): value is WeatherLocationMo
 /** Default local time for the evening unfinished-trackers digest. */
 export const DEFAULT_EVENING_CHECK_IN_TIME = '20:00';
 
+/**
+ * On unless the user has stored a choice. Todos are the first feature that
+ * depends on this reminder actually firing, and there is no settings UI to
+ * turn it on with — so the default has to be the useful one.
+ */
+export const DEFAULT_EVENING_CHECK_IN_ENABLED = true;
+
 const EveningCheckInTimeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Expected HH:mm');

@@ -8,6 +8,7 @@ import { warmupHabitCompleteChime } from '../audio/habitCompleteSound';
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
+import { useTodoStore } from '../store/todoStore';
 import {
   habitStreakInputsFromElements,
   releaseActiveTimersReady,
@@ -15,7 +16,6 @@ import {
 } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
-import { cancelAllHabitReminders } from '../notifications/habitReminders';
 
 /**
  * Identity of active habits that should reload streaks / warm sounds.
@@ -32,7 +32,7 @@ function activeHabitBootstrapKey(
     .join('|');
 }
 
-/** Loads settings, elements, habit streaks, and warms timer sounds at app start. */
+/** Loads settings, elements, todos, habit streaks, and warms timer sounds at app start. */
 export function useAppBootstrap(): void {
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const loadSettings = useSettingsStore((s) => s.load);
@@ -57,16 +57,15 @@ export function useAppBootstrap(): void {
     void loadSettings();
     void warmupHabitSoundPlayback();
     void warmupHabitCompleteChime();
-    // Evening check-in is parked; clear any leftover OS notifications.
-    void cancelAllHabitReminders().catch((error) => {
-      console.warn('Parked habit reminder cancel skipped', error);
-    });
   }, [loadSettings]);
 
   useEffect(() => {
     if (!settingsLoaded) return;
     void loadElements();
     void useCalendarStore.getState().load();
+    // Loaded at boot, not on tab focus: the evening check-in counts todos due
+    // today whether or not you have opened the Todos tab.
+    void useTodoStore.getState().load();
   }, [loadElements, settingsLoaded]);
 
   // Element load failed — don't leave timer starts hanging forever.

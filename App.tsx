@@ -16,6 +16,7 @@ import { applyAppLanguage } from './src/i18n';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
+import { useEveningCheckInSync } from './src/hooks/useEveningCheckInSync';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
 
@@ -32,6 +33,7 @@ function ThemedApp() {
 
   useAppBootstrap();
   useCalendarReminderSync();
+  useEveningCheckInSync();
 
   useEffect(() => {
     if (!isLoaded) {

@@ -5,6 +5,7 @@ import * as settingsRepo from '../db/repositories/settingsRepository';
 import { i18n } from '../i18n';
 import {
   APP_SETTING_KEYS,
+  DEFAULT_EVENING_CHECK_IN_ENABLED,
   DEFAULT_EVENING_CHECK_IN_TIME,
   isAppLanguage,
   isWeatherLocationMode,
@@ -87,7 +88,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set) => ({
   themeMode: 'light',
   appLanguage: 'system',
-  eveningCheckInEnabled: false,
+  eveningCheckInEnabled: DEFAULT_EVENING_CHECK_IN_ENABLED,
   eveningCheckInTime: DEFAULT_EVENING_CHECK_IN_TIME,
   weatherWidgetEnabled: false,
   calendarWidgetEnabled: false,
@@ -158,10 +159,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
             ? storedLocationMode
             : 'manual';
 
+        // Nothing stored at all means the user has never chosen — not that
+        // they said no. Only a stored value can turn the reminder off.
         const eveningCheckInEnabled =
           storedEveningEnabled != null
             ? parseBool(storedEveningEnabled)
-            : parseBool(storedLegacyReminders);
+            : storedLegacyReminders != null
+              ? parseBool(storedLegacyReminders)
+              : DEFAULT_EVENING_CHECK_IN_ENABLED;
         const eveningCheckInTime =
           parseEveningCheckInTime(storedEveningTime) ?? DEFAULT_EVENING_CHECK_IN_TIME;
 

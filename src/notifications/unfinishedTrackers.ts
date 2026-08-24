@@ -1,23 +1,31 @@
 import {
   CounterConfigSchema,
+  countTodosNeedingAttention,
   isHabitDueToday,
   parseHabitConfig,
   toDateString,
   type ElementDefinition,
+  type Todo,
 } from '../protocol';
 import { isElementArchived } from '../utils/dashboardElements';
 
 export type UnfinishedTrackerCounts = {
   habits: number;
   counters: number;
+  /** Open todos due today or already past their deadline. Undated ones never count. */
+  todos: number;
   total: number;
 };
 
-/** Count due habits not done and counters still under their daily target. */
+/**
+ * Count what is still open today: due habits not done, counters under their
+ * daily target, and todos due today or overdue.
+ */
 export function countUnfinishedTrackersToday(args: {
   elements: ElementDefinition[];
   habitDoneToday: Record<string, boolean>;
   dailyTotals: Record<string, number>;
+  todos?: readonly Todo[];
   now?: Date;
 }): UnfinishedTrackerCounts {
   const now = args.now ?? new Date();
@@ -48,5 +56,7 @@ export function countUnfinishedTrackersToday(args: {
     }
   }
 
-  return { habits, counters, total: habits + counters };
+  const todos = countTodosNeedingAttention(args.todos ?? [], today);
+
+  return { habits, counters, todos, total: habits + counters + todos };
 }

@@ -5,9 +5,9 @@
   },
   "eveningCheckIn": {
     "title": "Evening check-in",
-    "bodyGeneric": "Review unfinished habits and counter goals",
-    "bodyOne": "1 tracker still to do today",
-    "bodyMany": "{{count}} trackers still to do today"
+    "bodyGeneric": "Review what's still open today",
+    "bodyOne": "1 thing still to do today",
+    "bodyMany": "{{count}} things still to do today"
   },
   "calendarReminder": {
     "title": "Calendar",

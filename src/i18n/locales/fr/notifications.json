@@ -5,9 +5,9 @@
   },
   "eveningCheckIn": {
     "title": "Point du soir",
-    "bodyGeneric": "Vérifiez les habitudes et objectifs de compteurs non terminés",
-    "bodyOne": "1 suivi encore à faire aujourd'hui",
-    "bodyMany": "{{count}} suivis encore à faire aujourd'hui"
+    "bodyGeneric": "Voir ce qu'il reste à faire aujourd'hui",
+    "bodyOne": "1 chose à faire aujourd'hui",
+    "bodyMany": "{{count}} choses à faire aujourd'hui"
   },
   "calendarReminder": {
     "title": "Calendrier",
