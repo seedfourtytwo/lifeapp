@@ -144,7 +144,7 @@
       "activityBeforeUnset": "Activity, day notes, and journals before a chosen date (enter YYYY-MM-DD)",
       "activityBefore": "Activity, day notes, and journals before {{date}}",
       "activityKeepLast": "Activity, day notes, and journals older than the last {{days}} days (before {{cutoff}})",
-      "activityAll": "All activity history (check-offs, timers, counter logs, day notes, journals)",
+      "activityAll": "All activity history (check-offs, timers, counter logs, day notes, journals, completed todos)",
       "calendar": "Calendar events, reminders, and clears",
       "weather": "Cached weather forecasts",
       "preferences": "App preferences (theme, toggles, bubble position)"

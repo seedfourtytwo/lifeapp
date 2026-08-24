@@ -131,7 +131,7 @@ describe('food schema upgrade paths', () => {
     await runMigrations(db);
     await runMigrations(db);
     const version = raw.prepare('SELECT version FROM schema_version').get() as { version: number };
-    expect(version.version).toBe(20);
+    expect(version.version).toBe(21);
     expect(columns(raw, 'food_items').has('portions_json')).toBe(true);
   });
 });

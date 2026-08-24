@@ -124,6 +124,22 @@ CREATE TABLE IF NOT EXISTS food_log (
 
 CREATE INDEX IF NOT EXISTS idx_food_log_date ON food_log(date);
 
+CREATE TABLE IF NOT EXISTS todos (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  note TEXT,
+  due_date TEXT,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  -- NULL = still open. Set = done, and that is the whole of "history":
+  -- completed todos are never deleted, only filtered out of the open list.
+  completed_at TEXT,
+  protocol_version INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todos(completed_at);
+CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
+
 CREATE TABLE IF NOT EXISTS note_share_state (
   kind TEXT NOT NULL,
   element_id TEXT NOT NULL,

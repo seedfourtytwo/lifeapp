@@ -1,5 +1,7 @@
 import {
   PROTOCOL_VERSION,
+  createProtocolBundle,
+  parseProtocolBundle,
   TODO_TITLE_MAX_LENGTH,
   TodoSchema,
   compareTodos,
@@ -220,5 +222,46 @@ describe('validateBundleTodos', () => {
 
   it('accepts distinct todos', () => {
     expect(() => validateBundleTodos([todo(), todo()])).not.toThrow();
+  });
+});
+
+describe('backup bundle', () => {
+  it('carries todos through export and re-parse', () => {
+    const todos = [todo({ dueDate: '2026-09-01' }), todo({ completedAt: '2026-08-24T18:00:00.000Z' })];
+    const bundle = createProtocolBundle({ elements: [], dashboard: [], events: [], todos });
+
+    expect(parseProtocolBundle(bundle).todos).toEqual(todos);
+  });
+
+  it('leaves the key out entirely when there are no todos', () => {
+    const bundle = createProtocolBundle({ elements: [], dashboard: [], events: [], todos: [] });
+
+    expect(bundle).not.toHaveProperty('todos');
+  });
+
+  it('still reads a backup taken before todos existed', () => {
+    const older = {
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      elements: [],
+      dashboard: [],
+      events: [],
+    };
+
+    expect(parseProtocolBundle(older).todos).toBeUndefined();
+  });
+
+  it('rejects a bundle with the same todo twice', () => {
+    const one = todo();
+    expect(() =>
+      parseProtocolBundle({
+        protocolVersion: PROTOCOL_VERSION,
+        exportedAt: '2026-01-01T00:00:00.000Z',
+        elements: [],
+        dashboard: [],
+        events: [],
+        todos: [one, one],
+      }),
+    ).toThrow(/[Dd]uplicate/);
   });
 });

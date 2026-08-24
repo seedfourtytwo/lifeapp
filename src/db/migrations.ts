@@ -14,12 +14,13 @@ import {
   ensureDayNotesSchema,
   ensureElementsSchema,
   ensureFoodSchema,
+  ensureTodoSchema,
   ensureJournalNotebooksSchema,
   ensureNoteShareStateSchema,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 20;
+const CURRENT_SCHEMA_VERSION = 21;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -224,6 +225,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   20: async (db) => {
     await ensureFoodSchema(db);
   },
+  21: async (db) => {
+    await ensureTodoSchema(db);
+  },
 };
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
@@ -243,6 +247,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await ensureDailyJournalsSchema(db);
     await ensureNoteShareStateSchema(db);
     await ensureFoodSchema(db);
+    await ensureTodoSchema(db);
     return;
   }
 
@@ -272,4 +277,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await ensureDailyJournalsSchema(db);
   await ensureNoteShareStateSchema(db);
   await ensureFoodSchema(db);
+  await ensureTodoSchema(db);
 }

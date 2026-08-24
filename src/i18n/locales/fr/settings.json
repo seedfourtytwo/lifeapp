@@ -144,7 +144,7 @@
       "activityBeforeUnset": "Activité, notes du jour et journaux avant une date choisie (saisir AAAA-MM-JJ)",
       "activityBefore": "Activité, notes du jour et journaux avant le {{date}}",
       "activityKeepLast": "Activité, notes du jour et journaux plus anciens que les {{days}} derniers jours (avant le {{cutoff}})",
-      "activityAll": "Tout l'historique d'activité (coches, minuteurs, journaux de compteurs, notes du jour, journaux)",
+      "activityAll": "Tout l'historique d'activité (validations, minuteurs, compteurs, notes du jour, journaux, tâches terminées)",
       "calendar": "Événements du calendrier, rappels et occurrences marquées",
       "weather": "Prévisions météo en cache",
       "preferences": "Préférences de l'application (thème, options, position de la bulle)"

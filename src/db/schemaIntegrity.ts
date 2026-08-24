@@ -322,6 +322,24 @@ const FOOD_ITEM_ADDED_COLUMNS: Record<string, string> = {
 };
 
 /** Food catalog + day log — repairs hot-reload / skipped migration cases. */
+export async function ensureTodoSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      note TEXT,
+      due_date TEXT,
+      sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      protocol_version INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todos(completed_at);
+    CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
+  `);
+}
+
 export async function ensureFoodSchema(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS food_items (

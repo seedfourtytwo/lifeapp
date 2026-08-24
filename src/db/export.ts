@@ -10,6 +10,7 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as journalNotebookRepo from '../db/repositories/journalNotebookRepository';
 import * as calendarRepo from '../db/repositories/calendarRepository';
 import * as foodRepo from '../db/repositories/foodRepository';
+import * as todoRepo from '../db/repositories/todoRepository';
 import { markSeedFoodsApplied } from '../nutrition/seedCatalog';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
@@ -38,6 +39,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     const clears = await calendarRepo.getAllOccurrenceClears(db);
     const foodItems = await foodRepo.getAllFoodItems(db);
     const foodLog = await foodRepo.getAllFoodLog(db);
+    const todos = await todoRepo.getAllTodos(db);
 
     const elementIds = new Set(elements.map((element) => element.id));
     const dayNotes = dayNotesRaw.filter((note) => elementIds.has(note.elementId));
@@ -54,6 +56,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
       journalNotebooks,
       foodItems,
       foodLog,
+      todos,
       settings,
       calendar: {
         schemaVersion: CALENDAR_BACKUP_VERSION,
@@ -136,6 +139,9 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       for (const entry of bundle.foodLog ?? []) {
         if (!foodIds.has(entry.foodId)) continue;
         await foodRepo.insertFoodLogEntry(db, entry);
+      }
+      for (const todo of bundle.todos ?? []) {
+        await todoRepo.insertTodo(db, todo);
       }
       if (bundle.foodItems) {
         // The imported catalog is authoritative — do not re-seed starter foods

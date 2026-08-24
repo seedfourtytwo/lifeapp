@@ -9,6 +9,7 @@ import * as eventRepo from './repositories/eventRepository';
 import * as dayNoteRepo from './repositories/dayNoteRepository';
 import * as dailyJournalRepo from './repositories/dailyJournalRepository';
 import * as foodRepo from './repositories/foodRepository';
+import * as todoRepo from './repositories/todoRepository';
 import { clearSeedFoodState } from '../nutrition/seedCatalog';
 import * as noteShareRepo from './repositories/noteShareStateRepository';
 import * as settingsRepo from './repositories/settingsRepository';
@@ -39,6 +40,7 @@ async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM day_notes');
   await db.runAsync('DELETE FROM food_log');
   await db.runAsync('DELETE FROM food_items');
+  await db.runAsync('DELETE FROM todos');
   // Wiping the catalog also forgets the starter foods, so a clean slate
   // re-seeds instead of leaving an empty catalog with no way back.
   await clearSeedFoodState(db);
@@ -115,12 +117,15 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
           await noteShareRepo.deleteAllShareState(db);
           // The food log is day activity; the catalog itself is a definition.
           await foodRepo.deleteAllFoodLog(db);
+          // Completed todos are the history page. Open todos are pending work.
+          await todoRepo.deleteCompletedTodos(db);
         } else {
           await eventRepo.deleteEventsBeforeDate(db, before);
           await dayNoteRepo.deleteNotesBeforeDate(db, before);
           await dailyJournalRepo.deleteJournalsBeforeDate(db, before);
           await noteShareRepo.deleteShareStateBeforeDate(db, before);
           await foodRepo.deleteFoodLogBeforeDate(db, before);
+          await todoRepo.deleteCompletedTodosBeforeDate(db, before);
         }
       }
 
