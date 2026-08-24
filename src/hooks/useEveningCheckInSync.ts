@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppState } from 'react-native';
 import {
   isNotificationsNativeAvailable,
@@ -23,11 +23,11 @@ function scheduleFromCurrentState(): void {
     todos,
   });
 
-  void scheduleEndOfDayReminder(
-    settings.eveningCheckInEnabled,
-    settings.eveningCheckInTime,
-    counts.total,
-  ).catch((error) => {
+  schedule(settings.eveningCheckInEnabled, settings.eveningCheckInTime, counts.total);
+}
+
+function schedule(enabled: boolean, time: string, total: number): void {
+  void scheduleEndOfDayReminder(enabled, time, total).catch((error) => {
     console.warn('Evening check-in sync skipped', error);
   });
 }
@@ -50,10 +50,19 @@ export function useEveningCheckInSync(): void {
   const dailyTotals = useEventStore((s) => s.dailyTotals);
   const todos = useTodoStore((s) => s.todos);
 
+  // Depend on the count, not on the stores behind it: logging the same counter
+  // ten times moves dailyTotals ten times but usually leaves the count alone,
+  // and each change would otherwise rewrite the OS schedule.
+  const total = useMemo(
+    () =>
+      countUnfinishedTrackersToday({ elements, habitDoneToday, dailyTotals, todos }).total,
+    [elements, habitDoneToday, dailyTotals, todos],
+  );
+
   useEffect(() => {
     if (!settingsLoaded || !isNotificationsNativeAvailable()) return;
-    scheduleFromCurrentState();
-  }, [settingsLoaded, enabled, time, appLanguage, elements, habitDoneToday, dailyTotals, todos]);
+    schedule(enabled, time, total);
+  }, [settingsLoaded, enabled, time, appLanguage, total]);
 
   useEffect(() => {
     if (!settingsLoaded || !isNotificationsNativeAvailable()) return;

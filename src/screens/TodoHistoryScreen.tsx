@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { getDatabase } from '../db/client';
 import * as todoRepo from '../db/repositories/todoRepository';
 import { getDateLocale } from '../i18n';
-import type { Todo } from '../protocol';
+import { toDateString, type Todo } from '../protocol';
 import { formatShortDate } from '../utils/dates';
 
 /** Enough to scroll through a year of todos without mounting a decade of them. */
@@ -21,8 +21,9 @@ const HISTORY_LIMIT = 200;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 function completionDate(todo: Todo): string {
-  // completed_at is a UTC timestamp; group by the local day it happened on.
-  return todo.completedAt ? new Date(todo.completedAt).toLocaleDateString('en-CA') : '';
+  // completed_at is a UTC timestamp; group by the local day it happened on,
+  // matching the `date(completed_at, 'localtime')` the date filter uses.
+  return todo.completedAt ? toDateString(new Date(todo.completedAt)) : '';
 }
 
 function formatTime(iso: string): string {
