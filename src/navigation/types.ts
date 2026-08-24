@@ -15,6 +15,7 @@ export type RootStackParamList = {
   TrackerHistory: { elementId: string };
   Insights: undefined;
   Journal: undefined;
+  TodoHistory: undefined;
   Calendar: undefined;
   CalendarEventEditor: { eventId?: string; seedDate?: string };
 };

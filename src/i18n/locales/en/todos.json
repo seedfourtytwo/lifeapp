@@ -1,0 +1,62 @@
+{
+  "add": {
+    "placeholder": "Add a todo",
+    "action": "Add"
+  },
+  "sections": {
+    "overdue": "Overdue",
+    "today": "Today",
+    "later": "Later",
+    "undated": "No date"
+  },
+  "list": {
+    "empty": "Nothing to do.",
+    "emptyHint": "Add something above and it shows up here.",
+    "reorderHint": "Long-press to reorder",
+    "historyA11y": "Completed todos",
+    "loadFailed": "Could not load your todos.",
+    "retry": "Retry"
+  },
+  "row": {
+    "doneA11y": "Mark {{title}} done",
+    "undoneA11y": "Mark {{title}} not done",
+    "openA11y": "Edit {{title}}",
+    "hasNote": "Has a note",
+    "dueToday": "Today",
+    "overdueBy_one": "{{count}} day late",
+    "overdueBy_other": "{{count}} days late"
+  },
+  "undo": {
+    "done": "Done — {{title}}",
+    "action": "Undo"
+  },
+  "editor": {
+    "newTitle": "New todo",
+    "editTitle": "Edit todo",
+    "titleLabel": "Title",
+    "noteLabel": "Note",
+    "notePlaceholder": "Anything you want to remember about this",
+    "deadlineLabel": "Deadline",
+    "deadlineNone": "No deadline",
+    "deadlinePlaceholder": "YYYY-MM-DD",
+    "deadlineInvalid": "Use YYYY-MM-DD, or clear it",
+    "deadlineClear": "Clear",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete this todo?",
+    "deleteConfirmBody": "It is removed for good and never appears in history.",
+    "deleteConfirmAction": "Delete",
+    "titleRequired": "Give it a title first"
+  },
+  "history": {
+    "title": "Completed",
+    "searchPlaceholder": "Search completed todos",
+    "dateFilter": "Jump to a day",
+    "dateClear": "Show all",
+    "empty": "Nothing completed yet.",
+    "emptySearch": "No completed todo matches that.",
+    "completedAt": "Done {{time}}",
+    "loadFailed": "Could not load your history."
+  }
+}

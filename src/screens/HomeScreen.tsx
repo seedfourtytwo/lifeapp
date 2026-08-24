@@ -33,8 +33,9 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import CountersScreen from './CountersScreen';
 import HabitsScreen from './HabitsScreen';
 import NutritionScreen from './NutritionScreen';
+import TodosScreen from './TodosScreen';
 
-type HomeTab = 'habits' | 'counters' | 'nutrition';
+type HomeTab = 'habits' | 'counters' | 'nutrition' | 'todos';
 
 type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -42,14 +43,19 @@ type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
 let lastGpsRefreshAt = 0;
 
-const TAB_ORDER: HomeTab[] = ['habits', 'counters', 'nutrition'];
+const TAB_ORDER: HomeTab[] = ['habits', 'counters', 'nutrition', 'todos'];
 
-type DockTabLabelKey = 'dock.habitsTab' | 'dock.countersTab' | 'dock.nutritionTab';
+type DockTabLabelKey =
+  | 'dock.habitsTab'
+  | 'dock.countersTab'
+  | 'dock.nutritionTab'
+  | 'dock.todosTab';
 
 const TABS: { value: HomeTab; labelKey: DockTabLabelKey; icon: DockIconName }[] = [
   { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
   { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
   { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'cake-variant' },
+  { value: 'todos', labelKey: 'dock.todosTab', icon: 'format-list-checks' },
 ];
 
 export default function HomeScreen() {
@@ -292,6 +298,17 @@ export default function HomeScreen() {
             }
           >
             <NutritionScreen />
+          </View>
+          <View
+            style={[
+              styles.page,
+              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
+            ]}
+            pointerEvents={tab === 'todos' ? 'auto' : 'none'}
+            accessibilityElementsHidden={tab !== 'todos'}
+            importantForAccessibility={tab === 'todos' ? 'auto' : 'no-hide-descendants'}
+          >
+            <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
           </View>
         </ScrollView>
       </View>

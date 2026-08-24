@@ -1,7 +1,7 @@
 /* eslint-disable import/first -- jest mocks must load before module imports */
 import { getDatabase } from '../src/db/client';
 import { readAppSettings, writeAppSettings } from '../src/db/appSettingsBackup';
-import { clearAllAppData } from '../src/db/resetAppData';
+import { clearAllAppData, clearAppData } from '../src/db/resetAppData';
 import { importProtocolBundle, serializeBundle } from '../src/db/export';
 import * as elementRepo from '../src/db/repositories/elementRepository';
 import * as settingsRepo from '../src/db/repositories/settingsRepository';
@@ -78,6 +78,14 @@ jest.mock('../src/db/repositories/calendarRepository', () => ({
     color: '#3D7EA6',
     source: 'local',
   })),
+}));
+
+jest.mock('../src/db/repositories/todoRepository', () => ({
+  getAllTodos: jest.fn(async () => []),
+  insertTodo: jest.fn(async () => undefined),
+  deleteAllTodos: jest.fn(async () => undefined),
+  deleteCompletedTodos: jest.fn(async () => undefined),
+  deleteCompletedTodosBeforeDate: jest.fn(async () => undefined),
 }));
 
 jest.mock('../src/db/repositories/weatherRepository', () => ({
@@ -344,6 +352,53 @@ describe('protocol backup settings', () => {
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM dashboard_items');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM elements');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM app_settings');
+  });
+
+  it('replaces every todo on import, open ones included', async () => {
+    const todoRepo = jest.requireMock('../src/db/repositories/todoRepository') as {
+      deleteAllTodos: jest.Mock;
+      insertTodo: jest.Mock;
+    };
+    const imported = {
+      id: '550e8400-e29b-41d4-a716-446655440050',
+      title: 'Imported todo',
+      note: null,
+      dueDate: null,
+      sortOrder: 0,
+      createdAt: '2026-08-20T09:00:00.000Z',
+      completedAt: null,
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const bundle = createProtocolBundle({
+      elements: [],
+      dashboard: [],
+      events: [],
+      todos: [imported],
+    });
+
+    await importProtocolBundle(bundle);
+
+    expect(todoRepo.deleteAllTodos).toHaveBeenCalled();
+    expect(todoRepo.insertTodo).toHaveBeenCalledWith(db, imported);
+  });
+
+  it('keeps open todos when only habits and counters are removed', async () => {
+    const todoRepo = jest.requireMock('../src/db/repositories/todoRepository') as {
+      deleteAllTodos: jest.Mock;
+      deleteCompletedTodos: jest.Mock;
+    };
+
+    await clearAppData({
+      activityHistory: true,
+      activityPeriod: { kind: 'all' },
+      calendar: false,
+      weather: false,
+      preferences: false,
+      definitions: true,
+    });
+
+    expect(todoRepo.deleteCompletedTodos).toHaveBeenCalled();
+    expect(todoRepo.deleteAllTodos).not.toHaveBeenCalled();
   });
 
   it('clears preferences before importing a backup', async () => {

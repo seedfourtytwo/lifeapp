@@ -8,6 +8,7 @@ import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { useFoodStore } from '../store/foodStore';
+import { useTodoStore } from '../store/todoStore';
 import {
   awaitHabitTimerStops,
   bumpEventDataEpoch,
@@ -109,6 +110,9 @@ export async function reloadStoresAfterImport(
       error: null,
     });
     await useFoodStore.getState().loadWeek(currentAppCalendarDate());
+
+    // Open todos survive a definitions-only clear, so refetch rather than blank.
+    await useTodoStore.getState().reload();
   }
 
   if (preferencesCleared || weatherCleared || full) {

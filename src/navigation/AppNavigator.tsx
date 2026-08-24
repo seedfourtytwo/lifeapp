@@ -12,6 +12,7 @@ import SettingsNavigator from './SettingsNavigator';
 import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import JournalScreen from '../screens/JournalScreen';
+import TodoHistoryScreen from '../screens/TodoHistoryScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 
@@ -74,6 +75,11 @@ export default function AppNavigator() {
         name="Journal"
         component={JournalScreen}
         options={{ title: t('settings:menu.journalTitle') }}
+      />
+      <Stack.Screen
+        name="TodoHistory"
+        component={TodoHistoryScreen}
+        options={{ title: t('todos:history.title') }}
       />
       <Stack.Screen
         name="Calendar"

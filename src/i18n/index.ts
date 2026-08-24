@@ -9,6 +9,7 @@ import enJournal from './locales/en/journal.json';
 import enNotifications from './locales/en/notifications.json';
 import enNutrition from './locales/en/nutrition.json';
 import enSettings from './locales/en/settings.json';
+import enTodos from './locales/en/todos.json';
 import enTrackers from './locales/en/trackers.json';
 
 import frCalendar from './locales/fr/calendar.json';
@@ -36,6 +37,9 @@ export const resources = {
     insights: enInsights,
     notifications: enNotifications,
     nutrition: enNutrition,
+    // English only for now; `fallbackLng: 'en'` serves French readers the
+    // same strings rather than raw keys.
+    todos: enTodos,
   },
   fr: {
     common: frCommon,

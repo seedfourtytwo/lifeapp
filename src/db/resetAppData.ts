@@ -40,7 +40,6 @@ async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM day_notes');
   await db.runAsync('DELETE FROM food_log');
   await db.runAsync('DELETE FROM food_items');
-  await db.runAsync('DELETE FROM todos');
   // Wiping the catalog also forgets the starter foods, so a clean slate
   // re-seeds instead of leaving an empty catalog with no way back.
   await clearSeedFoodState(db);
@@ -52,6 +51,9 @@ async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
 
 async function clearProtocolTables(db: SQLiteDatabase): Promise<void> {
   await clearProtocolDefinitions(db);
+  // Import replaces the device, so open todos go too — otherwise the imported
+  // list would arrive merged with whatever was already on this phone.
+  await todoRepo.deleteAllTodos(db);
 }
 
 export async function clearAppSettings(db: SQLiteDatabase): Promise<void> {
@@ -108,6 +110,9 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     await db.withTransactionAsync(async () => {
       if (options.definitions) {
         await clearProtocolDefinitions(db);
+        // Definitions always take all activity with them, and completed todos
+        // are activity. Open todos are not — they outlive habits and counters.
+        await todoRepo.deleteCompletedTodos(db);
       } else if (options.activityHistory) {
         const before = resolveActivityDeleteBeforeDate(options.activityPeriod);
         if (before == null) {
