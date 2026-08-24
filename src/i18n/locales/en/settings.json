@@ -37,6 +37,8 @@
     "caption": "Import replaces all local data.",
     "backupSavedTitle": "Backup saved",
     "backupSavedBody": "Your JSON backup was downloaded.",
+    "backupSharedTitle": "Backup shared",
+    "backupSharedBody": "Your JSON backup was handed to the app you picked.",
     "exportFailedTitle": "Export failed",
     "exportFailedBodyFallback": "Could not export your data.",
     "importRebuildRequiredBody": "Backup import needs a fresh app build.",

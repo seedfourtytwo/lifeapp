@@ -37,6 +37,8 @@
     "caption": "L’import remplace toutes les données locales.",
     "backupSavedTitle": "Sauvegarde enregistrée",
     "backupSavedBody": "Votre sauvegarde JSON a été téléchargée.",
+    "backupSharedTitle": "Sauvegarde partagée",
+    "backupSharedBody": "Votre sauvegarde JSON a été transmise à l'application choisie.",
     "exportFailedTitle": "Échec de l'export",
     "exportFailedBodyFallback": "Impossible d'exporter vos données.",
     "importRebuildRequiredBody": "L’import de sauvegarde nécessite une nouvelle version de l’application.",

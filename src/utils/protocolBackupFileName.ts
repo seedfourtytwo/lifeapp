@@ -11,7 +11,3 @@ export function protocolBackupFileName(at = new Date()): string {
   const time = `${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`;
   return `life-dashboard-backup-${date}-${time}.json`;
 }
-
-export function protocolBackupFileBaseName(at = new Date()): string {
-  return protocolBackupFileName(at).replace(/\.json$/, '');
-}

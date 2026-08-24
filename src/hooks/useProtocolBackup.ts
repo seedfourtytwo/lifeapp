@@ -12,6 +12,7 @@ import {
   importBackupFromFile,
   isImportBackupAvailable,
 } from '../utils/protocolBackup';
+import { exportBackupAlertKeys } from '../utils/protocolBackupResult';
 import { reloadStoresAfterImport } from '../utils/reloadStoresAfterImport';
 
 export function useProtocolBackup() {
@@ -22,11 +23,8 @@ export function useProtocolBackup() {
   const handleExport = useCallback(async () => {
     setBusy(true);
     try {
-      const result = await exportBackupToFile();
-      if (result === 'cancelled') return;
-      if (result === 'saved') {
-        Alert.alert(t('settings:data.backupSavedTitle'), t('settings:data.backupSavedBody'));
-      }
+      const { titleKey, bodyKey } = exportBackupAlertKeys(await exportBackupToFile());
+      Alert.alert(t(titleKey), t(bodyKey));
     } catch (error) {
       Alert.alert(
         t('settings:data.exportFailedTitle'),

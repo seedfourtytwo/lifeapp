@@ -8,10 +8,11 @@ import {
   serializeBundle,
 } from '../db/export';
 import { protocolBackupFileName } from './protocolBackupFileName';
+import type { ExportBackupResult } from './protocolBackupResult';
 
 type DocumentPickerModule = typeof import('expo-document-picker');
 
-export type ExportBackupResult = 'saved' | 'shared' | 'cancelled';
+export type { ExportBackupResult };
 
 /** Expo Modules (new architecture) — not present on React Native NativeModules. */
 export function isImportBackupAvailable(): boolean {

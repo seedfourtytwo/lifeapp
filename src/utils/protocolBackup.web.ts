@@ -4,8 +4,9 @@ import {
   serializeBundle,
 } from '../db/export';
 import { protocolBackupFileName } from './protocolBackupFileName';
+import type { ExportBackupResult } from './protocolBackupResult';
 
-export type ExportBackupResult = 'saved' | 'shared' | 'cancelled';
+export type { ExportBackupResult };
 
 export function isImportBackupAvailable(): boolean {
   return true;
