@@ -68,6 +68,13 @@ export default function HomeScreen() {
   const pagerRef = useRef<ScrollView>(null);
   const tabRef = useRef<HomeTab>('habits');
   const [tab, setTab] = useState<HomeTab>('habits');
+  /**
+   * Tabs that have been opened at least once. Pages mount lazily and then stay
+   * mounted (so their scroll position and state survive), which keeps a tab you
+   * never use off the render path entirely — it costs nothing at startup and
+   * nothing on every later tab change.
+   */
+  const [visitedTabs, setVisitedTabs] = useState<Set<HomeTab>>(() => new Set(['habits']));
   const [pagerHeight, setPagerHeight] = useState(0);
   const [notebooks, setNotebooks] = useState<HomeNotebookChip[]>([]);
   /** Tracker note sheet open on the active Habits/Counters tab. */
@@ -196,10 +203,17 @@ export default function HomeScreen() {
     );
   };
 
+  const markVisited = (next: HomeTab) => {
+    setVisitedTabs((current) =>
+      current.has(next) ? current : new Set(current).add(next),
+    );
+  };
+
   const scrollToTab = (next: HomeTab, animated = true) => {
     const index = TAB_ORDER.indexOf(next);
     pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
     tabRef.current = next;
+    markVisited(next);
     setTab(next);
   };
 
@@ -209,6 +223,7 @@ export default function HomeScreen() {
     const next = TAB_ORDER[Math.min(Math.max(index, 0), TAB_ORDER.length - 1)] ?? 'habits';
     if (next !== tabRef.current) {
       tabRef.current = next;
+      markVisited(next);
       setTab(next);
     }
   };
@@ -297,7 +312,7 @@ export default function HomeScreen() {
               tab === 'nutrition' ? 'auto' : 'no-hide-descendants'
             }
           >
-            <NutritionScreen />
+            {visitedTabs.has('nutrition') ? <NutritionScreen /> : null}
           </View>
           <View
             style={[
@@ -308,7 +323,9 @@ export default function HomeScreen() {
             accessibilityElementsHidden={tab !== 'todos'}
             importantForAccessibility={tab === 'todos' ? 'auto' : 'no-hide-descendants'}
           >
-            <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
+            {visitedTabs.has('todos') ? (
+              <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
+            ) : null}
           </View>
         </ScrollView>
       </View>

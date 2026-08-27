@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
@@ -45,7 +45,7 @@ type Props = {
  * between them on its own overnight. Drag therefore only reorders *within* a
  * section; you change which section something is in by changing its deadline.
  */
-export default function TodosScreen({ onTrackerDragActiveChange }: Props) {
+function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('todos');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -282,3 +282,9 @@ const todoStyles = StyleSheet.create({
     gap: 4,
   },
 });
+
+/**
+ * Memoised: its only prop is a stable setState, so a Home tab change has no
+ * reason to re-render the list.
+ */
+export default memo(TodosScreen);

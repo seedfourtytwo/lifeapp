@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Searchbar, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -46,7 +46,7 @@ const SEARCH_RESULT_LIMIT = 50;
  * Quantities and intake maths are deliberately not here yet; this answers
  * "did I eat enough different plants".
  */
-export default function NutritionScreen() {
+function NutritionScreen() {
   const theme = useTheme();
   const { t, i18n } = useTranslation('nutrition');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -338,3 +338,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+/**
+ * Memoised because it takes no props: a Home tab change re-renders HomeScreen,
+ * and this page has no reason to follow it.
+ */
+export default memo(NutritionScreen);
