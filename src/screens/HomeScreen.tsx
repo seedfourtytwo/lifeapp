@@ -54,7 +54,7 @@ type DockTabLabelKey =
 const TABS: { value: HomeTab; labelKey: DockTabLabelKey; icon: DockIconName }[] = [
   { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
   { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
-  { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'cake-variant' },
+  { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'silverware-fork-knife' },
   { value: 'todos', labelKey: 'dock.todosTab', icon: 'format-list-checks' },
 ];
 
