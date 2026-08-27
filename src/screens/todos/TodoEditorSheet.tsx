@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Dialog, HelperText, Portal, TextInput, useTheme } from 'react-native-paper';
+import { Alert, StyleSheet, View } from 'react-native';
+import { Button, Dialog, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { TODO_NOTE_MAX_LENGTH, TODO_TITLE_MAX_LENGTH, type Todo } from '../../protocol';
 
@@ -37,29 +37,32 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
   const [note, setNote] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
-  const [showErrors, setShowErrors] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Reseed whenever the sheet opens, so a second todo never inherits the first
-  // one's text.
+  // Reseed whenever the sheet opens, so a second todo never inherits the
+  // first one's text.
   useEffect(() => {
     if (!visible) return;
     setTitle(todo?.title ?? '');
     setNote(todo?.note ?? '');
     setDueDate(todo?.dueDate ?? '');
-    setShowErrors(false);
+    setError(null);
     setSaving(false);
   }, [visible, todo]);
 
-  const trimmedTitle = title.trim();
-  const trimmedDate = dueDate.trim();
-  const dateInvalid = trimmedDate.length > 0 && !isRealDate(trimmedDate);
-  const titleMissing = trimmedTitle.length === 0;
-
   const handleSave = async () => {
-    if (titleMissing || dateInvalid) {
-      setShowErrors(true);
+    const trimmedTitle = title.trim();
+    const trimmedDate = dueDate.trim();
+
+    if (!trimmedTitle) {
+      setError(t('editor.titleRequired'));
       return;
     }
+    if (trimmedDate.length > 0 && !isRealDate(trimmedDate)) {
+      setError(t('editor.deadlineInvalid'));
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave({
@@ -68,10 +71,9 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
         dueDate: trimmedDate.length > 0 ? trimmedDate : null,
       });
       onDismiss();
-    } catch (error) {
-      Alert.alert(
-        tCommon('alerts.couldNotSave'),
-        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error ? saveError.message : tCommon('errors.somethingWentWrong'),
       );
       setSaving(false);
     }
@@ -80,7 +82,7 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
   const handleDelete = () => {
     if (!todo || !onDelete) return;
     Alert.alert(t('editor.deleteConfirmTitle'), t('editor.deleteConfirmBody'), [
-      { text: t('editor.cancel'), style: 'cancel' },
+      { text: tCommon('actions.cancel'), style: 'cancel' },
       {
         text: t('editor.deleteConfirmAction'),
         style: 'destructive',
@@ -98,76 +100,77 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
     <Portal>
       <Dialog visible={visible} onDismiss={saving ? () => {} : onDismiss}>
         <Dialog.Title>{todo ? t('editor.editTitle') : t('editor.newTitle')}</Dialog.Title>
-        <Dialog.Content>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <TextInput
-                mode="outlined"
-                label={t('editor.titleLabel')}
-                value={title}
-                onChangeText={setTitle}
-                maxLength={TODO_TITLE_MAX_LENGTH}
-                autoFocus={!todo}
-                returnKeyType="done"
-              />
-              {showErrors && titleMissing ? (
-                <HelperText type="error" visible>
-                  {t('editor.titleRequired')}
-                </HelperText>
-              ) : null}
+        <Dialog.Content style={styles.content}>
+          <TextInput
+            mode="outlined"
+            label={t('editor.titleLabel')}
+            value={title}
+            onChangeText={(next) => {
+              setTitle(next);
+              setError(null);
+            }}
+            maxLength={TODO_TITLE_MAX_LENGTH}
+            autoFocus={!todo}
+            returnKeyType="done"
+          />
 
-              <View style={styles.deadlineRow}>
-                <TextInput
-                  mode="outlined"
-                  style={styles.deadlineInput}
-                  label={t('editor.deadlineLabel')}
-                  placeholder={t('editor.deadlinePlaceholder')}
-                  value={dueDate}
-                  onChangeText={setDueDate}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
+          <TextInput
+            mode="outlined"
+            label={t('editor.deadlineLabel')}
+            placeholder={t('editor.deadlinePlaceholder')}
+            value={dueDate}
+            onChangeText={(next) => {
+              setDueDate(next);
+              setError(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="numbers-and-punctuation"
+            maxLength={10}
+            right={
+              dueDate.length > 0 ? (
+                <TextInput.Icon
+                  icon="close"
+                  onPress={() => setDueDate('')}
+                  accessibilityLabel={t('editor.deadlineClear')}
                 />
-                {trimmedDate.length > 0 ? (
-                  <Button compact onPress={() => setDueDate('')}>
-                    {t('editor.deadlineClear')}
-                  </Button>
-                ) : null}
-              </View>
-              {showErrors && dateInvalid ? (
-                <HelperText type="error" visible>
-                  {t('editor.deadlineInvalid')}
-                </HelperText>
-              ) : null}
+              ) : undefined
+            }
+          />
 
-              <TextInput
-                mode="outlined"
-                style={styles.note}
-                label={t('editor.noteLabel')}
-                placeholder={t('editor.notePlaceholder')}
-                value={note}
-                onChangeText={setNote}
-                maxLength={TODO_NOTE_MAX_LENGTH}
-                multiline
-                numberOfLines={4}
-              />
-            </ScrollView>
-          </KeyboardAvoidingView>
+          <TextInput
+            mode="outlined"
+            style={styles.note}
+            label={t('editor.noteLabel')}
+            value={note}
+            onChangeText={setNote}
+            maxLength={TODO_NOTE_MAX_LENGTH}
+            multiline
+          />
+
+          {error ? (
+            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+              {error}
+            </Text>
+          ) : null}
+
+          {todo && onDelete ? (
+            <View style={styles.deleteRow}>
+              <Button
+                compact
+                icon="trash-can-outline"
+                textColor={theme.colors.error}
+                disabled={saving}
+                onPress={handleDelete}
+              >
+                {t('editor.delete')}
+              </Button>
+            </View>
+          ) : null}
         </Dialog.Content>
         <Dialog.Actions>
-          {todo && onDelete ? (
-            <Button
-              textColor={theme.colors.error}
-              disabled={saving}
-              onPress={handleDelete}
-              style={styles.deleteAction}
-            >
-              {t('editor.delete')}
-            </Button>
-          ) : null}
           <Button disabled={saving} onPress={onDismiss}>
-            {t('editor.cancel')}
+            {tCommon('actions.cancel')}
           </Button>
           <Button disabled={saving} onPress={() => void handleSave()}>
             {t('editor.save')}
@@ -179,19 +182,14 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
 }
 
 const styles = StyleSheet.create({
-  deadlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 12,
+  content: {
+    gap: 12,
   },
-  deadlineInput: {
-    flex: 1,
-  },
+  /** Capped so a long note cannot push the actions off a short screen. */
   note: {
-    marginTop: 12,
+    maxHeight: 140,
   },
-  deleteAction: {
-    marginRight: 'auto',
+  deleteRow: {
+    flexDirection: 'row',
   },
 });

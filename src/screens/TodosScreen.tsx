@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Button,
   IconButton,
+  Portal,
   Snackbar,
   Text,
   TextInput,
@@ -11,6 +12,7 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
@@ -18,6 +20,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { TODO_TITLE_MAX_LENGTH, groupOpenTodos, type Todo } from '../protocol';
 import { useTodoStore } from '../store/todoStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
+import { DOCK_RESERVE } from '../ui/homeInsets';
 import TodoEditorSheet, { type TodoDraft } from './todos/TodoEditorSheet';
 import TodoRow from './todos/TodoRow';
 import HomeTabDayStatus from './shared/HomeTabDayStatus';
@@ -46,6 +49,7 @@ export default function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('todos');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
 
@@ -243,14 +247,21 @@ export default function TodosScreen({ onTrackerDragActiveChange }: Props) {
         onDelete={(todo) => remove(todo.id)}
       />
 
-      <Snackbar
-        visible={undoTodo != null}
-        onDismiss={() => setUndoTodo(null)}
-        duration={UNDO_DURATION_MS}
-        action={{ label: t('undo.action'), onPress: handleUndo }}
-      >
-        {undoTodo ? t('undo.done', { title: undoTodo.title }) : ''}
-      </Snackbar>
+      {/*
+        In a Portal and lifted clear of the Home dock: rendered inside the tab
+        it lands underneath the dock, where Undo cannot be tapped at all.
+      */}
+      <Portal>
+        <Snackbar
+          visible={undoTodo != null}
+          onDismiss={() => setUndoTodo(null)}
+          duration={UNDO_DURATION_MS}
+          wrapperStyle={{ bottom: DOCK_RESERVE + insets.bottom }}
+          action={{ label: t('undo.action'), onPress: handleUndo }}
+        >
+          {undoTodo ? t('undo.done', { title: undoTodo.title }) : ''}
+        </Snackbar>
+      </Portal>
     </>
   );
 }
