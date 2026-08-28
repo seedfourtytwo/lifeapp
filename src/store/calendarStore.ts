@@ -23,6 +23,7 @@ import * as calendarRepo from '../db/repositories/calendarRepository';
 import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 import { newId } from '../utils/id';
+import type { ResettableMirror } from './mirrorReset';
 
 let calendarLoadGeneration = 0;
 
@@ -47,7 +48,7 @@ export interface CalendarEventInput {
  * Local notification schedules are owned by `useCalendarReminderSync` (not this store)
  * so mutations only update DB + state; the hook reacts to those state changes.
  */
-interface CalendarState {
+interface CalendarState extends ResettableMirror {
   calendars: Calendar[];
   events: CalendarEvent[];
   reminders: CalendarReminder[];
@@ -122,6 +123,19 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   reminders: [],
   clearedByKey: {},
   isLoaded: false,
+
+  reset: async () => {
+    // `isLoaded` goes back to false with the rows: `useCalendarReminderSync`
+    // only syncs a loaded mirror, so it waits for the reload instead of
+    // rescheduling off the empty one.
+    set({
+      calendars: [],
+      events: [],
+      reminders: [],
+      clearedByKey: {},
+      isLoaded: false,
+    });
+  },
 
   load: async () => {
     const generation = ++calendarLoadGeneration;

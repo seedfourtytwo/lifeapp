@@ -39,6 +39,7 @@ import {
   mergeUnchangedEntries,
 } from './writeEpoch';
 import { withDbWriteLock } from '../db/writeLock';
+import type { ResettableMirror } from './mirrorReset';
 import { getDataGeneration } from '../db/dataGeneration';
 
 export type { HabitStreakInput, CounterStreakInput };
@@ -80,7 +81,7 @@ function schedulePersistActiveTimers(
     });
 }
 
-interface EventState {
+interface EventState extends ResettableMirror {
   dailyTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
   habitStreaks: Record<string, number>;
@@ -303,6 +304,22 @@ export const useEventStore = create<EventState>((set, get) => ({
   activeTimerSessions: {},
   dayStateReady: false,
   counterTotalsReady: false,
+
+  reset: async () => {
+    // The *Ready flags go back to false with the maps: the loaders that set
+    // them true are what refills these, and until they run nothing here is
+    // known — a screen must wait rather than read an empty map as "zero today".
+    set({
+      dailyTotals: {},
+      habitDoneToday: {},
+      habitStreaks: {},
+      habitFailureStreaks: {},
+      counterStreaks: {},
+      activeTimerSessions: {},
+      dayStateReady: false,
+      counterTotalsReady: false,
+    });
+  },
 
   hydrateActiveTimerSessions: async () => {
     const sessions = await loadPersistedActiveTimerSessions(await getDatabase());

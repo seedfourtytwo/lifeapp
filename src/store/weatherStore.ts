@@ -5,6 +5,7 @@ import { withDbWriteLock } from '../db/writeLock';
 import * as weatherRepo from '../db/repositories/weatherRepository';
 import { i18n } from '../i18n';
 import { toDateString } from '../protocol';
+import type { ResettableMirror } from './mirrorReset';
 import { useSettingsStore } from './settingsStore';
 import {
   classifyWeatherFetchError,
@@ -25,7 +26,7 @@ import type { WeatherCoords, WeatherForecast } from '../weather/types';
 
 const REFRESH_MS = 3 * 60 * 60 * 1000;
 
-interface WeatherState {
+interface WeatherState extends ResettableMirror {
   forecast: WeatherForecast | null;
   loading: boolean;
   /** User-facing status under the bubble (e.g. No connection). */
@@ -35,6 +36,7 @@ interface WeatherState {
   lastFetchAt: number | null;
   refresh: (opts?: { force?: boolean; refreshGps?: boolean }) => Promise<void>;
   hydrateFromCache: () => Promise<void>;
+  /** Blank the bubble state only; the on-disk cache survives (see `reset`). */
   clear: () => void;
 }
 
@@ -120,6 +122,13 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
   error: null,
   offline: false,
   lastFetchAt: null,
+
+  reset: async () => {
+    // The cache is part of this mirror: leave it and the next cold start
+    // hydrates the forecast the user just cleared.
+    get().clear();
+    await clearCachedForecast();
+  },
 
   clear: () => {
     bumpDataGeneration('weather');

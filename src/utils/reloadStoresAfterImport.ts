@@ -4,7 +4,6 @@ import { cancelCalendarReminders } from '../notifications/calendarReminders';
 import type { ClearAppDataOptions } from '../db/clearDataPlan';
 import { applyAppLanguage } from '../i18n';
 import { bumpDataGeneration } from '../db/dataGeneration';
-import { clearCachedForecast } from '../weather/forecastCache';
 import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
@@ -30,7 +29,13 @@ export type ReloadStoresOptions = {
   >;
 };
 
-/** Reload Zustand mirrors after SQLite data is replaced or cleared. */
+/**
+ * Reload Zustand mirrors after SQLite data is replaced or cleared.
+ *
+ * Each store blanks itself through `reset()` (see `store/mirrorReset.ts`); what
+ * stays here is what no single store can know: which scopes the wipe touched,
+ * and the order the mirrors have to come back in.
+ */
 export async function reloadStoresAfterImport(
   options: ReloadStoresOptions = { fullReplace: true },
 ): Promise<void> {
@@ -53,40 +58,29 @@ export async function reloadStoresAfterImport(
     bumpDataGeneration('todos');
     bumpDataGeneration('journal');
   }
+  // Only safe to blank the event mirror once no timer stop is still writing.
   await awaitHabitTimerStops();
 
   if (activityCleared) {
-    useEventStore.setState({
-      activeTimerSessions: {},
-      dailyTotals: {},
-      habitDoneToday: {},
-      habitStreaks: {},
-      habitFailureStreaks: {},
-      counterStreaks: {},
-      dayStateReady: false,
-      counterTotalsReady: false,
-    });
+    await useEventStore.getState().reset();
   }
 
   if (calendarCleared) {
+    // Cancel while the reminders are still in the mirror: the notification sync
+    // owner schedules from that state, so it has to go second.
     await cancelCalendarReminders();
-    useCalendarStore.setState({
-      calendars: [],
-      events: [],
-      reminders: [],
-      clearedByKey: {},
-      isLoaded: false,
-    });
+    await useCalendarStore.getState().reset();
   }
 
   if (weatherCleared) {
-    useWeatherStore.getState().clear();
-    await clearCachedForecast();
+    await useWeatherStore.getState().reset();
   }
 
   await useElementStore.getState().load();
 
   if (activityCleared) {
+    // The day maps are keyed by the elements that just reloaded, so their
+    // refill belongs here rather than in the event store.
     const { elements, dashboard } = useElementStore.getState();
     const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
     const counters = getActiveCounters(elements, dashboard);
@@ -107,15 +101,7 @@ export async function reloadStoresAfterImport(
 
     void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));
 
-    // Drop the loaded-week guard so the Nutrition tab refetches instead of
-    // showing the pre-clear catalog and counts.
-    useFoodStore.setState({
-      items: [],
-      weekEntries: [],
-      weekStart: null,
-      loaded: false,
-      error: null,
-    });
+    await useFoodStore.getState().reset();
     await useFoodStore.getState().loadWeek(currentAppCalendarDate());
 
     // Open todos survive a definitions-only clear, so refetch rather than blank.
@@ -126,6 +112,7 @@ export async function reloadStoresAfterImport(
     await useSettingsStore.getState().load();
   }
 
+  // Needs the language setting that load() just read back.
   await applyAppLanguage(useSettingsStore.getState().appLanguage);
 
   if (calendarCleared) {

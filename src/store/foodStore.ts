@@ -14,10 +14,11 @@ import { syncSeedFoodCatalog } from '../nutrition/seedCatalog';
 import { PROTOCOL_VERSION, type FoodItem, type FoodLogEntry } from '../protocol';
 import { startOfWeekDate, weekDates } from '../utils/dates';
 import { newId } from '../utils/id';
+import type { ResettableMirror } from './mirrorReset';
 
 let loadGeneration = 0;
 
-interface FoodState {
+interface FoodState extends ResettableMirror {
   /**
    * The whole catalog, archived foods included. Diversity counting needs them —
    * a food archived mid-week was still eaten — so screens filter for display
@@ -63,6 +64,19 @@ export const useFoodStore = create<FoodState>((set, get) => ({
   loaded: false,
   loading: false,
   error: null,
+
+  reset: async () => {
+    // `weekStart` and `loaded` go too, or the loaded-week guard in `loadWeek`
+    // short-circuits the refetch and the Nutrition tab keeps the pre-clear
+    // catalog and counts.
+    set({
+      items: [],
+      weekEntries: [],
+      weekStart: null,
+      loaded: false,
+      error: null,
+    });
+  },
 
   loadWeek: async (date) => {
     const weekStart = startOfWeekDate(date);

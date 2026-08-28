@@ -20,6 +20,8 @@ Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zust
 
 - Events are append-only.
 - Screens/stores never call `db.runAsync` directly.
+- Stores that mirror SQLite blank themselves through `reset()` (`src/store/mirrorReset.ts`);
+  nothing blanks another store's fields from outside.
 - DB writes go through `withGuardedWrite(scope, …)` (`src/db/dataGeneration.ts`): it takes
   the write lock and abandons the write if an import/clear replaced that scope.
 - Do not scaffold future protocol/DB features early.
