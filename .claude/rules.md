@@ -20,6 +20,9 @@ Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zust
 
 - Events are append-only.
 - Screens/stores never call `db.runAsync` directly.
+- A new table is one entry in `PERSISTED_CONCEPTS` (`src/db/persistedConcepts.ts`) — DDL,
+  repair, clear stance and bundle key. Schema, repair pass and clear all derive from it;
+  the numbered `MIGRATIONS` ladder never does and stays hand-written.
 - Stores that mirror SQLite blank themselves through `reset()` (`src/store/mirrorReset.ts`);
   nothing blanks another store's fields from outside.
 - DB writes go through `withGuardedWrite(scope, …)` (`src/db/dataGeneration.ts`): it takes

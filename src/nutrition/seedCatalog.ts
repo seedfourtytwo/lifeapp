@@ -14,6 +14,7 @@ import {
 import { getDatabase } from '../db/client';
 import * as foodRepo from '../db/repositories/foodRepository';
 import * as settingsRepo from '../db/repositories/settingsRepository';
+import { SEED_APPLIED_SLUGS_KEY } from './seedFoodState';
 import { newId } from '../utils/id';
 import seedData from './seed/foods.json';
 
@@ -26,8 +27,6 @@ import seedData from './seed/foods.json';
  * remembered, so foods you delete stay deleted and foods you edit stay edited
  * even when this file grows.
  */
-
-const SEED_APPLIED_SLUGS_KEY = 'food_seed_applied_slugs';
 
 const MonthListSchema = z.array(z.number().int().min(1).max(12)).min(1).max(12);
 
@@ -160,15 +159,6 @@ function seedToFoodItem(seed: SeedFoodItem, createdAt: string): FoodItem {
 export async function syncSeedFoodCatalog(): Promise<number> {
   const db = await getDatabase();
   return syncSeedFoodCatalogWithDb(db);
-}
-
-/**
- * Forget which seed slugs were applied, so the starter foods return on the next
- * sync. Called when the food catalog itself is wiped — a clean slate should not
- * leave an empty catalog with no way back.
- */
-export async function clearSeedFoodState(db: SQLiteDatabase): Promise<void> {
-  await settingsRepo.deleteSetting(db, SEED_APPLIED_SLUGS_KEY);
 }
 
 /**

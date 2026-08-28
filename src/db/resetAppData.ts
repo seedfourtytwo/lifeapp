@@ -3,15 +3,7 @@ import { stopHabitSound } from '../audio/habitTimerSound';
 import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
-import * as weatherRepo from './repositories/weatherRepository';
-import * as calendarRepo from './repositories/calendarRepository';
-import * as eventRepo from './repositories/eventRepository';
-import * as dayNoteRepo from './repositories/dayNoteRepository';
-import * as dailyJournalRepo from './repositories/dailyJournalRepository';
-import * as foodRepo from './repositories/foodRepository';
-import * as todoRepo from './repositories/todoRepository';
-import { clearSeedFoodState } from '../nutrition/seedCatalog';
-import * as noteShareRepo from './repositories/noteShareStateRepository';
+import { importClearStep, PERSISTED_CONCEPTS, type AmbientClearFlag } from './persistedConcepts';
 import * as settingsRepo from './repositories/settingsRepository';
 import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
 import { clearCornerScore } from './repositories/cornerScoreRepository';
@@ -32,27 +24,40 @@ export {
   resolveActivityDeleteBeforeDate,
 } from './clearDataPlan';
 
-async function clearProtocolDefinitions(db: SQLiteDatabase): Promise<void> {
-  // events + dashboard_items + day_notes cascade from elements, but clear explicitly for clarity.
-  await db.runAsync('DELETE FROM daily_journals');
-  await db.runAsync('DELETE FROM journal_notebooks');
-  await db.runAsync('DELETE FROM day_notes');
-  await db.runAsync('DELETE FROM food_log');
-  await db.runAsync('DELETE FROM food_items');
-  // Wiping the catalog also forgets the starter foods, so a clean slate
-  // re-seeds instead of leaving an empty catalog with no way back.
-  await clearSeedFoodState(db);
-  await noteShareRepo.deleteAllShareState(db);
-  await db.runAsync('DELETE FROM events');
-  await db.runAsync('DELETE FROM dashboard_items');
-  await db.runAsync('DELETE FROM elements');
+/**
+ * Concepts are declared parents-first so their DDL is foreign-key safe, which
+ * makes the reverse a safe delete order: children before the rows they
+ * reference. Every clear below walks this list and runs whatever stance the
+ * concept declared, so a new table is cleared the moment it is declared.
+ */
+const CLEAR_ORDER = [...PERSISTED_CONCEPTS].reverse();
+
+/** Habits, counters and everything they own. */
+async function clearDefinitions(db: SQLiteDatabase): Promise<void> {
+  for (const { clear } of CLEAR_ORDER) {
+    if (clear.definitions === 'keep') continue;
+    await clear.definitions(db);
+  }
 }
 
-async function clearProtocolTables(db: SQLiteDatabase): Promise<void> {
-  await clearProtocolDefinitions(db);
-  // Import replaces the device, so open todos go too — otherwise the imported
-  // list would arrive merged with whatever was already on this phone.
-  await todoRepo.deleteAllTodos(db);
+/** Day facts. `before` is an exclusive `YYYY-MM-DD` cut-off, or null for all of it. */
+async function clearActivity(db: SQLiteDatabase, before: string | null): Promise<void> {
+  for (const { clear } of CLEAR_ORDER) {
+    if (before == null) {
+      if (clear.activity === 'keep') continue;
+      await clear.activity(db);
+    } else {
+      if (clear.activityBefore === 'keep') continue;
+      await clear.activityBefore(db, before);
+    }
+  }
+}
+
+async function clearAmbient(db: SQLiteDatabase, flag: AmbientClearFlag): Promise<void> {
+  for (const { clear } of CLEAR_ORDER) {
+    if (clear.ambient?.flag !== flag) continue;
+    await clear.ambient.wipe(db);
+  }
 }
 
 /**
@@ -69,10 +74,6 @@ function bumpClearedScopes(options: ClearAppDataOptions): void {
   }
   if (options.calendar) bumpDataGeneration('calendar');
   if (options.weather) bumpDataGeneration('weather');
-}
-
-export async function clearAppSettings(db: SQLiteDatabase): Promise<void> {
-  await db.runAsync('DELETE FROM app_settings');
 }
 
 /**
@@ -127,37 +128,20 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       if (options.definitions) {
-        await clearProtocolDefinitions(db);
-        // Definitions always take all activity with them, and completed todos
-        // are activity. Open todos are not — they outlive habits and counters.
-        await todoRepo.deleteCompletedTodos(db);
+        // Definitions always take all activity with them, so there is no period
+        // to honour — each concept's definitions stance covers both.
+        await clearDefinitions(db);
       } else if (options.activityHistory) {
-        const before = resolveActivityDeleteBeforeDate(options.activityPeriod);
-        if (before == null) {
-          await eventRepo.deleteAllEvents(db);
-          await dayNoteRepo.deleteAllNotes(db);
-          await dailyJournalRepo.deleteAllJournals(db);
-          await noteShareRepo.deleteAllShareState(db);
-          // The food log is day activity; the catalog itself is a definition.
-          await foodRepo.deleteAllFoodLog(db);
-          // Completed todos are the history page. Open todos are pending work.
-          await todoRepo.deleteCompletedTodos(db);
-        } else {
-          await eventRepo.deleteEventsBeforeDate(db, before);
-          await dayNoteRepo.deleteNotesBeforeDate(db, before);
-          await dailyJournalRepo.deleteJournalsBeforeDate(db, before);
-          await noteShareRepo.deleteShareStateBeforeDate(db, before);
-          await foodRepo.deleteFoodLogBeforeDate(db, before);
-          await todoRepo.deleteCompletedTodosBeforeDate(db, before);
-        }
+        await clearActivity(db, resolveActivityDeleteBeforeDate(options.activityPeriod));
       }
 
       if (options.calendar) {
-        await calendarRepo.clearCalendarData(db);
+        await clearAmbient(db, 'calendar');
       }
       if (options.weather) {
-        await weatherRepo.clearWeatherDaily(db);
-        // Forecast JSON + fun corner tally live in app_settings.
+        await clearAmbient(db, 'weather');
+        // Forecast JSON + fun corner tally live in app_settings, so they belong
+        // to weather rather than to the app_settings concept itself.
         if (!options.preferences) {
           await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
           await clearCornerScore(db);
@@ -165,7 +149,7 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
       }
       if (options.preferences) {
         const liveSessions = useEventStore.getState().activeTimerSessions;
-        await clearAppSettings(db);
+        await clearAmbient(db, 'preferences');
         // Preference wipe clears all app_settings rows; re-write ephemeral timer state
         // so a theme/settings clear does not orphan a running lock-screen session.
         if (Object.keys(liveSessions).length > 0) {
@@ -195,10 +179,9 @@ export async function clearAllAppData(): Promise<void> {
   });
 }
 
-/** Replace protocol tables, calendar, and preferences before importing a backup bundle. */
+/** Replace everything before importing a backup bundle. */
 export async function clearDataForImport(db: SQLiteDatabase): Promise<void> {
-  await clearProtocolTables(db);
-  await calendarRepo.clearCalendarData(db);
-  await weatherRepo.clearWeatherDaily(db);
-  await clearAppSettings(db);
+  for (const { clear } of CLEAR_ORDER) {
+    await importClearStep(clear)?.(db);
+  }
 }

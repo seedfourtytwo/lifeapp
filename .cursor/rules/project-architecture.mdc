@@ -53,6 +53,12 @@ Do not add kinds (or catalog tables) until that feature is scheduled and in prog
 - Wrap DB writes in `withGuardedWrite(scope, …)` (`src/db/dataGeneration.ts`) — it holds the
   write lock and drops the write if a backup import or Clear data replaced that scope
   mid-flight. Re-check the supplied `superseded()` after every `await`.
+- A persisted table is declared once, in `PERSISTED_CONCEPTS` (`src/db/persistedConcepts.ts`):
+  its DDL, its repair hooks, what each clear shape does to it, and which bundle key it
+  travels under (`null` when it is not backed up). `schema.ts`, the repair pass in
+  `schemaIntegrity.ts` and every clear in `resetAppData.ts` derive from that entry — do
+  not hand-maintain a second copy in any of them. The numbered `MIGRATIONS` ladder is
+  deliberately not a consumer: shipped migrations are frozen and append-only.
 - Bump `PROTOCOL_VERSION` only on breaking interchange; DB migrations for storage changes.
 - Tracker config: **identity** (schedule, targets, icon) vs **device taste** (sound, remind-before) — share defaults identity only.
 
