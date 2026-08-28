@@ -386,3 +386,20 @@ export async function ensureFoodSchema(db: SQLiteDatabase): Promise<void> {
   // Drop orphans left behind if foreign_keys were off during an older wipe.
   await db.runAsync('DELETE FROM food_log WHERE food_id NOT IN (SELECT id FROM food_items)');
 }
+
+/**
+ * Boot-path entry point: every table's repair, in dependency order.
+ * Sequential — order matters and concurrent DDL on expo-sqlite is unsafe.
+ * The individual functions stay exported because frozen numbered migrations call them one at a time.
+ */
+export async function ensureSchemaIntegrity(db: SQLiteDatabase): Promise<void> {
+  await ensureElementsSchema(db);
+  await ensureWeatherDailySchema(db);
+  await ensureCalendarSchema(db);
+  await ensureDayNotesSchema(db);
+  await ensureJournalNotebooksSchema(db);
+  await ensureDailyJournalsSchema(db);
+  await ensureNoteShareStateSchema(db);
+  await ensureFoodSchema(db);
+  await ensureTodoSchema(db);
+}

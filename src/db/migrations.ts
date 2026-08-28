@@ -17,6 +17,7 @@ import {
   ensureTodoSchema,
   ensureJournalNotebooksSchema,
   ensureNoteShareStateSchema,
+  ensureSchemaIntegrity,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
@@ -239,15 +240,7 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
 
   if (!row) {
     await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', CURRENT_SCHEMA_VERSION);
-    await ensureElementsSchema(db);
-    await ensureWeatherDailySchema(db);
-    await ensureCalendarSchema(db);
-    await ensureDayNotesSchema(db);
-    await ensureJournalNotebooksSchema(db);
-    await ensureDailyJournalsSchema(db);
-    await ensureNoteShareStateSchema(db);
-    await ensureFoodSchema(db);
-    await ensureTodoSchema(db);
+    await ensureSchemaIntegrity(db);
     return;
   }
 
@@ -269,13 +262,5 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     return;
   }
 
-  await ensureElementsSchema(db);
-  await ensureWeatherDailySchema(db);
-  await ensureCalendarSchema(db);
-  await ensureDayNotesSchema(db);
-  await ensureJournalNotebooksSchema(db);
-  await ensureDailyJournalsSchema(db);
-  await ensureNoteShareStateSchema(db);
-  await ensureFoodSchema(db);
-  await ensureTodoSchema(db);
+  await ensureSchemaIntegrity(db);
 }
