@@ -137,9 +137,14 @@ function main(argv) {
   writeJson(lockPath, lockJson);
 
   console.log('Updated app.json, package.json and package-lock.json.');
-  console.log(
-    'Next: commit, then rebuild the release APK (a versionCode change is native).',
-  );
+  console.log('');
+  console.log('Next:');
+  console.log('  1. git commit');
+  console.log('  2. npx expo prebuild --platform android   # copies the new');
+  console.log('     version into android/app/build.gradle — gradle reads that,');
+  console.log('     not app.json, so skipping this ships the OLD versionCode');
+  console.log('  3. cd android && ./gradlew assembleRelease \\');
+  console.log('       -PreactNativeArchitectures=arm64-v8a --max-workers=2');
   return 0;
 }
 

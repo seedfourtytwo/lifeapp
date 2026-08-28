@@ -7,7 +7,7 @@ alwaysApply: true
 
 - **Default:** Build APKs **locally** with the Android SDK (not EAS).
 - **When to rebuild:** new/changed native module (clipboard, location, speech, audio, haptics, …), or a `versionCode` bump. JS-only → Metro reload.
-- **Versioning:** `npm run release -- <major|minor|patch|x.y.z>` — never hand-edit `expo.version` / `expo.android.versionCode` in `app.json`, and never `package.json` `version`. The script bumps `versionCode` and syncs both files; a test fails if they drift.
+- **Versioning:** `npm run release -- <major|minor|patch|x.y.z>` — never hand-edit `expo.version` / `expo.android.versionCode` in `app.json`, `package.json`, or the lockfile. The script bumps `versionCode` and syncs all three; a test fails if they drift. **Then run `npx expo prebuild --platform android`** — gradle reads the version from `android/app/build.gradle`, so without prebuild the APK ships the old `versionCode`.
 
 ## Packages (side-by-side)
 

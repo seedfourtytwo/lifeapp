@@ -103,7 +103,13 @@ Also accepts `minor`, `major`, an explicit `x.y.z`, and `--dry-run`. It bumps
 screen cannot drift. `__tests__/appVersion.test.ts` fails CI if the copies
 disagree.
 
-A versionCode change is native — rebuild the release APK, don't just reload Metro.
+A versionCode change is native. Gradle reads `android/app/build.gradle`, not
+`app.json`, so after bumping you must re-run prebuild before building or the
+APK ships the previous versionCode:
+
+```bash
+npx expo prebuild --platform android
+```
 
 ### Android packages (side-by-side)
 
