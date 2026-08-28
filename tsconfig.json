@@ -9,7 +9,9 @@
     "index.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "__tests__/**/*.ts"
+    "__tests__/**/*.ts",
+    "app.json",
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"

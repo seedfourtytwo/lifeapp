@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
@@ -111,12 +111,15 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
     navigation.goBack();
   }, [seeded, loaded, foodId, existing, navigation]);
 
-  const set = <K extends keyof IngredientDraft>(key: K, value: IngredientDraft[K]) => {
-    setDraft((current) => ({ ...current, [key]: value }));
-    setError(null);
-  };
+  const set = useCallback(
+    <K extends keyof IngredientDraft>(key: K, value: IngredientDraft[K]) => {
+      setDraft((current) => ({ ...current, [key]: value }));
+      setError(null);
+    },
+    [],
+  );
 
-  const handleGroupChange = (group: FoodGroup) => {
+  const handleGroupChange = useCallback((group: FoodGroup) => {
     setDraft((current) => ({
       ...current,
       group,
@@ -124,7 +127,33 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
       countsAsPlant: isPlantFoodGroup(group),
     }));
     setError(null);
-  };
+  }, []);
+
+  /**
+   * Season and peak toggles. Both read the previous draft inside the updater
+   * rather than closing over it, so they stay referentially stable and
+   * MonthPicker's memo actually holds.
+   */
+  const handleSeasonToggle = useCallback((month: number) => {
+    setDraft((current) => {
+      const seasonMonths = toggleMonth(current.seasonMonths, month);
+      return {
+        ...current,
+        seasonMonths,
+        // Peak can never sit outside the season.
+        peakMonths: current.peakMonths.filter((value) => seasonMonths.includes(value)),
+      };
+    });
+    setError(null);
+  }, []);
+
+  const handlePeakToggle = useCallback((month: number) => {
+    setDraft((current) => ({
+      ...current,
+      peakMonths: toggleMonth(current.peakMonths, month),
+    }));
+    setError(null);
+  }, []);
 
   const handleSave = async () => {
     // Guard the same race: saving a blank draft would create a second food.
@@ -239,16 +268,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         <MonthPicker
           label={t('editor.seasonLabel')}
           selected={draft.seasonMonths}
-          onToggle={(month) => {
-            const next = toggleMonth(draft.seasonMonths, month);
-            setDraft((current) => ({
-              ...current,
-              seasonMonths: next,
-              // Peak can never sit outside the season.
-              peakMonths: current.peakMonths.filter((value) => next.includes(value)),
-            }));
-            setError(null);
-          }}
+          onToggle={handleSeasonToggle}
         />
 
         {draft.seasonMonths.length > 0 ? (
@@ -260,7 +280,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
               label={t('editor.peakLabel')}
               selected={draft.peakMonths}
               allowed={draft.seasonMonths}
-              onToggle={(month) => set('peakMonths', toggleMonth(draft.peakMonths, month))}
+              onToggle={handlePeakToggle}
             />
           </>
         ) : null}

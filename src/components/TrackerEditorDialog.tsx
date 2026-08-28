@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -103,6 +103,17 @@ export default function TrackerEditorDialog({
     setHabitFields(habitFieldStateFromSession(session));
   }, [session, sessionId]);
 
+  /**
+   * Stable so HabitEditorFields' memo actually holds — an inline arrow here
+   * would give it a new prop on every keystroke and re-render the whole
+   * habit form per character.
+   */
+  const handleHabitFieldsChange = useCallback(
+    (patch: Partial<HabitEditorFieldState>) =>
+      setHabitFields((current) => ({ ...current, ...patch })),
+    [],
+  );
+
   const closeEditor = () => {
     void stopHabitSound();
     onDismiss();
@@ -184,6 +195,11 @@ export default function TrackerEditorDialog({
                   onChangeText={setName}
                   mode="outlined"
                   autoCorrect={false}
+                  // A label like "Name" invites Android autofill to re-fill the
+                  // field mid-edit, which duplicates text the same way a lagging
+                  // controlled value does. Belt and braces alongside the memoized
+                  // form below.
+                  autoComplete="off"
                 />
               </FormSection>
 
@@ -201,7 +217,7 @@ export default function TrackerEditorDialog({
               ) : session && mode === 'habit' ? (
                 <HabitEditorFields
                   state={habitFields}
-                  onChange={(patch) => setHabitFields((current) => ({ ...current, ...patch }))}
+                  onChange={handleHabitFieldsChange}
                 />
               ) : null}
             </ScrollView>

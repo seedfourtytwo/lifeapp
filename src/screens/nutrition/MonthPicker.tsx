@@ -18,8 +18,14 @@ function monthDate(month: number): Date {
   return new Date(2026, month - 1, 15);
 }
 
-/** Twelve toggles — the whole year visible at once, no scrolling. */
-export default function MonthPicker({ selected, allowed, onToggle, label }: Props) {
+/**
+ * Twelve toggles — the whole year visible at once, no scrolling.
+ *
+ * Memoized: the ingredient editor is one flat component, so every keystroke in
+ * any of its fields re-renders this subtree. Callers must pass a stable
+ * `onToggle`. See __tests__/trackerEditorRerender.test.ts.
+ */
+function MonthPicker({ selected, allowed, onToggle, label }: Props) {
   const theme = useTheme();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const allowedSet = useMemo(() => (allowed ? new Set(allowed) : null), [allowed]);
@@ -81,3 +87,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 });
+
+export default React.memo(MonthPicker);

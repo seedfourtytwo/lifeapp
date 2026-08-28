@@ -4,7 +4,7 @@ import { Button, Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { getDateLocale } from '../../i18n';
-import { toDateString, type HabitTrackingMode } from '../../protocol';
+import { parseLocalDate, toDateString, type HabitTrackingMode } from '../../protocol';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
 import type { HabitEditorFieldState, HabitScheduleType } from './types';
@@ -23,7 +23,7 @@ const INTERVAL_PRESETS = [2, 3, 7] as const;
 
 function formatAnchorLabel(dateStr: string, locale: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const date = new Date(`${dateStr}T12:00:00`);
+  const date = parseLocalDate(dateStr);
   if (Number.isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString(locale, {
     weekday: 'short',
@@ -59,7 +59,12 @@ type Props = {
   onChange: (patch: Partial<HabitEditorFieldState>) => void;
 };
 
-export default function HabitEditorFields({ state, onChange }: Props) {
+/**
+ * Memoized: a keystroke in the editor's name field re-renders the dialog, and
+ * these props are referentially stable, so re-rendering here is pure waste that
+ * used to starve the name TextInput. See __tests__/trackerEditorRerender.test.ts.
+ */
+function HabitEditorFields({ state, onChange }: Props) {
   const { t } = useTranslation('trackers');
   const locale = getDateLocale();
   const toggleWeekday = (day: number) => {
@@ -341,3 +346,5 @@ export default function HabitEditorFields({ state, onChange }: Props) {
     </>
   );
 }
+
+export default React.memo(HabitEditorFields);

@@ -36,7 +36,12 @@ function hasPositiveDailyTarget(raw: string): boolean {
   return !Number.isNaN(value) && value > 0;
 }
 
-export default function CounterEditorFields({
+/**
+ * Memoized: a keystroke in the editor's name field re-renders the dialog, and
+ * these props are referentially stable, so re-rendering here is pure waste that
+ * used to starve the name TextInput. See __tests__/trackerEditorRerender.test.ts.
+ */
+function CounterEditorFields({
   increments,
   dailyTarget,
   showStreakOnCard,
@@ -181,3 +186,5 @@ export default function CounterEditorFields({
     </>
   );
 }
+
+export default React.memo(CounterEditorFields);

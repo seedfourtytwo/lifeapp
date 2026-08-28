@@ -56,7 +56,12 @@ function IconPickerCell({
   );
 }
 
-export default function IconPickerField({ value, onChange }: Props) {
+/**
+ * Memoized: a keystroke in the editor's name field re-renders the dialog, and
+ * these props are referentially stable, so re-rendering here is pure waste that
+ * used to starve the name TextInput. See __tests__/trackerEditorRerender.test.ts.
+ */
+function IconPickerField({ value, onChange }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const [query, setQuery] = useState('');
@@ -189,3 +194,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 });
+
+export default React.memo(IconPickerField);
