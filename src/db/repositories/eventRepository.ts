@@ -80,12 +80,25 @@ export async function getEventsForElementSince(
   return mapRowsToEvents(rows);
 }
 
-function groupEventsByElement(rows: EventRow[]): Map<string, LifeEvent[]> {
+/** `?, ?, ?` for an `IN (...)` clause. Ids are always bound, never interpolated. */
+function placeholdersFor(ids: readonly string[]): string {
+  return ids.map(() => '?').join(', ');
+}
+
+/**
+ * Group rows by element, seeding every requested id so callers can read the
+ * map without a `?? []` at each use.
+ */
+function groupEventsByElement(
+  rows: EventRow[],
+  elementIds: readonly string[],
+): Map<string, LifeEvent[]> {
   const byElement = new Map<string, LifeEvent[]>();
+  for (const id of elementIds) {
+    byElement.set(id, []);
+  }
   for (const event of mapRowsToEvents(rows)) {
-    const list = byElement.get(event.elementId) ?? [];
-    list.push(event);
-    byElement.set(event.elementId, list);
+    byElement.get(event.elementId)?.push(event);
   }
   return byElement;
 }
@@ -97,19 +110,12 @@ export async function getEventsForElementsOnDate(
 ): Promise<Map<string, LifeEvent[]>> {
   if (elementIds.length === 0) return new Map();
 
-  const placeholders = elementIds.map(() => '?').join(', ');
   const rows = await db.getAllAsync<EventRow>(
-    `SELECT * FROM events WHERE date = ? AND element_id IN (${placeholders}) ORDER BY timestamp ASC`,
+    `SELECT * FROM events WHERE date = ? AND element_id IN (${placeholdersFor(elementIds)}) ORDER BY timestamp ASC`,
     date,
     ...elementIds,
   );
-  const byElement = groupEventsByElement(rows);
-  for (const id of elementIds) {
-    if (!byElement.has(id)) {
-      byElement.set(id, []);
-    }
-  }
-  return byElement;
+  return groupEventsByElement(rows, elementIds);
 }
 
 export async function getEventsForElementsSince(
@@ -119,19 +125,12 @@ export async function getEventsForElementsSince(
 ): Promise<Map<string, LifeEvent[]>> {
   if (elementIds.length === 0) return new Map();
 
-  const placeholders = elementIds.map(() => '?').join(', ');
   const rows = await db.getAllAsync<EventRow>(
-    `SELECT * FROM events WHERE date >= ? AND element_id IN (${placeholders}) ORDER BY date ASC, timestamp ASC`,
+    `SELECT * FROM events WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)}) ORDER BY date ASC, timestamp ASC`,
     sinceDate,
     ...elementIds,
   );
-  const byElement = groupEventsByElement(rows);
-  for (const id of elementIds) {
-    if (!byElement.has(id)) {
-      byElement.set(id, []);
-    }
-  }
-  return byElement;
+  return groupEventsByElement(rows, elementIds);
 }
 
 export async function getDailyTotalsByElement(
@@ -219,11 +218,10 @@ export async function getDailyTotalsForElementsOnDate(
   }
   if (elementIds.length === 0) return totals;
 
-  const placeholders = elementIds.map(() => '?').join(', ');
   const rows = await db.getAllAsync<{ element_id: string; total: number }>(
     `SELECT element_id, COALESCE(SUM(value), 0) as total
      FROM events
-     WHERE date = ? AND element_id IN (${placeholders})
+     WHERE date = ? AND element_id IN (${placeholdersFor(elementIds)})
      GROUP BY element_id`,
     date,
     ...elementIds,
@@ -246,20 +244,17 @@ export async function getDailyTotalsForElementsSince(
   }
   if (elementIds.length === 0) return byElement;
 
-  const placeholders = elementIds.map(() => '?').join(', ');
   const rows = await db.getAllAsync<{ element_id: string; date: string; total: number }>(
     `SELECT element_id, date, COALESCE(SUM(value), 0) as total
      FROM events
-     WHERE date >= ? AND element_id IN (${placeholders})
+     WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)})
      GROUP BY element_id, date
      ORDER BY date ASC`,
     sinceDate,
     ...elementIds,
   );
   for (const row of rows) {
-    const list = byElement.get(row.element_id) ?? [];
-    list.push({ date: row.date, total: row.total });
-    byElement.set(row.element_id, list);
+    byElement.get(row.element_id)?.push({ date: row.date, total: row.total });
   }
   return byElement;
 }

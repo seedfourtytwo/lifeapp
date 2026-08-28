@@ -18,7 +18,6 @@ import {
   playChartSelectHaptic,
   playReorderDragHaptic,
 } from '../../utils/habitHaptics';
-import { withHexAlpha } from '../../utils/color';
 import type { HomeTabScrollViewHandle } from './HomeTabScrollView';
 
 const LONG_PRESS_MS = 380;
@@ -451,7 +450,14 @@ export function DraggableTrackerList({
     [draggingId, heights, hoverIndex],
   );
 
-  const dropFlashColor = withHexAlpha(theme.colors.primary, 1);
+  const dropFlashColor = theme.colors.primary;
+  // One interpolation for the whole list: it depends only on `dropPulse`, and
+  // at most one row shows the flash at a time. Building it per row allocated a
+  // fresh node for every tracker on every render of every drag frame.
+  const dropHighlight = useMemo(
+    () => dropPulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.22] }),
+    [dropPulse],
+  );
 
   return (
     <View style={styles.root} collapsable={false}>
@@ -459,10 +465,6 @@ export function DraggableTrackerList({
         const isDragging = draggingId === id;
         const isJustDropped = justDroppedId === id;
         const slotOffsetY = isDragging ? 0 : slotOffsetForIndex(index);
-        const dropHighlight = dropPulse.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 0.22],
-        });
 
         return (
           <Animated.View

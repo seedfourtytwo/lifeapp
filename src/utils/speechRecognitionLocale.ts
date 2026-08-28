@@ -27,10 +27,6 @@ export function normalizeSpeechLocaleTag(raw: string, fallback = 'en-US'): strin
   return locale;
 }
 
-export function languageCode(tag: string): string {
-  return normalizeSpeechLocaleTag(tag).split('-')[0]?.toLowerCase() ?? '';
-}
-
 /**
  * BCP-47 tag from app language (device region when it matches).
  * Used for transcript polish; STT model locale is pinned separately for v1.

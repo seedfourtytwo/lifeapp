@@ -5,7 +5,7 @@ import { habitStreakInputsFromElements, useEventStore } from '../store/eventStor
 import { useElementStore } from '../store/elementStore';
 
 /** Active habits as streak/day-state query inputs — stable while the active set is unchanged. */
-export function useActiveHabitInputs() {
+function useActiveHabitInputs() {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
 
@@ -31,16 +31,3 @@ export function useRefreshHabitDayOnFocus(): void {
   );
 }
 
-/** Pull-to-refresh: reload elements, today's habit state, and streaks (not counters). */
-export async function refreshAllHabitData(): Promise<void> {
-  const loadElements = useElementStore.getState().load;
-  await loadElements();
-
-  const { elements, dashboard } = useElementStore.getState();
-  const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
-  const { loadHabitDayState, loadHabitStreaks } = useEventStore.getState();
-  await Promise.all([
-    habitInputs.length > 0 ? loadHabitDayState(habitInputs) : Promise.resolve(),
-    habitInputs.length > 0 ? loadHabitStreaks(habitInputs) : Promise.resolve(),
-  ]);
-}

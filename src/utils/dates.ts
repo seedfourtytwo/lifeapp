@@ -1,5 +1,5 @@
 import { getDateLocale } from '../i18n';
-import { toDateString } from '../protocol';
+import { parseLocalDate, shiftDateString, toDateString } from '../protocol';
 
 /** Days of history used for streak calculations (inclusive window). */
 export const STREAK_LOOKBACK_DAYS = 365;
@@ -26,12 +26,12 @@ export function lastNDates(count: number): string[] {
 }
 
 export function formatChartLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: 'numeric' });
 }
 
 export function formatFullDate(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), {
     weekday: 'long',
     month: 'short',
@@ -41,17 +41,12 @@ export function formatFullDate(dateStr: string): string {
 
 /** Compact "Wed, 19 Aug" style date for home tab meta rows. */
 export function formatShortDate(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   });
-}
-
-/** Local noon avoids DST and UTC-offset drift when doing date arithmetic. */
-function parseLocalDate(dateStr: string): Date {
-  return new Date(`${dateStr}T12:00:00`);
 }
 
 /** Monday of the ISO week containing `dateStr`. */
@@ -65,12 +60,10 @@ export function startOfWeekDate(dateStr: string): string {
 
 /** The seven dates, Monday first, of the week containing `dateStr`. */
 export function weekDates(dateStr: string): string[] {
-  const monday = parseLocalDate(startOfWeekDate(dateStr));
+  const monday = startOfWeekDate(dateStr);
   const dates: string[] = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + i);
-    dates.push(toDateString(d));
+    dates.push(shiftDateString(monday, i));
   }
   return dates;
 }

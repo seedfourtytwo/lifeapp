@@ -21,10 +21,12 @@ Active plan for Life Dashboard. Intent only — do not scaffold protocol, DB, or
 | Weather | Home mood chip, forecast strip, fling physics (ambient); coarse location |
 | Data | Full JSON backup; granular Clear data… |
 | Nutrition | Food catalog standard (protocol catalog, not a kind) + day log. Home tab shows **this week's plate** with catalogue search to add; **Ingredients** manager (virtualised) under More builds the catalogue. Mon–Sun distinct-plant count toward 30. Catalogue starts empty. |
+| Todos | Home tab: open list with due dates, drag-reorder; completed rows kept (never deleted) and browsable in Todo history. App data, not an `ElementKind`. |
+| Insights | Charts over event history, under More |
 | Privacy | No accounts/cloud; `allowBackup=false`; no Google speech / network dictation |
-| i18n | EN + FR |
+| i18n | EN + FR (Todos strings EN-only, served to FR via `fallbackLng`) |
 
-App **1.4.2** · DB schema **v19** · Protocol **v1**.
+App **1.5.0** (versionCode 24) · DB schema **v21** · Protocol **v1**.
 
 ---
 

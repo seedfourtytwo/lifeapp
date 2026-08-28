@@ -53,14 +53,3 @@ export function getActiveCounters(
     dashboard,
   );
 }
-
-/** Stable key for active habit ids — use when only membership matters (not rename/config). */
-export function activeHabitIdsKey(
-  elements: ElementDefinition[],
-  dashboard: DashboardItem[],
-): string {
-  return getActiveHabits(elements, dashboard)
-    .map((habit) => habit.id)
-    .sort()
-    .join('|');
-}

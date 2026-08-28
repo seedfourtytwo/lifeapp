@@ -61,8 +61,3 @@ export async function getDatabase(): Promise<SQLiteDatabase> {
 
   return initPromise;
 }
-
-/** Reset singleton — for tests only. */
-export function resetDatabaseForTests(): void {
-  invalidateDatabaseConnection();
-}

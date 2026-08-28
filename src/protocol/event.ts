@@ -19,3 +19,19 @@ export function toDateString(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Parse a `YYYY-MM-DD` calendar date at local noon.
+ * Noon (not midnight) keeps `setDate` arithmetic away from DST boundaries,
+ * where a 23- or 25-hour day can otherwise shift the result by a day.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00`);
+}
+
+/** The calendar date `days` after `dateStr` (negative walks backwards). */
+export function shiftDateString(dateStr: string, days: number): string {
+  const d = parseLocalDate(dateStr);
+  d.setDate(d.getDate() + days);
+  return toDateString(d);
+}

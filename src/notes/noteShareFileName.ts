@@ -23,7 +23,7 @@ export function noteShareFileName(opts: {
  * First file keeps the bare name; later ones get `-2`, `-3`, …
  */
 export function noteShareFileNames(
-  items: Array<{ kind: 'note' | 'journal'; label?: string; date: string }>,
+  items: { kind: 'note' | 'journal'; label?: string; date: string }[],
 ): string[] {
   const counts = new Map<string, number>();
   return items.map((item) => {

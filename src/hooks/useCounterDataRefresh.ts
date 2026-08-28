@@ -36,18 +36,3 @@ export function useRefreshCounterTotalsOnFocus(): void {
   );
 }
 
-/** Pull-to-refresh: reload elements, today's counter totals, and target streaks. */
-export async function refreshAllCounterData(): Promise<void> {
-  const loadElements = useElementStore.getState().load;
-  await loadElements();
-
-  const { elements, dashboard } = useElementStore.getState();
-  const counters = getActiveCounters(elements, dashboard);
-  const counterIds = counters.map((element) => element.id);
-  const streakInputs = counterStreakInputsFromElements(counters);
-  const { loadCounterTotals, loadCounterStreaks } = useEventStore.getState();
-  await Promise.all([
-    counterIds.length > 0 ? loadCounterTotals(counterIds) : Promise.resolve(),
-    streakInputs.length > 0 ? loadCounterStreaks(streakInputs) : Promise.resolve(),
-  ]);
-}

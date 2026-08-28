@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../protocol';
 import { weatherCodeToCondition } from './codes';
 import { fetchJsonWithTimeout } from './fetchJson';
 import { computeWeatherTrend, type HourlyTrendSample } from './trend';
@@ -228,8 +229,8 @@ function mapDailyForecast(daily: NonNullable<ForecastApiResult['daily']>): Weath
 }
 
 function calendarDaysBetween(fromDate: string, toDate: string): number {
-  const a = new Date(`${fromDate}T12:00:00`).getTime();
-  const b = new Date(`${toDate}T12:00:00`).getTime();
+  const a = parseLocalDate(fromDate).getTime();
+  const b = parseLocalDate(toDate).getTime();
   return Math.max(0, Math.round((b - a) / (24 * 60 * 60 * 1000)));
 }
 

@@ -1,3 +1,5 @@
+import { shiftDateString } from '../protocol';
+
 /** Pure chart/aggregation helpers for History + Insights. */
 
 /** Trailing simple moving average; leading windows use available points. */
@@ -92,32 +94,19 @@ export function computePersonalBestStreak(
   return best;
 }
 
-function dateFromString(dateStr: string): Date {
-  return new Date(`${dateStr}T12:00:00`);
-}
-
-function nextCalendarDate(dateStr: string): string {
-  const d = dateFromString(dateStr);
-  d.setDate(d.getDate() + 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 /** True when `next` is the next scheduled day after `prev` (skipping unscheduled). */
 function areConsecutiveScheduledDays(
   prev: string,
   next: string,
   isScheduledOnDate: (date: string) => boolean,
 ): boolean {
-  let cursor = nextCalendarDate(prev);
+  let cursor = shiftDateString(prev, 1);
   // Cap look-ahead so a bad schedule cannot loop forever.
   for (let i = 0; i < 366; i++) {
     if (cursor === next) return isScheduledOnDate(next);
     if (cursor > next) return false;
     if (isScheduledOnDate(cursor)) return false;
-    cursor = nextCalendarDate(cursor);
+    cursor = shiftDateString(cursor, 1);
   }
   return false;
 }

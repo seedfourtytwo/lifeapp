@@ -11,7 +11,8 @@ Life Dashboard UI is localized with **i18next** (`src/i18n/`). English and Frenc
 
 1. **Never** hardcode English in JSX, `Alert.alert`, nav titles, notification bodies, empty states, a11y labels, or validation messages shown to users.
 2. Add the key to **both** `src/i18n/locales/en/<ns>.json` and `src/i18n/locales/fr/<ns>.json` in the same change.
-3. Use the right namespace: `common`, `settings`, `home`, `trackers`, `calendar`, `journal`, `insights`, `notifications`. New product areas get a **new namespace file**, not a mega-JSON.
+3. Use the right namespace: `common`, `settings`, `home`, `trackers`, `calendar`, `journal`, `insights`, `notifications`, `nutrition`, `todos`. New product areas get a **new namespace file**, not a mega-JSON. Register it in `src/i18n/index.ts`.
+   `todos` currently ships English only and is served to French readers via `fallbackLng`; every other namespace must be added to **both** locales.
 4. In React: `useTranslation('ns')` + `t('key.path')`. Outside React: `i18n.t('ns:key.path')` from `src/i18n`.
 5. Dates/numbers: `getDateLocale()` from `src/i18n` — not `undefined` / device default alone.
 6. Dictation **starts** from the app language (`speechRecognitionLocale()`). v1 uses Moonshine English Small Streaming only.

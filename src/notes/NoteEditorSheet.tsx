@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -154,14 +154,16 @@ export default function NoteEditorSheet({
     ? (headingIcon ?? 'notebook-outline')
     : headingIcon;
 
-  const clearCopyFeedbackTimer = () => {
+  const clearCopyFeedbackTimer = useCallback(() => {
     if (copyFeedbackTimerRef.current) {
       clearTimeout(copyFeedbackTimerRef.current);
       copyFeedbackTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const resetChrome = () => {
+  // Stable: touches only setState and refs, so the session effect below can
+  // depend on it without re-running on every render.
+  const resetChrome = useCallback(() => {
     setDictationHint(null);
     setDictationHintTone('notice');
     setDictationError(null);
@@ -171,7 +173,7 @@ export default function NoteEditorSheet({
     setCopyFeedback(null);
     setLive(null);
     setMenuOpen(false);
-  };
+  }, [clearCopyFeedbackTimer]);
 
   const closeMenuThen = (action: () => void) => {
     setMenuOpen(false);
@@ -205,7 +207,7 @@ export default function NoteEditorSheet({
     sharingRef.current = false;
     resetChrome();
     chromeSeededKeyRef.current = sessionKey;
-  }, [visible, date, sessionKey]);
+  }, [visible, date, sessionKey, resetChrome]);
 
   useEffect(() => {
     if (!visible) return;
@@ -218,6 +220,8 @@ export default function NoteEditorSheet({
     };
   }, [visible]);
 
+  // Unmount-only: `clearCopyFeedbackTimer` is stable, so listing it does not
+  // re-arm the cleanup.
   useEffect(
     () => () => {
       clearCopyFeedbackTimer();
@@ -226,7 +230,7 @@ export default function NoteEditorSheet({
         menuActionTimerRef.current = null;
       }
     },
-    [],
+    [clearCopyFeedbackTimer],
   );
 
   const handleTranscript = (text: string) => {

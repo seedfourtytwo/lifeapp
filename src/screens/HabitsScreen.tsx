@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
+import { Alert, View } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
-import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
-import { refreshAllHabitData, useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
-import { NoteEditorHost, useNoteEditorSession } from '../notes';
-import type { HomeNotebookChip } from '../notes';
+import { refreshAllHabitData } from '../hooks/refreshAllDailyData';
+import { useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
+import { NoteEditorHost } from '../notes';
 import {
   filterHabitsDueToday,
   orderHabitsList,
@@ -20,6 +19,7 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabDayStatus from './shared/HomeTabDayStatus';
+import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
@@ -27,22 +27,10 @@ import {
   type HomeTabScrollViewHandle,
 } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
+import type { HomeTrackerTabProps } from './shared/homeTabProps';
+import { useHomeTrackerNotes } from './shared/useHomeTrackerNotes';
 
-type Props = {
-  notebooks: HomeNotebookChip[];
-  onDictateNotebook: (notebookId: string) => void;
-  onEditNotebook: (notebookId: string) => void;
-  /** True while Home's journal sheet is open — dismisses this screen's tracker note sheet. */
-  journalOpen?: boolean;
-  /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
-  notesActive?: boolean;
-  /** Called before opening a tracker note so Home can dismiss the journal sheet. */
-  onBeforeOpenTrackerNote?: () => void;
-  /** Lets Home lock Habit↔Counter swipe while this tab's note sheet is open. */
-  onTrackerNotesOpenChange?: (open: boolean) => void;
-  /** Lets Home lock Habit↔Counter swipe while dragging to reorder. */
-  onTrackerDragActiveChange?: (active: boolean) => void;
-};
+type Props = HomeTrackerTabProps;
 
 export default function HabitsScreen({
   notebooks,
@@ -118,32 +106,13 @@ export default function HabitsScreen({
     () => new Map(habits.map((habit) => [habit.id, habit])),
     [habits],
   );
-  const { notesToday, reloadNotesToday, applySaved } = useTodayTrackerNotes(habitIds, now);
-
-  const noteEditor = useNoteEditorSession({
-    onSaved: (date, body, target) => {
-      if (target.kind !== 'tracker') return;
-      applySaved(date, target.elementId, body);
-    },
+  const { notesToday, reloadNotesToday, noteEditor } = useHomeTrackerNotes({
+    elementIds: habitIds,
+    now,
+    journalOpen,
+    notesActive,
+    onTrackerNotesOpenChange,
   });
-
-  const notesWereOpenRef = useRef(false);
-  useEffect(() => {
-    if (journalOpen || !notesActive) noteEditor.dismiss();
-  }, [journalOpen, notesActive, noteEditor.dismiss]);
-
-  useEffect(() => {
-    const open = noteEditor.session != null;
-    if (notesWereOpenRef.current && !open) {
-      void reloadNotesToday();
-    }
-    notesWereOpenRef.current = open;
-  }, [noteEditor.session, reloadNotesToday]);
-
-  useEffect(() => {
-    if (!notesActive) return;
-    onTrackerNotesOpenChange?.(noteEditor.session != null);
-  }, [notesActive, noteEditor.session, onTrackerNotesOpenChange]);
 
   /** Sort only among remaining — done stays parked at the bottom. */
   const reorderPeerIds = useMemo(
@@ -157,38 +126,19 @@ export default function HabitsScreen({
   };
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
-  const journalMeta = (
-    <HomeTabMetaRow
-      notebooks={notebooks}
-      onDictateNotebook={onDictateNotebook}
-      onEditNotebook={onEditNotebook}
-    />
-  );
 
-  if (isLoading && allHabits.length === 0 && !error) {
+  // Wait for elements, then for today's completion map before enabling toggles
+  // (a toggle before day-state lands would double-tick).
+  const waitingForData =
+    (isLoading && allHabits.length === 0) || (allHabits.length > 0 && !dayStateReady);
+  if (waitingForData && !error) {
     return (
       <>
-        <View style={styles.loadingPane}>
-          {journalMeta}
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" />
-          </View>
-        </View>
-        {editorHost}
-      </>
-    );
-  }
-
-  // Wait for today's completion map before enabling toggles (avoids double-ticks).
-  if (allHabits.length > 0 && !dayStateReady && !error) {
-    return (
-      <>
-        <View style={styles.loadingPane}>
-          {journalMeta}
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" />
-          </View>
-        </View>
+        <HomeTabLoadingPane
+          notebooks={notebooks}
+          onDictateNotebook={onDictateNotebook}
+          onEditNotebook={onEditNotebook}
+        />
         {editorHost}
       </>
     );
@@ -303,13 +253,4 @@ export default function HabitsScreen({
   );
 }
 
-const styles = {
-  ...homeTabScreenStyles,
-  ...StyleSheet.create({
-    loadingPane: {
-      flex: 1,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-  }),
-};
+const styles = homeTabScreenStyles;

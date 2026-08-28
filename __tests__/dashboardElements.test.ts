@@ -1,7 +1,6 @@
 import type { DashboardItem, ElementDefinition } from '../src/protocol';
 import { PROTOCOL_VERSION } from '../src/protocol';
 import {
-  activeHabitIdsKey,
   getActiveElements,
   getActiveHabits,
   isElementArchived,
@@ -65,14 +64,5 @@ describe('getActiveHabits', () => {
     const dashboard = [dashboardItem('b', 0), dashboardItem('a', 1)];
 
     expect(getActiveHabits(elements, dashboard).map((item) => item.id)).toEqual(['b', 'c']);
-  });
-});
-
-describe('activeHabitIdsKey', () => {
-  it('is stable regardless of habit order in elements list', () => {
-    const elements = [element('b', 'habit'), element('a', 'habit')];
-    const dashboard = [dashboardItem('a', 0), dashboardItem('b', 1)];
-
-    expect(activeHabitIdsKey(elements, dashboard)).toBe('a|b');
   });
 });

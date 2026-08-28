@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { getDateLocale } from '../../i18n';
+import { parseLocalDate } from '../../protocol';
 import { formatFullDate } from '../../utils/dates';
 
 type Props = {
@@ -15,12 +16,12 @@ type Props = {
 };
 
 function weekdayInitial(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), { weekday: 'narrow' });
 }
 
 function dayOfMonth(dateStr: string): string {
-  return String(new Date(`${dateStr}T12:00:00`).getDate());
+  return String(parseLocalDate(dateStr).getDate());
 }
 
 /** Mon–Sun selector: which day of this week you are logging into. */

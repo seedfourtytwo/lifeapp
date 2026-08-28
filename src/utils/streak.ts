@@ -1,13 +1,7 @@
-import { toDateString } from '../protocol';
-
-function dateFromString(dateStr: string): Date {
-  return new Date(`${dateStr}T12:00:00`);
-}
+import { shiftDateString } from '../protocol';
 
 function previousDateString(dateStr: string): string {
-  const d = dateFromString(dateStr);
-  d.setDate(d.getDate() - 1);
-  return toDateString(d);
+  return shiftDateString(dateStr, -1);
 }
 
 /**

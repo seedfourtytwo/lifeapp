@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { i18n } from '../i18n';
 import { timeToMinutes } from '../utils/time';
+import { parseLocalDate } from './event';
 import type { HabitTimeRange } from './kinds/habit';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,19 +23,15 @@ export const HabitScheduleSchema = z.discriminatedUnion('type', [
 
 export type HabitSchedule = z.infer<typeof HabitScheduleSchema>;
 
-function dateFromString(dateStr: string): Date {
-  return new Date(`${dateStr}T12:00:00`);
-}
-
 export function daysBetween(startDate: string, endDate: string): number {
-  const start = dateFromString(startDate);
-  const end = dateFromString(endDate);
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
   const ms = end.getTime() - start.getTime();
   return Math.floor(ms / (24 * 60 * 60 * 1000));
 }
 
 export function isScheduleActiveOnDate(schedule: HabitSchedule, dateStr: string): boolean {
-  const date = dateFromString(dateStr);
+  const date = parseLocalDate(dateStr);
 
   switch (schedule.type) {
     case 'daily':

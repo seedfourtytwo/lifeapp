@@ -210,9 +210,21 @@ function enqueueCounterWrite(
   return next;
 }
 
-function eventWriteStillValid(dataEpochAtStart: number, elementId: string, writeEpochAtStart: number): boolean {
+/**
+ * True once this write has been overtaken — either the whole dataset was
+ * replaced (import / clear bumps `dataEpoch`) or a newer write for the same
+ * element landed while we were awaiting SQLite.
+ *
+ * Every await inside a write must re-check this before touching the DB or the
+ * store, so it is one predicate rather than a condition copied per call site.
+ */
+function eventWriteSuperseded(
+  dataEpochAtStart: number,
+  elementId: string,
+  writeEpochAtStart: number,
+): boolean {
   return (
-    dataEpochAtStart === dataEpoch && getWriteEpoch(elementId) === writeEpochAtStart
+    dataEpochAtStart !== dataEpoch || getWriteEpoch(elementId) !== writeEpochAtStart
   );
 }
 
@@ -494,14 +506,11 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   logEvent: (elementId, value, meta) =>
     enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
-      if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) return;
       const ourWriteEpoch = bumpWriteEpoch(elementId);
       let wrote = false;
       await withDbWriteLock(async () => {
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         const now = new Date();
@@ -516,10 +525,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           protocolVersion: PROTOCOL_VERSION,
         });
 
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         await refreshTotal(elementId, date, set, get);
@@ -533,15 +539,12 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (total < 0 || !Number.isFinite(total)) {
         throw new Error('Total must be a non-negative number');
       }
-      if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) return;
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) return;
 
       const ourWriteEpoch = bumpWriteEpoch(elementId);
       let wrote = false;
       await withDbWriteLock(async () => {
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         const db = await getDatabase();
@@ -551,10 +554,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           meta: { source: 'manual' },
         });
 
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         await refreshTotal(elementId, date, set, get);
@@ -568,7 +568,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     habitToggleInFlight.add(elementId);
     const dataEpochAtStart = dataEpoch;
     const writeEpochAtStart = getWriteEpoch(elementId);
-    if (!eventWriteStillValid(dataEpochAtStart, elementId, writeEpochAtStart)) {
+    if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) {
       habitToggleInFlight.delete(elementId);
       return;
     }
@@ -585,10 +585,7 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     try {
       await withDbWriteLock(async () => {
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         const db = await getDatabase();
@@ -608,20 +605,14 @@ export const useEventStore = create<EventState>((set, get) => ({
           void playHabitCompleteHaptic();
         }
 
-        if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch
-        ) {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
         applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
       });
     } catch (error) {
-      if (
-        dataEpochAtStart === dataEpoch &&
-        getWriteEpoch(elementId) === ourWriteEpoch
-      ) {
+      if (!eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         applyTodayMaps(
           elementId,
           date,
@@ -719,10 +710,7 @@ export const useEventStore = create<EventState>((set, get) => ({
 
       try {
         await withDbWriteLock(async () => {
-          if (
-            dataEpochAtStart !== dataEpoch ||
-            getWriteEpoch(elementId) !== ourWriteEpoch
-          ) {
+          if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
             return;
           }
 
@@ -736,10 +724,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
           const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
 
-          if (
-            dataEpochAtStart !== dataEpoch ||
-            getWriteEpoch(elementId) !== ourWriteEpoch
-          ) {
+          if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
             return;
           }
 
@@ -753,10 +738,7 @@ export const useEventStore = create<EventState>((set, get) => ({
             protocolVersion: PROTOCOL_VERSION,
           });
 
-          if (
-            dataEpochAtStart !== dataEpoch ||
-            getWriteEpoch(elementId) !== ourWriteEpoch
-          ) {
+          if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
             return;
           }
 
@@ -780,8 +762,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         });
       } catch (error) {
         if (
-          dataEpochAtStart !== dataEpoch ||
-          getWriteEpoch(elementId) !== ourWriteEpoch ||
+          eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch) ||
           habitTimerStopAbortRestore.has(elementId)
         ) {
           throw error;
@@ -832,19 +813,13 @@ export const useEventStore = create<EventState>((set, get) => ({
     const dataEpochAtStart = dataEpoch;
     const ourWriteEpoch = bumpWriteEpoch(elementId);
     await withDbWriteLock(async () => {
-      if (
-        dataEpochAtStart !== dataEpoch ||
-        getWriteEpoch(elementId) !== ourWriteEpoch
-      ) {
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         return;
       }
       const db = await getDatabase();
       await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
 
-      if (
-        dataEpochAtStart !== dataEpoch ||
-        getWriteEpoch(elementId) !== ourWriteEpoch
-      ) {
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         return;
       }
 

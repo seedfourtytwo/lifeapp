@@ -1,27 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
+import { Alert, View } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { CounterConfigSchema, type CounterConfig } from '../protocol';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
-import {
-  refreshAllCounterData,
-  useRefreshCounterTotalsOnFocus,
-} from '../hooks/useCounterDataRefresh';
-import { useTodayTrackerNotes } from '../hooks/useTodayTrackerNotes';
+import { refreshAllCounterData } from '../hooks/refreshAllDailyData';
+import { useRefreshCounterTotalsOnFocus } from '../hooks/useCounterDataRefresh';
 import { getKindHandler } from '../kinds/registry';
 import type { RootStackParamList } from '../navigation/types';
-import { NoteEditorHost, useNoteEditorSession } from '../notes';
-import type { HomeNotebookChip } from '../notes';
+import { NoteEditorHost } from '../notes';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabDayStatus from './shared/HomeTabDayStatus';
+import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
 import HomeTabMetaRow from './shared/HomeTabMetaRow';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
@@ -29,20 +26,10 @@ import {
   type HomeTabScrollViewHandle,
 } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
+import type { HomeTrackerTabProps } from './shared/homeTabProps';
+import { useHomeTrackerNotes } from './shared/useHomeTrackerNotes';
 
-type Props = {
-  notebooks: HomeNotebookChip[];
-  onDictateNotebook: (notebookId: string) => void;
-  onEditNotebook: (notebookId: string) => void;
-  journalOpen?: boolean;
-  /** False while another Home tab is active — dismisses this screen's tracker note sheet. */
-  notesActive?: boolean;
-  onBeforeOpenTrackerNote?: () => void;
-  /** Lets Home lock Habit↔Counter swipe while this tab's note sheet is open. */
-  onTrackerNotesOpenChange?: (open: boolean) => void;
-  /** Lets Home lock Habit↔Counter swipe while dragging to reorder. */
-  onTrackerDragActiveChange?: (active: boolean) => void;
-};
+type Props = HomeTrackerTabProps;
 
 export default function CountersScreen({
   notebooks,
@@ -91,32 +78,13 @@ export default function CountersScreen({
   );
 
   const counterIds = useMemo(() => counters.map((c) => c.id), [counters]);
-  const { notesToday, reloadNotesToday, applySaved } = useTodayTrackerNotes(counterIds, now);
-
-  const noteEditor = useNoteEditorSession({
-    onSaved: (date, body, target) => {
-      if (target.kind !== 'tracker') return;
-      applySaved(date, target.elementId, body);
-    },
+  const { notesToday, reloadNotesToday, noteEditor } = useHomeTrackerNotes({
+    elementIds: counterIds,
+    now,
+    journalOpen,
+    notesActive,
+    onTrackerNotesOpenChange,
   });
-
-  const notesWereOpenRef = useRef(false);
-  useEffect(() => {
-    if (journalOpen || !notesActive) noteEditor.dismiss();
-  }, [journalOpen, notesActive, noteEditor.dismiss]);
-
-  useEffect(() => {
-    const open = noteEditor.session != null;
-    if (notesWereOpenRef.current && !open) {
-      void reloadNotesToday();
-    }
-    notesWereOpenRef.current = open;
-  }, [noteEditor.session, reloadNotesToday]);
-
-  useEffect(() => {
-    if (!notesActive) return;
-    onTrackerNotesOpenChange?.(noteEditor.session != null);
-  }, [notesActive, noteEditor.session, onTrackerNotesOpenChange]);
 
   const counterConfigs = useMemo(() => {
     const configs = new Map<string, CounterConfig>();
@@ -137,37 +105,19 @@ export default function CountersScreen({
   }, [reloadNotesToday]);
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
-  const journalMeta = (
-    <HomeTabMetaRow
-      notebooks={notebooks}
-      onDictateNotebook={onDictateNotebook}
-      onEditNotebook={onEditNotebook}
-    />
-  );
 
-  if (isLoading && elements.length === 0 && !error) {
+  // Wait for elements, then for today's totals — a +1 before totals land would
+  // render against a stale base.
+  const waitingForData =
+    (isLoading && elements.length === 0) || (counters.length > 0 && !counterTotalsReady);
+  if (waitingForData && !error) {
     return (
       <>
-        <View style={styles.loadingPane}>
-          {journalMeta}
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" />
-          </View>
-        </View>
-        {editorHost}
-      </>
-    );
-  }
-
-  if (counters.length > 0 && !counterTotalsReady && !error) {
-    return (
-      <>
-        <View style={styles.loadingPane}>
-          {journalMeta}
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" />
-          </View>
-        </View>
+        <HomeTabLoadingPane
+          notebooks={notebooks}
+          onDictateNotebook={onDictateNotebook}
+          onEditNotebook={onEditNotebook}
+        />
         {editorHost}
       </>
     );
@@ -288,13 +238,4 @@ export default function CountersScreen({
   );
 }
 
-const styles = {
-  ...homeTabScreenStyles,
-  ...StyleSheet.create({
-    loadingPane: {
-      flex: 1,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-  }),
-};
+const styles = homeTabScreenStyles;

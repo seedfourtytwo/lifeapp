@@ -9,7 +9,7 @@ export {
 } from './element';
 export type { ElementKind, ElementDefinition } from './element';
 
-export { EventSchema, toDateString } from './event';
+export { EventSchema, toDateString, parseLocalDate, shiftDateString } from './event';
 export type { LifeEvent } from './event';
 
 export { DayNoteSchema, DAY_NOTE_BODY_MAX_LENGTH, validateBundleDayNoteLinks } from './dayNote';

@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import * as weatherRepo from '../db/repositories/weatherRepository';
 import { withDbWriteLock } from '../db/writeLock';
+import { shiftDateString } from '../protocol';
 import { useSettingsStore } from '../store/settingsStore';
 import { fetchDailyWeatherRange } from './openMeteo';
 import type { WeatherCoords, WeatherDailySnapshot } from './types';
@@ -28,15 +29,8 @@ export async function ensureWeatherDailyRange(
   const have = new Set(existing.map((s) => s.date));
 
   const missing: string[] = [];
-  const cursor = new Date(`${sinceDate}T12:00:00`);
-  const end = new Date(`${untilDate}T12:00:00`);
-  while (cursor <= end) {
-    const y = cursor.getFullYear();
-    const m = String(cursor.getMonth() + 1).padStart(2, '0');
-    const d = String(cursor.getDate()).padStart(2, '0');
-    const date = `${y}-${m}-${d}`;
+  for (let date = sinceDate; date <= untilDate; date = shiftDateString(date, 1)) {
     if (!have.has(date)) missing.push(date);
-    cursor.setDate(cursor.getDate() + 1);
   }
 
   if (missing.length === 0) return existing;

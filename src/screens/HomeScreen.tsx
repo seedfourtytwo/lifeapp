@@ -58,6 +58,34 @@ const TABS: { value: HomeTab; labelKey: DockTabLabelKey; icon: DockIconName }[] 
   { value: 'todos', labelKey: 'dock.todosTab', icon: 'format-list-checks' },
 ];
 
+/**
+ * One pager page. Inactive pages stay mounted (scroll position and state
+ * survive tab switches) but are taken out of the touch and accessibility
+ * trees so they cannot swallow gestures meant for the active tab.
+ */
+function HomePagerPage({
+  active,
+  width,
+  height,
+  children,
+}: {
+  active: boolean;
+  width: number;
+  height: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={[styles.page, { width, height: height > 0 ? height : undefined }]}
+      pointerEvents={active ? 'auto' : 'none'}
+      accessibilityElementsHidden={!active}
+      importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
+    >
+      {children}
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation('home');
@@ -67,14 +95,13 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const pagerRef = useRef<ScrollView>(null);
   const tabRef = useRef<HomeTab>('habits');
-  const [tab, setTab] = useState<HomeTab>('habits');
   /**
-   * Tabs that have been opened at least once. Pages mount lazily and then stay
-   * mounted (so their scroll position and state survive), which keeps a tab you
-   * never use off the render path entirely — it costs nothing at startup and
-   * nothing on every later tab change.
+   * All four pages mount at startup and stay mounted, so a swipe never lands on
+   * an empty page and each tab keeps its scroll position and state. Every Home
+   * tab's list is bounded by design (Nutrition shows this week's plate, not the
+   * catalogue) — keep it that way, or this becomes a cold-start cost.
    */
-  const [visitedTabs, setVisitedTabs] = useState<Set<HomeTab>>(() => new Set(['habits']));
+  const [tab, setTab] = useState<HomeTab>('habits');
   const [pagerHeight, setPagerHeight] = useState(0);
   const [notebooks, setNotebooks] = useState<HomeNotebookChip[]>([]);
   /** Tracker note sheet open on the active Habits/Counters tab. */
@@ -118,6 +145,8 @@ export default function HomeScreen() {
   });
   const journalOpen = noteEditor.session != null;
 
+  // Refreshes on mount, whenever the journal sheet closes, and when the app
+  // calendar day rolls over (`reloadTodayNotebooks` is keyed on `now`).
   useEffect(() => {
     if (journalOpen) return;
     void reloadTodayNotebooks();
@@ -139,10 +168,6 @@ export default function HomeScreen() {
       void reloadTodayNotebooks();
     }, [reloadTodayNotebooks]),
   );
-
-  useEffect(() => {
-    void reloadTodayNotebooks();
-  }, [reloadTodayNotebooks]);
 
   useEffect(() => {
     if (!weatherWidgetEnabled) return;
@@ -203,17 +228,10 @@ export default function HomeScreen() {
     );
   };
 
-  const markVisited = (next: HomeTab) => {
-    setVisitedTabs((current) =>
-      current.has(next) ? current : new Set(current).add(next),
-    );
-  };
-
   const scrollToTab = (next: HomeTab, animated = true) => {
     const index = TAB_ORDER.indexOf(next);
     pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
     tabRef.current = next;
-    markVisited(next);
     setTab(next);
   };
 
@@ -223,7 +241,6 @@ export default function HomeScreen() {
     const next = TAB_ORDER[Math.min(Math.max(index, 0), TAB_ORDER.length - 1)] ?? 'habits';
     if (next !== tabRef.current) {
       tabRef.current = next;
-      markVisited(next);
       setTab(next);
     }
   };
@@ -257,17 +274,7 @@ export default function HomeScreen() {
           scrollEventThrottle={16}
           style={styles.pager}
         >
-          <View
-            style={[
-              styles.page,
-              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
-            ]}
-            pointerEvents={tab === 'habits' ? 'auto' : 'none'}
-            accessibilityElementsHidden={tab !== 'habits'}
-            importantForAccessibility={
-              tab === 'habits' ? 'auto' : 'no-hide-descendants'
-            }
-          >
+          <HomePagerPage active={tab === 'habits'} width={pageWidth} height={pagerHeight}>
             <HabitsScreen
               notebooks={notebooks}
               onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
@@ -278,18 +285,8 @@ export default function HomeScreen() {
               onTrackerNotesOpenChange={setTrackerNotesOpen}
               onTrackerDragActiveChange={setTrackerDragActive}
             />
-          </View>
-          <View
-            style={[
-              styles.page,
-              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
-            ]}
-            pointerEvents={tab === 'counters' ? 'auto' : 'none'}
-            accessibilityElementsHidden={tab !== 'counters'}
-            importantForAccessibility={
-              tab === 'counters' ? 'auto' : 'no-hide-descendants'
-            }
-          >
+          </HomePagerPage>
+          <HomePagerPage active={tab === 'counters'} width={pageWidth} height={pagerHeight}>
             <CountersScreen
               notebooks={notebooks}
               onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
@@ -300,33 +297,13 @@ export default function HomeScreen() {
               onTrackerNotesOpenChange={setTrackerNotesOpen}
               onTrackerDragActiveChange={setTrackerDragActive}
             />
-          </View>
-          <View
-            style={[
-              styles.page,
-              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
-            ]}
-            pointerEvents={tab === 'nutrition' ? 'auto' : 'none'}
-            accessibilityElementsHidden={tab !== 'nutrition'}
-            importantForAccessibility={
-              tab === 'nutrition' ? 'auto' : 'no-hide-descendants'
-            }
-          >
-            {visitedTabs.has('nutrition') ? <NutritionScreen /> : null}
-          </View>
-          <View
-            style={[
-              styles.page,
-              { width: pageWidth, height: pagerHeight > 0 ? pagerHeight : undefined },
-            ]}
-            pointerEvents={tab === 'todos' ? 'auto' : 'none'}
-            accessibilityElementsHidden={tab !== 'todos'}
-            importantForAccessibility={tab === 'todos' ? 'auto' : 'no-hide-descendants'}
-          >
-            {visitedTabs.has('todos') ? (
-              <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
-            ) : null}
-          </View>
+          </HomePagerPage>
+          <HomePagerPage active={tab === 'nutrition'} width={pageWidth} height={pagerHeight}>
+            <NutritionScreen />
+          </HomePagerPage>
+          <HomePagerPage active={tab === 'todos'} width={pageWidth} height={pagerHeight}>
+            <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
+          </HomePagerPage>
         </ScrollView>
       </View>
 

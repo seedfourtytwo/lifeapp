@@ -1,4 +1,5 @@
 import { getDateLocale } from '../i18n';
+import { parseLocalDate } from '../protocol';
 
 /** Shared weather display helpers. */
 
@@ -15,13 +16,13 @@ export function formatBubbleDate(date: Date = new Date()): string {
 
 /** Zero-padded DD/MM from an ISO calendar date (`YYYY-MM-DD`). */
 export function formatBubbleDateFromIso(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return formatBubbleDate(d);
 }
 
 /** Short weekday for forecast chips (e.g. Mon / lun.). */
 export function formatWeekdayShort(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
+  const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), { weekday: 'short' });
 }
 

@@ -16,14 +16,14 @@ North star: `.cursor/protocol-plan.md` (trackers vs catalogs vs ambient; backup 
 - Schema changes: migration in `db/migrations.ts`, bump `CURRENT_SCHEMA_VERSION`.
 - Soft-hide via `elements.archived_at`. Home = non-archived; `dashboard_items` = sort for active only.
 - Events are day facts; prefer append. Some same-day flows replace that day’s rows for one element — never rewrite cross-day history.
-- Schema **v20** (v12 lean wipe; v13 day_notes; v14 daily_journals; v15 note_share_state; v16–v18 journal notebooks; v19 food catalog; v20 food season/GI/portions). Prefer additive migrations. Missing columns → idempotent repair (`schemaIntegrity.ts`).
+- Schema **v21** (v12 lean wipe; v13 day_notes; v14 daily_journals; v15 note_share_state; v16–v18 journal notebooks; v19 food catalog; v20 food season/GI/portions; v21 todos). `CURRENT_SCHEMA_VERSION` in `db/migrations.ts` is authoritative — check it rather than this line. Prefer additive migrations. Missing columns → idempotent repair (`schemaIntegrity.ts`).
 - **Never edit a shipped migration in place — including one only a dev device has run.** At the steady state (`version === CURRENT`) the repair pass is skipped and `CREATE TABLE IF NOT EXISTS` is a no-op, so added columns never arrive. Always bump.
 
 ## Interchange
 
 - **Full backup** = `ProtocolBundle` (personal snapshot). Dashboard rows must not reference archived elements.
 - **Granular export / share packs** specialize the same schemas — do not invent a parallel definition format. Share packs = templates ± catalogs, no events by default; device taste (e.g. timer sound) opt-in.
-- Catalogs are protocol entities **outside** `ElementKind` until Home UX truly needs a kind. Food (`food_items` + `food_log`) is the built example; recipes follow the same shape.
+- Catalogs are protocol entities **outside** `ElementKind` until Home UX truly needs a kind. Food (`food_items` + `food_log`) is the built example; recipes follow the same shape. Todos (`todos`) are app data on the same principle — a Home tab without being a kind.
 
 ## Do not
 
