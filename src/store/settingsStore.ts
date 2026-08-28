@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 import * as settingsRepo from '../db/repositories/settingsRepository';
 import { i18n } from '../i18n';
@@ -16,7 +17,6 @@ import {
 import { isThemeMode, type ThemeMode } from '../theme/types';
 import { clamp01 } from '../utils/clamp01';
 import { defaultBubblePosition } from '../weather/bubblePosition';
-import { getEventDataEpoch } from './eventStore';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
 const DEFAULT_BUBBLE = defaultBubblePosition();
@@ -28,9 +28,9 @@ function invalidateSettingsLoads(): void {
 }
 
 async function withGuardedSettingsWrite<T>(fn: () => Promise<T>): Promise<T> {
-  const epochAtStart = getEventDataEpoch();
+  const epochAtStart = getDataGeneration('protocol');
   return withDbWriteLock(async () => {
-    if (epochAtStart !== getEventDataEpoch()) {
+    if (epochAtStart !== getDataGeneration('protocol')) {
       throw new Error(i18n.t('common:errors.dataReplacedTryAgain'));
     }
     const result = await fn();

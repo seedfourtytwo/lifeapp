@@ -195,6 +195,8 @@ function NutritionScreen() {
   const handleCreate = async (input: FoodItemInput) => {
     const item = await create(input);
     setQuery('');
+    // No item means a clear/import discarded the write — there is nothing to log.
+    if (!item) return;
     // A food you just added is almost certainly one you just ate. This must not
     // throw: the food already exists, and surfacing a failure here would invite
     // a retry that creates a duplicate. The tap is trivially repeatable instead.

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { bumpDataGeneration, getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 import * as weatherRepo from '../db/repositories/weatherRepository';
 import { i18n } from '../i18n';
 import { toDateString } from '../protocol';
 import { useSettingsStore } from './settingsStore';
-import { getEventDataEpoch } from './eventStore';
 import {
   classifyWeatherFetchError,
   weatherErrorMessage,
@@ -15,7 +15,6 @@ import {
   loadCachedForecast,
   saveCachedForecast,
 } from '../weather/forecastCache';
-import { bumpWeatherDataEpoch, getWeatherDataEpoch } from '../weather/weatherEpoch';
 import {
   getDeviceCoords,
   isDeviceLocationAvailable,
@@ -87,8 +86,8 @@ async function persistDailySnapshot(
   try {
     return await withDbWriteLock(async () => {
       if (
-        epochAtStart !== getEventDataEpoch() ||
-        weatherEpochAtStart !== getWeatherDataEpoch() ||
+        epochAtStart !== getDataGeneration('protocol') ||
+        weatherEpochAtStart !== getDataGeneration('weather') ||
         seq !== refreshSeq
       ) {
         return false;
@@ -123,7 +122,7 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
   lastFetchAt: null,
 
   clear: () => {
-    bumpWeatherDataEpoch();
+    bumpDataGeneration('weather');
     refreshSeq += 1;
     set({
       forecast: null,
@@ -167,8 +166,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
     }
 
     const seq = ++refreshSeq;
-    const epochAtStart = getEventDataEpoch();
-    const weatherEpochAtStart = getWeatherDataEpoch();
+    const epochAtStart = getDataGeneration('protocol');
+    const weatherEpochAtStart = getDataGeneration('weather');
     set({ loading: true });
 
     try {
@@ -186,8 +185,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       const next = await fetchForecast(coords.lat, coords.lon);
       if (
         seq !== refreshSeq ||
-        epochAtStart !== getEventDataEpoch() ||
-        weatherEpochAtStart !== getWeatherDataEpoch()
+        epochAtStart !== getDataGeneration('protocol') ||
+        weatherEpochAtStart !== getDataGeneration('weather')
       ) {
         return;
       }
@@ -199,8 +198,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       if (
         !cached ||
         seq !== refreshSeq ||
-        epochAtStart !== getEventDataEpoch() ||
-        weatherEpochAtStart !== getWeatherDataEpoch()
+        epochAtStart !== getDataGeneration('protocol') ||
+        weatherEpochAtStart !== getDataGeneration('weather')
       ) {
         return;
       }
@@ -213,8 +212,8 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       if (
         !snapOk ||
         seq !== refreshSeq ||
-        epochAtStart !== getEventDataEpoch() ||
-        weatherEpochAtStart !== getWeatherDataEpoch()
+        epochAtStart !== getDataGeneration('protocol') ||
+        weatherEpochAtStart !== getDataGeneration('weather')
       ) {
         return;
       }

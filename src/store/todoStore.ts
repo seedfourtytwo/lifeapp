@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/client';
+import { withGuardedWrite } from '../db/dataGeneration';
 import * as todoRepo from '../db/repositories/todoRepository';
 import type { NewTodo, TodoPatch } from '../db/repositories/todoRepository';
 import type { Todo } from '../protocol';
@@ -18,7 +19,8 @@ interface TodoState {
   error: string | null;
   load: () => Promise<void>;
   reload: () => Promise<void>;
-  create: (input: NewTodo) => Promise<Todo>;
+  /** Resolves to undefined when a clear/import discarded the write. */
+  create: (input: NewTodo) => Promise<Todo | undefined>;
   update: (id: string, patch: TodoPatch) => Promise<void>;
   /** Tick or un-tick. Un-ticking is what the Undo snackbar calls. */
   setCompleted: (id: string, completed: boolean) => Promise<void>;
@@ -58,27 +60,39 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   },
 
   create: async (input) => {
-    const db = await getDatabase();
-    const created = await todoRepo.createTodo(db, input);
+    const created = await withGuardedWrite('todos', async ({ superseded }) => {
+      const db = await getDatabase();
+      if (superseded()) return undefined;
+      return todoRepo.createTodo(db, input);
+    });
     await get().reload();
     return created;
   },
 
   update: async (id, patch) => {
-    const db = await getDatabase();
-    await todoRepo.updateTodo(db, id, patch);
+    await withGuardedWrite('todos', async ({ superseded }) => {
+      const db = await getDatabase();
+      if (superseded()) return;
+      await todoRepo.updateTodo(db, id, patch);
+    });
     await get().reload();
   },
 
   setCompleted: async (id, completed) => {
-    const db = await getDatabase();
-    await todoRepo.setTodoCompleted(db, id, completed ? new Date().toISOString() : null);
+    await withGuardedWrite('todos', async ({ superseded }) => {
+      const db = await getDatabase();
+      if (superseded()) return;
+      await todoRepo.setTodoCompleted(db, id, completed ? new Date().toISOString() : null);
+    });
     await get().reload();
   },
 
   remove: async (id) => {
-    const db = await getDatabase();
-    await todoRepo.deleteTodo(db, id);
+    await withGuardedWrite('todos', async ({ superseded }) => {
+      const db = await getDatabase();
+      if (superseded()) return;
+      await todoRepo.deleteTodo(db, id);
+    });
     await get().reload();
   },
 
@@ -101,8 +115,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     });
 
     try {
-      const db = await getDatabase();
-      await todoRepo.reorderTodos(db, orderedIds);
+      await withGuardedWrite('todos', async ({ superseded }) => {
+        const db = await getDatabase();
+        if (superseded()) return;
+        await todoRepo.reorderTodos(db, orderedIds);
+      });
     } catch (error) {
       console.warn('Failed to reorder todos', error);
     }

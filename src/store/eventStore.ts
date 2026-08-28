@@ -39,6 +39,7 @@ import {
   mergeUnchangedEntries,
 } from './writeEpoch';
 import { withDbWriteLock } from '../db/writeLock';
+import { getDataGeneration } from '../db/dataGeneration';
 
 export type { HabitStreakInput, CounterStreakInput };
 
@@ -126,8 +127,6 @@ let habitDayLoadGeneration = 0;
 let habitStreakLoadGeneration = 0;
 let counterTotalLoadGeneration = 0;
 let counterStreakLoadGeneration = 0;
-/** Bumped on import/clear so in-flight stops don't write into a replaced DB. */
-let dataEpoch = 0;
 const habitToggleInFlight = new Set<string>();
 /** Serialize counter log/set-total so edit + quick-add can't interleave. */
 const counterWriteChains = new Map<string, Promise<void>>();
@@ -140,14 +139,6 @@ const habitTimerStopOptions = new Map<
 >;
 /** Stops that must not restore the session on failure (archive/delete in flight). */
 const habitTimerStopAbortRestore = new Set<string>();
-
-export function bumpEventDataEpoch(): void {
-  dataEpoch += 1;
-}
-
-export function getEventDataEpoch(): number {
-  return dataEpoch;
-}
 
 export async function awaitHabitTimerStops(): Promise<void> {
   const pending = [...habitTimerStopPromises.values()];
@@ -196,7 +187,7 @@ function enqueueCounterWrite(
 ): Promise<void> {
   const previous = counterWriteChains.get(elementId) ?? Promise.resolve();
   const next = previous.catch(() => undefined).then(async () => {
-    const dataEpochAtStart = dataEpoch;
+    const dataEpochAtStart = getDataGeneration('protocol');
     const writeEpochAtStart = getWriteEpoch(elementId);
     await work(dataEpochAtStart, writeEpochAtStart);
   });
@@ -212,8 +203,8 @@ function enqueueCounterWrite(
 
 /**
  * True once this write has been overtaken — either the whole dataset was
- * replaced (import / clear bumps `dataEpoch`) or a newer write for the same
- * element landed while we were awaiting SQLite.
+ * replaced (import / clear bumps the `protocol` data generation) or a newer
+ * write for the same element landed while we were awaiting SQLite.
  *
  * Every await inside a write must re-check this before touching the DB or the
  * store, so it is one predicate rather than a condition copied per call site.
@@ -224,7 +215,8 @@ function eventWriteSuperseded(
   writeEpochAtStart: number,
 ): boolean {
   return (
-    dataEpochAtStart !== dataEpoch || getWriteEpoch(elementId) !== writeEpochAtStart
+    dataEpochAtStart !== getDataGeneration('protocol') ||
+    getWriteEpoch(elementId) !== writeEpochAtStart
   );
 }
 
@@ -566,7 +558,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   toggleHabit: async (elementId, config, date = todayDate()) => {
     if (habitToggleInFlight.has(elementId)) return;
     habitToggleInFlight.add(elementId);
-    const dataEpochAtStart = dataEpoch;
+    const dataEpochAtStart = getDataGeneration('protocol');
     const writeEpochAtStart = getWriteEpoch(elementId);
     if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) {
       habitToggleInFlight.delete(elementId);
@@ -690,7 +682,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       const session = get().activeTimerSessions[elementId];
       if (!session) return;
 
-      const dataEpochAtStart = dataEpoch;
+      const dataEpochAtStart = getDataGeneration('protocol');
       // Persist onto the day the timer started — not the day Done/rollover ran.
       const persistDate = session.calendarDate;
       const ourWriteEpoch = bumpWriteEpoch(elementId);
@@ -810,7 +802,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       }
     }
 
-    const dataEpochAtStart = dataEpoch;
+    const dataEpochAtStart = getDataGeneration('protocol');
     const ourWriteEpoch = bumpWriteEpoch(elementId);
     await withDbWriteLock(async () => {
       if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {

@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { getDatabase } from '../db/client';
+import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 import * as settingsRepo from '../db/repositories/settingsRepository';
-import { getEventDataEpoch } from '../store/eventStore';
-import { getWeatherDataEpoch } from './weatherEpoch';
 import type { WeatherForecast } from './types';
 
 /** Internal cache key — not part of protocol backup AppSettings. */
@@ -51,12 +50,12 @@ export async function saveCachedForecast(
   opts?: { epochAtStart?: number; weatherEpochAtStart?: number },
 ): Promise<boolean> {
   try {
-    const epochAtStart = opts?.epochAtStart ?? getEventDataEpoch();
-    const weatherEpochAtStart = opts?.weatherEpochAtStart ?? getWeatherDataEpoch();
+    const epochAtStart = opts?.epochAtStart ?? getDataGeneration('protocol');
+    const weatherEpochAtStart = opts?.weatherEpochAtStart ?? getDataGeneration('weather');
     return await withDbWriteLock(async () => {
       if (
-        epochAtStart !== getEventDataEpoch() ||
-        weatherEpochAtStart !== getWeatherDataEpoch()
+        epochAtStart !== getDataGeneration('protocol') ||
+        weatherEpochAtStart !== getDataGeneration('weather')
       ) {
         return false;
       }

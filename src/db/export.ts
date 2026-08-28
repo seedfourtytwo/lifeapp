@@ -15,11 +15,10 @@ import { markSeedFoodsApplied } from '../nutrition/seedCatalog';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
+import { bumpAllDataGenerations, bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
 import { newId } from '../utils/id';
-import { awaitPendingEventWrites, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
-import { bumpCalendarDataEpoch } from '../store/calendarStore';
-import { bumpWeatherDataEpoch } from '../weather/weatherEpoch';
+import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 import { stopHabitSound } from '../audio/habitTimerSound';
 
 export async function exportProtocolBundle(): Promise<ProtocolBundle> {
@@ -74,15 +73,13 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
   const bundle = parseProtocolBundle(normalized);
 
   await stopHabitSound();
-  bumpEventDataEpoch();
+  bumpDataGeneration('protocol');
   await awaitPendingEventWrites();
   useEventStore.setState({ activeTimerSessions: {} });
 
   await withDbWriteLock(async () => {
-    // Invalidate writers that started after the pre-lock drain.
-    bumpEventDataEpoch();
-    bumpCalendarDataEpoch();
-    bumpWeatherDataEpoch();
+    // An import replaces the whole device, so every scope is invalidated.
+    bumpAllDataGenerations();
 
     const db = await getDatabase();
 
@@ -169,10 +166,8 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       await calendarRepo.ensureDefaultCalendar(db);
     });
 
-    // Invalidate writers that captured the mid-import epoch while waiting on this lock.
-    bumpEventDataEpoch();
-    bumpCalendarDataEpoch();
-    bumpWeatherDataEpoch();
+    // Invalidate writers that captured the mid-import generation while waiting on this lock.
+    bumpAllDataGenerations();
   });
 }
 

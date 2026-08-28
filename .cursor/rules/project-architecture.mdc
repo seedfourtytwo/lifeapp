@@ -47,6 +47,9 @@ Do not add kinds (or catalog tables) until that feature is scheduled and in prog
 - **Elements** are definitions; manage UI = **Trackers**. **dashboard_items** = Home sort for active elements.
 - Home tabs: **Habits** / **Counters**. Calendar-day aggregates stay `daily*` in protocol/code.
 - Validate config on write with Zod, not TypeScript alone.
+- Wrap DB writes in `withGuardedWrite(scope, …)` (`src/db/dataGeneration.ts`) — it holds the
+  write lock and drops the write if a backup import or Clear data replaced that scope
+  mid-flight. Re-check the supplied `superseded()` after every `await`.
 - Bump `PROTOCOL_VERSION` only on breaking interchange; DB migrations for storage changes.
 - Tracker config: **identity** (schedule, targets, icon) vs **device taste** (sound, remind-before) — share defaults identity only.
 

@@ -20,10 +20,9 @@ import {
   resolveActivityDeleteBeforeDate,
   type ClearAppDataOptions,
 } from './clearDataPlan';
+import { bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
-import { awaitPendingEventWrites, bumpEventDataEpoch, useEventStore } from '../store/eventStore';
-import { bumpCalendarDataEpoch } from '../store/calendarStore';
-import { bumpWeatherDataEpoch } from '../weather/weatherEpoch';
+import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
 export {
@@ -56,6 +55,22 @@ async function clearProtocolTables(db: SQLiteDatabase): Promise<void> {
   await todoRepo.deleteAllTodos(db);
 }
 
+/**
+ * Invalidate in-flight writers for every scope this plan wipes. Scoped, not
+ * global: a weather-only clear must not drop an unrelated counter or todo write.
+ */
+function bumpClearedScopes(options: ClearAppDataOptions): void {
+  const touchesActivity = options.definitions || options.activityHistory;
+  if (touchesActivity || options.preferences) bumpDataGeneration('protocol');
+  if (touchesActivity) {
+    bumpDataGeneration('catalog');
+    bumpDataGeneration('todos');
+    bumpDataGeneration('journal');
+  }
+  if (options.calendar) bumpDataGeneration('calendar');
+  if (options.weather) bumpDataGeneration('weather');
+}
+
 export async function clearAppSettings(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM app_settings');
 }
@@ -77,16 +92,21 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
 
   const touchesActivity = options.definitions || options.activityHistory;
   const touchesSettings = options.preferences;
-  const touchesEventEpoch = touchesActivity || touchesSettings;
+  const touchesProtocolData = touchesActivity || touchesSettings;
 
   // Invalidate + drain outside the lock so in-flight event writers (which take
   // the same lock) can finish or abort without deadlocking against this clear.
-  // Only bump the event epoch when activity/definitions/preferences are cleared —
+  // Only bump the protocol scope when activity/definitions/preferences are cleared —
   // weather/calendar-only clears must not drop in-flight counter/habit writes.
-  if (touchesEventEpoch) {
-    bumpEventDataEpoch();
+  if (touchesProtocolData) {
+    bumpDataGeneration('protocol');
   }
   if (touchesActivity) {
+    // Catalog, todos and journals go with activity/definitions, so their
+    // in-flight writers are invalidated alongside the event drain.
+    bumpDataGeneration('catalog');
+    bumpDataGeneration('todos');
+    bumpDataGeneration('journal');
     stopHabitTimerLockScreenTicker();
     await stopHabitSound();
     await awaitPendingEventWrites();
@@ -94,17 +114,15 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     await clearPersistedActiveTimerSessions(await getDatabase());
   }
   if (options.calendar) {
-    bumpCalendarDataEpoch();
+    bumpDataGeneration('calendar');
   }
   if (options.weather) {
-    bumpWeatherDataEpoch();
+    bumpDataGeneration('weather');
   }
 
   await withDbWriteLock(async () => {
     // Invalidate anyone who queued after the drain above.
-    if (touchesEventEpoch) bumpEventDataEpoch();
-    if (options.calendar) bumpCalendarDataEpoch();
-    if (options.weather) bumpWeatherDataEpoch();
+    bumpClearedScopes(options);
 
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
@@ -160,10 +178,8 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
       }
     });
 
-    // Invalidate writers that captured the mid-clear epoch while waiting on this lock.
-    if (touchesEventEpoch) bumpEventDataEpoch();
-    if (options.calendar) bumpCalendarDataEpoch();
-    if (options.weather) bumpWeatherDataEpoch();
+    // Invalidate writers that captured the mid-clear generation while waiting on this lock.
+    bumpClearedScopes(options);
   });
 }
 

@@ -19,7 +19,12 @@ interface JournalNotebookState {
   load: () => Promise<void>;
   /** Force a refetch — call after a mutation made outside this store. */
   reload: () => Promise<void>;
-  create: (input: { name: string; color: JournalNotebookColor; icon?: TrackerIconId }) => Promise<JournalNotebook>;
+  /** Resolves to undefined when a clear/import discarded the write. */
+  create: (input: {
+    name: string;
+    color: JournalNotebookColor;
+    icon?: TrackerIconId;
+  }) => Promise<JournalNotebook | undefined>;
   update: (
     id: string,
     patch: { name: string; color: JournalNotebookColor; icon?: TrackerIconId },

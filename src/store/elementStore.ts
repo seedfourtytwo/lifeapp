@@ -21,10 +21,10 @@ import {
   abortHabitTimerRestore,
   awaitElementEventWrites,
   awaitHabitTimerStop,
-  getEventDataEpoch,
   useEventStore,
 } from './eventStore';
 import { bumpWriteEpoch, clearWriteEpoch } from './writeEpoch';
+import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 
 let elementLoadGeneration = 0;
@@ -38,13 +38,13 @@ function dataReplacedError(): Error {
 }
 
 async function withGuardedElementWrite<T>(fn: () => Promise<T>): Promise<T> {
-  const epochAtStart = getEventDataEpoch();
+  const epochAtStart = getDataGeneration('protocol');
   return withDbWriteLock(async () => {
-    if (epochAtStart !== getEventDataEpoch()) {
+    if (epochAtStart !== getDataGeneration('protocol')) {
       throw dataReplacedError();
     }
     const result = await fn();
-    if (epochAtStart !== getEventDataEpoch()) {
+    if (epochAtStart !== getDataGeneration('protocol')) {
       throw dataReplacedError();
     }
     return result;

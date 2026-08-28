@@ -20,19 +20,11 @@ import type {
 import { withoutClearedOccurrences } from '../calendar/types';
 import { getDatabase } from '../db/client';
 import * as calendarRepo from '../db/repositories/calendarRepository';
+import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 import { newId } from '../utils/id';
 
 let calendarLoadGeneration = 0;
-let calendarDataEpoch = 0;
-
-export function bumpCalendarDataEpoch(): void {
-  calendarDataEpoch += 1;
-}
-
-export function getCalendarDataEpoch(): number {
-  return calendarDataEpoch;
-}
 
 function invalidateCalendarLoads(): void {
   calendarLoadGeneration += 1;
@@ -166,9 +158,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   createEvent: async (input) => {
-    const epochAtStart = getCalendarDataEpoch();
+    const epochAtStart = getDataGeneration('calendar');
     return withDbWriteLock(async () => {
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       const db = await getDatabase();
@@ -194,7 +186,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       const reminders = buildReminderRows(event.id, input.reminderOffsets);
 
       await calendarRepo.insertEventWithReminders(db, event, reminders);
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
 
@@ -214,9 +206,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   updateEvent: async (eventId, input) => {
-    const epochAtStart = getCalendarDataEpoch();
+    const epochAtStart = getDataGeneration('calendar');
     await withDbWriteLock(async () => {
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       const existing = get().events.find((e) => e.id === eventId);
@@ -248,7 +240,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       const reminders = buildReminderRows(event.id, input.reminderOffsets);
 
       await calendarRepo.updateEventWithReminders(db, event, reminders);
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
 
@@ -272,14 +264,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   deleteEvent: async (eventId) => {
-    const epochAtStart = getCalendarDataEpoch();
+    const epochAtStart = getDataGeneration('calendar');
     await withDbWriteLock(async () => {
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       const db = await getDatabase();
       await calendarRepo.deleteEvent(db, eventId);
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       invalidateCalendarLoads();
@@ -294,9 +286,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   clearOccurrence: async (occurrence) => {
-    const epochAtStart = getCalendarDataEpoch();
+    const epochAtStart = getDataGeneration('calendar');
     await withDbWriteLock(async () => {
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       const clear: CalendarOccurrenceClear = {
@@ -306,7 +298,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       };
       const db = await getDatabase();
       await calendarRepo.upsertOccurrenceClear(db, clear);
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       invalidateCalendarLoads();
@@ -315,14 +307,14 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   unclearedOccurrence: async (occurrenceKey) => {
-    const epochAtStart = getCalendarDataEpoch();
+    const epochAtStart = getDataGeneration('calendar');
     await withDbWriteLock(async () => {
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       const db = await getDatabase();
       await calendarRepo.deleteOccurrenceClear(db, occurrenceKey);
-      if (epochAtStart !== getCalendarDataEpoch()) {
+      if (epochAtStart !== getDataGeneration('calendar')) {
         throw new Error('Data was replaced; try again');
       }
       invalidateCalendarLoads();

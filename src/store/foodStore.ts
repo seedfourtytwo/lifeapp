@@ -38,9 +38,10 @@ interface FoodState {
   /** Refetch only the day log — no catalog re-read, for logging taps. */
   reloadLog: () => Promise<void>;
   toggleLogged: (input: { foodId: string; date: string; logged: boolean }) => Promise<void>;
-  create: (input: FoodItemInput) => Promise<FoodItem>;
+  /** Catalog writes resolve to undefined when a clear/import discarded them. */
+  create: (input: FoodItemInput) => Promise<FoodItem | undefined>;
   update: (id: string, input: FoodItemInput) => Promise<void>;
-  remove: (id: string) => Promise<RemoveFoodResult>;
+  remove: (id: string) => Promise<RemoveFoodResult | undefined>;
   restore: (id: string) => Promise<void>;
 }
 

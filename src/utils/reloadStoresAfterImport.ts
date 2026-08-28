@@ -3,6 +3,7 @@ import { stopHabitSound } from '../audio/habitTimerSound';
 import { cancelCalendarReminders } from '../notifications/calendarReminders';
 import type { ClearAppDataOptions } from '../db/clearDataPlan';
 import { applyAppLanguage } from '../i18n';
+import { bumpDataGeneration } from '../db/dataGeneration';
 import { clearCachedForecast } from '../weather/forecastCache';
 import { getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
@@ -11,7 +12,6 @@ import { useFoodStore } from '../store/foodStore';
 import { useTodoStore } from '../store/todoStore';
 import {
   awaitHabitTimerStops,
-  bumpEventDataEpoch,
   counterStreakInputsFromElements,
   habitStreakInputsFromElements,
   useEventStore,
@@ -45,7 +45,14 @@ export async function reloadStoresAfterImport(
   const preferencesCleared = full || Boolean(options.cleared?.preferences);
 
   await stopHabitSound();
-  bumpEventDataEpoch();
+  bumpDataGeneration('protocol');
+  if (activityCleared) {
+    // The catalog, todo list and journals were wiped with activity — drop the
+    // writes that were still in flight against the old rows.
+    bumpDataGeneration('catalog');
+    bumpDataGeneration('todos');
+    bumpDataGeneration('journal');
+  }
   await awaitHabitTimerStops();
 
   if (activityCleared) {
