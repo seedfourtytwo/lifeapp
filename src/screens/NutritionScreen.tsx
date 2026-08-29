@@ -32,6 +32,7 @@ import FoodListControls from './nutrition/FoodListControls';
 import FoodRow from './nutrition/FoodRow';
 import WeekDayStrip from './nutrition/WeekDayStrip';
 import WeekPlantProgress from './nutrition/WeekPlantProgress';
+import DayHeader from './shared/DayHeader';
 import { HomeTabScrollView } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
@@ -232,6 +233,8 @@ function NutritionScreen() {
             {t('errors.loadFailed')}
           </Text>
         ) : null}
+
+        <DayHeader now={now} />
 
         <WeekPlantProgress diversity={diversity} />
 

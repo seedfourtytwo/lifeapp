@@ -4,6 +4,7 @@ import { Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
+import { ACTIVITY_DAYS, useRecentActivity } from '../hooks/useRecentActivity';
 import { refreshAllHabitData } from '../hooks/refreshAllDailyData';
 import { useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import { NoteEditorHost } from '../notes';
@@ -19,9 +20,9 @@ import { getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitRow from './habits/HabitRow';
 import EmptyTabState from './shared/EmptyTabState';
-import HomeTabDayStatus from './shared/HomeTabDayStatus';
+import DayHeader from './shared/DayHeader';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
-import HomeTabMetaRow from './shared/HomeTabMetaRow';
+import NotebookButtons from './shared/NotebookButtons';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
   HomeTabScrollView,
@@ -53,6 +54,7 @@ export default function HabitsScreen({
   const error = useElementStore((s) => s.error);
   const reorderHabitToOrder = useElementStore((s) => s.reorderHabitToOrder);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
+  const habitStreaks = useEventStore((s) => s.habitStreaks);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
   const now = useAppCalendarNow();
   const [scrollLocked, setScrollLocked] = useState(false);
@@ -103,6 +105,36 @@ export default function HabitsScreen({
   );
 
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
+
+  // The strip covers every active habit, not only the ones due today — it is a
+  // record of the fortnight, and a habit scheduled twice a week still counts.
+  const allHabitIds = useMemo(() => allHabits.map((h) => h.id), [allHabits]);
+  const activity = useRecentActivity(allHabitIds);
+
+  /**
+   * "3 of 5 done · 41-day streak". The streak shown is the best one running,
+   * because the header answers "how am I doing", not "how is each habit doing".
+   */
+  const headerMeta = useMemo(() => {
+    if (habits.length === 0) return t('dayHeader.habitsNoneDue');
+    const done = habits.filter((habit) => habitDoneToday[habit.id] ?? false).length;
+    const parts = [t('dayHeader.habitsDone', { done, total: habits.length })];
+    const bestStreak = habits.reduce(
+      (best, habit) => Math.max(best, habitStreaks[habit.id] ?? 0),
+      0,
+    );
+    if (bestStreak > 0) parts.push(t('dayHeader.streak', { count: bestStreak }));
+    return parts.join(t('dayHeader.separator'));
+  }, [habits, habitDoneToday, habitStreaks, t]);
+
+  const activityLabel = useMemo(
+    () =>
+      t('dayHeader.activityA11y', {
+        days: ACTIVITY_DAYS,
+        count: activity.filter((day) => day.active).length,
+      }),
+    [activity, t],
+  );
   const habitById = useMemo(
     () => new Map(habits.map((habit) => [habit.id, habit])),
     [habits],
@@ -173,11 +205,18 @@ export default function HabitsScreen({
         </View>
       ) : null}
 
-      <HomeTabMetaRow
-        notebooks={notebooks}
-        onDictateNotebook={onDictateNotebook}
-        onEditNotebook={onEditNotebook}
-        leading={habits.length > 0 ? <HomeTabDayStatus now={now} /> : null}
+      <DayHeader
+        now={now}
+        meta={headerMeta}
+        activity={activity}
+        activityLabel={activityLabel}
+        actions={
+          <NotebookButtons
+            notebooks={notebooks}
+            onDictateNotebook={onDictateNotebook}
+            onEditNotebook={onEditNotebook}
+          />
+        }
       />
 
       {emptyMessage ? (

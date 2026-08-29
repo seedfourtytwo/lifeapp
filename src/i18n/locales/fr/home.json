@@ -77,5 +77,20 @@
     "close": "Fermer",
     "markDoneA11y": "Marquer cette occurrence comme faite",
     "couldNotMarkDoneTitle": "Impossible de marquer comme fait"
+  },
+  "dayHeader": {
+    "habitsDone": "{{done}} sur {{total}} faites",
+    "habitsNoneDue": "Rien de prévu",
+    "countersLogged_one": "1 compteur noté",
+    "countersLogged_other": "{{count}} compteurs notés",
+    "countersNone": "Rien de noté",
+    "streak_one": "série de 1 jour",
+    "streak_other": "série de {{count}} jours",
+    "separator": " · ",
+    "activityA11y_one": "{{days}} derniers jours, actif sur 1",
+    "activityA11y_other": "{{days}} derniers jours, actif sur {{count}}",
+    "todosOpen_one": "1 à faire",
+    "todosOpen_other": "{{count}} à faire",
+    "todosClear": "Tout est fait"
   }
 }

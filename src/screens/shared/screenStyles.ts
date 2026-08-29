@@ -1,11 +1,12 @@
 import { StyleSheet } from 'react-native';
+import { space } from '../../theme/spacing';
 
-/** Shared layout styles for Habits and Counters home tabs. */
+/** Shared layout for the Home tabs (Habits, Counters, Nutrition, Todos). */
 export const homeTabScreenStyles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    paddingBottom: space.lg,
     flexGrow: 1,
   },
   centered: {
@@ -16,37 +17,17 @@ export const homeTabScreenStyles = StyleSheet.create({
   /** Layout only — colour comes from QuietText, never from opacity. */
   empty: {
     textAlign: 'center',
-    marginTop: 48,
-    paddingHorizontal: 24,
+    marginTop: space.xxl,
+    paddingHorizontal: space.xl,
   },
   errorBox: {
-    marginBottom: 16,
-    gap: 8,
+    marginBottom: space.lg,
+    gap: space.sm,
   },
   error: {
-    marginBottom: 8,
+    marginBottom: space.sm,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 10,
-    minHeight: 36,
-  },
-  metaStatus: {
-    flex: 1,
-    minWidth: 0,
-  },
-  metaRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-    gap: 0,
-  },
-  metaIconButton: {
-    margin: 0,
-  },
+  /** A tracker outside its time window: inactive, not merely secondary. */
   dimmedCard: {
     opacity: 0.62,
   },

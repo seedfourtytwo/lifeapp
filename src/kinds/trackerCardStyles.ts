@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { typeScale } from '../theme/typography';
 
 /**
  * Shared Home tracker card layout (tick-off, timer, counter).
@@ -54,8 +55,8 @@ export const trackerCardStyles = StyleSheet.create({
     gap: 4,
   },
   timerLabel: {
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
+    // Mono figures: a running clock stops jittering as the digits change.
+    ...typeScale.timer,
     marginRight: 2,
     // Shrinks against the title rather than clipping at a fixed width, so a
     // scaled-up "1:02:44" stays whole.

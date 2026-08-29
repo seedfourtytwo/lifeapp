@@ -11,6 +11,15 @@ import {
   initialWindowMetrics,
 } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import {
+  Newsreader_400Regular,
+  Newsreader_500Medium,
+} from '@expo-google-fonts/newsreader';
+import {
+  IBMPlexMono_400Regular,
+  IBMPlexMono_500Medium,
+} from '@expo-google-fonts/ibm-plex-mono';
 import './src/i18n';
 import { applyAppLanguage } from './src/i18n';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -31,6 +40,19 @@ function ThemedApp() {
   const isLoaded = useSettingsStore((s) => s.isLoaded);
   const [languageReady, setLanguageReady] = useState(false);
 
+  /**
+   * The display and data faces (see `src/theme/typography.ts`). Body text stays
+   * on the system font, so a failure here costs the two accent faces and
+   * nothing else — hence `fontError` releases the gate rather than blocking it.
+   * Waiting forever for a font would be a worse outcome than falling back.
+   */
+  const [fontsLoaded, fontError] = useFonts({
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+    IBMPlexMono_400Regular,
+    IBMPlexMono_500Medium,
+  });
+
   useAppBootstrap();
   useCalendarReminderSync();
   useEveningCheckInSync();
@@ -49,7 +71,7 @@ function ThemedApp() {
     };
   }, [appLanguage, isLoaded]);
 
-  if (!isLoaded || !languageReady) {
+  if (!isLoaded || !languageReady || !(fontsLoaded || fontError)) {
     return (
       <View style={styles.boot}>
         <ActivityIndicator size="large" />

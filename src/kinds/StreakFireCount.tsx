@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from 'react-native-paper';
+import { typeScale } from '../theme/typography';
 
 /**
  * The badge is pinned to the corner of a 44pt identity mark, so it has nowhere
@@ -77,8 +78,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   countInline: {
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+    ...typeScale.data,
   },
   badge: {
     position: 'absolute',
@@ -92,12 +92,12 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 8,
     borderWidth: 1.5,
-    minWidth: 22,
+    // Mono digits run a touch wider than the system font's.
+    minWidth: 24,
     justifyContent: 'center',
   },
   countBadge: {
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+    ...typeScale.data,
     fontSize: 10,
     lineHeight: 12,
   },

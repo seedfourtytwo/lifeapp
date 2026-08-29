@@ -77,5 +77,20 @@
     "close": "Close",
     "markDoneA11y": "Mark done for this occurrence",
     "couldNotMarkDoneTitle": "Could not mark done"
+  },
+  "dayHeader": {
+    "habitsDone": "{{done}} of {{total}} done",
+    "habitsNoneDue": "Nothing due",
+    "countersLogged_one": "1 counter logged",
+    "countersLogged_other": "{{count}} counters logged",
+    "countersNone": "Nothing logged yet",
+    "streak_one": "1-day streak",
+    "streak_other": "{{count}}-day streak",
+    "separator": " · ",
+    "activityA11y_one": "Last {{days}} days, active on 1",
+    "activityA11y_other": "Last {{days}} days, active on {{count}}",
+    "todosOpen_one": "1 open",
+    "todosOpen_other": "{{count}} open",
+    "todosClear": "All clear"
   }
 }

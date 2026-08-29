@@ -20,6 +20,7 @@ import {
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { typeScale } from '../../theme/typography';
 import { type CounterConfig } from '../../protocol';
 import { getCounterProgressBarColors } from '../../utils/color';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
@@ -328,9 +329,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   incrementLabel: {
+    ...typeScale.data,
     fontSize: 18,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
   },
   modalContainer: {
     alignSelf: 'center',

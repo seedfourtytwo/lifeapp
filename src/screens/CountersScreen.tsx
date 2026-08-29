@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { CounterConfigSchema, type CounterConfig } from '../protocol';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
+import { ACTIVITY_DAYS, useRecentActivity } from '../hooks/useRecentActivity';
 import { refreshAllCounterData } from '../hooks/refreshAllDailyData';
 import { useRefreshCounterTotalsOnFocus } from '../hooks/useCounterDataRefresh';
 import { getKindHandler } from '../kinds/registry';
@@ -17,9 +18,9 @@ import { useEventStore } from '../store/eventStore';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import EmptyTabState from './shared/EmptyTabState';
-import HomeTabDayStatus from './shared/HomeTabDayStatus';
+import DayHeader from './shared/DayHeader';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
-import HomeTabMetaRow from './shared/HomeTabMetaRow';
+import NotebookButtons from './shared/NotebookButtons';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
   HomeTabScrollView,
@@ -78,6 +79,36 @@ export default function CountersScreen({
   );
 
   const counterIds = useMemo(() => counters.map((c) => c.id), [counters]);
+  const activity = useRecentActivity(counterIds);
+
+  /**
+   * Counters have no notion of "done", so the header counts how many were
+   * touched today and shows the best streak running against a daily target.
+   */
+  const headerMeta = useMemo(() => {
+    if (counters.length === 0) return null;
+    const logged = counters.filter((c) => (dailyTotals[c.id] ?? 0) > 0).length;
+    const parts = [
+      logged === 0
+        ? t('dayHeader.countersNone')
+        : t('dayHeader.countersLogged', { count: logged }),
+    ];
+    const bestStreak = counters.reduce(
+      (best, counter) => Math.max(best, counterStreaks[counter.id] ?? 0),
+      0,
+    );
+    if (bestStreak > 0) parts.push(t('dayHeader.streak', { count: bestStreak }));
+    return parts.join(t('dayHeader.separator'));
+  }, [counters, dailyTotals, counterStreaks, t]);
+
+  const activityLabel = useMemo(
+    () =>
+      t('dayHeader.activityA11y', {
+        days: ACTIVITY_DAYS,
+        count: activity.filter((day) => day.active).length,
+      }),
+    [activity, t],
+  );
   const { notesToday, reloadNotesToday, noteEditor } = useHomeTrackerNotes({
     elementIds: counterIds,
     now,
@@ -139,11 +170,18 @@ export default function CountersScreen({
           </View>
         ) : null}
 
-        <HomeTabMetaRow
-          notebooks={notebooks}
-          onDictateNotebook={onDictateNotebook}
-          onEditNotebook={onEditNotebook}
-          leading={counters.length > 0 ? <HomeTabDayStatus now={now} /> : null}
+        <DayHeader
+          now={now}
+          meta={headerMeta}
+          activity={activity}
+          activityLabel={activityLabel}
+          actions={
+            <NotebookButtons
+              notebooks={notebooks}
+              onDictateNotebook={onDictateNotebook}
+              onEditNotebook={onEditNotebook}
+            />
+          }
         />
 
         {counters.length === 0 ? (

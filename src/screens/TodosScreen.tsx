@@ -24,7 +24,7 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import { DOCK_RESERVE } from '../ui/homeInsets';
 import TodoEditorSheet, { type TodoDraft } from './todos/TodoEditorSheet';
 import TodoRow from './todos/TodoRow';
-import HomeTabDayStatus from './shared/HomeTabDayStatus';
+import DayHeader from './shared/DayHeader';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import {
   HomeTabScrollView,
@@ -49,6 +49,7 @@ type Props = {
 function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('todos');
+  const { t: tHome } = useTranslation('home');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const now = useAppCalendarNow();
@@ -83,6 +84,13 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
   }, [load]);
 
   const groups = useMemo(() => groupOpenTodos(todos, today), [todos, today]);
+
+  const headerMeta = useMemo(() => {
+    const open = todos.filter((todo) => !todo.completedAt).length;
+    // The home namespace owns the day header everywhere, so it is read from
+    // there rather than duplicated into todos.
+    return open === 0 ? tHome('dayHeader.todosClear') : tHome('dayHeader.todosOpen', { count: open });
+  }, [todos, tHome]);
 
   const handleQuickAdd = useCallback(() => {
     const title = draftTitle.trim();
@@ -150,17 +158,18 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
           </View>
         ) : null}
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaStatus}>
-            <HomeTabDayStatus now={now} />
-          </View>
-          <IconButton
-            icon="history"
-            size={22}
-            onPress={openHistory}
-            accessibilityLabel={t('list.historyA11y')}
-          />
-        </View>
+        <DayHeader
+          now={now}
+          meta={headerMeta}
+          actions={
+            <IconButton
+              icon="history"
+              size={22}
+              onPress={openHistory}
+              accessibilityLabel={t('list.historyA11y')}
+            />
+          }
+        />
 
         <TextInput
           mode="outlined"
