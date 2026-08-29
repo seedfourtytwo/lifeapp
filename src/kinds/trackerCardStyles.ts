@@ -57,8 +57,9 @@ export const trackerCardStyles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
     marginRight: 2,
+    // Shrinks against the title rather than clipping at a fixed width, so a
+    // scaled-up "1:02:44" stays whole.
     flexShrink: 1,
-    maxWidth: 100,
     textAlign: 'right',
   },
   /** Primary habit/counter actions — fill more of the card height. */

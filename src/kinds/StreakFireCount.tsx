@@ -3,6 +3,13 @@ import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text } from 'react-native-paper';
 
+/**
+ * The badge is pinned to the corner of a 44pt identity mark, so it has nowhere
+ * to grow into. Past about 1.3x the digits escape the well; the inline variant
+ * sits in a normal row and is left to scale freely.
+ */
+const BADGE_MAX_FONT_SCALE = 1.3;
+
 type Props = {
   days: number;
   color: string;
@@ -51,7 +58,11 @@ export function StreakFireCount({
       importantForAccessibility="no-hide-descendants"
     >
       <MaterialCommunityIcons name="fire" size={11} color={color} />
-      <Text variant="labelSmall" style={[styles.countBadge, { color }]}>
+      <Text
+        variant="labelSmall"
+        style={[styles.countBadge, { color }]}
+        maxFontSizeMultiplier={BADGE_MAX_FONT_SCALE}
+      >
         {days}
       </Text>
     </View>
@@ -73,6 +84,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -6,
     bottom: -4,
+    minHeight: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 1,

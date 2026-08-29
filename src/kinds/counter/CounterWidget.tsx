@@ -322,7 +322,7 @@ export function CounterWidget({
 const styles = StyleSheet.create({
   incrementHit: {
     minWidth: 52,
-    height: 48,
+    minHeight: 48,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',

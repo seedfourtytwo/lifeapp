@@ -5,6 +5,12 @@ import { Text, useTheme } from 'react-native-paper';
 import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
 
+/**
+ * The axis packs one label per day at 9pt. It cannot reflow or wrap without the
+ * columns colliding, so scaling is capped here rather than allowed to overrun.
+ */
+const CHART_LABEL_MAX_SCALE = 1.2;
+
 export interface InteractiveChartDay {
   date: string;
   label: string;
@@ -251,7 +257,11 @@ export function InteractiveDailyChart({
                 accessibilityLabel={`${day.label}, ${value}`}
               >
                 {showBarLabels ? (
-                  <QuietText variant="labelSmall" style={styles.valueLabel}>
+                  <QuietText
+                    variant="labelSmall"
+                    style={styles.valueLabel}
+                    maxFontSizeMultiplier={CHART_LABEL_MAX_SCALE}
+                  >
                     {value > 0 ? formatShort(value) : ''}
                   </QuietText>
                 ) : (
@@ -285,6 +295,7 @@ export function InteractiveDailyChart({
                     day.date === selectedDate && styles.dayLabelSelected,
                   ]}
                   numberOfLines={1}
+                  maxFontSizeMultiplier={CHART_LABEL_MAX_SCALE}
                 >
                   {day.label}
                 </Text>
@@ -325,7 +336,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   valueLabel: {
-    height: 14,
+    minHeight: 14,
     fontSize: 9,
   },
   valueLabelSpacer: {

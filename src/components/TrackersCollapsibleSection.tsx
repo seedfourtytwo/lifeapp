@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     minWidth: 28,
-    height: 28,
+    minHeight: 28,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
