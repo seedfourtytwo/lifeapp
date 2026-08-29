@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import type { BubbleHitEdges } from '../../weather/bubblePhysics';
 import { cornerIdFromEdges } from '../../weather/bubblePhysics';
 import { BUBBLE_RADIUS } from '../../weather/bubblePosition';
@@ -70,9 +71,14 @@ const BounceEdgeFlash = forwardRef<BounceEdgeFlashHandle, Props>(
     ).current;
     const [, bump] = useReducer((n: number) => n + 1, 0);
     const next = useRef(0);
+    const reduceMotion = useReduceMotion();
+    const reduceMotionRef = useRef(reduceMotion);
+    reduceMotionRef.current = reduceMotion;
 
     const fireSegment = useCallback(
       (left: number, top: number, width: number, height: number) => {
+        // Decorative flash on a bounce; the bounce itself is already visible.
+        if (reduceMotionRef.current) return;
         const i = next.current % POOL;
         next.current += 1;
         const slot = slots[i]!;

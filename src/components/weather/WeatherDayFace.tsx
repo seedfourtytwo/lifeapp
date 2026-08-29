@@ -9,6 +9,8 @@ import {
   BUBBLE_WIDTH,
 } from '../../weather/bubblePosition';
 import { conditionIconName } from '../../weather/codes';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { timingOrSnap } from '../../utils/motion';
 import { formatBubbleDate, formatTempC } from '../../weather/format';
 import BubbleChargeRing from './BubbleChargeRing';
 import { RAIN_NOTABLE_PCT, weatherMoodFor, type WeatherMoodVariant } from './weatherMood';
@@ -91,32 +93,34 @@ export default function WeatherDayFace({
   // Score overlays to the right of the centered date (no layout shift).
   const [cornerShown, setCornerShown] = useState<number | null>(null);
   const cornerOpacity = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
     let cancelled = false;
     if (cornerScoreFlash != null && cornerScoreFlash > 0) {
       setCornerShown(cornerScoreFlash);
       cornerOpacity.stopAnimation();
-      Animated.timing(cornerOpacity, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
+      // The score still appears under reduced motion — it just does not fade.
+      timingOrSnap(
+        cornerOpacity,
+        { toValue: 1, duration: 180, useNativeDriver: true },
+        reduceMotion,
+      ).start();
       return () => {
         cancelled = true;
       };
     }
     cornerOpacity.stopAnimation();
-    Animated.timing(cornerOpacity, {
-      toValue: 0,
-      duration: 280,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    timingOrSnap(
+      cornerOpacity,
+      { toValue: 0, duration: 280, useNativeDriver: true },
+      reduceMotion,
+    ).start(({ finished }) => {
       if (finished && !cancelled) setCornerShown(null);
     });
     return () => {
       cancelled = true;
     };
-  }, [cornerOpacity, cornerScoreFlash]);
+  }, [cornerOpacity, cornerScoreFlash, reduceMotion]);
 
   return (
     <View

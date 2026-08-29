@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
 import { useChromeBubbleDrag } from '../hooks/useChromeBubbleDrag';
+import { useReduceMotion } from '../hooks/useReduceMotion';
+import { springOrSnap } from '../utils/motion';
 import { toDateString } from '../protocol';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
@@ -62,15 +64,21 @@ export default function HomeChromeBubble() {
   const cornerFlashActiveRef = useRef(false);
   const cornerFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expandAnim = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
-    Animated.spring(expandAnim, {
-      toValue: expanded ? 1 : 0,
-      friction: 8,
-      tension: 70,
-      useNativeDriver: true,
-    }).start();
-  }, [expanded, expandAnim]);
+    // The forecast still opens and closes; reduced motion drops the travel.
+    springOrSnap(
+      expandAnim,
+      {
+        toValue: expanded ? 1 : 0,
+        friction: 8,
+        tension: 70,
+        useNativeDriver: true,
+      },
+      reduceMotion,
+    ).start();
+  }, [expanded, expandAnim, reduceMotion]);
 
   useEffect(() => {
     let alive = true;

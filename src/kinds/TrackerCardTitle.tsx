@@ -7,6 +7,8 @@ import {
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import type { TrackerIconId } from '../protocol';
+import { useReduceMotion } from '../hooks/useReduceMotion';
+import { timingOrSnap } from '../utils/motion';
 import { trackerCardStyles as styles } from './trackerCardStyles';
 import { TrackerIdentityMark } from './TrackerIdentityMark';
 import { StreakFireCount } from './StreakFireCount';
@@ -63,6 +65,8 @@ export function TrackerCardTitle({
   const nameHintActiveRef = useRef(false);
   const namePeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const reduceMotionRef = useRef(false);
+  reduceMotionRef.current = useReduceMotion();
   const [nameRevealed, setNameRevealed] = useState(false);
   const showStreak = streakDays != null && streakDays > 0;
   const label =
@@ -114,22 +118,24 @@ export function TrackerCardTitle({
     setNameRevealed(true);
     nameOpacity.stopAnimation();
     nameOpacity.setValue(0);
-    Animated.timing(nameOpacity, {
-      toValue: 1,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
+    // The name is the whole point of the hold, so it always arrives — under
+    // reduced motion it is simply there rather than fading in.
+    timingOrSnap(
+      nameOpacity,
+      { toValue: 1, duration: 180, useNativeDriver: true },
+      reduceMotionRef.current,
+    ).start();
   };
 
   const hideName = () => {
     if (!icon || !nameHintActiveRef.current) return;
     nameHintActiveRef.current = false;
     nameOpacity.stopAnimation();
-    Animated.timing(nameOpacity, {
-      toValue: 0,
-      duration: 160,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    timingOrSnap(
+      nameOpacity,
+      { toValue: 0, duration: 160, useNativeDriver: true },
+      reduceMotionRef.current,
+    ).start(({ finished }) => {
       if (finished && mountedRef.current) setNameRevealed(false);
     });
   };

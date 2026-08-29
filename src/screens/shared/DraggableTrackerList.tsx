@@ -13,6 +13,8 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { springOrSnap, timingOrSnap } from '../../utils/motion';
 import { moveIdInOrder } from '../../utils/reorderHabits';
 import {
   playChartSelectHaptic,
@@ -102,6 +104,9 @@ export function DraggableTrackerList({
   const dragTranslate = useRef(new Animated.Value(0)).current;
   const dragScale = useRef(new Animated.Value(1)).current;
   const dropPulse = useRef(new Animated.Value(0)).current;
+  // Via a ref: the gesture callbacks below are memoised and close over it once.
+  const reduceMotionRef = useRef(false);
+  reduceMotionRef.current = useReduceMotion();
   const edgeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPageYRef = useRef(0);
   const movedDuringDragRef = useRef(false);
@@ -235,17 +240,18 @@ export function DraggableTrackerList({
     (id: string) => {
       setJustDroppedId(id);
       dropPulse.setValue(0);
+      // Zero-duration under reduced motion, so `justDroppedId` still clears.
       Animated.sequence([
-        Animated.timing(dropPulse, {
-          toValue: 1,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dropPulse, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true,
-        }),
+        timingOrSnap(
+          dropPulse,
+          { toValue: 1, duration: 120, useNativeDriver: true },
+          reduceMotionRef.current,
+        ),
+        timingOrSnap(
+          dropPulse,
+          { toValue: 0, duration: 280, useNativeDriver: true },
+          reduceMotionRef.current,
+        ),
       ]).start(() => setJustDroppedId(null));
       void playChartSelectHaptic();
     },
@@ -290,18 +296,16 @@ export function DraggableTrackerList({
 
       pendingOrderRef.current = null;
       Animated.parallel([
-        Animated.spring(dragTranslate, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 140,
-        }),
-        Animated.spring(dragScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 140,
-        }),
+        springOrSnap(
+          dragTranslate,
+          { toValue: 0, useNativeDriver: true, friction: 8, tension: 140 },
+          reduceMotionRef.current,
+        ),
+        springOrSnap(
+          dragScale,
+          { toValue: 1, useNativeDriver: true, friction: 8, tension: 140 },
+          reduceMotionRef.current,
+        ),
       ]).start(() => {
         clearDrag();
         if (commit && didMove && from === to) {
@@ -337,12 +341,13 @@ export function DraggableTrackerList({
       onDragActiveChangeRef.current?.(true);
       void playReorderDragHaptic();
 
-      Animated.spring(dragScale, {
-        toValue: 1.045,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 160,
-      }).start();
+      // The lift cue stays — a picked-up row still reads as lifted — but it
+      // arrives instead of growing.
+      springOrSnap(
+        dragScale,
+        { toValue: 1.045, useNativeDriver: true, friction: 6, tension: 160 },
+        reduceMotionRef.current,
+      ).start();
 
       stopEdgeScroll();
       edgeTimerRef.current = setInterval(tickEdgeScroll, 32);

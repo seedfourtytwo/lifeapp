@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 
 export interface CornerConfettiHandle {
   /** Fire a burst at screen coords — no remount, no React state. */
@@ -51,6 +52,9 @@ const CornerConfettiBurst = forwardRef<CornerConfettiHandle>(function CornerConf
   const progress = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const running = useRef<Animated.CompositeAnimation | null>(null);
+  const reduceMotion = useReduceMotion();
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
 
   const sharedScale = useMemo(
     () =>
@@ -107,6 +111,9 @@ const CornerConfettiBurst = forwardRef<CornerConfettiHandle>(function CornerConf
 
   const play = useCallback(
     (x: number, y: number) => {
+      // Pure celebration — there is nothing here to say more quietly, so with
+      // reduced motion the burst simply does not happen.
+      if (reduceMotionRef.current) return;
       running.current?.stop();
       originX.setValue(x);
       originY.setValue(y);

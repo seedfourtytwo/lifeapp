@@ -17,6 +17,8 @@ import {
   type ScrollViewProps,
   View,
 } from 'react-native';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { springOrSnap } from '../../utils/motion';
 
 const RUBBER = 0.28;
 const MAX_PULL = 64;
@@ -75,6 +77,9 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     const dragOrigin = useRef(0);
     const scrollLockedRef = useRef(scrollLocked);
     scrollLockedRef.current = scrollLocked;
+    // Read through a ref: the PanResponder closes over these callbacks once.
+    const reduceMotionRef = useRef(false);
+    reduceMotionRef.current = useReduceMotion();
     /** False until measured so long lists stay scrollable. */
     const [fitsViewport, setFitsViewport] = useState(false);
     const fitsViewportRef = useRef(fitsViewport);
@@ -88,12 +93,11 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     }, []);
 
     const springHome = useCallback(() => {
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 140,
-      }).start();
+      springOrSnap(
+        translateY,
+        { toValue: 0, useNativeDriver: true, friction: 8, tension: 140 },
+        reduceMotionRef.current,
+      ).start();
     }, [translateY]);
 
     const springHomeRef = useRef(springHome);

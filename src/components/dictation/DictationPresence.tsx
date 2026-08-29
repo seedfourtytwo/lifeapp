@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 
 /** Armed (session on, not capturing) — cool ink, not theme primary. */
 export const DICTATION_PRESENCE_COLOR = '#5B4B8A';
@@ -94,19 +94,7 @@ export function DictationMicHalo({
   const breath = useRef(new Animated.Value(0)).current;
   const breathB = useRef(new Animated.Value(0)).current;
   const [layersOn, setLayersOn] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (!cancelled) setReduceMotion(enabled);
-    });
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => {
-      cancelled = true;
-      sub.remove();
-    };
-  }, []);
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
     if (level > 0) setLayersOn(true);
