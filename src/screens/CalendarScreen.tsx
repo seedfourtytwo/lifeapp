@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addLocalDays, monthGridRange, startOfLocalDay, toDateString } from '../calendar/dates';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { formatDayHeading, formatOccurrenceTime, formatMonthTitle } from '../calendar/format';
 import { occurrencesOnDay } from '../calendar/occurrences';
 import type { RootStackParamList } from '../navigation/types';
@@ -16,6 +17,7 @@ const WEEKDAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 export default function CalendarScreen() {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation(['calendar', 'common']);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -113,6 +115,7 @@ export default function CalendarScreen() {
                 onPress={() => setSelectedDay(day)}
                 style={[
                   styles.dayCell,
+                  { borderRadius: deco.radius.md },
                   selected && { backgroundColor: theme.colors.primaryContainer },
                 ]}
                 accessibilityRole="button"
@@ -168,6 +171,7 @@ export default function CalendarScreen() {
                   key={occ.occurrenceKey}
                   style={[
                     styles.eventRow,
+                    { borderRadius: deco.radius.md },
                     { borderColor: theme.colors.outlineVariant, opacity: cleared ? 0.5 : 1 },
                   ]}
                 >
@@ -294,7 +298,6 @@ const styles = StyleSheet.create({
     width: '14.28%',
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 10,
   },
   dot: {
     width: 5,
@@ -313,7 +316,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 6,
     marginBottom: 8,

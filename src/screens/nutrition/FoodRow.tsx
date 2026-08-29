@@ -10,6 +10,7 @@ import {
   type FoodItem,
 } from '../../protocol';
 import { FOOD_GROUP_ICONS } from './foodGroupIcons';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 type Props = {
   item: FoodItem;
@@ -62,6 +63,7 @@ function FoodRow({
   onLongPress,
 }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('nutrition');
   const plant = isPlantFood(item);
   const summary = nutrientSummary(item, t);
@@ -74,6 +76,7 @@ function FoodRow({
       onLongPress={() => onLongPress(item)}
       style={[
         styles.row,
+        { borderRadius: deco.radius.md },
         {
           backgroundColor: logged ? theme.colors.secondaryContainer : theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
@@ -148,7 +151,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 6,
   },

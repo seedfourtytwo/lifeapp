@@ -36,6 +36,7 @@ export default function WeatherForecastStrip({ days }: Props) {
         {
           width,
           height: STRIP_HEIGHT,
+          borderRadius: deco.radius.xl,
           backgroundColor: theme.colors.surface,
           borderColor: outlineColor,
           borderWidth: outlineWidth,
@@ -94,7 +95,6 @@ const styles = StyleSheet.create({
   strip: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderRadius: 20,
     overflow: 'hidden',
     paddingHorizontal: STRIP_PAD_H,
     elevation: 3,

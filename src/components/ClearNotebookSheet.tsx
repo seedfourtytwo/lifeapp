@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
   swatch: {
     width: 16,
     height: 16,
+    // Geometric: half the size is what makes it round.
     borderRadius: 8,
     alignSelf: 'center',
     marginLeft: 8,

@@ -10,6 +10,7 @@ import {
 } from '../../protocol';
 import { TrackerIcon } from '../trackerIcons/TrackerIcon';
 import FormSection, { formSectionStyles } from './FormSection';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 type Props = {
   value: TrackerIconId | null;
@@ -25,6 +26,7 @@ type CellProps = {
   idleBorder: string;
   selectedBg: string;
   surface: string;
+  radius: number;
 };
 
 function IconPickerCell({
@@ -36,6 +38,7 @@ function IconPickerCell({
   idleBorder,
   selectedBg,
   surface,
+  radius,
 }: CellProps) {
   return (
     <Pressable
@@ -43,6 +46,7 @@ function IconPickerCell({
       style={({ pressed }) => [
         styles.cell,
         {
+          borderRadius: radius,
           borderColor: selected ? selectedBorder : idleBorder,
           backgroundColor: selected ? selectedBg : surface,
         },
@@ -64,6 +68,7 @@ function IconPickerCell({
  */
 function IconPickerField({ value, onChange }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('trackers');
   const [query, setQuery] = useState('');
 
@@ -83,6 +88,7 @@ function IconPickerField({ value, onChange }: Props) {
     idleBorder,
     selectedBg,
     surface,
+    radius: deco.radius.md,
   };
 
   return (
@@ -174,7 +180,6 @@ const styles = StyleSheet.create({
   cell: {
     width: 44,
     height: 44,
-    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',

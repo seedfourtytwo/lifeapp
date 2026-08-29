@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { getDateLocale } from '../../i18n';
 import { parseLocalDate } from '../../protocol';
 import { formatFullDate } from '../../utils/dates';
@@ -33,6 +34,7 @@ export default function WeekDayStrip({
   onSelect,
 }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('nutrition');
 
   return (
@@ -54,6 +56,7 @@ export default function WeekDayStrip({
             disabled={isFuture}
             style={[
               styles.day,
+              { borderRadius: deco.radius.md },
               selected && { backgroundColor: theme.colors.primary },
               !selected && isToday && { borderColor: theme.colors.primary, borderWidth: 1 },
             ]}
@@ -97,12 +100,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 6,
-    borderRadius: 12,
     gap: 1,
   },
   dot: {
     width: 4,
     height: 4,
+    // Geometric: half the size is what makes it round.
     borderRadius: 2,
     marginTop: 2,
   },

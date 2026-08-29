@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
 import { useShallow } from 'zustand/react/shallow';
 import SettingsRow from '../components/settings/SettingsRow';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { getDateLocale } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { sortFoods, type NamedFood } from '../nutrition/foodFilters';
@@ -46,6 +47,7 @@ function summarize(item: FoodItem, t: Translate): string {
 /** Manage the food catalog: browse, search, add, edit, remove. */
 export default function IngredientsScreen() {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t, i18n } = useTranslation('nutrition');
   const { t: tCommon } = useTranslation('common');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -159,7 +161,12 @@ export default function IngredientsScreen() {
 
     const { item, name } = row.entry;
     return (
-      <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.colors.surface, borderRadius: deco.radius.md },
+        ]}
+      >
         <SettingsRow
           icon={row.archived ? 'archive-outline' : FOOD_GROUP_ICONS[item.group]}
           iconColor={
@@ -226,7 +233,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   card: {
-    borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 6,
   },

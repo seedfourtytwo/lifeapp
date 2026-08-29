@@ -15,6 +15,7 @@ import * as todoRepo from '../db/repositories/todoRepository';
 import { getDateLocale } from '../i18n';
 import { toDateString, type Todo } from '../protocol';
 import { formatShortDate } from '../utils/dates';
+import { useAppTheme } from '../hooks/useAppTheme';
 
 /** Enough to scroll through a year of todos without mounting a decade of them. */
 const HISTORY_LIMIT = 200;
@@ -41,6 +42,7 @@ function formatTime(iso: string): string {
  */
 export default function TodoHistoryScreen() {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('todos');
 
   const [search, setSearch] = useState('');
@@ -146,7 +148,13 @@ export default function TodoHistoryScreen() {
           {day.todos.map((todo) => (
             <View
               key={todo.id}
-              style={[styles.row, { backgroundColor: theme.colors.surfaceVariant }]}
+              style={[
+                styles.row,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderRadius: deco.radius.md,
+                },
+              ]}
             >
               <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
                 {todo.title}
@@ -206,7 +214,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   row: {
-    borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     gap: 2,

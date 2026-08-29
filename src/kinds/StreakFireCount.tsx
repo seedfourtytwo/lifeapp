@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
     gap: 1,
     paddingHorizontal: 4,
     paddingVertical: 1,
+    // Geometric: half the height, so the badge stays a capsule.
     borderRadius: 8,
     borderWidth: 1.5,
     // Mono digits run a touch wider than the system font's.

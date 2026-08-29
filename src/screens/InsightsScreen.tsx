@@ -476,7 +476,15 @@ export default function InsightsScreen() {
                     <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
                     <View style={styles.seriesDayTop}>
                       <View style={styles.seriesNameRow}>
-                        <View style={[styles.swatch, { backgroundColor: seriesColorAt(i) }]} />
+                        <View
+                          style={[
+                            styles.swatch,
+                            {
+                              backgroundColor: seriesColorAt(i),
+                              borderRadius: deco.radius.xs,
+                            },
+                          ]}
+                        />
                         <Text variant="bodyMedium" style={styles.flexText} numberOfLines={1}>
                           {el.name}
                         </Text>
@@ -585,6 +593,7 @@ const styles = StyleSheet.create({
   seriesDot: {
     width: 8,
     height: 8,
+    // Geometric: half the size is what makes it round.
     borderRadius: 4,
   },
   weatherToggle: {
@@ -637,7 +646,6 @@ const styles = StyleSheet.create({
   swatch: {
     width: 10,
     height: 10,
-    borderRadius: 2,
   },
   noteRow: {
     flexDirection: 'row',

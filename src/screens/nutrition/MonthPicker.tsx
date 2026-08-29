@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { getDateLocale } from '../../i18n';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 type Props = {
   selected: readonly number[];
@@ -27,6 +28,7 @@ function monthDate(month: number): Date {
  */
 function MonthPicker({ selected, allowed, onToggle, label }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const allowedSet = useMemo(() => (allowed ? new Set(allowed) : null), [allowed]);
   // Twelve Intl formats per render otherwise, on every keystroke elsewhere.
@@ -51,6 +53,7 @@ function MonthPicker({ selected, allowed, onToggle, label }: Props) {
             style={[
               styles.month,
               {
+                borderRadius: deco.radius.sm,
                 backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceVariant,
                 opacity: disabled ? 0.35 : 1,
               },
@@ -84,7 +87,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
   },
 });
 

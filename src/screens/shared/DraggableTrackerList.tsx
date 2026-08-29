@@ -21,6 +21,7 @@ import {
   playReorderDragHaptic,
 } from '../../utils/habitHaptics';
 import type { HomeTabScrollViewHandle } from './HomeTabScrollView';
+import { useAppTheme } from '../../hooks/useAppTheme';
 
 const LONG_PRESS_MS = 380;
 const EDGE_SCROLL_ZONE = 48;
@@ -81,6 +82,7 @@ export function DraggableTrackerList({
   renderItem,
 }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const draggableSet = useMemo(
     () => new Set(draggableIds ?? itemIds),
     [draggableIds, itemIds],
@@ -502,6 +504,7 @@ export function DraggableTrackerList({
                 pointerEvents="none"
                 style={[
                   styles.dropFlash,
+                  { borderRadius: deco.radius.md },
                   {
                     opacity: dropHighlight,
                     backgroundColor: dropFlashColor,
@@ -537,7 +540,6 @@ const styles = StyleSheet.create({
   },
   dropFlash: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 12,
     zIndex: 5,
   },
 });

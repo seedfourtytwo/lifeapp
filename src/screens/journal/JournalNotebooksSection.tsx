@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
   colorDot: {
     width: 32,
     height: 32,
+    // Geometric: half the size is what makes it round.
     borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',

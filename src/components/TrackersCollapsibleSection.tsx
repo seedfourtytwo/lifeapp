@@ -63,7 +63,7 @@ export default function TrackersCollapsibleSection({
             styles.iconWrap,
             {
               backgroundColor: `${accentColor}22`,
-              borderRadius: isCartoon ? deco.radius.sm : 12,
+              borderRadius: deco.radius.md,
             },
           ]}
         >
@@ -145,6 +145,8 @@ const styles = StyleSheet.create({
   countBadge: {
     minWidth: 28,
     minHeight: 28,
+    // Geometric, not decorative: half the height is what makes it a circle,
+    // so this is one of the few radii that must not follow the theme.
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

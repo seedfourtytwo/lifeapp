@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import type { WeekDiversity } from '../../nutrition/weekDiversity';
 
 type Props = {
@@ -11,12 +12,19 @@ type Props = {
 /** Headline for the Mon–Sun week: distinct plants against the target. */
 export default function WeekPlantProgress({ diversity }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('nutrition');
   const met = diversity.remaining === 0;
 
   return (
     <View
-      style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surfaceVariant,
+          borderRadius: deco.radius.lg,
+        },
+      ]}
       accessible
       accessibilityLabel={t('week.a11yProgress', {
         count: diversity.plantCount,
@@ -57,7 +65,6 @@ export default function WeekPlantProgress({ diversity }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
     padding: 14,
     gap: 10,
     marginBottom: 12,

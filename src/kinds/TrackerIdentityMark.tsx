@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
   well: {
     width: MARK_SIZE - RING_STROKE * 2 - 4,
     height: MARK_SIZE - RING_STROKE * 2 - 4,
+    // Geometric: a circular well, not a themed corner.
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
