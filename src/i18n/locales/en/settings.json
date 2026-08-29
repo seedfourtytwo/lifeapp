@@ -10,6 +10,7 @@
   },
   "appearance": {
     "sectionTitle": "Appearance",
+    "themeSystem": "System",
     "languageSectionTitle": "Language",
     "languageSystem": "System",
     "languageEn": "English",

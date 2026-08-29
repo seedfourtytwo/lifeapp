@@ -1,5 +1,5 @@
 import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
-import type { ThemeMode } from './types';
+import type { ResolvedTheme } from '../protocol/appSettings';
 
 export const brand = {
   /**
@@ -108,7 +108,7 @@ export const appCartoonTheme: MD3Theme = {
   },
 };
 
-export function getAppTheme(mode: ThemeMode): MD3Theme {
+export function getAppTheme(mode: ResolvedTheme): MD3Theme {
   switch (mode) {
     case 'dark':
       return appDarkTheme;

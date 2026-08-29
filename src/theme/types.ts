@@ -4,11 +4,20 @@ export { THEME_MODES, isThemeMode, type ThemeMode } from '../protocol/appSetting
 
 export interface ThemeModeOption {
   value: ThemeMode;
-  labelKey: 'appearance.themeLight' | 'appearance.themeDark' | 'appearance.themeCartoon';
+  labelKey:
+    | 'appearance.themeSystem'
+    | 'appearance.themeLight'
+    | 'appearance.themeDark'
+    | 'appearance.themeCartoon';
   icon: string;
 }
 
 export const THEME_MODE_OPTIONS: ThemeModeOption[] = [
+  {
+    value: 'system',
+    labelKey: 'appearance.themeSystem',
+    icon: 'cellphone',
+  },
   {
     value: 'light',
     labelKey: 'appearance.themeLight',

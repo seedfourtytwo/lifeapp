@@ -1,14 +1,14 @@
 import { StyleSheet } from 'react-native';
-import type { ThemeMode } from './types';
+import type { ResolvedTheme } from '../protocol/appSettings';
 
 /**
  * Border widths, corner radii, and sizes that vary by theme.
  *
  * The radius scale is what makes the cartoon theme feel like a different app
  * rather than a recoloured one, so it has to cover what components actually
- * need. A scale of three did not: sixty-seven literal radii had grown up
- * around it, and every one of them stayed square-ish no matter which theme was
- * on. The steps below are named for what they wrap.
+ * need. A scale of three did not: twenty-nine literal radii had grown up around
+ * it, and every one stayed at its light-theme roundness whichever theme was on.
+ * The steps below are named for what they wrap.
  */
 export interface RadiusScale {
   /** Hairline chips: a progress bar cap, a slash, a tick. */
@@ -55,6 +55,6 @@ const CARTOON_DECORATIONS: ThemeDecorations = {
   headerBorderWidth: 3,
 };
 
-export function getThemeDecorations(mode: ThemeMode): ThemeDecorations {
+export function getThemeDecorations(mode: ResolvedTheme): ThemeDecorations {
   return mode === 'cartoon' ? CARTOON_DECORATIONS : LIGHT_DECORATIONS;
 }

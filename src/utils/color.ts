@@ -1,4 +1,4 @@
-import type { ThemeMode } from '../theme/types';
+import type { ResolvedTheme } from '../protocol/appSettings';
 import { clamp01 } from './clamp01';
 
 export function parseHex(hex: string): [number, number, number] {
@@ -27,13 +27,13 @@ export interface CounterProgressBarColors {
   complete: string;
 }
 
-const COUNTER_PROGRESS_BAR: Record<ThemeMode, CounterProgressBarColors> = {
+const COUNTER_PROGRESS_BAR: Record<ResolvedTheme, CounterProgressBarColors> = {
   light: { active: '#F97316', complete: '#10B981' },
   dark: { active: '#F97316', complete: '#10B981' },
   cartoon: { active: '#E8A317', complete: '#4A9E3F' },
 };
 
-export function getCounterProgressBarColors(mode: ThemeMode): CounterProgressBarColors {
+export function getCounterProgressBarColors(mode: ResolvedTheme): CounterProgressBarColors {
   return COUNTER_PROGRESS_BAR[mode];
 }
 

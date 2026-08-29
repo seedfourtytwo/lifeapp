@@ -1,11 +1,11 @@
 import type { ElementKind } from '../protocol';
-import type { ThemeMode } from '../theme/types';
+import type { ResolvedTheme } from '../protocol/appSettings';
 
 export interface TrackerKindAccent {
   color: string;
 }
 
-const TRACKER_KIND_ACCENTS: Record<ThemeMode, Record<ElementKind, TrackerKindAccent>> = {
+const TRACKER_KIND_ACCENTS: Record<ResolvedTheme, Record<ElementKind, TrackerKindAccent>> = {
   light: {
     counter: { color: '#EA580C' },
     habit: { color: '#0D9488' },
@@ -20,6 +20,6 @@ const TRACKER_KIND_ACCENTS: Record<ThemeMode, Record<ElementKind, TrackerKindAcc
   },
 };
 
-export function getTrackerKindAccent(mode: ThemeMode, kind: ElementKind): TrackerKindAccent {
+export function getTrackerKindAccent(mode: ResolvedTheme, kind: ElementKind): TrackerKindAccent {
   return TRACKER_KIND_ACCENTS[mode][kind];
 }

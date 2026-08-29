@@ -26,6 +26,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
 import { useEveningCheckInSync } from './src/hooks/useEveningCheckInSync';
+import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
 
@@ -35,7 +36,7 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 });
 
 function ThemedApp() {
-  const themeMode = useSettingsStore((s) => s.themeMode);
+  const { themeMode } = useAppTheme();
   const appLanguage = useSettingsStore((s) => s.appLanguage);
   const isLoaded = useSettingsStore((s) => s.isLoaded);
   const [languageReady, setLanguageReady] = useState(false);

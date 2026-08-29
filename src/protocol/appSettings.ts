@@ -9,12 +9,37 @@ export function isAppLanguage(value: string): value is AppLanguage {
   return (APP_LANGUAGES as readonly string[]).includes(value);
 }
 
-export const THEME_MODES = ['light', 'dark', 'cartoon'] as const;
+/**
+ * What the person chose. `system` is a preference, not a look — it says "ask
+ * the phone" and resolves to one of `RESOLVED_THEMES` at paint time.
+ */
+export const THEME_MODES = ['system', 'light', 'dark', 'cartoon'] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 
+/** What can actually be painted. `getAppTheme` takes one of these, never a preference. */
+export const RESOLVED_THEMES = ['light', 'dark', 'cartoon'] as const;
+
+export type ResolvedTheme = (typeof RESOLVED_THEMES)[number];
+
 export function isThemeMode(value: string): value is ThemeMode {
   return (THEME_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * Turn the stored preference into something paintable.
+ *
+ * `scheme` is React Native's `useColorScheme()`, which is null before the OS
+ * answers and on platforms that never do. Light is the safer default there: a
+ * light app on a dark phone is a surprise, but a dark app on a light phone in
+ * daylight is unreadable.
+ */
+export function resolveThemeMode(
+  mode: ThemeMode,
+  scheme: 'light' | 'dark' | null | undefined,
+): ResolvedTheme {
+  if (mode !== 'system') return mode;
+  return scheme === 'dark' ? 'dark' : 'light';
 }
 
 export const WEATHER_LOCATION_MODES = ['device', 'manual'] as const;
