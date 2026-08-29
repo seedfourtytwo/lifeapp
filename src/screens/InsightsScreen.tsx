@@ -340,7 +340,7 @@ export default function InsightsScreen() {
               {t('screen.trackersLabel')}
             </Text>
             {atCap ? (
-              <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.8 }}>
+              <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 {t('screen.capHint', { count: INSIGHTS_MAX_SERIES })}
               </Text>
             ) : null}
@@ -464,7 +464,7 @@ export default function InsightsScreen() {
             </Pressable>
 
             {selectedElements.length === 0 ? (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.75 }}>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 {t('screen.tickToCompare')}
               </Text>
             ) : (
@@ -558,7 +558,6 @@ const styles = StyleSheet.create({
   },
   emptyBody: {
     textAlign: 'center',
-    opacity: 0.85,
   },
   seriesBlock: {
     gap: 8,
@@ -605,7 +604,6 @@ const styles = StyleSheet.create({
   emptyChart: {
     paddingVertical: 24,
     textAlign: 'center',
-    opacity: 0.8,
   },
   dayPanel: {
     padding: 16,

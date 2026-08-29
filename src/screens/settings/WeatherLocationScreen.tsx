@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../../components/QuietText';
 import SettingsGroup from '../../components/settings/SettingsGroup';
 import SettingsRow from '../../components/settings/SettingsRow';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -163,9 +164,9 @@ export default function WeatherLocationScreen() {
             dense
           />
           {weatherPlaceName && weatherLocationMode === 'manual' ? (
-            <Text variant="bodySmall" style={styles.placeCurrent}>
+            <QuietText variant="bodySmall" style={styles.placeCurrent}>
               {t('weather.savedPlace', { place: weatherPlaceName })}
-            </Text>
+            </QuietText>
           ) : null}
           <Button
             mode="contained-tonal"
@@ -210,12 +211,8 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     gap: 8,
   },
-  placeHint: {
-    opacity: 0.8,
-  },
-  placeCurrent: {
-    opacity: 0.7,
-  },
+  placeHint: {},
+  placeCurrent: {},
   placeBtn: {
     alignSelf: 'flex-start',
   },

@@ -4,6 +4,7 @@ import { ActivityIndicator, Button, Searchbar, Text, useTheme } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { useShallow } from 'zustand/react/shallow';
 import SettingsRow from '../components/settings/SettingsRow';
 import { getDateLocale } from '../i18n';
@@ -189,14 +190,11 @@ export default function IngredientsScreen() {
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={header}
       ListEmptyComponent={
-        <Text
-          variant="bodyMedium"
-          style={[styles.empty, { color: theme.colors.onSurfaceVariant }]}
-        >
+        <QuietText variant="bodyMedium" style={styles.empty}>
           {query.trim()
             ? t('search.noResults', { query: query.trim() })
             : t('manage.emptyCatalog')}
-        </Text>
+        </QuietText>
       }
       ListFooterComponent={
         archivedCount > 0 ? (

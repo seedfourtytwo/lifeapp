@@ -5,6 +5,7 @@ import { ActivityIndicator, Button, Card, Chip, Text, useTheme } from 'react-nat
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
@@ -309,9 +310,9 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     <>
       <ScrollView contentContainerStyle={styles.container}>
         {metricLine ? (
-          <Text variant="bodyMedium" style={styles.metrics}>
+          <QuietText variant="bodyMedium" style={styles.metrics}>
             {metricLine}
-          </Text>
+          </QuietText>
         ) : null}
 
         <View style={styles.rangeRow}>
@@ -414,9 +415,9 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
             </View>
           </Pressable>
         ) : (
-          <Text variant="bodySmall" style={styles.emptyHint}>
+          <QuietText variant="bodySmall" style={styles.emptyHint}>
             {t('history.tapDayHint')}
-          </Text>
+          </QuietText>
         )}
       </ScrollView>
 
@@ -437,7 +438,6 @@ const styles = StyleSheet.create({
   },
   metrics: {
     marginBottom: 12,
-    opacity: 0.85,
     fontWeight: '600',
   },
   rangeRow: {
@@ -471,7 +471,5 @@ const styles = StyleSheet.create({
     marginRight: 6,
     marginTop: 1,
   },
-  emptyHint: {
-    opacity: 0.65,
-  },
+  emptyHint: {},
 });

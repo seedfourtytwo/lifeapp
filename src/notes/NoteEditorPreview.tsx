@@ -182,7 +182,6 @@ export function NoteEditorPreview({
                   style={{
                     color: theme.colors.onSurfaceVariant,
                     fontStyle: 'italic',
-                    opacity: 0.75,
                   }}
                 >
                   {tailPrefix}

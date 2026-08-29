@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import type { RootStackParamList } from '../navigation/types';
@@ -185,12 +186,12 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
 
         {groups.length === 0 ? (
           <View style={todoStyles.emptyWrap}>
-            <Text variant="bodyLarge" style={styles.empty}>
+            <QuietText variant="bodyLarge" style={styles.empty}>
               {t('list.empty')}
-            </Text>
-            <Text variant="bodySmall" style={styles.empty}>
+            </QuietText>
+            <QuietText variant="bodySmall" style={styles.empty}>
               {t('list.emptyHint')}
-            </Text>
+            </QuietText>
           </View>
         ) : null}
 

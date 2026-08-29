@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Divider, Surface, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 type Props = {
@@ -100,12 +101,9 @@ export default function TrackersCollapsibleSection({
         <>
           <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
           {isEmpty ? (
-            <Text
-              variant="bodySmall"
-              style={[styles.empty, { color: theme.colors.onSurfaceVariant }]}
-            >
+            <QuietText variant="bodySmall" style={styles.empty}>
               {emptyMessage}
-            </Text>
+            </QuietText>
           ) : (
             items.map((child, index) => (
               <React.Fragment key={index}>
@@ -161,6 +159,5 @@ const styles = StyleSheet.create({
   empty: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    opacity: 0.8,
   },
 });

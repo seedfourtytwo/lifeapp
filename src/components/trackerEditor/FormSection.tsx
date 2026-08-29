@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
@@ -18,6 +18,7 @@ export default function FormSection({
   defaultCollapsed = false,
   children,
 }: Props) {
+  const theme = useTheme();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   const header = (
@@ -33,7 +34,13 @@ export default function FormSection({
           {title}
         </Text>
         {description && (!collapsible || !collapsed) ? (
-          <Text variant="bodySmall" style={formSectionStyles.sectionDescription}>
+          <Text
+            variant="bodySmall"
+            style={[
+              formSectionStyles.sectionDescription,
+              { color: theme.colors.onSurfaceVariant },
+            ]}
+          >
             {description}
           </Text>
         ) : null}
@@ -42,6 +49,7 @@ export default function FormSection({
         <MaterialCommunityIcons
           name={collapsed ? 'chevron-down' : 'chevron-up'}
           size={22}
+          color={theme.colors.onSurfaceVariant}
           style={formSectionStyles.chevron}
         />
       ) : null}
@@ -73,12 +81,10 @@ export const formSectionStyles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionDescription: {
-    opacity: 0.65,
     marginBottom: 12,
     lineHeight: 18,
   },
   chevron: {
-    opacity: 0.55,
     marginTop: 2,
   },
   sectionBody: {
@@ -90,8 +96,8 @@ export const formSectionStyles = StyleSheet.create({
   inlineLabel: {
     marginBottom: 8,
   },
+  /** Layout only — hints take their colour from QuietText. */
   hint: {
-    opacity: 0.6,
     lineHeight: 18,
   },
   chipRow: {

@@ -156,7 +156,7 @@ export default function JournalDayPanel({
           </View>
           <View style={styles.entryText}>
             <Text variant="labelLarge">{t('screen.journalLabel')}</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.7 }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               {t('screen.writeHint')}
             </Text>
           </View>
@@ -259,6 +259,5 @@ const styles = StyleSheet.create({
   },
   emptyTrackers: {
     paddingTop: 8,
-    opacity: 0.75,
   },
 });

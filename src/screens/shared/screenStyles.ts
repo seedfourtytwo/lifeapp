@@ -13,9 +13,9 @@ export const homeTabScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  /** Layout only — colour comes from QuietText, never from opacity. */
   empty: {
     textAlign: 'center',
-    opacity: 0.6,
     marginTop: 48,
     paddingHorizontal: 24,
   },
@@ -37,7 +37,6 @@ export const homeTabScreenStyles = StyleSheet.create({
   metaStatus: {
     flex: 1,
     minWidth: 0,
-    opacity: 0.85,
   },
   metaRight: {
     flexDirection: 'row',

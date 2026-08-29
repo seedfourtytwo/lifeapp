@@ -72,6 +72,5 @@ const styles = StyleSheet.create({
   caption: {
     paddingHorizontal: 8,
     lineHeight: 18,
-    opacity: 0.8,
   },
 });

@@ -251,7 +251,5 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: 2,
   },
-  aboutVersion: {
-    opacity: 0.7,
-  },
+  aboutVersion: {},
 });

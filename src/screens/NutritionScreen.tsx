@@ -4,6 +4,7 @@ import { ActivityIndicator, Button, Searchbar, Text, useTheme } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { foodDisplayName } from '../nutrition/seedCatalog';
@@ -252,9 +253,9 @@ function NutritionScreen() {
 
         {catalog.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text variant="bodyMedium" style={homeTabScreenStyles.empty}>
+            <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
               {t('list.emptyCatalog')}
-            </Text>
+            </QuietText>
             <Button mode="contained-tonal" icon="playlist-plus" onPress={openIngredients}>
               {t('list.openIngredients')}
             </Button>
@@ -272,9 +273,9 @@ function NutritionScreen() {
         ) : null}
 
         {catalog.length > 0 && visible.length === 0 && !searching ? (
-          <Text variant="bodyMedium" style={homeTabScreenStyles.empty}>
+          <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
             {isFoodFilterActive(filter) ? t('filters.noMatches') : t('list.emptyWeek')}
-          </Text>
+          </QuietText>
         ) : null}
 
         {visible.map(({ item, name }) => (
@@ -291,20 +292,17 @@ function NutritionScreen() {
         ))}
 
         {searchTruncated ? (
-          <Text
-            variant="bodySmall"
-            style={[homeTabScreenStyles.empty, { color: theme.colors.onSurfaceVariant }]}
-          >
+          <QuietText variant="bodySmall" style={homeTabScreenStyles.empty}>
             {t('search.tooMany', { count: SEARCH_RESULT_LIMIT })}
-          </Text>
+          </QuietText>
         ) : null}
 
         {showAddFromQuery ? (
           <View style={styles.addWrap}>
             {visible.length === 0 ? (
-              <Text variant="bodyMedium" style={homeTabScreenStyles.empty}>
+              <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
                 {t('search.noResults', { query: trimmedQuery })}
-              </Text>
+              </QuietText>
             ) : null}
             <Button mode="contained-tonal" icon="plus" onPress={() => setAddOpen(true)}>
               {t('search.addNamed', { query: trimmedQuery })}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Button } from 'react-native-paper';
+import QuietText from '../../components/QuietText';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -17,9 +18,9 @@ export default function EmptyTabState({ message }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text variant="bodyLarge" style={styles.message}>
+      <QuietText variant="bodyLarge" style={styles.message}>
         {message}
-      </Text>
+      </QuietText>
       <Button mode="contained-tonal" onPress={() => navigation.navigate('Trackers')}>
         {t('emptyTabState.openTrackers')}
       </Button>
@@ -36,6 +37,5 @@ const styles = StyleSheet.create({
   },
   message: {
     textAlign: 'center',
-    opacity: 0.6,
   },
 });

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Rect } from 'react-native-svg';
 import { Text, useTheme } from 'react-native-paper';
+import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 export interface InteractiveChartDay {
@@ -250,9 +251,9 @@ export function InteractiveDailyChart({
                 accessibilityLabel={`${day.label}, ${value}`}
               >
                 {showBarLabels ? (
-                  <Text variant="labelSmall" style={styles.valueLabel}>
+                  <QuietText variant="labelSmall" style={styles.valueLabel}>
                     {value > 0 ? formatShort(value) : ''}
-                  </Text>
+                  </QuietText>
                 ) : (
                   <View style={styles.valueLabelSpacer} />
                 )}
@@ -275,6 +276,12 @@ export function InteractiveDailyChart({
                   variant="labelSmall"
                   style={[
                     styles.dayLabel,
+                    {
+                      color:
+                        day.date === selectedDate
+                          ? theme.colors.onSurface
+                          : theme.colors.onSurfaceVariant,
+                    },
                     day.date === selectedDate && styles.dayLabelSelected,
                   ]}
                   numberOfLines={1}
@@ -288,9 +295,9 @@ export function InteractiveDailyChart({
       </View>
 
       {footer ? (
-        <Text variant="bodySmall" style={styles.footer}>
+        <QuietText variant="bodySmall" style={styles.footer}>
           {footer}
-        </Text>
+        </QuietText>
       ) : null}
     </View>
   );
@@ -319,7 +326,6 @@ const styles = StyleSheet.create({
   },
   valueLabel: {
     height: 14,
-    opacity: 0.7,
     fontSize: 9,
   },
   valueLabelSpacer: {
@@ -336,16 +342,14 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     fontSize: 9,
-    opacity: 0.55,
     textAlign: 'center',
   },
+  /** Selection reads as weight and a stronger token, not as less dimming. */
   dayLabelSelected: {
-    opacity: 1,
     fontWeight: '700',
   },
   footer: {
     textAlign: 'center',
     marginTop: 8,
-    opacity: 0.6,
   },
 });

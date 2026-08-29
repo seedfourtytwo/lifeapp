@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Text, TextInput, useTheme } from 'react-native-paper';
+import { TextInput, useTheme } from 'react-native-paper';
+import QuietText from '../QuietText';
 import { useTranslation } from 'react-i18next';
 import {
   TRACKER_ICON_IDS,
@@ -151,9 +152,9 @@ function IconPickerField({ value, onChange }: Props) {
       </ScrollView>
 
       {searching && visibleIds.length === 0 ? (
-        <Text variant="bodySmall" style={styles.empty}>
+        <QuietText variant="bodySmall" style={styles.empty}>
           {t('editor.iconSearchEmpty')}
-        </Text>
+        </QuietText>
       ) : null}
     </FormSection>
   );
@@ -190,7 +191,6 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-35deg' }],
   },
   empty: {
-    opacity: 0.65,
     marginTop: 8,
   },
 });

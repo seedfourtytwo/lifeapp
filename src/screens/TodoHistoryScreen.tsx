@@ -9,6 +9,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { getDatabase } from '../db/client';
 import * as todoRepo from '../db/repositories/todoRepository';
 import { getDateLocale } from '../i18n';
@@ -129,9 +130,9 @@ export default function TodoHistoryScreen() {
       ) : null}
 
       {!loading && !error && todos.length === 0 ? (
-        <Text variant="bodyMedium" style={styles.empty}>
+        <QuietText variant="bodyMedium" style={styles.empty}>
           {filtering ? t('history.emptySearch') : t('history.empty')}
-        </Text>
+        </QuietText>
       ) : null}
 
       {days.map((day) => (
@@ -194,7 +195,6 @@ const styles = StyleSheet.create({
   },
   empty: {
     textAlign: 'center',
-    opacity: 0.6,
     marginTop: 48,
   },
   day: {

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../components/QuietText';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { refreshAllHabitData } from '../hooks/refreshAllDailyData';
 import { useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
@@ -183,9 +184,9 @@ export default function HabitsScreen({
         emptyWithCta ? (
           <EmptyTabState message={emptyMessage} />
         ) : (
-          <Text variant="bodyLarge" style={styles.empty}>
+          <QuietText variant="bodyLarge" style={styles.empty}>
             {emptyMessage}
-          </Text>
+          </QuietText>
         )
       ) : (
         <DraggableTrackerList
