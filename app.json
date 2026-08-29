@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2E7D32"
+      "backgroundColor": "#0F766E"
     },
     "ios": {
       "supportsTablet": true,
@@ -74,7 +74,8 @@
           "android": {
             "buildArchs": [
               "arm64-v8a"
-            ]
+            ],
+            "minSdkVersion": 26
           }
         }
       ],
