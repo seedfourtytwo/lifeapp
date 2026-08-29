@@ -30,6 +30,37 @@ Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zust
 - Do not scaffold future protocol/DB features early.
 - Phone-first Android; web is secondary.
 
+## Appearance
+
+Every rule here has a test that fails when it is broken — see the file named beside it.
+
+- **Colour comes from theme tokens, and text is never dimmed with `opacity`.** The
+  muted token already passes contrast; layering opacity on it lands near 2.2:1.
+  Secondary text is `QuietText` (`src/components/QuietText.tsx`). Opacity is for
+  whole-control state — pressed, disabled, a decorative wash.
+  `themeContrast.test.ts`, `noTextOpacity.test.ts`
+- **A new theme ships only once every pair it renders clears 4.5:1.** The table
+  covers text on surfaces, labels on filled containers, and the accent, which
+  tints real text and so is held to the text floor rather than 3:1.
+  `themeContrast.test.ts`
+- **`ThemeMode` is the stored preference and includes `system`; `ResolvedTheme` is
+  what gets painted.** Anything keyed by theme takes the resolved one.
+  `useAppTheme()` is the only place `resolveThemeMode` is called.
+  `themeResolution.test.ts`
+- **Anything animated consults `useReduceMotion`.** Ornament is skipped; motion
+  that carries meaning keeps its end state through `springOrSnap` / `timingOrSnap`
+  (`src/utils/motion.ts`). An exemption goes in the test's map, with its reason.
+  `reduceMotionCoverage.test.ts`
+- **Boxes holding text state `minHeight`, never `height`.** Cap a font multiplier
+  only where growing would break the layout outright — a pinned badge, a dense
+  axis — and never merely because text got bigger. `fontScaling.test.ts`
+- **Spacing from `space`, corners from `deco.radius`** (`src/theme/spacing.ts`,
+  `src/theme/decorations.ts`). A literal radius is for geometry only, where the
+  value is half the height and that is what makes the shape a circle or capsule.
+- **Type roles come from `src/theme/typography.ts`:** the display face for what a
+  screen is about, the mono face for quantities. Body text stays on the system
+  font deliberately — do not add a body webfont.
+
 ## Checks
 
 ```bash
