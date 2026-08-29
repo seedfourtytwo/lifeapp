@@ -47,9 +47,31 @@ Home (default)
     └── App settings — theme, language, widgets, backup, about
 ```
 
+Each Home tab opens on the same day header: the date in the display face, a
+one-line status under it, and a fortnight strip showing which of the last 14
+days had anything logged.
+
 - **Active** trackers appear on Home.
 - **Archive** hides from Home; history kept.
 - **Delete** removes the element and its events.
+
+## Appearance
+
+Four themes' worth of choice from three looks: **System** follows the phone,
+plus **Light**, **Dark** and **Cartoon**. `ThemeMode` is what was chosen and can
+be `system`; `ResolvedTheme` is what gets painted and never is.
+
+Colour comes from theme tokens only, and every pair the app renders is held to
+WCAG AA by `__tests__/themeContrast.test.ts` — text is muted by choosing the
+muted token, never by lowering opacity over it. Spacing comes from
+`src/theme/spacing.ts` and corners from `deco.radius`.
+
+Two faces load at boot: Newsreader for what a screen is about, IBM Plex Mono for
+quantities. Body text stays on the system font deliberately. Animation asks
+`useReduceMotion` first.
+
+The conventions, and the test that enforces each, are listed in
+`.claude/rules.md`.
 
 ## Tech stack
 
@@ -72,6 +94,7 @@ src/
 ├── dictation/      # On-device Moonshine ASR session
 ├── hooks/
 ├── i18n/           # en + fr catalogs
+├── theme/          # themes, decorations, spacing + type scale
 ├── notifications/  # Local habit + calendar reminders
 ├── audio/          # Timer sounds + completion chime
 └── navigation/
