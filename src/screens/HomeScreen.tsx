@@ -296,15 +296,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <View
-        style={[styles.content, { paddingTop: topInset }]}
-        onLayout={(event) => {
-          const nextHeight = event.nativeEvent.layout.height;
-          if (nextHeight > 0 && nextHeight !== pagerHeight) {
-            setPagerHeight(nextHeight);
-          }
-        }}
-      >
+      <View style={[styles.content, { paddingTop: topInset }]}>
         <ScrollView
           ref={pagerRef}
           horizontal
@@ -316,6 +308,19 @@ export default function HomeScreen() {
           onMomentumScrollEnd={onPagerMomentumEnd}
           scrollEventThrottle={16}
           style={styles.pager}
+          /**
+           * Measured here rather than on the padded view above: a view reports
+           * its own padding as part of its height, so measuring that one made
+           * every page a status bar taller than the room it had — the bottom of
+           * each tab ended up under the dock, and its list bounced instead of
+           * scrolling because it believed the content already fitted.
+           */
+          onLayout={(event) => {
+            const nextHeight = event.nativeEvent.layout.height;
+            if (nextHeight > 0 && nextHeight !== pagerHeight) {
+              setPagerHeight(nextHeight);
+            }
+          }}
         >
           <HomePagerPage active={tab === 'habits'} width={pageWidth} height={pagerHeight}>
             <HabitsScreen
