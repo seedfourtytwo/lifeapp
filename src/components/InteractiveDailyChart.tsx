@@ -132,7 +132,7 @@ export function InteractiveDailyChart({
               x2={width}
               y2={CHART_HEIGHT - PAD_BOTTOM}
               stroke={theme.colors.outlineVariant}
-              strokeWidth={StyleSheet.hairlineWidth}
+              strokeWidth={1}
             />
 
             {!multi && primary

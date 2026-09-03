@@ -370,7 +370,7 @@ export default function HomeScreen() {
             paddingBottom: Math.max(insets.bottom, 8),
             backgroundColor: theme.colors.surface,
             borderTopColor: theme.colors.outlineVariant,
-            borderTopWidth: deco.headerBorderWidth > 0 ? deco.headerBorderWidth : StyleSheet.hairlineWidth,
+            borderTopWidth: deco.headerBorderWidth,
           },
         ]}
       >

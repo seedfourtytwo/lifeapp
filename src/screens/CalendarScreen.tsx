@@ -172,7 +172,7 @@ export default function CalendarScreen() {
                   style={[
                     styles.eventRow,
                     { borderRadius: deco.radius.md },
-                    { borderColor: theme.colors.outlineVariant, opacity: cleared ? 0.5 : 1 },
+                    { backgroundColor: theme.colors.surface, opacity: cleared ? 0.5 : 1 },
                   ]}
                 >
                   <Pressable
@@ -315,7 +315,6 @@ const styles = StyleSheet.create({
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 6,
     paddingHorizontal: 6,
     marginBottom: 8,

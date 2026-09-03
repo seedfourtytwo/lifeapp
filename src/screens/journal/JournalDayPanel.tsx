@@ -78,7 +78,7 @@ export default function JournalDayPanel({
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
           borderRadius: deco.radius.md,
-          borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+          borderWidth: deco.cardBorderWidth,
         },
       ]}
       elevation={0}
@@ -90,10 +90,7 @@ export default function JournalDayPanel({
           key={notebook.id}
           style={[
             styles.group,
-            index > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.outlineVariant,
-            },
+            index > 0 && styles.groupAfterFirst,
           ]}
         >
           <View style={styles.groupHeader}>
@@ -213,10 +210,7 @@ export default function JournalDayPanel({
         <View
           style={[
             styles.trackerBlock,
-            grouped.length > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.outlineVariant,
-            },
+            grouped.length > 0 && styles.trackerBlockAfterGroups,
           ]}
         >
           <Text
@@ -279,6 +273,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     gap: space.sm,
   },
+  /** Separated from the group above by space rather than a rule. */
+  groupAfterFirst: {
+    paddingTop: space.lg,
+  },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -311,6 +309,9 @@ const styles = StyleSheet.create({
   trackerBlock: {
     paddingTop: 8,
     gap: 4,
+  },
+  trackerBlockAfterGroups: {
+    paddingTop: space.lg,
   },
   trackerLabel: {
     marginBottom: 4,

@@ -151,7 +151,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
     marginBottom: 6,
   },
   text: {

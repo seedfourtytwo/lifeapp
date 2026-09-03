@@ -47,7 +47,8 @@ function IconPickerCell({
         styles.cell,
         {
           borderRadius: radius,
-          borderColor: selected ? selectedBorder : idleBorder,
+          borderColor: selected ? selectedBorder : 'transparent',
+          borderWidth: selected ? deco.borderWidth : 0,
           backgroundColor: selected ? selectedBg : surface,
         },
         pressed && styles.pressed,
@@ -180,7 +181,6 @@ const styles = StyleSheet.create({
   cell: {
     width: 44,
     height: 44,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,

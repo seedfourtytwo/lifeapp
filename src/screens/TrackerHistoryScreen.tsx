@@ -384,7 +384,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               styles.dayPanel,
               {
                 borderColor: theme.colors.outlineVariant,
-                borderWidth: isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth,
+                borderWidth: deco.borderWidth,
                 borderRadius: isCartoon ? deco.radius.md : 8,
                 backgroundColor: theme.colors.surface,
               },

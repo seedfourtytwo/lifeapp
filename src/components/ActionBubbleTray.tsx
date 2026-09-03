@@ -170,7 +170,7 @@ export function ActionBubbleTray({
                       borderRadius: Math.max(deco.radius.lg, 24),
                       opacity: pressed ? 0.85 : 1,
                       borderColor: theme.colors.outline,
-                      borderWidth: StyleSheet.hairlineWidth,
+                      borderWidth: deco.cardBorderWidth,
                     },
                   ]}
                   accessibilityRole="button"

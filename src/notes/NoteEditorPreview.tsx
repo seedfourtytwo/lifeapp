@@ -122,7 +122,7 @@ export function NoteEditorPreview({
           : null,
         {
           borderColor: theme.colors.outline,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: deco.cardBorderWidth,
           backgroundColor: theme.colors.surface,
         },
       ]}

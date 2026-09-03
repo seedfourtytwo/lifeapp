@@ -14,8 +14,13 @@ import type { TextStyle } from 'react-native';
  *  - `data` — IBM Plex Mono, for anything that is a quantity: streaks, timers,
  *    counts, temperatures, dates in a row. Its figures are the same width, so
  *    a running timer stops jittering and columns line up.
- *  - `meta` — the same mono, small and letterspaced, for the quiet status line
- *    under a heading.
+ *  - `meta` — the same mono, small, for the quiet status line under a heading.
+ *
+ * Nothing here sets `letterSpacing` or `textTransform`. Both were doing the same
+ * job — making a line look like a label rather than reading as one — and on a
+ * phone held at arm's length they cost more legibility than they buy character.
+ * A face is chosen for its own letterforms; respacing it fights that choice.
+ * `typographyPlain.test.ts` keeps them out.
  */
 export const fontFamily = {
   display: 'Newsreader_400Regular',
@@ -35,22 +40,18 @@ export const typeScale = {
     fontFamily: fontFamily.display,
     fontSize: 28,
     lineHeight: 34,
-    letterSpacing: -0.4,
   },
   /** A screen or sheet title where the display face still earns its place. */
   screenTitle: {
     fontFamily: fontFamily.displayMedium,
     fontSize: 20,
     lineHeight: 26,
-    letterSpacing: -0.2,
   },
-  /** Quiet uppercase status under a title: "41-DAY STREAK · 22°C". */
+  /** Quiet status under a title: "0 of 9 done". */
   meta: {
     fontFamily: fontFamily.data,
-    fontSize: 11,
-    lineHeight: 15,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    lineHeight: 16,
   },
   /** A number the eye returns to: today's total, a streak, a temperature. */
   data: {
@@ -62,6 +63,5 @@ export const typeScale = {
     fontFamily: fontFamily.dataMedium,
     fontVariant: ['tabular-nums'],
     fontSize: 15,
-    letterSpacing: -0.2,
   },
 } satisfies Record<string, TextStyle>;

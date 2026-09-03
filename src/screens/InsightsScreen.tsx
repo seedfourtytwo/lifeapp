@@ -280,7 +280,7 @@ export default function InsightsScreen() {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.outlineVariant,
     borderRadius: deco.radius.md,
-    borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+    borderWidth: deco.cardBorderWidth,
   };
 
   if (loading && elements.length === 0) {

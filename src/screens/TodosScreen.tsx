@@ -269,8 +269,6 @@ const todoStyles = StyleSheet.create({
   },
   sectionHeading: {
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
   },
   emptyWrap: {
     gap: 4,

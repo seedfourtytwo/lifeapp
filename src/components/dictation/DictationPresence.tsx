@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
   stageBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
 });

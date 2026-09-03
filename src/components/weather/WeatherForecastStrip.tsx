@@ -36,7 +36,7 @@ export default function WeatherForecastStrip({ days }: Props) {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
   const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
-  const outlineWidth = isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth;
+  const outlineWidth = deco.borderWidth;
 
   return (
     <View
@@ -157,13 +157,6 @@ export const forecastStripStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: space.xxs,
     paddingVertical: space.sm,
-  },
-  dayDivider: {
-    position: 'absolute',
-    left: 0,
-    top: space.md,
-    bottom: space.md,
-    width: StyleSheet.hairlineWidth,
   },
   weekday: {
     fontSize: 10,

@@ -210,8 +210,6 @@ const styles = StyleSheet.create({
   },
   dayHeading: {
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
   },
   row: {
     padding: 12,

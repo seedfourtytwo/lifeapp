@@ -154,7 +154,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
             borderRadius: deco.radius.md,
-            borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+            borderWidth: deco.cardBorderWidth,
           },
         ]}
         elevation={0}
