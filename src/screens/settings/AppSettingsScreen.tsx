@@ -33,8 +33,6 @@ export default function AppSettingsScreen() {
   const setWeatherWidgetEnabled = useSettingsStore((s) => s.setWeatherWidgetEnabled);
   const weatherPlaceName = useSettingsStore((s) => s.weatherPlaceName);
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
-  const calendarWidgetEnabled = useSettingsStore((s) => s.calendarWidgetEnabled);
-  const setCalendarWidgetEnabled = useSettingsStore((s) => s.setCalendarWidgetEnabled);
   const refreshWeather = useWeatherStore((s) => s.refresh);
   const clearWeather = useWeatherStore((s) => s.clear);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
@@ -158,12 +156,6 @@ export default function AppSettingsScreen() {
             onPress={() => navigation.navigate('WeatherLocation')}
           />
         ) : null}
-        <SettingsRow
-          icon="calendar"
-          title={t('homeChrome.calendarTitle')}
-          switchValue={calendarWidgetEnabled}
-          onSwitch={(value) => void setCalendarWidgetEnabled(value)}
-        />
       </SettingsGroup>
 
       <SettingsGroup title={t('data.sectionTitle')} caption={t('data.caption')}>

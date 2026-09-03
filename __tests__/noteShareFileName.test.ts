@@ -39,6 +39,39 @@ describe('noteShareFileName', () => {
     ]);
   });
 
+  it('leaves the name alone when the whole day goes out', () => {
+    expect(
+      noteShareFileName({
+        kind: 'journal',
+        label: 'Technical',
+        date: '2026-08-14',
+        part: { chapters: [1, 2, 3], total: 3 },
+      }),
+    ).toBe('technical-2026-08-14.txt');
+  });
+
+  it('names the chapter when only one goes out', () => {
+    expect(
+      noteShareFileName({
+        kind: 'journal',
+        label: 'Technical',
+        date: '2026-08-14',
+        part: { chapters: [2], total: 4 },
+      }),
+    ).toBe('technical-2026-08-14-ch2.txt');
+  });
+
+  it('counts them when a subset of several goes out', () => {
+    expect(
+      noteShareFileName({
+        kind: 'journal',
+        label: 'Technical',
+        date: '2026-08-14',
+        part: { chapters: [1, 3], total: 4 },
+      }),
+    ).toBe('technical-2026-08-14-ch2of4.txt');
+  });
+
   it('stamps the share time so a second tap is a new file', () => {
     expect(
       noteShareFileName({
@@ -48,5 +81,17 @@ describe('noteShareFileName', () => {
         sharedAt: new Date(2026, 7, 14, 17, 45, 12, 883),
       }),
     ).toBe('technical-2026-08-14-174512883.txt');
+  });
+
+  it('keeps the chapter marker in front of the share stamp', () => {
+    expect(
+      noteShareFileName({
+        kind: 'journal',
+        label: 'Technical',
+        date: '2026-08-14',
+        part: { chapters: [3], total: 4 },
+        sharedAt: new Date(2026, 7, 14, 17, 45, 12, 883),
+      }),
+    ).toBe('technical-2026-08-14-ch3-174512883.txt');
   });
 });

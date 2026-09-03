@@ -172,18 +172,26 @@ export default function InsightsScreen() {
     void (async () => {
       try {
         const db = await getDatabase();
-        const entries = await dailyJournalRepo.getJournalsForDate(db, selectedDate);
         await useJournalNotebookStore.getState().load();
         const notebooks = useJournalNotebookStore.getState().notebooks;
+        // One notebook drives this panel — the same one the row opens. Read the
+        // whole day (every chapter joined), not one row: since v22 a notebook
+        // day holds several, and showing only the first hid the rest silently.
+        const notebookId = notebooks[0]?.id ?? null;
+        const dayBody = notebookId
+          ? await dailyJournalRepo.getJournalDayBody(db, notebookId, selectedDate)
+          : '';
+        const firstChapter = notebookId
+          ? await dailyJournalRepo.getFirstJournalChapter(db, notebookId, selectedDate)
+          : null;
         const notes =
           selectedIds.length > 0
             ? await dayNoteRepo.getNotesForElementsOnDate(db, selectedIds, selectedDate)
             : new Map();
         if (cancelled) return;
-        const latest = entries[0] ?? null;
-        setJournalBody(latest?.body ?? null);
-        setJournalEntryId(latest?.id ?? null);
-        setDefaultNotebookId(notebooks[0]?.id ?? null);
+        setJournalBody(dayBody.trim().length > 0 ? dayBody : null);
+        setJournalEntryId(firstChapter?.id ?? null);
+        setDefaultNotebookId(notebookId);
         setDefaultNotebookName(notebooks[0]?.name ?? null);
         setDefaultNotebookIcon(notebooks[0]?.icon);
         const map = new Map<string, string>();

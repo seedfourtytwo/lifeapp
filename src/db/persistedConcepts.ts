@@ -249,15 +249,19 @@ CREATE INDEX IF NOT EXISTS idx_journal_notebooks_sort ON journal_notebooks(sort_
   {
     name: 'dailyJournals',
     tables: ['daily_journals'],
-    // Do not create idx_daily_journals_notebook_date here: on a pre-v16 database
-    // that column only exists after `rebuildDailyJournals`, and this DDL also runs
-    // on every open. `repairDailyJournals` adds the unique index once it is safe.
+    // Do not create idx_daily_journals_notebook_chapter here: on a pre-v16
+    // database `notebook_id` only exists after `rebuildDailyJournals`, and this
+    // DDL also runs on every open. `repairDailyJournals` adds it once it is safe.
     ddl: `
 CREATE TABLE IF NOT EXISTS daily_journals (
   id TEXT PRIMARY KEY NOT NULL,
   notebook_id TEXT NOT NULL,
   date TEXT NOT NULL,
   body TEXT NOT NULL,
+  -- v22: a notebook day holds several chapters, ordered by this and not by
+  -- created_at — the reader can reorder chapters, and a re-dictated one keeps
+  -- its place. There is deliberately no UNIQUE (notebook_id, date) any more.
+  sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   protocol_version INTEGER NOT NULL,
@@ -265,8 +269,7 @@ CREATE TABLE IF NOT EXISTS daily_journals (
   -- entries first (see journalNotebooks.ts deleteJournalNotebook). Silently
   -- cascading here would delete journal text; let the FK check fail loudly
   -- if a future code path deletes a notebook without reassigning.
-  FOREIGN KEY (notebook_id) REFERENCES journal_notebooks(id),
-  UNIQUE (notebook_id, date)
+  FOREIGN KEY (notebook_id) REFERENCES journal_notebooks(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_journals_date ON daily_journals(date);`,

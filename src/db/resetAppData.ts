@@ -6,7 +6,6 @@ import { getDatabase } from './client';
 import { importClearStep, PERSISTED_CONCEPTS, type AmbientClearFlag } from './persistedConcepts';
 import * as settingsRepo from './repositories/settingsRepository';
 import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
-import { clearCornerScore } from './repositories/cornerScoreRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
@@ -140,11 +139,10 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
       }
       if (options.weather) {
         await clearAmbient(db, 'weather');
-        // Forecast JSON + fun corner tally live in app_settings, so they belong
-        // to weather rather than to the app_settings concept itself.
+        // The forecast JSON lives in app_settings, so it belongs to weather
+        // rather than to the app_settings concept itself.
         if (!options.preferences) {
           await settingsRepo.deleteSetting(db, WEATHER_FORECAST_CACHE_KEY);
-          await clearCornerScore(db);
         }
       }
       if (options.preferences) {

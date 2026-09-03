@@ -7,6 +7,7 @@ import {
   moveJournalNotebook,
   updateJournalNotebook,
 } from '../notes/journalNotebooks';
+import { startFoodJournal, type FoodJournalStart } from '../nutrition/foodJournal';
 import type { JournalNotebook, JournalNotebookColor, TrackerIconId } from '../protocol';
 
 let loadGeneration = 0;
@@ -31,6 +32,11 @@ interface JournalNotebookState {
   ) => Promise<void>;
   remove: (id: string) => Promise<void>;
   move: (id: string, direction: 'up' | 'down') => Promise<void>;
+  /**
+   * Nutrition's opt-in food journal. Creates the notebook the first time and
+   * hands back the one already on file afterwards; never throws at the cap.
+   */
+  startFoodJournal: () => Promise<FoodJournalStart>;
 }
 
 export const useJournalNotebookStore = create<JournalNotebookState>((set, get) => ({
@@ -78,5 +84,11 @@ export const useJournalNotebookStore = create<JournalNotebookState>((set, get) =
   move: async (id, direction) => {
     await moveJournalNotebook(id, direction);
     await get().reload();
+  },
+
+  startFoodJournal: async () => {
+    const result = await startFoodJournal();
+    if (result.status === 'ok') await get().reload();
+    return result;
   },
 }));

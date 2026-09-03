@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { useStackScreenOptions } from './useStackScreenOptions';
 import HomeScreen from '../screens/HomeScreen';
-import SettingsMenuScreen from '../screens/settings/SettingsMenuScreen';
 import TrackersScreen from '../screens/TrackersScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import IngredientEditorScreen from '../screens/IngredientEditorScreen';
@@ -30,11 +29,6 @@ export default function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="SettingsMenu"
-        component={SettingsMenuScreen}
-        options={{ title: t('home:dock.more') }}
       />
       <Stack.Screen
         name="Trackers"

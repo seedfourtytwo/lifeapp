@@ -23,7 +23,6 @@ import * as noteShareRepo from '../src/db/repositories/noteShareStateRepository'
 import * as settingsRepo from '../src/db/repositories/settingsRepository';
 import * as todoRepo from '../src/db/repositories/todoRepository';
 import * as weatherRepo from '../src/db/repositories/weatherRepository';
-import { WEATHER_CORNER_SCORE_KEY } from '../src/db/repositories/cornerScoreRepository';
 import { WEATHER_FORECAST_CACHE_KEY } from '../src/weather/forecastCache';
 import { FoodItemSchema, HabitConfigSchema, PROTOCOL_VERSION } from '../src/protocol';
 
@@ -174,6 +173,7 @@ async function seedEveryTable(db: SQLiteDatabase, notebookId: string): Promise<v
       notebookId,
       date: date as string,
       body: `journal ${date}`,
+      sortOrder: 0,
       createdAt: time as string,
       updatedAt: time as string,
       protocolVersion: PROTOCOL_VERSION,
@@ -242,7 +242,6 @@ async function seedEveryTable(db: SQLiteDatabase, notebookId: string): Promise<v
 
   await settingsRepo.setSetting(db, 'theme_mode', 'dark');
   await settingsRepo.setSetting(db, WEATHER_FORECAST_CACHE_KEY, '{}');
-  await settingsRepo.setSetting(db, WEATHER_CORNER_SCORE_KEY, '{"date":"2020-01-01","count":1}');
 
   await weatherRepo.upsertWeatherDaily(db, {
     date: OLD_DATE,
@@ -305,7 +304,7 @@ const SEEDED: RowCounts = {
   food_log: 2,
   todos: 3,
   note_share_state: 2,
-  app_settings: 3,
+  app_settings: 2,
   weather_daily: 1,
   calendars: 1,
   calendar_events: 1,
@@ -400,8 +399,8 @@ const CLEAR_CASES: ClearCase[] = [
     expected: {
       ...SEEDED,
       weather_daily: 0,
-      // The cached forecast and the corner tally live in app_settings and go
-      // with the weather; the theme preference stays.
+      // The cached forecast lives in app_settings and goes with the weather;
+      // the theme preference stays.
       app_settings: 1,
     },
   },

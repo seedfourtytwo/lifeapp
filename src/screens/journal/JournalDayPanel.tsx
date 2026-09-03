@@ -1,10 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Surface, Text, useTheme } from 'react-native-paper';
+import { IconButton, Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../../components/QuietText';
 import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
 import type { DailyJournal, JournalNotebook } from '../../protocol';
 import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
@@ -23,11 +25,21 @@ type Props = {
   trackerNotes: TrackerNoteRow[];
   showTrackerNotes: boolean;
   filter: 'all' | 'trackers' | string;
-  onOpenJournal: (notebookId: string, date: string) => void;
+  /** Open one chapter; no `entryId` means the day's first (or a blank one). */
+  onOpenJournal: (notebookId: string, date: string, entryId?: string) => void;
+  /** Start a fresh chapter in this notebook for the day. */
+  onAddChapter: (notebookId: string, date: string) => void;
   onOpenTrackerNote: (row: TrackerNoteRow, date: string) => void;
 };
 
-/** Selected-day writing surface: previews first, tap to open the editor. */
+/**
+ * Selected-day writing surface: previews first, tap to open the editor.
+ *
+ * A notebook day is a stack of chapters, and each one is its own block — a day
+ * with a morning entry and an argument at 11pm reads as two things, which is
+ * the whole reason they are two rows rather than one body with a blank line in
+ * it. The block is also the tap target for that chapter specifically.
+ */
 export default function JournalDayPanel({
   selectedDate,
   today,
@@ -37,6 +49,7 @@ export default function JournalDayPanel({
   showTrackerNotes,
   filter,
   onOpenJournal,
+  onAddChapter,
   onOpenTrackerNote,
 }: Props) {
   const theme = useTheme();
@@ -72,28 +85,18 @@ export default function JournalDayPanel({
     >
       <Text variant="titleMedium">{title}</Text>
 
-      {grouped.map(({ notebook, entries }, index) => {
-        const body = entries[0]?.body;
-        const empty = !body;
-        return (
-          <Pressable
-            key={notebook.id}
-            onPress={() => onOpenJournal(notebook.id, selectedDate)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              empty
-                ? t('screen.addJournalForA11y', { date: formatFullDate(selectedDate) })
-                : t('screen.editJournalForA11y', { date: formatFullDate(selectedDate) })
-            }
-            style={({ pressed }) => [
-              styles.entry,
-              index > 0 && {
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: theme.colors.outlineVariant,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
+      {grouped.map(({ notebook, entries }, index) => (
+        <View
+          key={notebook.id}
+          style={[
+            styles.group,
+            index > 0 && {
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
+          <View style={styles.groupHeader}>
             <View
               style={[
                 styles.well,
@@ -113,22 +116,65 @@ export default function JournalDayPanel({
                 />
               )}
             </View>
-            <View style={styles.entryText}>
-              <Text variant="labelLarge">{notebook.name}</Text>
-              <Text
-                variant="bodyMedium"
-                numberOfLines={empty ? 1 : 8}
-                style={{
-                  color: empty ? theme.colors.onSurfaceVariant : theme.colors.onSurface,
-                  opacity: empty ? 0.7 : 1,
-                }}
+            <Text variant="labelLarge" style={styles.groupName}>
+              {notebook.name}
+            </Text>
+            <IconButton
+              icon="plus"
+              size={18}
+              onPress={() => onAddChapter(notebook.id, selectedDate)}
+              accessibilityLabel={t('screen.addChapterA11y', {
+                name: notebook.name,
+                date: formatFullDate(selectedDate),
+              })}
+              style={styles.addChapter}
+            />
+          </View>
+
+          {entries.length === 0 ? (
+            <Pressable
+              onPress={() => onOpenJournal(notebook.id, selectedDate)}
+              accessibilityRole="button"
+              accessibilityLabel={t('screen.addJournalForA11y', {
+                date: formatFullDate(selectedDate),
+              })}
+              style={({ pressed }) => [styles.chapter, pressed && styles.pressed]}
+            >
+              <QuietText variant="bodyMedium">{t('screen.writeHint')}</QuietText>
+            </Pressable>
+          ) : (
+            entries.map((entry, position) => (
+              <Pressable
+                key={entry.id}
+                onPress={() => onOpenJournal(notebook.id, selectedDate, entry.id)}
+                accessibilityRole="button"
+                accessibilityLabel={t('screen.openChapterA11y', {
+                  number: position + 1,
+                  name: notebook.name,
+                  date: formatFullDate(selectedDate),
+                })}
+                style={({ pressed }) => [
+                  styles.chapter,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    borderRadius: isCartoon ? deco.radius.sm : 12,
+                  },
+                  pressed && styles.pressed,
+                ]}
               >
-                {empty ? t('screen.writeHint') : truncateNotePreview(body, 400)}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+                {entries.length > 1 ? (
+                  <QuietText variant="labelSmall">
+                    {t('screen.chapterHeading', { number: position + 1 })}
+                  </QuietText>
+                ) : null}
+                <Text variant="bodyMedium" numberOfLines={8}>
+                  {truncateNotePreview(entry.body, 400)}
+                </Text>
+              </Pressable>
+            ))
+          )}
+        </View>
+      ))}
 
       {filter === 'all' && grouped.length === 0 && defaultNotebookId ? (
         <Pressable
@@ -228,6 +274,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     paddingVertical: 12,
+  },
+  group: {
+    paddingVertical: space.md,
+    gap: space.sm,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  groupName: {
+    flex: 1,
+    minWidth: 0,
+  },
+  addChapter: {
+    margin: 0,
+  },
+  chapter: {
+    padding: space.md,
+    gap: space.xs,
+    minHeight: 44,
   },
   pressed: { opacity: 0.7 },
   well: {

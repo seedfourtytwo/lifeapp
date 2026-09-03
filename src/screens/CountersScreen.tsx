@@ -145,9 +145,13 @@ export default function CountersScreen({
     return (
       <>
         <HomeTabLoadingPane
-          notebooks={notebooks}
-          onDictateNotebook={onDictateNotebook}
-          onEditNotebook={onEditNotebook}
+          actions={
+            <NotebookButtons
+              notebooks={notebooks}
+              onDictateNotebook={onDictateNotebook}
+              onEditNotebook={onEditNotebook}
+            />
+          }
         />
         {editorHost}
       </>

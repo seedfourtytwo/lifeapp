@@ -7,6 +7,8 @@ export type HomeNotebookChip = {
   color: string;
   icon?: TrackerIconId;
   hasToday: boolean;
+  /** Chapters written in this notebook today — the icon badges two or more. */
+  todayCount: number;
 };
 
 export type TrackerNoteTarget = {
@@ -19,7 +21,11 @@ export type TrackerNoteTarget = {
 export type JournalNoteTarget = {
   kind: 'journal';
   notebookId: string;
-  /** Row id when known; load/save key off notebook + date. */
+  /**
+   * Which chapter of the notebook day. Unset means the day's first, which is
+   * what opening a notebook from Home plainly asks for. An id that is not on
+   * file yet is a chapter the reader has just started.
+   */
   entryId?: string;
   /** Sheet title (notebook name). */
   label?: string;

@@ -65,59 +65,6 @@ export async function playChartSelectHaptic(): Promise<void> {
   vibrateFallback(6);
 }
 
-/** Tiny tick when the weather bubble glances off a wall. */
-export async function playBubbleBounceHaptic(): Promise<void> {
-  const Haptics = await getHaptics();
-  if (Haptics) {
-    try {
-      // Softest available tick — selection can feel sharp on some devices.
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-      return;
-    } catch {
-      try {
-        await Haptics.selectionAsync();
-        return;
-      } catch {
-        // fall through
-      }
-    }
-  }
-  vibrateFallback(3);
-}
-
-/** Short celebration when the bubble nails a DVD corner. */
-export async function playBubbleCornerHaptic(): Promise<void> {
-  const Haptics = await getHaptics();
-  if (Haptics) {
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      return;
-    } catch {
-      // fall through
-    }
-  }
-  vibrateFallback([0, 16, 35, 22]);
-}
-
-/** Release feedback — stronger when more charge was held. */
-export async function playBubbleThrowHaptic(charge: number): Promise<void> {
-  const c = Math.max(0, Math.min(1, charge));
-  const Haptics = await getHaptics();
-  if (Haptics) {
-    try {
-      const style =
-        c >= 0.75
-          ? Haptics.ImpactFeedbackStyle.Medium
-          : Haptics.ImpactFeedbackStyle.Light;
-      await Haptics.impactAsync(style);
-      return;
-    } catch {
-      // fall through
-    }
-  }
-  vibrateFallback(c >= 0.75 ? 18 : 10);
-}
-
 /** Success tick when Done commits a dictated take into the note. */
 export async function playDictationCommitHaptic(): Promise<void> {
   const Haptics = await getHaptics();

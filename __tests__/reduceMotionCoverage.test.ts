@@ -3,8 +3,9 @@
  *
  * Android exposes this in Settings → Accessibility, and a phone that asks for
  * it means it. Before this guard existed one component out of eight honoured
- * the setting, and the seven that ignored it included the loudest things in the
- * app — a confetti burst and an edge flash.
+ * the setting, and the ones that ignored it included the loudest things in the
+ * app — a confetti burst and an edge flash, both since retired with the
+ * floating weather bubble.
  *
  * A module clears the bar by reaching the setting at all: `useReduceMotion`
  * directly, or the `springOrSnap` / `timingOrSnap` helpers that take it as an
@@ -35,12 +36,6 @@ const EXEMPT = new Map<string, string>([
     'src/utils/motion.ts',
     'Defines the helpers; takes reduceMotion as an argument.',
   ],
-  [
-    'src/hooks/useChromeBubbleDrag.ts',
-    'Hold-to-charge: the duration is the interaction, not decoration. ' +
-      'Collapsing it to zero would fire the charge — and its haptics — the ' +
-      'instant the bubble is touched.',
-  ],
 ]);
 
 function sourceFiles(dir: string): string[] {
@@ -67,8 +62,10 @@ describe('animated modules respect reduced motion', () => {
 
   it('finds the animated modules at all', () => {
     // Guards the guard: if the pattern stops matching, this drops to zero and
-    // the assertion below would pass vacuously.
-    expect(animated.length).toBeGreaterThanOrEqual(8);
+    // the assertion below would pass vacuously. The floor is deliberately
+    // below the current count — retiring an animation is allowed, silently
+    // losing the whole scan is not.
+    expect(animated.length).toBeGreaterThanOrEqual(5);
   });
 
   it('has no animated module that ignores the setting', () => {

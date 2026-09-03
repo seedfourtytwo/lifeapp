@@ -13,7 +13,11 @@
     "editJournalForA11y": "Modifier le journal du {{date}}",
     "addJournalForA11y": "Ajouter un journal pour le {{date}}",
     "editNoteForA11y": "Modifier la note de {{name}}",
-    "couldNotLoadJournalsFallback": "Impossible de charger les journaux"
+    "couldNotLoadJournalsFallback": "Impossible de charger les journaux",
+    "chapterHeading": "Chapitre {{number}}",
+    "addChapter": "Ajouter un chapitre",
+    "addChapterA11y": "Ajouter un chapitre à {{name}} pour le {{date}}",
+    "openChapterA11y": "Ouvrir le chapitre {{number}} de {{name}} pour le {{date}}"
   },
   "notebooks": {
     "title": "Carnets",
@@ -42,5 +46,34 @@
   "editorSheet": {
     "cancel": "Annuler",
     "save": "Enregistrer"
+  },
+  "chapters": {
+    "label": "Chapitre {{number}}",
+    "jumpLabel": "{{number}} · {{preview}}",
+    "of": "sur {{count}}",
+    "jumpA11y": "Chapitre {{number}} sur {{count}}. Aller à un autre chapitre",
+    "previousA11y": "Chapitre précédent",
+    "nextA11y": "Chapitre suivant",
+    "addA11y": "Commencer un nouveau chapitre",
+    "deleteA11y": "Supprimer le chapitre {{number}}",
+    "deleteTitle": "Supprimer le chapitre {{number}} ?",
+    "deleteBody": "Son texte sera supprimé. Cette action est irréversible.",
+    "deleteAction": "Supprimer",
+    "countA11y": "{{count}} chapitres aujourd’hui"
+  },
+  "share": {
+    "shareTitle": "Partager quels chapitres ?",
+    "copyTitle": "Copier quels chapitres ?",
+    "selectAll": "Tout",
+    "selectNone": "Aucun",
+    "selectedCount": "{{count}} sur {{total}} sélectionnés",
+    "toggleA11y": "Inclure le chapitre {{number}}",
+    "statusNever": "Non partagé",
+    "statusStale": "Modifié depuis le partage",
+    "statusCurrent": "Partagé",
+    "confirmShare": "Partager",
+    "confirmCopy": "Copier",
+    "cancel": "Annuler",
+    "nothingSelected": "Choisissez au moins un chapitre"
   }
 }

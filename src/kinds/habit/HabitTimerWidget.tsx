@@ -21,9 +21,11 @@ import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 import {
+  describeHabitCardSound,
   formatHabitStreakLabel,
   getHabitStreakDays,
 } from './habitCardLabels';
+import { HabitSoundIndicator } from './HabitSoundIndicator';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { NoteIconButton } from '../../notes/NoteIconButton';
@@ -70,6 +72,7 @@ export function HabitTimerWidget({
     getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
   const streakDays = getHabitStreakDays(config, streak);
   const streakLabel = formatHabitStreakLabel(config, streak);
+  const soundIndicator = describeHabitCardSound(config);
 
   const todayTotalRef = useRef(todayTotal);
   todayTotalRef.current = todayTotal;
@@ -191,6 +194,13 @@ export function HabitTimerWidget({
         />
 
         <View style={styles.trailingCluster}>
+          {soundIndicator ? (
+            <HabitSoundIndicator
+              indicator={soundIndicator}
+              color={theme.colors.onSurfaceVariant}
+            />
+          ) : null}
+
           {totalLabel ? (
             <Text
               variant="titleSmall"

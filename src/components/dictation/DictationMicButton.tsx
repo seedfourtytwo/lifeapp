@@ -13,27 +13,25 @@ import {
   DICTATION_PRESENCE_COLOR,
   DICTATION_PRESENCE_COLOR_DARK,
 } from './DictationPresence';
+import type { DictationFieldPresence } from '../../dictation/useDictationField';
 
 type Props = {
-  listening: boolean;
-  capturing: boolean;
-  starting: boolean;
-  finishing: boolean;
-  sessionOpen: boolean;
+  /** Live session state, straight from `useDictationField`. */
+  field: DictationFieldPresence;
   disabled?: boolean;
   onPress: () => void;
 };
 
 /**
- * Mic for notes and journals. Transcript only — no audio is stored.
- * Lives in the thumb row next to Done/Save.
+ * Standing mic for a full-size editor — a note, a journal entry. Transcript
+ * only; no audio is stored. Lives in the thumb row next to Done/Save.
+ *
+ * Dense inputs use their own trailing-icon mic instead: Paper checks the
+ * identity of a `TextInput`'s adornment, so that one has to be a real
+ * `TextInput.Icon` element and cannot be this button.
  */
-export default function NoteDictationButton({
-  listening,
-  capturing,
-  starting,
-  finishing,
-  sessionOpen,
+export default function DictationMicButton({
+  field: { listening, capturing, starting, finishing, sessionOpen },
   disabled = false,
   onPress,
 }: Props) {

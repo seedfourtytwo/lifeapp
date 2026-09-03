@@ -83,6 +83,8 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
     ['secondary text on surface', c.onSurfaceVariant, c.surface],
     ['secondary text on background', c.onSurfaceVariant, c.background],
     ['secondary text on surfaceVariant', c.onSurfaceVariant, c.surfaceVariant],
+    // The forecast strip is a tinted panel with full-strength figures on it.
+    ['body text on surfaceVariant', c.onSurface, c.surfaceVariant],
     ['error text on surface', c.error, c.surface],
     ['error text on background', c.error, c.background],
     // Filled containers carry their own label colour.

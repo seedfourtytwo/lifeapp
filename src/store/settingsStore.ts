@@ -15,11 +15,8 @@ import {
   type WeatherLocationMode,
 } from '../protocol/appSettings';
 import { isThemeMode, type ThemeMode } from '../theme/types';
-import { clamp01 } from '../utils/clamp01';
-import { defaultBubblePosition } from '../weather/bubblePosition';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
-const DEFAULT_BUBBLE = defaultBubblePosition();
 
 let settingsLoadGeneration = 0;
 
@@ -49,25 +46,16 @@ function parseOptionalNumber(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseNorm(value: string | null, fallback: number): number {
-  const n = parseOptionalNumber(value);
-  if (n == null) return fallback;
-  return clamp01(n);
-}
-
 interface SettingsState {
   themeMode: ThemeMode;
   appLanguage: AppLanguage;
   eveningCheckInEnabled: boolean;
   eveningCheckInTime: string;
   weatherWidgetEnabled: boolean;
-  calendarWidgetEnabled: boolean;
   weatherLocationMode: WeatherLocationMode;
   weatherPlaceName: string | null;
   weatherLat: number | null;
   weatherLon: number | null;
-  weatherBubbleX: number;
-  weatherBubbleY: number;
   isLoaded: boolean;
   load: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
@@ -75,14 +63,12 @@ interface SettingsState {
   setEveningCheckInEnabled: (enabled: boolean) => Promise<void>;
   setEveningCheckInTime: (time: string) => Promise<void>;
   setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
-  setCalendarWidgetEnabled: (enabled: boolean) => Promise<void>;
   setWeatherLocationMode: (mode: WeatherLocationMode) => Promise<void>;
   setWeatherPlace: (place: {
     placeName: string;
     lat: number;
     lon: number;
   }) => Promise<void>;
-  setWeatherBubblePosition: (x: number, y: number) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -91,13 +77,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   eveningCheckInEnabled: DEFAULT_EVENING_CHECK_IN_ENABLED,
   eveningCheckInTime: DEFAULT_EVENING_CHECK_IN_TIME,
   weatherWidgetEnabled: false,
-  calendarWidgetEnabled: false,
   weatherLocationMode: 'manual',
   weatherPlaceName: null,
   weatherLat: null,
   weatherLon: null,
-  weatherBubbleX: DEFAULT_BUBBLE.x,
-  weatherBubbleY: DEFAULT_BUBBLE.y,
   isLoaded: false,
 
   load: async () => {
@@ -114,13 +97,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           APP_SETTING_KEYS.eveningCheckInTime,
           APP_SETTING_KEYS.habitRemindersEnabled,
           APP_SETTING_KEYS.weatherWidgetEnabled,
-          APP_SETTING_KEYS.calendarWidgetEnabled,
           APP_SETTING_KEYS.weatherLocationMode,
           APP_SETTING_KEYS.weatherPlaceName,
           APP_SETTING_KEYS.weatherLat,
           APP_SETTING_KEYS.weatherLon,
-          APP_SETTING_KEYS.weatherBubbleX,
-          APP_SETTING_KEYS.weatherBubbleY,
           LEGACY_DARK_MODE_KEY,
         ]);
 
@@ -133,15 +113,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           stored.get(APP_SETTING_KEYS.habitRemindersEnabled) ?? null;
         const storedWeatherEnabled =
           stored.get(APP_SETTING_KEYS.weatherWidgetEnabled) ?? null;
-        const storedCalendarEnabled =
-          stored.get(APP_SETTING_KEYS.calendarWidgetEnabled) ?? null;
         const storedLocationMode =
           stored.get(APP_SETTING_KEYS.weatherLocationMode) ?? null;
         const storedPlaceName = stored.get(APP_SETTING_KEYS.weatherPlaceName) ?? null;
         const storedLat = stored.get(APP_SETTING_KEYS.weatherLat) ?? null;
         const storedLon = stored.get(APP_SETTING_KEYS.weatherLon) ?? null;
-        const storedBubbleX = stored.get(APP_SETTING_KEYS.weatherBubbleX) ?? null;
-        const storedBubbleY = stored.get(APP_SETTING_KEYS.weatherBubbleY) ?? null;
 
         let themeMode: ThemeMode = 'light';
         if (storedMode && isThemeMode(storedMode)) {
@@ -194,13 +170,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           eveningCheckInEnabled,
           eveningCheckInTime,
           weatherWidgetEnabled: parseBool(storedWeatherEnabled),
-          calendarWidgetEnabled: parseBool(storedCalendarEnabled),
           weatherLocationMode,
           weatherPlaceName: storedPlaceName,
           weatherLat: parseOptionalNumber(storedLat),
           weatherLon: parseOptionalNumber(storedLon),
-          weatherBubbleX: parseNorm(storedBubbleX, DEFAULT_BUBBLE.x),
-          weatherBubbleY: parseNorm(storedBubbleY, DEFAULT_BUBBLE.y),
           isLoaded: true,
         });
       });
@@ -272,18 +245,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     });
   },
 
-  setCalendarWidgetEnabled: async (enabled) => {
-    await withGuardedSettingsWrite(async () => {
-      const db = await getDatabase();
-      await settingsRepo.setSetting(
-        db,
-        APP_SETTING_KEYS.calendarWidgetEnabled,
-        enabled ? 'true' : 'false',
-      );
-      set({ calendarWidgetEnabled: enabled });
-    });
-  },
-
   setWeatherLocationMode: async (mode) => {
     await withGuardedSettingsWrite(async () => {
       const db = await getDatabase();
@@ -302,21 +263,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       });
       set({ weatherPlaceName: placeName, weatherLat: lat, weatherLon: lon });
     });
-  },
-
-  setWeatherBubblePosition: async (x, y) => {
-    const clampedX = clamp01(x);
-    const clampedY = clamp01(y);
-    // Optimistic UI — persist after so dragging stays smooth
-    set({ weatherBubbleX: clampedX, weatherBubbleY: clampedY });
-    try {
-      await withGuardedSettingsWrite(async () => {
-        const db = await getDatabase();
-        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleX, String(clampedX));
-        await settingsRepo.setSetting(db, APP_SETTING_KEYS.weatherBubbleY, String(clampedY));
-      });
-    } catch (error) {
-      console.error('Failed to save weather bubble position', error);
-    }
   },
 }));

@@ -18,12 +18,22 @@ export interface WeatherDayForecast {
   condition: WeatherCondition;
   /** Daily max chance of precipitation, 0–100. */
   precipProbabilityPct: number;
+  /**
+   * Mean relative humidity across the day, 0–100.
+   *
+   * Open-Meteo has no daily humidity variable — this is averaged from the
+   * hourly series, so it is null for a day with no hourly coverage and for
+   * anything read back from a cache written before humidity existed.
+   */
+  humidityMeanPct: number | null;
 }
 
 export interface WeatherForecast {
   currentTempC: number;
   currentWeatherCode: number;
   currentCondition: WeatherCondition;
+  /** Relative humidity right now, 0–100; null when the API omits it. */
+  currentHumidityPct: number | null;
   /** Today's max precip chance (from daily), 0–100. */
   precipProbabilityPct: number;
   /** Improving / worsening over the next few hours; null when flat or unknown. */

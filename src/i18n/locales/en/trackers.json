@@ -192,7 +192,9 @@
     "couldNotFinishTimerTitle": "Could not finish timer",
     "couldNotResetTodayTitle": "Could not reset today",
     "streakOne": "1-day streak",
-    "streakMany": "{{count}}-day streak"
+    "streakMany": "{{count}}-day streak",
+    "soundLoopsA11y": "Sound loops while the timer runs",
+    "soundPlaysOnceA11y": "Sound plays once, then the timer stops"
   },
   "lockScreen": {
     "paused": "Paused",

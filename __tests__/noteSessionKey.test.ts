@@ -10,14 +10,14 @@ describe('noteEditorSessionKey', () => {
     ).toBe('tracker:a:2025-01-02');
   });
 
-  it('keys a journal by notebook and date', () => {
+  it('keys a journal by notebook, date and chapter', () => {
     const date = '2025-01-02';
     expect(
       noteEditorSessionKey(
         { kind: 'journal', notebookId: 'nb', label: 'Ideas' },
         date,
       ),
-    ).toBe('journal:nb:2025-01-02');
+    ).toBe('journal:nb:2025-01-02:first');
     expect(
       noteEditorSessionKey(
         {
@@ -28,7 +28,7 @@ describe('noteEditorSessionKey', () => {
         },
         date,
       ),
-    ).toBe('journal:nb:2025-01-02');
+    ).toBe('journal:nb:2025-01-02:entry-1');
   });
 
   it('differs for two trackers on the same day', () => {

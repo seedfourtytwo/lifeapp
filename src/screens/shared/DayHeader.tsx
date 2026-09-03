@@ -7,6 +7,7 @@ import { typeScale } from '../../theme/typography';
 import { formatShortDate } from '../../utils/dates';
 import { APP_DAY_RESET_TIME_LABEL, currentAppCalendarDate } from '../../utils/dayRollover';
 import ActivityStrip, { type ActivityDay } from './ActivityStrip';
+import DayHeaderPeeks from './DayHeaderPeeks';
 
 type Props = {
   /** Calendar "now" from `useAppCalendarNow` — advances on day rollover. */
@@ -19,7 +20,12 @@ type Props = {
   /** Recent days for the strip; empty hides it. */
   activity?: ActivityDay[];
   activityLabel?: string;
-  /** Journal notebook buttons, aligned with the date. */
+  /**
+   * Tab-specific buttons, aligned with the date — journal notebooks, a history
+   * shortcut. The weather chip and the calendar glyph are *not* passed in here:
+   * they belong to the header on every tab, so `DayHeaderPeeks` renders them
+   * before whatever the tab adds.
+   */
   actions?: React.ReactNode;
 };
 
@@ -58,7 +64,10 @@ export default function DayHeader({
         >
           {date}
         </Text>
-        {actions ? <View style={styles.actions}>{actions}</View> : null}
+        <View style={styles.actions}>
+          <DayHeaderPeeks now={now} />
+          {actions}
+        </View>
       </View>
 
       {meta ? (
@@ -95,6 +104,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: space.sm,
     flexShrink: 0,
   },
 });

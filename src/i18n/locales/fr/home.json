@@ -29,26 +29,23 @@
   "emptyTabState": {
     "openTrackers": "Ouvrir les suivis"
   },
-  "chromeBubble": {
-    "opensCalendar": "Ouvre le calendrier",
-    "openCalendar": "Ouvrir le calendrier",
-    "openCalendarWithCount": "Ouvrir le calendrier, {{count}} à venir",
-    "todayDate": "Aujourd'hui {{date}}",
-    "upcomingCount": "{{count}} à venir",
+  "weatherChip": {
     "weatherWithCondition": "Météo {{temp}}, {{condition}}",
     "weatherOffline": "Météo hors ligne",
     "weatherLoading": "Chargement de la météo",
     "weatherUnavailable": "Météo indisponible",
     "rainChance": "Pluie {{pct}} %",
+    "humidity": "Humidité {{pct}} %",
     "trendImproving": "Amélioration prochaine",
     "trendWorsening": "Dégradation prochaine",
     "trendSteady": "Stable pour l'instant",
-    "tapToExpandForecast": "Appuyer pour afficher les prévisions sur 5 jours",
+    "tapToExpandForecast": "Appuyer pour afficher les prévisions",
     "tapToCollapseForecast": "Appuyer pour masquer les prévisions",
     "forecastExpanded": "Prévisions affichées",
     "forecastCollapsed": "Prévisions masquées",
-    "longPressForCalendar": "Appui long pour le calendrier",
-    "showCalendar": "Afficher le calendrier"
+    "forecastTitle": "Prévisions",
+    "stale": "Dernier relevé connu",
+    "close": "Fermer"
   },
   "weatherConditions": {
     "sunny": "Ensoleillé",

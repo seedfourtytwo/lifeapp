@@ -30,6 +30,7 @@ export default function NotebookButtons({
         <NoteIconButton
           key={notebook.id}
           hasNote={notebook.hasToday}
+          entryCount={notebook.todayCount}
           accentColor={notebook.color}
           icon={notebook.icon}
           onPress={() => onDictateNotebook(notebook.id)}

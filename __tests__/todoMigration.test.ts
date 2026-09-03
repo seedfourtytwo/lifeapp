@@ -52,7 +52,7 @@ describe('todos schema (v21)', () => {
 
     expect(tables(raw).has('todos')).toBe(true);
     const version = raw.prepare('SELECT version FROM schema_version').get() as { version: number };
-    expect(version.version).toBe(21);
+    expect(version.version).toBe(22);
   });
 
   it('keeps todos written before an upgrade', async () => {
@@ -70,7 +70,7 @@ describe('todos schema (v21)', () => {
     await runMigrations(db);
 
     const version = raw.prepare('SELECT version FROM schema_version').get() as { version: number };
-    expect(version.version).toBe(21);
+    expect(version.version).toBe(22);
     await expect(todoRepo.getAllTodos(db)).resolves.toEqual([]);
   });
 });

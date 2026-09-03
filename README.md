@@ -9,7 +9,7 @@ Data stays in SQLite on the phone: no account, no cloud sync.
 
 | Area | Notes |
 |------|--------|
-| **Home** | Habits / Counters / Nutrition / Todos tabs; optional weather chrome + calendar peek |
+| **Home** | Habits / Counters / Nutrition / Todos tabs; weather chip + calendar glyph in the day header, each opening a peek panel |
 | **Habits** | Check-off or timer; streaks; drag-reorder |
 | **Counters** | +/undo/edit total; optional daily target + streak; drag-reorder; daily reset |
 | **Nutrition** | Food catalog (protocol *catalog*, not a kind) + day log; weekly distinct-plant count |
@@ -17,14 +17,15 @@ Data stays in SQLite on the phone: no account, no cloud sync.
 | **Trackers** | Create, edit, archive/restore, delete; curated icons |
 | **Notes / journals** | Per-tracker day notes + journal notebooks; on-device mic dictation |
 | **Calendar** | Local events, recurrence, reminders (ambient — not a protocol kind) |
-| **Weather** | Mood chip + forecast strip (ambient); coarse location only |
+| **Weather** | Header chip (icon + temperature) opening a forecast peek with humidity (ambient); coarse location only |
 | **Insights** | Cross-tracker charts over event history |
 | **Settings → Data** | JSON export/import; granular Clear data… |
 | **i18n** | English + French (Todos strings are English-only, served to FR via fallback) |
 | **Life Protocol v1** | Zod-validated elements + events |
 
-**DB schema:** v21. Milestones: v12 lean wipe · v13 day notes · v14 daily journals ·
-v15 note share state · v16–v18 journal notebooks · v19–v20 food catalog · v21 todos.
+**DB schema:** v22. Milestones: v12 lean wipe · v13 day notes · v14 daily journals ·
+v15 note share state · v16–v18 journal notebooks · v19–v20 food catalog · v21 todos ·
+v22 journal chapters (several entries per notebook day).
 The authoritative value is `CURRENT_SCHEMA_VERSION` in [`src/db/migrations.ts`](src/db/migrations.ts).
 
 **Primary target:** Android phone. Web is for occasional desktop checks only.
@@ -37,7 +38,7 @@ Home (default)
 ├── Counters tab
 ├── Nutrition tab — this week's plate
 ├── Todos tab
-├── Ambient chrome — weather + calendar peek (optional in Settings)
+├── Day header — date, weather chip, calendar glyph (both peeks toggleable in Settings)
 └── More
     ├── Insights — charts over event history
     ├── Journal — notebooks, dated feed
@@ -49,7 +50,9 @@ Home (default)
 
 Each Home tab opens on the same day header: the date in the display face, a
 one-line status under it, and a fortnight strip showing which of the last 14
-days had anything logged.
+days had anything logged. Beside the date sit two glyphs — the weather chip
+(condition and temperature, nothing else) and the calendar — and each opens a
+`HeaderPeekSheet`: one small bottom panel, written once and used twice.
 
 - **Active** trackers appear on Home.
 - **Archive** hides from Home; history kept.

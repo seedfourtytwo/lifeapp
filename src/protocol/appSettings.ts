@@ -74,13 +74,16 @@ const AppSettingsObjectSchema = z.object({
   /** @deprecated Prefer eveningCheckInEnabled — kept for backup import. */
   habitRemindersEnabled: z.boolean().optional(),
   weatherWidgetEnabled: z.boolean().optional(),
-  calendarWidgetEnabled: z.boolean().optional(),
   weatherLocationMode: z.enum(WEATHER_LOCATION_MODES).optional(),
   weatherPlaceName: z.string().min(1).optional(),
   weatherLat: z.number().min(-90).max(90).optional(),
   weatherLon: z.number().min(-180).max(180).optional(),
-  weatherBubbleX: z.number().min(0).max(1).optional(),
-  weatherBubbleY: z.number().min(0).max(1).optional(),
+  /**
+   * Which journal notebook the Nutrition tab writes food notes into. A link,
+   * not a preference — it travels in backup so a restore does not offer to
+   * create a second food journal. An id nothing answers to is simply ignored.
+   */
+  foodJournalNotebookId: z.string().uuid().optional(),
 });
 
 /** Normalize legacy habitRemindersEnabled into eveningCheckInEnabled. */
@@ -103,13 +106,11 @@ export const APP_SETTING_KEYS = {
   /** Legacy key — read for migration only. */
   habitRemindersEnabled: 'habit_reminders_enabled',
   weatherWidgetEnabled: 'weather_widget_enabled',
-  calendarWidgetEnabled: 'calendar_widget_enabled',
   weatherLocationMode: 'weather_location_mode',
   weatherPlaceName: 'weather_place_name',
   weatherLat: 'weather_lat',
   weatherLon: 'weather_lon',
-  weatherBubbleX: 'weather_bubble_x',
-  weatherBubbleY: 'weather_bubble_y',
+  foodJournalNotebookId: 'food_journal_notebook_id',
 } as const;
 
 /** Accepts flexible input (8:00, 800, 08:00) and returns strict HH:mm. */

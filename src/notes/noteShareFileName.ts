@@ -1,3 +1,14 @@
+/**
+ * Which chapters of a notebook day a file holds.
+ *
+ * `chapters` are 1-based day positions, `total` is how many chapters that day
+ * has text in. A whole day is left unmarked so its name has not changed.
+ */
+export type NoteSharePart = {
+  chapters: number[];
+  total: number;
+};
+
 /** Safe `.txt` name for the system share sheet (Proton Drive and similar need a file). */
 export function noteShareFileName(opts: {
   kind: 'note' | 'journal';
@@ -5,6 +16,8 @@ export function noteShareFileName(opts: {
   date: string;
   /** 1 or omitted = no suffix; 2+ → `-2`, `-3`. */
   sequence?: number;
+  /** Omit for a whole day; set when only some chapters go out. */
+  part?: NoteSharePart;
   /**
    * Instant this share file was created. Makes each Share tap unique so
    * destinations that refuse overwrite (Proton Drive) can accept it again.
@@ -14,8 +27,24 @@ export function noteShareFileName(opts: {
   const stem = fileNameStem(opts.label) || (opts.kind === 'journal' ? 'journal' : 'note');
   const serial =
     opts.sequence != null && opts.sequence > 1 ? `-${opts.sequence}` : '';
+  const part = sharePartSegment(opts.part);
   const stamp = opts.sharedAt ? `-${compactShareStamp(opts.sharedAt)}` : '';
-  return `${stem}-${opts.date}${serial}${stamp}.txt`;
+  return `${stem}-${opts.date}${serial}${part}${stamp}.txt`;
+}
+
+/**
+ * How a subset announces itself in the file name.
+ *
+ * One chapter names itself — `-ch2` — because that is the fact worth filing by.
+ * Several become a count, `-ch2of4`: listing every number would run the name
+ * long for no gain once the reader has the file open in front of them.
+ */
+function sharePartSegment(part: NoteSharePart | undefined): string {
+  if (!part) return '';
+  const picked = part.chapters.length;
+  if (picked === 0 || picked >= part.total) return '';
+  if (picked === 1) return `-ch${part.chapters[0]}`;
+  return `-ch${picked}of${part.total}`;
 }
 
 /**

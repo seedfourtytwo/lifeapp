@@ -33,7 +33,7 @@ Shipped on main (local-first v1). Calendar tables landed in schema **v10–v11**
 - `src/store/calendarStore.ts` — Zustand mirror; does **not** schedule notifications
 - `src/hooks/useCalendarReminderSync.ts` — sole owner of calendar DATE notification sync
 - Screens: `CalendarScreen`, `CalendarEventEditorScreen`
-- Home: `HomeChromeBubble` + `CalendarPeekSheet`
+- Home: `DayHeaderPeeks` (day-header glyph) + `CalendarPeekSheet` in `HeaderPeekSheet`
 
 Occurrence expansion is centralized in the store (`occurrencesInRange`, `attentionOccurrences`). Event + reminder writes are transactional.
 

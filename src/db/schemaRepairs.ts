@@ -2,7 +2,6 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   DEFAULT_JOURNAL_NOTEBOOK_COLOR,
   DEFAULT_JOURNAL_NOTEBOOK_NAME,
-  joinJournalDayBodies,
   PROTOCOL_VERSION,
 } from '../protocol';
 import { newId } from '../utils/id';
@@ -92,11 +91,20 @@ export async function repairJournalNotebooks(db: SQLiteDatabase): Promise<void> 
 }
 
 /**
- * Rebuild pre-v16 daily_journals, which was UNIQUE(date) with no notebook_id.
+ * Both daily_journals table rebuilds, oldest first.
+ *
  * Must run *before* the CREATE TABLE IF NOT EXISTS, which would otherwise see a
- * table and leave the old shape in place.
+ * table and leave the old shape in place. A database old enough to need the
+ * v16 rebuild needs the v22 one straight after it, so they are chained here
+ * rather than left for two separate boots to notice.
  */
 export async function rebuildDailyJournals(db: SQLiteDatabase): Promise<void> {
+  await rebuildDailyJournalsToNotebooks(db);
+  await rebuildDailyJournalsToChapters(db);
+}
+
+/** v16: pre-notebook daily_journals was UNIQUE(date) with no notebook_id. */
+async function rebuildDailyJournalsToNotebooks(db: SQLiteDatabase): Promise<void> {
   const columns = await tableColumns(db, 'daily_journals');
   if (columns.size === 0 || columns.has('notebook_id')) return;
 
@@ -125,55 +133,88 @@ export async function rebuildDailyJournals(db: SQLiteDatabase): Promise<void> {
   await db.execAsync('ALTER TABLE daily_journals_v16 RENAME TO daily_journals');
 }
 
-/** One document per notebook per day: merge same-day fragments, drop empties, enforce it. */
-export async function repairDailyJournals(db: SQLiteDatabase): Promise<void> {
+/**
+ * v22: a notebook day holds several chapters.
+ *
+ * `UNIQUE (notebook_id, date)` is a table constraint, and SQLite cannot drop
+ * one in place — so the table is rebuilt into the new shape, the same way v16
+ * did it. Every existing row survives; each notebook day's rows are numbered
+ * afterwards by `renumberJournalChapters`.
+ */
+async function rebuildDailyJournalsToChapters(db: SQLiteDatabase): Promise<void> {
   const columns = await tableColumns(db, 'daily_journals');
-  if (!columns.has('notebook_id')) return;
+  if (columns.size === 0 || columns.has('sort_order')) return;
 
-  await mergeDuplicateJournalDays(db);
-  await db.runAsync(`DELETE FROM daily_journals WHERE trim(body) = ''`);
-  await db.execAsync('DROP INDEX IF EXISTS idx_daily_journals_notebook_date');
-  await db.execAsync(
-    'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_journals_notebook_date ON daily_journals(notebook_id, date)',
-  );
+  await db.execAsync(`
+    CREATE TABLE daily_journals_v22 (
+      id TEXT PRIMARY KEY NOT NULL,
+      notebook_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      body TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      protocol_version INTEGER NOT NULL,
+      FOREIGN KEY (notebook_id) REFERENCES journal_notebooks(id)
+    );
+  `);
+  await db.execAsync(`
+    INSERT INTO daily_journals_v22
+      (id, notebook_id, date, body, sort_order, created_at, updated_at, protocol_version)
+    SELECT id, notebook_id, date, body, 0, created_at, updated_at, protocol_version
+    FROM daily_journals;
+  `);
+  await db.execAsync('DROP TABLE daily_journals');
+  await db.execAsync('ALTER TABLE daily_journals_v22 RENAME TO daily_journals');
 }
 
-async function mergeDuplicateJournalDays(db: SQLiteDatabase): Promise<void> {
+/**
+ * Chapters, not one document per day.
+ *
+ * The inverse of what this did up to v21, and the inversion is the whole point:
+ * it used to join a day's rows into one body and delete the rest. Two rows for
+ * one notebook day are now the ordinary shape of a day someone wrote in twice,
+ * and nothing in the data distinguishes that from an old duplicate — so no row
+ * is ever merged away here. Whitespace-only rows still go: they carry no text
+ * to lose, and they used to light the Home note icon for an empty day (v18).
+ */
+export async function repairDailyJournals(db: SQLiteDatabase): Promise<void> {
+  const columns = await tableColumns(db, 'daily_journals');
+  if (!columns.has('notebook_id') || !columns.has('sort_order')) return;
+
+  await db.runAsync(`DELETE FROM daily_journals WHERE trim(body) = ''`);
+  // The v17..v21 unique index is the one thing that would still refuse a second
+  // chapter, and a rebuilt table can carry it no longer — but a database that
+  // reached the new column shape by other means might.
+  await db.execAsync('DROP INDEX IF EXISTS idx_daily_journals_notebook_date');
+  await db.execAsync(
+    'CREATE INDEX IF NOT EXISTS idx_daily_journals_notebook_chapter ON daily_journals(notebook_id, date, sort_order)',
+  );
+  await renumberJournalChapters(db);
+}
+
+/**
+ * Number every notebook day's chapters 0..n-1.
+ *
+ * Ordered by `(sort_order, created_at, updated_at, id)` — a total order, so
+ * running this twice is a no-op and the repair pass stays idempotent.
+ */
+async function renumberJournalChapters(db: SQLiteDatabase): Promise<void> {
   const groups = await db.getAllAsync<{ notebook_id: string; date: string }>(
     `SELECT notebook_id, date FROM daily_journals
-     GROUP BY notebook_id, date HAVING COUNT(*) > 1`,
+     GROUP BY notebook_id, date HAVING COUNT(*) > 1 OR MIN(sort_order) <> 0`,
   );
   for (const group of groups) {
-    const rows = await db.getAllAsync<{
-      id: string;
-      body: string;
-      updated_at: string;
-    }>(
-      `SELECT id, body, updated_at FROM daily_journals
+    const rows = await db.getAllAsync<{ id: string; sort_order: number }>(
+      `SELECT id, sort_order FROM daily_journals
        WHERE notebook_id = ? AND date = ?
-       ORDER BY created_at ASC, updated_at ASC`,
+       ORDER BY sort_order ASC, created_at ASC, updated_at ASC, id ASC`,
       group.notebook_id,
       group.date,
     );
-    if (rows.length < 2) continue;
-    const keep = rows[0];
-    if (!keep) continue;
-    const body = joinJournalDayBodies(rows.map((row) => row.body));
-    if (!body.trim()) {
-      for (const row of rows) {
-        await db.runAsync('DELETE FROM daily_journals WHERE id = ?', row.id);
-      }
-      continue;
-    }
-    const last = rows[rows.length - 1];
-    await db.runAsync(
-      'UPDATE daily_journals SET body = ?, updated_at = ? WHERE id = ?',
-      body,
-      last?.updated_at ?? keep.updated_at,
-      keep.id,
-    );
-    for (const extra of rows.slice(1)) {
-      await db.runAsync('DELETE FROM daily_journals WHERE id = ?', extra.id);
+    for (const [index, row] of rows.entries()) {
+      if (row.sort_order === index) continue;
+      await db.runAsync('UPDATE daily_journals SET sort_order = ? WHERE id = ?', index, row.id);
     }
   }
 }

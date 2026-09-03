@@ -29,14 +29,14 @@ const REFRESH_MS = 3 * 60 * 60 * 1000;
 interface WeatherState extends ResettableMirror {
   forecast: WeatherForecast | null;
   loading: boolean;
-  /** User-facing status under the bubble (e.g. No connection). */
+  /** User-facing status shown in the weather peek (e.g. No connection). */
   error: string | null;
   /** True when the last fetch failed due to network / timeout. */
   offline: boolean;
   lastFetchAt: number | null;
   refresh: (opts?: { force?: boolean; refreshGps?: boolean }) => Promise<void>;
   hydrateFromCache: () => Promise<void>;
-  /** Blank the bubble state only; the on-disk cache survives (see `reset`). */
+  /** Blank the in-memory forecast only; the on-disk cache survives (see `reset`). */
   clear: () => void;
 }
 

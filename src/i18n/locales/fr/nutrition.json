@@ -140,5 +140,16 @@
     "diversityKey": "Clé même plante",
     "portionLabel": "Portion",
     "portionGrams": "Grammes"
+  },
+  "foodJournal": {
+    "notebookName": "Journal alimentaire",
+    "startAction": "Démarrer un journal alimentaire",
+    "startHint": "Crée un carnet de journal pour vos notes sur l’alimentation",
+    "confirmTitle": "Démarrer un journal alimentaire ?",
+    "confirmBody": "Il occupera l’un de vos {{max}} carnets de journal. Vous pourrez le renommer ou le supprimer dans Plus → Journal.",
+    "confirmStart": "Démarrer",
+    "capTitle": "Plus de carnet disponible",
+    "capBody": "Vous avez déjà {{max}} carnets de journal, le maximum. Supprimez-en un dans Plus → Journal pour faire place à un journal alimentaire.",
+    "couldNotStartTitle": "Impossible de démarrer le journal alimentaire"
   }
 }

@@ -21,7 +21,7 @@ import {
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 21;
+const CURRENT_SCHEMA_VERSION = 22;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -39,6 +39,11 @@ const CURRENT_SCHEMA_VERSION = 21;
  *  Its own version rather than an edit to v19: a device that already ran v19
  *  sits at the steady state, where SCHEMA_SQL's CREATE TABLE IF NOT EXISTS is a
  *  no-op and the repair pass is skipped — so the columns would never arrive. */
+/** v21: todos. */
+/** v22: a journal notebook day holds several chapters instead of one document.
+ *  Rebuilds daily_journals without UNIQUE (notebook_id, date) — SQLite cannot
+ *  drop a table constraint in place — and adds sort_order. Existing rows all
+ *  survive; each notebook day's rows are numbered by created_at. */
 
 interface HabitElementRow {
   id: string;
@@ -228,6 +233,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   },
   21: async (db) => {
     await ensureTodoSchema(db);
+  },
+  22: async (db) => {
+    await ensureDailyJournalsSchema(db);
   },
 };
 

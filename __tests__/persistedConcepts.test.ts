@@ -131,6 +131,7 @@ const SEEDS: Record<
       notebookId: ctx.notebookId,
       date: DATE,
       body: 'Quiet morning',
+      sortOrder: 0,
       createdAt: TIME,
       updatedAt: TIME,
       protocolVersion: PROTOCOL_VERSION,

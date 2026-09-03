@@ -140,5 +140,16 @@
     "diversityKey": "Same-plant key",
     "portionLabel": "Portion",
     "portionGrams": "Grams"
+  },
+  "foodJournal": {
+    "notebookName": "Food journal",
+    "startAction": "Start a food journal",
+    "startHint": "Creates a journal notebook for notes about eating",
+    "confirmTitle": "Start a food journal?",
+    "confirmBody": "It becomes one of your {{max}} journal notebooks. Rename or remove it later under More → Journal.",
+    "confirmStart": "Start",
+    "capTitle": "No notebook left",
+    "capBody": "You already have {{max}} journal notebooks, the most the app keeps. Remove one under More → Journal to make room for a food journal.",
+    "couldNotStartTitle": "Could not start the food journal"
   }
 }

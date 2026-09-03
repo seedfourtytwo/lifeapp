@@ -127,7 +127,9 @@
     "englishOnlyHint": "Dictation understands English for now (French model later).",
     "takeTimeWarning": "About 3 minutes left in this take. Tap Done, then the mic, to continue.",
     "takeLimitDuration": "This take hit the 15-minute limit. It’s in the note — tap the mic to continue.",
-    "takeLimitCharacters": "This take hit the length limit. It’s in the note — tap the mic to continue."
+    "takeLimitCharacters": "This take hit the length limit. It’s in the note — tap the mic to continue.",
+    "startA11y": "Dictate with microphone",
+    "finishA11y": "Finish dictation"
   },
   "dateTime": {
     "today": "Today",

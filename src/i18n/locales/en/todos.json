@@ -1,7 +1,8 @@
 {
   "add": {
     "placeholder": "Add a todo",
-    "action": "Add"
+    "action": "Add",
+    "dictationTruncated": "That was longer than a todo title holds — the rest was cut."
   },
   "sections": {
     "overdue": "Overdue",
@@ -47,7 +48,8 @@
     "deleteConfirmTitle": "Delete this todo?",
     "deleteConfirmBody": "It is removed for good and never appears in history.",
     "deleteConfirmAction": "Delete",
-    "titleRequired": "Give it a title first"
+    "titleRequired": "Give it a title first",
+    "noteDictationTruncated": "Note is at the character limit — some dictation was cut."
   },
   "history": {
     "title": "Completed",

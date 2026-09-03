@@ -192,7 +192,9 @@
     "couldNotFinishTimerTitle": "Impossible de terminer le minuteur",
     "couldNotResetTodayTitle": "Impossible de réinitialiser aujourd'hui",
     "streakOne": "Série de 1 jour",
-    "streakMany": "Série de {{count}} jours"
+    "streakMany": "Série de {{count}} jours",
+    "soundLoopsA11y": "Le son tourne en boucle pendant le minuteur",
+    "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête"
   },
   "lockScreen": {
     "paused": "En pause",

@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Button, Dialog, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../../components/QuietText';
 import { TODO_NOTE_MAX_LENGTH, TODO_TITLE_MAX_LENGTH, type Todo } from '../../protocol';
+import { dictationMicIcon } from '../../dictation/dictationField';
+import { livePreviewText } from '../../dictation/livePreview';
+import { useDictationField } from '../../dictation/useDictationField';
 
 export interface TodoDraft {
   title: string;
@@ -38,6 +42,31 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * The note is the only field here worth speaking into — a title is a few
+   * words you are already holding the phone to type, and a deadline is eight
+   * digits. Dictation is Android-only and English-only, so on anything else
+   * `supported` is false and the field is exactly what it was.
+   */
+  const dictation = useDictationField({
+    value: note,
+    onChangeText: setNote,
+    maxLength: TODO_NOTE_MAX_LENGTH,
+    active: visible,
+    disabled: saving,
+    truncatedNotice: t('editor.noteDictationTruncated'),
+  });
+  const mic = dictationMicIcon(dictation);
+  const heard = dictation.sessionOpen ? livePreviewText(dictation.live) : '';
+  const shownNote = heard ? (note.trimEnd() ? `${note.trimEnd()}\n${heard}` : heard) : note;
+  const dictationLine = dictation.error
+    ? { text: dictation.error, tone: 'error' as const }
+    : (dictation.status && { text: dictation.status.message, tone: 'notice' as const }) ||
+      dictation.notice;
+  // A take in flight owns the dialog: closing or saving now would throw the
+  // words away between the mic stopping and the transcript arriving.
+  const locked = saving || dictation.busy;
 
   // Reseed whenever the sheet opens, so a second todo never inherits the
   // first one's text.
@@ -98,7 +127,7 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={saving ? () => {} : onDismiss}>
+      <Dialog visible={visible} onDismiss={locked ? () => {} : onDismiss}>
         <Dialog.Title>{todo ? t('editor.editTitle') : t('editor.newTitle')}</Dialog.Title>
         <Dialog.Content style={styles.content}>
           <TextInput
@@ -142,11 +171,47 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
             mode="outlined"
             style={styles.note}
             label={t('editor.noteLabel')}
-            value={note}
-            onChangeText={setNote}
+            value={shownNote}
+            onChangeText={(next) => {
+              dictation.clearNotices();
+              setNote(next);
+            }}
             maxLength={TODO_NOTE_MAX_LENGTH}
             multiline
+            editable={!dictation.sessionOpen}
+            right={
+              dictation.supported ? (
+                <TextInput.Icon
+                  icon={mic.icon}
+                  disabled={mic.disabled}
+                  onPress={mic.action === 'finish' ? dictation.finish : dictation.start}
+                  // The mic is about to dismiss the keyboard; do not raise it first.
+                  forceTextInputFocus={false}
+                  accessibilityLabel={
+                    mic.action === 'finish'
+                      ? tCommon('dictation.finishA11y')
+                      : tCommon('dictation.startA11y')
+                  }
+                />
+              ) : undefined
+            }
           />
+
+          {dictationLine ? (
+            dictationLine.tone === 'error' ? (
+              <Text
+                variant="bodySmall"
+                accessibilityLiveRegion="polite"
+                style={{ color: theme.colors.error }}
+              >
+                {dictationLine.text}
+              </Text>
+            ) : (
+              <QuietText variant="bodySmall" accessibilityLiveRegion="polite">
+                {dictationLine.text}
+              </QuietText>
+            )
+          ) : null}
 
           {error ? (
             <Text variant="bodySmall" style={{ color: theme.colors.error }}>
@@ -160,7 +225,7 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
                 compact
                 icon="trash-can-outline"
                 textColor={theme.colors.error}
-                disabled={saving}
+                disabled={locked}
                 onPress={handleDelete}
               >
                 {t('editor.delete')}
@@ -169,10 +234,10 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
           ) : null}
         </Dialog.Content>
         <Dialog.Actions>
-          <Button disabled={saving} onPress={onDismiss}>
+          <Button disabled={locked} onPress={onDismiss}>
             {tCommon('actions.cancel')}
           </Button>
-          <Button disabled={saving} onPress={() => void handleSave()}>
+          <Button disabled={locked} onPress={() => void handleSave()}>
             {t('editor.save')}
           </Button>
         </Dialog.Actions>

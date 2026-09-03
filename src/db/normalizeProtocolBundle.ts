@@ -2,7 +2,6 @@ import { isBundledHabitSoundId } from '../protocol/habitSoundCatalog';
 import {
   DEFAULT_JOURNAL_NOTEBOOK_COLOR,
   DEFAULT_JOURNAL_NOTEBOOK_NAME,
-  joinJournalDayBodies,
   PROTOCOL_VERSION,
 } from '../protocol';
 import { newId } from '../utils/id';
@@ -186,7 +185,7 @@ function normalizeJournalNotebooksAndEntries(
   }
 
   const dailyJournals = rawJournals
-    ? mergeDailyJournalsByNotebookDay(
+    ? orderDailyJournalChapters(
         rawJournals.map((row) => {
           if (!isRecord(row)) return row;
           const notebookId =
@@ -211,7 +210,24 @@ function normalizeJournalNotebooksAndEntries(
   };
 }
 
-function mergeDailyJournalsByNotebookDay(rows: unknown[]): unknown[] {
+/**
+ * Number each notebook day's chapters 0..n-1.
+ *
+ * This used to *merge* a day's rows into one body, because the app kept one
+ * document per notebook day. Since v22 those rows are the day's chapters and
+ * every one of them is user writing, so the job here is ordering, not folding.
+ *
+ * Legacy ambiguity, stated plainly: a bundle written before v22 can hold two
+ * rows for one day either because the old import bug duplicated them or
+ * because a pre-v17 device never got merged — and nothing in the data tells
+ * the two apart. Keeping both is the recoverable mistake (the reader deletes a
+ * chapter); merging is not (the text is concatenated and cannot be split
+ * again), so both are kept.
+ *
+ * Ordering key is `(sortOrder, createdAt, id)`, and the numbering is dense, so
+ * normalizing an already-normalized bundle is a fixed point.
+ */
+function orderDailyJournalChapters(rows: unknown[]): unknown[] {
   const groups = new Map<string, Record<string, unknown>[]>();
   const passthrough: unknown[] = [];
   for (const row of rows) {
@@ -224,17 +240,26 @@ function mergeDailyJournalsByNotebookDay(rows: unknown[]): unknown[] {
     list.push(row);
     groups.set(key, list);
   }
-  const merged: unknown[] = [];
+  const ordered: unknown[] = [];
   for (const list of groups.values()) {
-    list.sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')));
-    const first = list[0];
-    const last = list[list.length - 1];
-    if (!first) continue;
-    merged.push({
-      ...first,
-      body: joinJournalDayBodies(list.map((row) => String(row.body ?? ''))),
-      updatedAt: last?.updatedAt ?? first.updatedAt,
+    list.sort(compareChapterRows);
+    list.forEach((row, index) => {
+      ordered.push({ ...row, sortOrder: index });
     });
   }
-  return [...merged, ...passthrough];
+  return [...ordered, ...passthrough];
+}
+
+/** Total order over one day's rows: stated position, then age, then id. */
+function compareChapterRows(
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+): number {
+  const orderA = typeof a.sortOrder === 'number' ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+  const orderB = typeof b.sortOrder === 'number' ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+  if (orderA !== orderB) return orderA - orderB;
+  const createdA = String(a.createdAt ?? '');
+  const createdB = String(b.createdAt ?? '');
+  if (createdA !== createdB) return createdA.localeCompare(createdB);
+  return String(a.id ?? '').localeCompare(String(b.id ?? ''));
 }

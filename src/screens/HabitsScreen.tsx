@@ -168,9 +168,13 @@ export default function HabitsScreen({
     return (
       <>
         <HomeTabLoadingPane
-          notebooks={notebooks}
-          onDictateNotebook={onDictateNotebook}
-          onEditNotebook={onEditNotebook}
+          actions={
+            <NotebookButtons
+              notebooks={notebooks}
+              onDictateNotebook={onDictateNotebook}
+              onEditNotebook={onEditNotebook}
+            />
+          }
         />
         {editorHost}
       </>

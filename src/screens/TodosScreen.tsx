@@ -7,7 +7,6 @@ import {
   Portal,
   Snackbar,
   Text,
-  TextInput,
   useTheme,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -18,11 +17,12 @@ import QuietText from '../components/QuietText';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import type { RootStackParamList } from '../navigation/types';
-import { TODO_TITLE_MAX_LENGTH, groupOpenTodos, type Todo } from '../protocol';
+import { groupOpenTodos, type Todo } from '../protocol';
 import { useTodoStore } from '../store/todoStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { DOCK_RESERVE } from '../ui/homeInsets';
 import TodoEditorSheet, { type TodoDraft } from './todos/TodoEditorSheet';
+import TodoQuickAdd from './todos/TodoQuickAdd';
 import TodoRow from './todos/TodoRow';
 import DayHeader from './shared/DayHeader';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
@@ -171,26 +171,13 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
           }
         />
 
-        <TextInput
-          mode="outlined"
-          dense
+        <TodoQuickAdd
           value={draftTitle}
           onChangeText={setDraftTitle}
-          placeholder={t('add.placeholder')}
-          maxLength={TODO_TITLE_MAX_LENGTH}
-          returnKeyType="done"
-          onSubmitEditing={handleQuickAdd}
-          blurOnSubmit={false}
-          style={todoStyles.addField}
-          right={
-            draftTitle.trim().length > 0 ? (
-              <TextInput.Icon
-                icon="plus"
-                onPress={handleQuickAdd}
-                accessibilityLabel={t('add.action')}
-              />
-            ) : undefined
-          }
+          onSubmit={handleQuickAdd}
+          // The editor sits on top of this field with a mic of its own; only
+          // one take can be open at a time, so this one stands down.
+          dictationActive={!editorOpen}
         />
 
         {groups.length === 0 ? (
@@ -277,9 +264,6 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
 }
 
 const todoStyles = StyleSheet.create({
-  addField: {
-    marginBottom: 16,
-  },
   section: {
     marginBottom: 12,
   },

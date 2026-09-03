@@ -13,7 +13,11 @@
     "editJournalForA11y": "Edit journal for {{date}}",
     "addJournalForA11y": "Add journal for {{date}}",
     "editNoteForA11y": "Edit note for {{name}}",
-    "couldNotLoadJournalsFallback": "Could not load journals"
+    "couldNotLoadJournalsFallback": "Could not load journals",
+    "chapterHeading": "Chapter {{number}}",
+    "addChapter": "Add a chapter",
+    "addChapterA11y": "Add a chapter to {{name}} for {{date}}",
+    "openChapterA11y": "Open chapter {{number}} of {{name}} for {{date}}"
   },
   "notebooks": {
     "title": "Notebooks",
@@ -42,5 +46,34 @@
   "editorSheet": {
     "cancel": "Cancel",
     "save": "Save"
+  },
+  "chapters": {
+    "label": "Chapter {{number}}",
+    "jumpLabel": "{{number}} · {{preview}}",
+    "of": "of {{count}}",
+    "jumpA11y": "Chapter {{number}} of {{count}}. Jump to another chapter",
+    "previousA11y": "Previous chapter",
+    "nextA11y": "Next chapter",
+    "addA11y": "Start a new chapter",
+    "deleteA11y": "Delete chapter {{number}}",
+    "deleteTitle": "Delete chapter {{number}}?",
+    "deleteBody": "Its text is removed. This cannot be undone.",
+    "deleteAction": "Delete",
+    "countA11y": "{{count}} chapters today"
+  },
+  "share": {
+    "shareTitle": "Share which chapters?",
+    "copyTitle": "Copy which chapters?",
+    "selectAll": "All",
+    "selectNone": "None",
+    "selectedCount": "{{count}} of {{total}} selected",
+    "toggleA11y": "Include chapter {{number}}",
+    "statusNever": "Not shared",
+    "statusStale": "Changed since sharing",
+    "statusCurrent": "Shared",
+    "confirmShare": "Share",
+    "confirmCopy": "Copy",
+    "cancel": "Cancel",
+    "nothingSelected": "Pick at least one chapter"
   }
 }

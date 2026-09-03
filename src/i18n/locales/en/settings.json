@@ -22,7 +22,6 @@
   "homeChrome": {
     "sectionTitle": "Home",
     "weatherTitle": "Weather",
-    "calendarTitle": "Calendar",
     "on": "On",
     "off": "Off"
   },

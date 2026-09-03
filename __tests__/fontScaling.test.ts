@@ -20,6 +20,8 @@ import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
 import { trackerCardStyles } from '../src/kinds/trackerCardStyles';
 import { StreakFireCount } from '../src/kinds/StreakFireCount';
+import { forecastStripStyles } from '../src/components/weather/WeatherForecastStrip';
+import { noteIconButtonStyles } from '../src/notes/NoteIconButton';
 
 type Style = Record<string, unknown>;
 
@@ -37,6 +39,19 @@ describe('boxes that hold text state a floor, not a fixed height', () => {
   });
 
   /**
+   * The journal chapter count sits in the corner of the note icon. It is text,
+   * so it takes a floor and grows — but only so far: the cap beside it in
+   * NoteIconButton is what keeps two digits from sliding off the glyph.
+   */
+  it('the chapter count capsule states a floor and no fixed height', () => {
+    const badge = noteIconButtonStyles.badge as Style;
+    expect(badge.minHeight).toEqual(expect.any(Number));
+    expect(badge.height).toBeUndefined();
+    expect(badge.minWidth).toEqual(expect.any(Number));
+    expect(badge.width).toBeUndefined();
+  });
+
+  /**
    * The icon buttons keep a fixed 48pt box on purpose: they hold no text, and a
    * touch target should not move because the system font changed.
    */
@@ -44,6 +59,25 @@ describe('boxes that hold text state a floor, not a fixed height', () => {
     const button = trackerCardStyles.iconButton as Style;
     expect(button.width).toBe(48);
     expect(button.height).toBe(48);
+  });
+
+  /**
+   * The forecast row used to be a fixed 100pt box floating beside the weather
+   * bubble, sized in pixels because its position was too. Inside the peek
+   * sheet it is a normal block of five stacked labels per column, so it takes
+   * a floor and grows.
+   */
+  it('the forecast strip states a floor and no fixed height or width', () => {
+    const strip = forecastStripStyles.strip as Style;
+    expect(strip.minHeight).toEqual(expect.any(Number));
+    expect(strip.height).toBeUndefined();
+    expect(strip.width).toBeUndefined();
+
+    const column = forecastStripStyles.dayCol as Style;
+    expect(column.height).toBeUndefined();
+    expect(column.width).toBeUndefined();
+    // Columns share the row evenly instead of each claiming 52pt.
+    expect(column.flex).toBe(1);
   });
 });
 

@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Searchbar, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, Searchbar, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -19,9 +19,11 @@ import {
   type NamedFood,
 } from '../nutrition/foodFilters';
 import { searchFoodItems } from '../nutrition/search';
+import { useFoodJournal } from '../nutrition/useFoodJournal';
 import { computeWeekDiversity, loggedFoodIdsForDate } from '../nutrition/weekDiversity';
 import type { FoodItemInput } from '../nutrition/foodCatalog';
 import type { RootStackParamList } from '../navigation/types';
+import type { HomeNotebookChip } from '../notes';
 import type { FoodItem } from '../protocol';
 import { activeFoodItems, useFoodStore } from '../store/foodStore';
 import { getDateLocale } from '../i18n';
@@ -33,11 +35,24 @@ import FoodRow from './nutrition/FoodRow';
 import WeekDayStrip from './nutrition/WeekDayStrip';
 import WeekPlantProgress from './nutrition/WeekPlantProgress';
 import DayHeader from './shared/DayHeader';
+import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
+import NotebookButtons from './shared/NotebookButtons';
 import { HomeTabScrollView } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles } from './shared/screenStyles';
 
 /** A short query can match most of the catalog; cap what actually mounts. */
 const SEARCH_RESULT_LIMIT = 50;
+
+type Props = {
+  /** Every journal notebook Home knows about today. */
+  notebooks: HomeNotebookChip[];
+  /** Tap the food journal: today's entry + dictation. */
+  onDictateNotebook: (notebookId: string) => void;
+  /** Long-press, and the tap that just created it: today's entry, no mic. */
+  onEditNotebook: (notebookId: string) => void;
+  /** A notebook was created here — Home's chip list needs refetching. */
+  onNotebooksChanged?: () => void;
+};
 
 /**
  * Home Nutrition tab. Shows this week's plate, not the catalogue: the default
@@ -47,8 +62,17 @@ const SEARCH_RESULT_LIMIT = 50;
  *
  * Quantities and intake maths are deliberately not here yet; this answers
  * "did I eat enough different plants".
+ *
+ * The food **journal** in the header is a separate thing from the food **log**
+ * below it: free text about eating, kept in an ordinary journal notebook, while
+ * the rows are structured catalog ticks that drive the weekly plant count.
  */
-function NutritionScreen() {
+function NutritionScreen({
+  notebooks,
+  onDictateNotebook,
+  onEditNotebook,
+  onNotebooksChanged,
+}: Props) {
   const theme = useTheme();
   const { t, i18n } = useTranslation('nutrition');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -183,6 +207,37 @@ function NutritionScreen() {
     [toggleLogged, selectedDate],
   );
 
+  const foodJournal = useFoodJournal({
+    notebooks,
+    onOpen: onEditNotebook,
+    onCreated: onNotebooksChanged,
+  });
+
+  /**
+   * Once the notebook exists this is the same control every other Home tab
+   * shows — tap to dictate, long-press to edit, badged with today's chapters.
+   * Until then it is an offer, because a notebook is a fifth of the budget.
+   */
+  const headerActions = !foodJournal.ready ? null : foodJournal.notebook ? (
+    <NotebookButtons
+      notebooks={[foodJournal.notebook]}
+      onDictateNotebook={onDictateNotebook}
+      onEditNotebook={onEditNotebook}
+    />
+  ) : (
+    <IconButton
+      icon="notebook-plus-outline"
+      size={22}
+      iconColor={theme.colors.onSurfaceVariant}
+      disabled={foodJournal.starting}
+      onPress={foodJournal.start}
+      accessibilityLabel={t('foodJournal.startAction')}
+      accessibilityHint={t('foodJournal.startHint')}
+      style={styles.journalButton}
+      hitSlop={8}
+    />
+  );
+
   const openIngredients = useCallback(
     () => navigation.navigate('Ingredients'),
     [navigation],
@@ -214,12 +269,10 @@ function NutritionScreen() {
     [trimmedQuery, named, items],
   );
 
+  // The same header the loaded tab draws, so the date and the food-journal
+  // button are already where they belong when the week's rows arrive.
   if (!loaded && loading) {
-    return (
-      <View style={homeTabScreenStyles.centered}>
-        <ActivityIndicator />
-      </View>
-    );
+    return <HomeTabLoadingPane actions={headerActions} />;
   }
 
   return (
@@ -234,7 +287,7 @@ function NutritionScreen() {
           </Text>
         ) : null}
 
-        <DayHeader now={now} />
+        <DayHeader now={now} actions={headerActions} />
 
         <WeekPlantProgress diversity={diversity} />
 
@@ -339,6 +392,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 16,
     alignItems: 'center',
+  },
+  journalButton: {
+    margin: 0,
   },
 });
 

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   type AppStateStatus,
+  BackHandler,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -14,17 +15,14 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from 'react-native-paper';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import HomeChromeBubble from '../components/HomeChromeBubble';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
-import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost, useNoteEditorSession, type HomeNotebookChip } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -34,29 +32,18 @@ import CountersScreen from './CountersScreen';
 import HabitsScreen from './HabitsScreen';
 import NutritionScreen from './NutritionScreen';
 import TodosScreen from './TodosScreen';
-
-type HomeTab = 'habits' | 'counters' | 'nutrition' | 'todos';
-
-type DockIconName = keyof typeof MaterialCommunityIcons.glyphMap;
+import SettingsMenuScreen from './settings/SettingsMenuScreen';
+import {
+  HOME_DOCK_ITEMS,
+  homeBackTarget,
+  homeTabAtOffset,
+  homeTabIndex,
+  type HomeTab,
+} from './home/homePager';
 
 /** Throttle GPS refresh so foregrounding doesn't spam location. */
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
 let lastGpsRefreshAt = 0;
-
-const TAB_ORDER: HomeTab[] = ['habits', 'counters', 'nutrition', 'todos'];
-
-type DockTabLabelKey =
-  | 'dock.habitsTab'
-  | 'dock.countersTab'
-  | 'dock.nutritionTab'
-  | 'dock.todosTab';
-
-const TABS: { value: HomeTab; labelKey: DockTabLabelKey; icon: DockIconName }[] = [
-  { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
-  { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
-  { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'silverware-fork-knife' },
-  { value: 'todos', labelKey: 'dock.todosTab', icon: 'format-list-checks' },
-];
 
 /**
  * One pager page. Inactive pages stay mounted (scroll position and state
@@ -92,16 +79,21 @@ export default function HomeScreen() {
   const { decorations: deco, isCartoon } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: pageWidth } = useWindowDimensions();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const pagerRef = useRef<ScrollView>(null);
   const tabRef = useRef<HomeTab>('habits');
   /**
-   * All four pages mount at startup and stay mounted, so a swipe never lands on
+   * All five pages mount at startup and stay mounted, so a swipe never lands on
    * an empty page and each tab keeps its scroll position and state. Every Home
    * tab's list is bounded by design (Nutrition shows this week's plate, not the
-   * catalogue) — keep it that way, or this becomes a cold-start cost.
+   * catalogue; More is a fixed list of rows) — keep it that way, or this
+   * becomes a cold-start cost.
    */
   const [tab, setTab] = useState<HomeTab>('habits');
+  /**
+   * The page More was entered from. Back on More returns there, which is what
+   * popping the stack did when More was a pushed screen.
+   */
+  const moreOpenedFrom = useRef<HomeTab>('habits');
   const [pagerHeight, setPagerHeight] = useState(0);
   const [notebooks, setNotebooks] = useState<HomeNotebookChip[]>([]);
   /** Tracker note sheet open on the active Habits/Counters tab. */
@@ -120,7 +112,7 @@ export default function HomeScreen() {
     try {
       await reloadNotebooksStore();
       const db = await getDatabase();
-      const todayIds = await dailyJournalRepo.getNotebookIdsWithJournalsOnDate(db, today);
+      const todayCounts = await dailyJournalRepo.getJournalChapterCountsOnDate(db, today);
       const rows = useJournalNotebookStore.getState().notebooks;
       setNotebooks(
         rows.map((notebook) => ({
@@ -128,7 +120,8 @@ export default function HomeScreen() {
           name: notebook.name,
           color: notebook.color,
           icon: notebook.icon,
-          hasToday: todayIds.has(notebook.id),
+          hasToday: (todayCounts.get(notebook.id) ?? 0) > 0,
+          todayCount: todayCounts.get(notebook.id) ?? 0,
         })),
       );
     } catch {
@@ -159,6 +152,10 @@ export default function HomeScreen() {
     // Inactive tab dismisses its sheet; clear the swipe lock until the active tab reports.
     setTrackerNotesOpen(false);
     setTrackerDragActive(false);
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== 'more') moreOpenedFrom.current = tab;
   }, [tab]);
 
   useDayRolloverRefresh();
@@ -194,7 +191,6 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [weatherWidgetEnabled, weatherLocationMode, refreshWeather]);
 
-  const showChrome = weatherWidgetEnabled;
   const activeColor = isCartoon
     ? theme.colors.onSecondaryContainer
     : theme.colors.primary;
@@ -214,7 +210,14 @@ export default function HomeScreen() {
     opts?: { dictate?: boolean },
   ) => {
     const today = currentAppCalendarDate(now);
-    const chip = notebooks.find((notebook) => notebook.id === notebookId);
+    // The chips lag a notebook created moments ago (Nutrition's food journal),
+    // so fall back to the store the creation already refreshed — otherwise the
+    // sheet opens on a nameless, glyphless journal.
+    const chip =
+      notebooks.find((notebook) => notebook.id === notebookId) ??
+      useJournalNotebookStore
+        .getState()
+        .notebooks.find((notebook) => notebook.id === notebookId);
     const openOpts = opts?.dictate ? { dictate: true } : undefined;
     void noteEditor.open(
       {
@@ -228,17 +231,38 @@ export default function HomeScreen() {
     );
   };
 
-  const scrollToTab = (next: HomeTab, animated = true) => {
-    const index = TAB_ORDER.indexOf(next);
-    pagerRef.current?.scrollTo({ x: index * pageWidth, animated });
-    tabRef.current = next;
-    setTab(next);
-  };
+  /**
+   * Stable handlers for the pages. `openTodayNotebook` closes over `now`, the
+   * chips and the editor session, so it is a fresh function every render — the
+   * pages get these instead, or a memoised page (Nutrition) would re-render on
+   * every tab change, which is the one thing its memo exists to prevent.
+   */
+  const openTodayNotebookRef = useRef(openTodayNotebook);
+  openTodayNotebookRef.current = openTodayNotebook;
+
+  const dictateTodayNotebook = useCallback(
+    (notebookId: string) => void openTodayNotebookRef.current(notebookId, { dictate: true }),
+    [],
+  );
+  const editTodayNotebook = useCallback(
+    (notebookId: string) => void openTodayNotebookRef.current(notebookId),
+    [],
+  );
+  const handleNotebooksChanged = useCallback(() => {
+    void reloadTodayNotebooks();
+  }, [reloadTodayNotebooks]);
+
+  const scrollToTab = useCallback(
+    (next: HomeTab, animated = true) => {
+      pagerRef.current?.scrollTo({ x: homeTabIndex(next) * pageWidth, animated });
+      tabRef.current = next;
+      setTab(next);
+    },
+    [pageWidth],
+  );
 
   const onPagerMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = event.nativeEvent.contentOffset.x;
-    const index = Math.round(x / Math.max(pageWidth, 1));
-    const next = TAB_ORDER[Math.min(Math.max(index, 0), TAB_ORDER.length - 1)] ?? 'habits';
+    const next = homeTabAtOffset(event.nativeEvent.contentOffset.x, pageWidth);
     if (next !== tabRef.current) {
       tabRef.current = next;
       setTab(next);
@@ -247,9 +271,28 @@ export default function HomeScreen() {
 
   // Keep pager aligned if window width changes (rotation / fold).
   useEffect(() => {
-    const index = TAB_ORDER.indexOf(tabRef.current);
-    pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+    pagerRef.current?.scrollTo({ x: homeTabIndex(tabRef.current) * pageWidth, animated: false });
   }, [pageWidth]);
+
+  /**
+   * Hardware back. Only More claims it — it swipes back to the page it was
+   * opened from, the way popping the stack used to. Everything else falls
+   * through to the navigator, so back from a content page still leaves the app
+   * and back from a pushed screen (Trackers, Settings…) still pops it: this
+   * listener is registered only while Home is the focused screen, and a later
+   * listener is asked first, so returning false hands the press straight back.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        const target = homeBackTarget(tabRef.current, moreOpenedFrom.current);
+        if (target == null) return false;
+        scrollToTab(target);
+        return true;
+      });
+      return () => sub.remove();
+    }, [scrollToTab]),
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -277,8 +320,8 @@ export default function HomeScreen() {
           <HomePagerPage active={tab === 'habits'} width={pageWidth} height={pagerHeight}>
             <HabitsScreen
               notebooks={notebooks}
-              onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
-              onEditNotebook={(id) => void openTodayNotebook(id)}
+              onDictateNotebook={dictateTodayNotebook}
+              onEditNotebook={editTodayNotebook}
               journalOpen={journalOpen}
               notesActive={tab === 'habits'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}
@@ -289,8 +332,8 @@ export default function HomeScreen() {
           <HomePagerPage active={tab === 'counters'} width={pageWidth} height={pagerHeight}>
             <CountersScreen
               notebooks={notebooks}
-              onDictateNotebook={(id) => void openTodayNotebook(id, { dictate: true })}
-              onEditNotebook={(id) => void openTodayNotebook(id)}
+              onDictateNotebook={dictateTodayNotebook}
+              onEditNotebook={editTodayNotebook}
               journalOpen={journalOpen}
               notesActive={tab === 'counters'}
               onBeforeOpenTrackerNote={noteEditor.dismiss}
@@ -299,15 +342,21 @@ export default function HomeScreen() {
             />
           </HomePagerPage>
           <HomePagerPage active={tab === 'nutrition'} width={pageWidth} height={pagerHeight}>
-            <NutritionScreen />
+            <NutritionScreen
+              notebooks={notebooks}
+              onDictateNotebook={dictateTodayNotebook}
+              onEditNotebook={editTodayNotebook}
+              onNotebooksChanged={handleNotebooksChanged}
+            />
           </HomePagerPage>
           <HomePagerPage active={tab === 'todos'} width={pageWidth} height={pagerHeight}>
             <TodosScreen onTrackerDragActiveChange={setTrackerDragActive} />
           </HomePagerPage>
+          <HomePagerPage active={tab === 'more'} width={pageWidth} height={pagerHeight}>
+            <SettingsMenuScreen />
+          </HomePagerPage>
         </ScrollView>
       </View>
-
-      {showChrome ? <HomeChromeBubble /> : null}
 
       <View
         style={[
@@ -320,7 +369,7 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {TABS.map(({ value, labelKey, icon }) => {
+        {HOME_DOCK_ITEMS.map(({ value, labelKey, icon }) => {
           const active = tab === value;
           const color = active ? activeColor : quietColor;
           const label = t(labelKey);
@@ -343,15 +392,6 @@ export default function HomeScreen() {
             </Pressable>
           );
         })}
-
-        <Pressable
-          onPress={() => navigation.navigate('SettingsMenu')}
-          style={styles.dockItem}
-          accessibilityRole="button"
-          accessibilityLabel={t('dock.more')}
-        >
-          <MaterialCommunityIcons name="dots-horizontal" size={24} color={quietColor} />
-        </Pressable>
       </View>
 
       <NoteEditorHost session={noteEditor} />

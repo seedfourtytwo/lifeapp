@@ -3,41 +3,48 @@ import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import type { WeatherDayForecast } from '../../weather/types';
-import {
-  STRIP_DAY_WIDTH,
-  STRIP_HEIGHT,
-  STRIP_PAD_H,
-  forecastStripWidth,
-} from '../../weather/bubblePosition';
 import { conditionIconName } from '../../weather/codes';
 import { formatTempC, formatWeekdayShort } from '../../weather/format';
-import { RAIN_NOTABLE_PCT, weatherMoodFor } from './weatherMood';
+
+/** Rain chance at or above this reads as "notable" and stops being quiet. */
+export const RAIN_NOTABLE_PCT = 25;
+
+/** Enough room for five stacked labels before the system font grows them. */
+const STRIP_MIN_HEIGHT = 112;
 
 interface Props {
   days: WeatherDayForecast[];
 }
 
 /**
- * Expanded forecast strip: weekday · icon · high · low · rain%.
- * One coherent row (Apple Daily Forecast pattern), not floating chips.
+ * The forecast row inside the weather peek: weekday · icon · high · low ·
+ * rain% · humidity%.
+ *
+ * One coherent row, with the columns sharing the width evenly — it used to be
+ * a fixed 52pt per day because it floated beside a draggable bubble and had to
+ * know its own size in pixels. Inside a sheet it is just a block, so it takes
+ * a height *floor* and grows with the system font instead.
+ *
+ * Humidity is skipped rather than dashed when a day has none: Open-Meteo has
+ * no daily humidity variable, so a cache written before that was averaged from
+ * the hourly series legitimately has nothing to show.
  */
 export default function WeatherForecastStrip({ days }: Props) {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
   const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
   const outlineWidth = isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth;
-  const width = forecastStripWidth(days.length);
 
   return (
     <View
       style={[
-        styles.strip,
+        forecastStripStyles.strip,
         {
-          width,
-          height: STRIP_HEIGHT,
-          borderRadius: deco.radius.xl,
-          backgroundColor: theme.colors.surface,
+          borderRadius: deco.radius.lg,
+          backgroundColor: theme.colors.surfaceVariant,
           borderColor: outlineColor,
           borderWidth: outlineWidth,
         },
@@ -46,44 +53,87 @@ export default function WeatherForecastStrip({ days }: Props) {
       importantForAccessibility="no-hide-descendants"
     >
       {days.map((day, index) => {
-        const mood = weatherMoodFor(day.condition, {
-          precipProbabilityPct: day.precipProbabilityPct,
-        });
-        const rainHot = day.precipProbabilityPct >= RAIN_NOTABLE_PCT;
+        const rainNotable = day.precipProbabilityPct >= RAIN_NOTABLE_PCT;
         return (
-          <View key={day.date} style={[styles.dayCol, { width: STRIP_DAY_WIDTH }]}>
+          <View key={day.date} style={forecastStripStyles.dayCol}>
             {index > 0 ? (
               <View
                 pointerEvents="none"
-                style={[styles.dayDivider, { backgroundColor: theme.colors.outlineVariant }]}
+                style={[
+                  forecastStripStyles.dayDivider,
+                  { backgroundColor: outlineColor },
+                ]}
               />
             ) : null}
             <Text
               numberOfLines={1}
-              style={[styles.weekday, { color: theme.colors.onSurfaceVariant }]}
+              style={[
+                forecastStripStyles.weekday,
+                { color: theme.colors.onSurfaceVariant },
+              ]}
             >
               {formatWeekdayShort(day.date)}
             </Text>
             <MaterialCommunityIcons
               name={conditionIconName(day.condition)}
               size={18}
-              color={mood.border}
+              color={theme.colors.onSurfaceVariant}
             />
-            <Text numberOfLines={1} style={[styles.hi, { color: theme.colors.onSurface }]}>
+            <Text
+              numberOfLines={1}
+              style={[forecastStripStyles.hi, { color: theme.colors.onSurface }]}
+            >
               {formatTempC(day.tempMaxC)}
-            </Text>
-            <Text numberOfLines={1} style={[styles.lo, { color: theme.colors.onSurfaceVariant }]}>
-              {formatTempC(day.tempMinC)}
             </Text>
             <Text
               numberOfLines={1}
               style={[
-                styles.rain,
-                { color: rainHot ? mood.ink : theme.colors.onSurfaceVariant },
+                forecastStripStyles.lo,
+                { color: theme.colors.onSurfaceVariant },
               ]}
             >
-              {`${day.precipProbabilityPct}%`}
+              {formatTempC(day.tempMinC)}
             </Text>
+            <View style={forecastStripStyles.readingRow}>
+              <MaterialCommunityIcons
+                name="umbrella-outline"
+                size={11}
+                color={
+                  rainNotable ? theme.colors.onSurface : theme.colors.onSurfaceVariant
+                }
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  forecastStripStyles.reading,
+                  {
+                    color: rainNotable
+                      ? theme.colors.onSurface
+                      : theme.colors.onSurfaceVariant,
+                  },
+                ]}
+              >
+                {`${day.precipProbabilityPct}%`}
+              </Text>
+            </View>
+            {day.humidityMeanPct != null ? (
+              <View style={forecastStripStyles.readingRow}>
+                <MaterialCommunityIcons
+                  name="water-percent"
+                  size={11}
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    forecastStripStyles.reading,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {`${day.humidityMeanPct}%`}
+                </Text>
+              </View>
+            ) : null}
           </View>
         );
       })}
@@ -91,30 +141,28 @@ export default function WeatherForecastStrip({ days }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+/** Exported so `fontScaling.test.ts` can hold this to `minHeight`, not `height`. */
+export const forecastStripStyles = StyleSheet.create({
   strip: {
     flexDirection: 'row',
     alignItems: 'stretch',
     overflow: 'hidden',
-    paddingHorizontal: STRIP_PAD_H,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    minHeight: STRIP_MIN_HEIGHT,
+    paddingHorizontal: space.xs,
   },
   dayCol: {
+    flex: 1,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 8,
+    gap: space.xxs,
+    paddingVertical: space.sm,
   },
   dayDivider: {
     position: 'absolute',
     left: 0,
-    top: 12,
-    bottom: 12,
+    top: space.md,
+    bottom: space.md,
     width: StyleSheet.hairlineWidth,
   },
   weekday: {
@@ -124,22 +172,23 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   hi: {
+    ...typeScale.data,
     fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 15,
-    fontVariant: ['tabular-nums'],
+    lineHeight: 16,
   },
   lo: {
+    ...typeScale.data,
     fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 13,
-    fontVariant: ['tabular-nums'],
+    lineHeight: 14,
   },
-  rain: {
+  readingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xxs,
+  },
+  reading: {
+    ...typeScale.data,
     fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 12,
-    marginTop: 2,
-    fontVariant: ['tabular-nums'],
+    lineHeight: 13,
   },
 });

@@ -16,12 +16,20 @@ const WeatherDayCacheSchema = z.object({
   weatherCode: z.number(),
   condition: z.enum(['sunny', 'cloudy', 'rain', 'storm', 'snow', 'other']),
   precipProbabilityPct: z.number(),
+  humidityMeanPct: z.number().nullable().optional(),
 });
 
-const WeatherForecastCacheSchema = z.object({
+/**
+ * Exported for the tests that pin one property: a forecast cached by an older
+ * build has no humidity in it, and it still has to parse. Throwing there would
+ * silently wipe the cache and leave an offline phone with no weather at all,
+ * which is the one situation the cache exists for.
+ */
+export const WeatherForecastCacheSchema = z.object({
   currentTempC: z.number(),
   currentWeatherCode: z.number(),
   currentCondition: z.enum(['sunny', 'cloudy', 'rain', 'storm', 'snow', 'other']),
+  currentHumidityPct: z.number().nullable().optional(),
   precipProbabilityPct: z.number(),
   trend: z.enum(['improving', 'worsening']).nullable().optional(),
   daily: z.array(WeatherDayCacheSchema).min(1),
@@ -39,6 +47,11 @@ export async function loadCachedForecast(): Promise<WeatherForecast | null> {
     return {
       ...parsed,
       trend: parsed.trend ?? null,
+      currentHumidityPct: parsed.currentHumidityPct ?? null,
+      daily: parsed.daily.map((day) => ({
+        ...day,
+        humidityMeanPct: day.humidityMeanPct ?? null,
+      })),
     };
   } catch {
     return null;

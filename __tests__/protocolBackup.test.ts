@@ -313,6 +313,7 @@ describe('protocol backup settings', () => {
       notebookId: '550e8400-e29b-41d4-a716-446655440030',
       date: '2025-01-02',
       body: 'Quiet morning',
+      sortOrder: 0,
       createdAt: '2025-01-02T21:00:00.000Z',
       updatedAt: '2025-01-02T21:00:00.000Z',
       protocolVersion: PROTOCOL_VERSION,

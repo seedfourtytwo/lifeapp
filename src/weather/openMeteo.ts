@@ -38,11 +38,18 @@ interface ForecastApiResult {
   current?: {
     temperature_2m: number;
     weather_code: number;
+    /** Present only when asked for; absent from the history range request. */
+    relative_humidity_2m?: number | null;
   };
   hourly?: {
     time: string[];
     weather_code?: number[];
     precipitation_probability?: number[];
+    /**
+     * Open-Meteo publishes relative humidity hourly and as a `current` value —
+     * there is no daily variable, so a per-day figure is averaged from these.
+     */
+    relative_humidity_2m?: (number | null)[];
   };
   daily?: {
     time: string[];
@@ -153,8 +160,8 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
-    current: 'temperature_2m,weather_code',
-    hourly: 'weather_code,precipitation_probability',
+    current: 'temperature_2m,weather_code,relative_humidity_2m',
+    hourly: 'weather_code,precipitation_probability,relative_humidity_2m',
     daily:
       'weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max',
     forecast_days: '5',
@@ -177,13 +184,14 @@ export async function fetchForecast(lat: number, lon: number): Promise<WeatherFo
     throw new Error('Forecast response missing current or daily data');
   }
 
-  const daily = mapDailyForecast(data.daily);
+  const daily = mapDailyForecast(data.daily, meanHumidityByDay(data.hourly));
   const currentCode = data.current.weather_code;
 
   return {
     currentTempC: data.current.temperature_2m,
     currentWeatherCode: currentCode,
     currentCondition: weatherCodeToCondition(currentCode),
+    currentHumidityPct: clampPct(data.current.relative_humidity_2m),
     precipProbabilityPct: daily[0]?.precipProbabilityPct ?? 0,
     trend: computeWeatherTrend(mapHourlyTrendSamples(data.hourly)),
     daily,
@@ -207,7 +215,46 @@ function mapHourlyTrendSamples(
   });
 }
 
-function mapDailyForecast(daily: NonNullable<ForecastApiResult['daily']>): WeatherDayForecast[] {
+/** Round a 0–100 reading, or null when the API left it out. */
+function clampPct(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+/**
+ * Mean relative humidity per calendar day, keyed `YYYY-MM-DD`.
+ *
+ * Open-Meteo returns hourly stamps as local `YYYY-MM-DDTHH:mm`, so the day is
+ * the first ten characters — no parsing, and no timezone to get wrong.
+ */
+function meanHumidityByDay(
+  hourly: ForecastApiResult['hourly'],
+): Map<string, number> {
+  const totals = new Map<string, { sum: number; count: number }>();
+  const samples = hourly?.relative_humidity_2m;
+  if (!hourly?.time?.length || !samples?.length) return new Map();
+
+  hourly.time.forEach((time, index) => {
+    const pct = clampPct(samples[index]);
+    if (pct == null) return;
+    const day = time.slice(0, 10);
+    const bucket = totals.get(day) ?? { sum: 0, count: 0 };
+    bucket.sum += pct;
+    bucket.count += 1;
+    totals.set(day, bucket);
+  });
+
+  const means = new Map<string, number>();
+  for (const [day, { sum, count }] of totals) {
+    means.set(day, Math.round(sum / count));
+  }
+  return means;
+}
+
+function mapDailyForecast(
+  daily: NonNullable<ForecastApiResult['daily']>,
+  humidityByDay: Map<string, number> = new Map(),
+): WeatherDayForecast[] {
   return daily.time.map((date, index) => {
     const weatherCode = daily.weather_code[index] ?? 0;
     const tempMinC = daily.temperature_2m_min[index] ?? 0;
@@ -224,6 +271,7 @@ function mapDailyForecast(daily: NonNullable<ForecastApiResult['daily']>): Weath
       weatherCode,
       condition: weatherCodeToCondition(weatherCode),
       precipProbabilityPct,
+      humidityMeanPct: humidityByDay.get(date) ?? null,
     };
   });
 }

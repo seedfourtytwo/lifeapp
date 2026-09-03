@@ -127,7 +127,9 @@
     "englishOnlyHint": "La dictée comprend l'anglais pour l'instant (modèle français plus tard).",
     "takeTimeWarning": "Plus que 3 minutes pour cette prise. Appuyez sur Terminé, puis sur le micro pour continuer.",
     "takeLimitDuration": "Cette prise a atteint la limite de 15 minutes. Le texte est dans la note — retapez le micro pour continuer.",
-    "takeLimitCharacters": "Cette prise a atteint la limite de longueur. Le texte est dans la note — retapez le micro pour continuer."
+    "takeLimitCharacters": "Cette prise a atteint la limite de longueur. Le texte est dans la note — retapez le micro pour continuer.",
+    "startA11y": "Dicter avec le microphone",
+    "finishA11y": "Terminer la dictée"
   },
   "dateTime": {
     "today": "Aujourd'hui",

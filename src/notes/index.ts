@@ -11,6 +11,8 @@ export {
   noteEditorTitle,
 } from './types';
 export { NOTE_BODY_MAX_LENGTH } from './noteBodyLimits';
+export { journalChapterPreview } from './journalChapters';
+export type { JournalChapter } from './journalChapters';
 export { loadNoteBody, saveNoteBody } from './noteSave';
 export type { SavedNote } from './noteSave';
 export { noteEditorSessionKey } from './sessionKey';

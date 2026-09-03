@@ -24,6 +24,7 @@ const journal = DailyJournalSchema.parse({
   notebookId: notebook.id,
   date: '2025-01-02',
   body: 'Quiet morning — kept the phone downstairs.',
+  sortOrder: 0,
   createdAt: '2025-01-02T21:00:00.000Z',
   updatedAt: '2025-01-02T21:00:00.000Z',
   protocolVersion: PROTOCOL_VERSION,
@@ -99,7 +100,7 @@ describe('daily journals in protocol bundle', () => {
     ).toThrow();
   });
 
-  it('merges several journals on the same notebook day into one document', () => {
+  it('keeps several chapters on the same notebook day, in order', () => {
     const normalized = normalizeProtocolBundleInput({
       protocolVersion: PROTOCOL_VERSION,
       exportedAt: '2025-01-01T00:00:00.000Z',
@@ -108,19 +109,87 @@ describe('daily journals in protocol bundle', () => {
       events: [],
       journalNotebooks: [notebook],
       dailyJournals: [
-        journal,
         {
           ...journal,
           id: '550e8400-e29b-41d4-a716-446655440041',
           body: 'Second journal same day',
           createdAt: '2025-01-02T22:00:00.000Z',
         },
+        journal,
       ],
     });
     const bundle = parseProtocolBundle(normalized);
-    expect(bundle.dailyJournals).toHaveLength(1);
-    expect(bundle.dailyJournals?.[0]?.body).toContain('Quiet morning');
-    expect(bundle.dailyJournals?.[0]?.body).toContain('Second journal same day');
+    expect(bundle.dailyJournals).toHaveLength(2);
+    expect(bundle.dailyJournals?.map((row) => [row.sortOrder, row.body])).toEqual([
+      [0, 'Quiet morning — kept the phone downstairs.'],
+      [1, 'Second journal same day'],
+    ]);
+  });
+
+  it('numbers chapters densely and stably on a second normalize pass', () => {
+    const input = {
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [],
+      dashboard: [],
+      events: [],
+      journalNotebooks: [notebook],
+      dailyJournals: [
+        { ...journal, sortOrder: 7 },
+        {
+          ...journal,
+          id: '550e8400-e29b-41d4-a716-446655440041',
+          body: 'Second',
+          sortOrder: 2,
+          createdAt: '2025-01-02T22:00:00.000Z',
+        },
+      ],
+    };
+    const once = parseProtocolBundle(normalizeProtocolBundleInput(input));
+    const twice = parseProtocolBundle(normalizeProtocolBundleInput(once));
+    // Lowest stated order first, then renumbered 0..n-1 so a round-trip is a fixed point.
+    expect(once.dailyJournals?.map((row) => [row.sortOrder, row.body])).toEqual([
+      [0, 'Second'],
+      [1, 'Quiet morning — kept the phone downstairs.'],
+    ]);
+    expect(twice.dailyJournals).toEqual(once.dailyJournals);
+  });
+
+  it('defaults a missing sort order rather than throwing', () => {
+    const { sortOrder: _dropped, ...withoutOrder } = journal;
+    expect(DailyJournalSchema.parse(withoutOrder).sortOrder).toBe(0);
+  });
+
+  it('accepts two chapters for one notebook day in a bundle', () => {
+    expect(() =>
+      createProtocolBundle({
+        elements: [],
+        dashboard: [],
+        events: [],
+        journalNotebooks: [notebook],
+        dailyJournals: [
+          journal,
+          {
+            ...journal,
+            id: '550e8400-e29b-41d4-a716-446655440041',
+            body: 'Evening chapter',
+            sortOrder: 1,
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('still rejects two journals sharing one id', () => {
+    expect(() =>
+      createProtocolBundle({
+        elements: [],
+        dashboard: [],
+        events: [],
+        journalNotebooks: [notebook],
+        dailyJournals: [journal, { ...journal, body: 'Same id', sortOrder: 1 }],
+      }),
+    ).toThrow(/Duplicate daily journal/);
   });
 
   it('rejects journals that point at an unknown notebook', () => {
@@ -162,5 +231,37 @@ describe('daily journals in protocol bundle', () => {
     expect(bundle.dailyJournals).toHaveLength(1);
     expect(bundle.dailyJournals?.[0]?.notebookId).toBe(bundle.journalNotebooks?.[0]?.id);
     expect(bundle.dailyJournals?.[0]?.createdAt).toBe(journal.updatedAt);
+    expect(bundle.dailyJournals?.[0]?.sortOrder).toBe(0);
+  });
+
+  it('numbers a legacy multi-row day by creation time instead of losing a row', () => {
+    const normalized = normalizeProtocolBundleInput({
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [],
+      dashboard: [],
+      events: [],
+      dailyJournals: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440042',
+          date: journal.date,
+          body: 'Written later',
+          updatedAt: '2025-01-02T23:00:00.000Z',
+          protocolVersion: PROTOCOL_VERSION,
+        },
+        {
+          id: journal.id,
+          date: journal.date,
+          body: journal.body,
+          updatedAt: journal.updatedAt,
+          protocolVersion: PROTOCOL_VERSION,
+        },
+      ],
+    });
+    const bundle = parseProtocolBundle(normalized);
+    expect(bundle.dailyJournals?.map((row) => [row.sortOrder, row.body])).toEqual([
+      [0, journal.body],
+      [1, 'Written later'],
+    ]);
   });
 });

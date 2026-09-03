@@ -29,26 +29,23 @@
   "emptyTabState": {
     "openTrackers": "Open Trackers"
   },
-  "chromeBubble": {
-    "opensCalendar": "Opens calendar",
-    "openCalendar": "Open calendar",
-    "openCalendarWithCount": "Open calendar, {{count}} upcoming",
-    "todayDate": "Today {{date}}",
-    "upcomingCount": "{{count}} upcoming",
+  "weatherChip": {
     "weatherWithCondition": "Weather {{temp}}, {{condition}}",
     "weatherOffline": "Weather offline",
     "weatherLoading": "Loading weather",
     "weatherUnavailable": "Weather unavailable",
     "rainChance": "Rain {{pct}}%",
+    "humidity": "Humidity {{pct}}%",
     "trendImproving": "Improving soon",
     "trendWorsening": "Worsening soon",
     "trendSteady": "Steady for now",
-    "tapToExpandForecast": "Tap to show 5-day forecast",
-    "tapToCollapseForecast": "Tap to hide forecast",
+    "tapToExpandForecast": "Tap to show the forecast",
+    "tapToCollapseForecast": "Tap to hide the forecast",
     "forecastExpanded": "Forecast shown",
     "forecastCollapsed": "Forecast hidden",
-    "longPressForCalendar": "Long press for calendar",
-    "showCalendar": "Show calendar"
+    "forecastTitle": "Forecast",
+    "stale": "Last known reading",
+    "close": "Close"
   },
   "weatherConditions": {
     "sunny": "Sunny",

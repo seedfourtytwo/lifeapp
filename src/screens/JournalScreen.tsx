@@ -15,6 +15,7 @@ import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
+import { newId } from '../utils/id';
 import JournalDayPanel, { type TrackerNoteRow } from './journal/JournalDayPanel';
 import JournalDaysList from './journal/JournalDaysList';
 import JournalNotebooksSection from './journal/JournalNotebooksSection';
@@ -131,17 +132,27 @@ export default function JournalScreen() {
     void loadTrackerNotes(selectedDate, elements);
   }, [selectedDate, elements, loadTrackerNotes, noteEditor.session]);
 
-  const openJournalDay = (notebookId: string, date: string) => {
+  const openJournalDay = (notebookId: string, date: string, entryId?: string) => {
     const notebook = notebookById.get(notebookId);
     void noteEditor.open(
       {
         kind: 'journal',
         notebookId,
+        entryId,
         label: notebook?.name,
         icon: notebook?.icon,
       },
       date,
     );
+  };
+
+  /**
+   * A fresh chapter is a row id minted before there is any text: the editor
+   * opens blank and the row appears on the first save, so abandoning it leaves
+   * nothing behind.
+   */
+  const addJournalChapter = (notebookId: string, date: string) => {
+    openJournalDay(notebookId, date, newId());
   };
 
   const openTrackerNote = (row: TrackerNoteRow, date: string) => {
@@ -272,6 +283,7 @@ export default function JournalScreen() {
           showTrackerNotes={showTrackerNotes}
           filter={filter}
           onOpenJournal={openJournalDay}
+          onAddChapter={addJournalChapter}
           onOpenTrackerNote={openTrackerNote}
         />
 

@@ -42,6 +42,39 @@ export function noteShareStatus(opts: {
   return 'stale';
 }
 
+/** One chapter's side of the comparison: what it says, what is saved, what went out. */
+export type JournalChapterShareState = {
+  draft: string;
+  persisted: string;
+  lastSharedFingerprint: string | null;
+};
+
+/**
+ * One colour for a day made of several chapters.
+ *
+ * Each chapter carries its own last-shared fingerprint — the share sheet gets
+ * the picked chapters joined, and exactly those chapters' fingerprints are
+ * recorded — so the day's status is the roll-up of the parts:
+ *
+ * - **current** only when every chapter with text is saved and matches what
+ *   went out, i.e. there is nothing left to send.
+ * - **never** when nothing has been sent, or nothing is written.
+ * - **stale** for everything else, which now includes the case a day-level
+ *   fingerprint could not see: one chapter shared, a second written after.
+ *
+ * A blank chapter is skipped. It reaches no file, so it cannot be out of date.
+ */
+export function journalDayShareStatus(
+  chapters: readonly JournalChapterShareState[],
+): NoteShareStatus {
+  const written = chapters.filter((chapter) => chapter.draft.trim().length > 0);
+  if (written.length === 0) return 'never';
+  const statuses = written.map(noteShareStatus);
+  if (statuses.every((status) => status === 'current')) return 'current';
+  if (statuses.every((status) => status === 'never')) return 'never';
+  return 'stale';
+}
+
 /** Share is an action, not a status chip — hide it unless it can actually run. */
 export function canShowNoteShare(opts: {
   hasDraftText: boolean;

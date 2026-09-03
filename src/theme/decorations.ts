@@ -19,7 +19,7 @@ export interface RadiusScale {
   md: number;
   /** Cards and rows. */
   lg: number;
-  /** Sheets, panels, and the big bubble. */
+  /** Sheets and panels. */
   xl: number;
   /** Fully round, for anything circular. Never varies by theme. */
   pill: number;
