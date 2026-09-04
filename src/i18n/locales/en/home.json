@@ -21,11 +21,6 @@
     "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
     "couldNotLogBody": "Something went wrong"
   },
-  "journalMeta": {
-    "dictateTodayJournal": "Dictate today's journal",
-    "dictateNewJournal": "Dictate a new journal entry",
-    "editWithoutDictatingHint": "Long press to open and edit without dictating"
-  },
   "emptyTabState": {
     "openTrackers": "Open Trackers"
   },
@@ -40,7 +35,6 @@
     "trendWorsening": "Worsening soon",
     "trendSteady": "Steady for now",
     "tapToExpandForecast": "Tap to show the forecast",
-    "tapToCollapseForecast": "Tap to hide the forecast",
     "forecastExpanded": "Forecast shown",
     "forecastCollapsed": "Forecast hidden",
     "forecastTitle": "Forecast",

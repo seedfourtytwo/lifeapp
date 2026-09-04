@@ -21,11 +21,6 @@
     "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",
     "couldNotLogBody": "Une erreur s'est produite"
   },
-  "journalMeta": {
-    "dictateTodayJournal": "Dicter le journal du jour",
-    "dictateNewJournal": "Dicter une nouvelle entrée de journal",
-    "editWithoutDictatingHint": "Appui long pour ouvrir et modifier sans dicter"
-  },
   "emptyTabState": {
     "openTrackers": "Ouvrir les suivis"
   },
@@ -40,7 +35,6 @@
     "trendWorsening": "Dégradation prochaine",
     "trendSteady": "Stable pour l'instant",
     "tapToExpandForecast": "Appuyer pour afficher les prévisions",
-    "tapToCollapseForecast": "Appuyer pour masquer les prévisions",
     "forecastExpanded": "Prévisions affichées",
     "forecastCollapsed": "Prévisions masquées",
     "forecastTitle": "Prévisions",

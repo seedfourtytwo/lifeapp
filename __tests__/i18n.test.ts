@@ -99,7 +99,6 @@ describe('home namespace copy', () => {
         'trendWorsening',
         'trendSteady',
         'tapToExpandForecast',
-        'tapToCollapseForecast',
         'forecastExpanded',
         'forecastCollapsed',
         'forecastTitle',
