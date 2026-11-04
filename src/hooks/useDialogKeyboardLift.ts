@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Keyboard, Platform } from 'react-native';
 import { dialogKeyboardLift, keyboardEventNames } from './keyboardInset';
 
-/** Bottom margin that keeps a Paper Dialog clear of the on-screen keyboard. */
-export function useDialogKeyboardLift(active: boolean): number {
+/** The on-screen keyboard's height while `active`, 0 otherwise. */
+export function useKeyboardHeight(active: boolean): number {
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
@@ -20,5 +20,10 @@ export function useDialogKeyboardLift(active: boolean): number {
     };
   }, [active]);
 
-  return dialogKeyboardLift(height);
+  return height;
+}
+
+/** Bottom margin that keeps a Paper Dialog clear of the on-screen keyboard. */
+export function useDialogKeyboardLift(active: boolean): number {
+  return dialogKeyboardLift(useKeyboardHeight(active));
 }

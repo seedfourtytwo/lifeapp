@@ -5,7 +5,8 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
-import { Button, Chip, PaperProvider, TextInput } from 'react-native-paper';
+import { Button, PaperProvider, TextInput } from 'react-native-paper';
+import ChoiceChip from '../src/components/ChoiceChip';
 import '../src/i18n';
 import type { Todo } from '../src/protocol';
 
@@ -52,7 +53,7 @@ function render(todo: Partial<Todo> | null = null) {
   });
   mounted.push(tree);
   const chip = (label: string) =>
-    tree.root.findAllByType(Chip).find((c) => c.props.children === label)!;
+    tree.root.findAllByType(ChoiceChip).find((c) => c.props.label === label)!;
   const save = async () => {
     const button = tree.root.findAllByType(Button).find((b) => b.props.children === 'Save')!;
     await act(async () => {
