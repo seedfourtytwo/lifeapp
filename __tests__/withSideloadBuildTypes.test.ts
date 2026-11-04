@@ -44,8 +44,23 @@ describe('patchSideloadBuildTypes', () => {
 
   it('names the two builds distinctly so both can sit on one device', () => {
     const patched = patchSideloadBuildTypes(PRISTINE_GRADLE);
-    expect(patched).toContain('"app_name", "dev"');
-    expect(patched).toContain('"app_name", "prod"');
+    expect(patched).toContain('"app_name", "Life dev"');
+    expect(patched).toContain('"app_name", "Life"');
+  });
+
+  it('renames a project prebuilt under the old "prod"/"dev" labels instead of adding a second name', () => {
+    const old = PRISTINE_GRADLE.replace(
+      'debug {\n            signingConfig',
+      'debug {\n            applicationIdSuffix \'.dev\'\n            resValue "string", "app_name", "dev"\n            signingConfig',
+    ).replace(
+      'release {\n            signingConfig signingConfigs.release',
+      'release {\n            resValue "string", "app_name", "prod"\n            signingConfig signingConfigs.debug\n            signingConfig signingConfigs.release',
+    );
+    const patched = patchSideloadBuildTypes(old);
+
+    expect(patched).not.toMatch(/"app_name", "(prod|dev)"/);
+    expect(patched.match(/"app_name"/g)).toHaveLength(2);
+    expect(releaseBlock(patched)).toContain('"app_name", "Life"');
   });
 
   it('puts the dev edits in the debug block, not the release one', () => {

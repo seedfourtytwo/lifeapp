@@ -22,14 +22,14 @@ const DEV_SUFFIX = `
             // both be installed at once.
             applicationIdSuffix '.dev'
             versionNameSuffix '-dev'
-            resValue "string", "app_name", "dev"`;
+            resValue "string", "app_name", "Life dev"`;
 
 const RELEASE_SIGNING = `
             // Personal sideload: the debug keystore is deliberate. A stable key
             // is what lets a new build upgrade the installed app in place
             // instead of forcing an uninstall, which would take the database
             // with it. Publishing to Play needs a real keystore here.
-            resValue "string", "app_name", "prod"
+            resValue "string", "app_name", "Life"
             signingConfig signingConfigs.debug`;
 
 /**
@@ -70,11 +70,21 @@ function patchBuildType(block, buildType, insertion, marker) {
  * The whole transform, as a pure string function: this is the part worth
  * testing, and it needs none of Expo's async mod plumbing to exercise.
  */
+/**
+ * Labels this plugin wrote before the app was called Life. A project prebuilt
+ * then still carries them; renaming in place keeps one app_name per build type.
+ */
+const LEGACY_LABELS = [
+  ['resValue "string", "app_name", "dev"', 'resValue "string", "app_name", "Life dev"'],
+  ['resValue "string", "app_name", "prod"', 'resValue "string", "app_name", "Life"'],
+];
+
 function patchSideloadBuildTypes(contents) {
   const { start, end } = buildTypesBlock(contents);
   let block = contents.slice(start, end);
+  for (const [from, to] of LEGACY_LABELS) block = block.replace(from, to);
   block = patchBuildType(block, 'debug', DEV_SUFFIX, "applicationIdSuffix '.dev'");
-  block = patchBuildType(block, 'release', RELEASE_SIGNING, '"app_name", "prod"');
+  block = patchBuildType(block, 'release', RELEASE_SIGNING, '"app_name", "Life"');
   return contents.slice(0, start) + block + contents.slice(end);
 }
 
