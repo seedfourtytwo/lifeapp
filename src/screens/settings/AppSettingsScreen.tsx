@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -19,7 +19,12 @@ import { useWeatherStore } from '../../store/weatherStore';
 import { APP_LANGUAGE_OPTIONS, THEME_MODE_OPTIONS, isThemeMode } from '../../theme';
 import { clearJournalNotebookEntries } from '../../notes/journalNotebooks';
 import { getAppVersion } from '../../utils/appVersion';
+import { layout, space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import type { SettingsStackParamList } from '../../navigation/types';
+import APP_ICON from '../../../assets/icon.png';
+
+const ABOUT_ICON_SIZE = 40;
 
 export default function AppSettingsScreen() {
   const theme = useTheme();
@@ -112,9 +117,11 @@ export default function AppSettingsScreen() {
           buttons={THEME_MODE_OPTIONS.map((option) => ({
             value: option.value,
             label: t(option.labelKey),
-            icon: option.icon,
           }))}
         />
+      </SettingsGroup>
+
+      <SettingsGroup title={t('general.sectionTitle')}>
         <Menu
           visible={languageMenuOpen}
           onDismiss={() => setLanguageMenuOpen(false)}
@@ -137,9 +144,6 @@ export default function AppSettingsScreen() {
             />
           ))}
         </Menu>
-      </SettingsGroup>
-
-      <SettingsGroup title={t('homeChrome.sectionTitle')}>
         <SettingsRow
           icon="weather-partly-cloudy"
           title={t('homeChrome.weatherTitle')}
@@ -158,16 +162,16 @@ export default function AppSettingsScreen() {
         ) : null}
       </SettingsGroup>
 
-      <SettingsGroup title={t('data.sectionTitle')} caption={t('data.caption')}>
+      <SettingsGroup title={t('data.sectionTitle')}>
         <SettingsRow
-          icon="export"
+          icon="cloud-upload-outline"
           title={t('data.exportTitle')}
           description={t('data.exportDescription')}
           busy={busy}
           onPress={busy ? undefined : () => void handleExport()}
         />
         <SettingsRow
-          icon="import"
+          icon="cloud-download-outline"
           title={t('data.importTitle')}
           description={
             importAvailable
@@ -177,11 +181,8 @@ export default function AppSettingsScreen() {
           busy={busy}
           onPress={busy ? undefined : handleImport}
         />
-      </SettingsGroup>
-
-      <SettingsGroup>
         <SettingsRow
-          icon="delete-forever"
+          icon="delete-outline"
           title={t('data.clearDataTitle')}
           description={t('data.clearDataDescription')}
           destructive
@@ -201,14 +202,9 @@ export default function AppSettingsScreen() {
         />
       </SettingsGroup>
 
-      <View style={styles.about} accessibilityRole="text">
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          {t('about.title')}
-        </Text>
-        <Text
-          variant="labelSmall"
-          style={[styles.aboutVersion, { color: theme.colors.onSurfaceVariant }]}
-        >
+      <View style={styles.about}>
+        <Image source={APP_ICON} style={styles.aboutIcon} accessibilityIgnoresInvertColors />
+        <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
           {t('about.version', { version: getAppVersion() })}
         </Text>
       </View>
@@ -233,15 +229,21 @@ export default function AppSettingsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.sm,
+    paddingBottom: space.xxl,
+    gap: layout.sectionGap,
     flexGrow: 1,
-    paddingBottom: 32,
   },
   about: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    gap: 2,
+    alignItems: 'center',
+    gap: space.sm,
+    paddingTop: space.lg,
   },
-  aboutVersion: {},
+  aboutIcon: {
+    width: ABOUT_ICON_SIZE,
+    height: ABOUT_ICON_SIZE,
+    // Half the size: the icon is drawn as a disc, like on the home screen.
+    borderRadius: ABOUT_ICON_SIZE / 2,
+  },
 });

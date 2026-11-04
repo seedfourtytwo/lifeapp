@@ -1,27 +1,19 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import {
-  ActivityIndicator,
-  Button,
-  IconButton,
-  Portal,
-  Snackbar,
-  Text,
-  useTheme,
-} from 'react-native-paper';
+import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import QuietText from '../components/QuietText';
+import EmptyState from '../components/EmptyState';
+import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import type { RootStackParamList } from '../navigation/types';
 import { groupOpenTodos, type Todo } from '../protocol';
 import { useTodoStore } from '../store/todoStore';
-import { space } from '../theme/spacing';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { currentAppCalendarDate } from '../utils/dayRollover';
-import { DOCK_RESERVE } from '../ui/homeInsets';
 import TodoEditorSheet, { type TodoDraft } from './todos/TodoEditorSheet';
 import TodoQuickAdd from './todos/TodoQuickAdd';
 import TodoRow from './todos/TodoRow';
@@ -32,8 +24,6 @@ import {
   type HomeTabScrollViewHandle,
 } from './shared/HomeTabScrollView';
 import { homeTabScreenStyles as styles } from './shared/screenStyles';
-
-const UNDO_DURATION_MS = 5000;
 
 type PendingUndo = { kind: 'done' | 'deleted'; todo: Todo };
 
@@ -54,7 +44,6 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const { t } = useTranslation('todos');
   const { t: tHome } = useTranslation('home');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const insets = useSafeAreaInsets();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
 
@@ -220,20 +209,13 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
         />
 
         {groups.length === 0 ? (
-          <View style={todoStyles.emptyWrap}>
-            <QuietText variant="bodyLarge" style={styles.empty}>
-              {t('list.empty')}
-            </QuietText>
-            <QuietText variant="bodySmall" style={styles.empty}>
-              {t('list.emptyHint')}
-            </QuietText>
-          </View>
+          <EmptyState message={t('list.empty')} />
         ) : null}
 
         {groups.map((group) => (
           <View key={group.section} style={todoStyles.section}>
             <Text
-              variant="labelMedium"
+              accessibilityRole="header"
               style={[todoStyles.sectionHeading, { color: theme.colors.onSurfaceVariant }]}
             >
               {t(`sections.${group.section}`)}
@@ -284,34 +266,24 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
         onDelete={handleDelete}
       />
 
-      {/*
-        In a Portal and lifted clear of the Home dock: rendered inside the tab
-        it lands underneath the dock, where Undo cannot be tapped at all.
-      */}
-      <Portal>
-        <Snackbar
-          visible={undo != null}
-          onDismiss={settleUndo}
-          duration={UNDO_DURATION_MS}
-          wrapperStyle={{ bottom: DOCK_RESERVE + insets.bottom }}
-          action={{ label: t('undo.action'), onPress: handleUndo }}
-        >
-          {undo ? t(`undo.${undo.kind}`, { title: undo.todo.title }) : ''}
-        </Snackbar>
-      </Portal>
+      <UndoSnackbar
+        message={undo ? t(`undo.${undo.kind}`, { title: undo.todo.title }) : null}
+        onUndo={handleUndo}
+        onDismiss={settleUndo}
+      />
     </>
   );
 }
 
 const todoStyles = StyleSheet.create({
   section: {
-    marginBottom: space.md,
+    marginBottom: layout.sectionGap - layout.rowGap,
   },
   sectionHeading: {
+    ...typeScale.caption,
+    fontSize: 14,
     marginBottom: space.sm,
-  },
-  emptyWrap: {
-    gap: space.xs,
+    paddingHorizontal: space.xs,
   },
 });
 

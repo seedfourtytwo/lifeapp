@@ -1,5 +1,5 @@
 {
-  "appName": "Life Dashboard",
+  "appName": "Life",
   "actions": {
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -114,7 +114,7 @@
   "dictation": {
     "webOnly": "La dictée fonctionne dans l'application mobile, pas dans le navigateur.",
     "notAvailable": "La reconnaissance vocale sur l'appareil n'est pas disponible sur ce téléphone.",
-    "micLifeApp": "Autorisez le microphone pour Life Dashboard : Paramètres → Applications → Life Dashboard → Autorisations → Microphone.",
+    "micLifeApp": "Autorisez le microphone pour Life : Paramètres → Applications → Life → Autorisations → Microphone.",
     "checkingModel": "Préparation de la reconnaissance hors connexion…",
     "finishingTranscription": "Finalisation de la transcription…",
     "downloadProgress": "Téléchargement du modèle vocal ({{locale}}) : {{progress}} %",

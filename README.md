@@ -1,4 +1,4 @@
-# Life Dashboard
+# Life
 
 Local-first personal dashboard for Android — habits, counters, nutrition, todos, notes and journals.
 Data stays in SQLite on the phone: no account, no cloud sync.

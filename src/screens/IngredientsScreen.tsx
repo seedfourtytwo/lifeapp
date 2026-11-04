@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Searchbar, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import QuietText from '../components/QuietText';
+import EmptyState from '../components/EmptyState';
+import FilledField from '../components/sheet/FilledField';
 import { useShallow } from 'zustand/react/shallow';
 import SettingsRow from '../components/settings/SettingsRow';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { getDateLocale } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { sortFoods, type NamedFood } from '../nutrition/foodFilters';
@@ -128,17 +131,35 @@ export default function IngredientsScreen() {
    */
   const header = (
     <View style={styles.headerWrap}>
-      <Searchbar
+      <FilledField
+        fill="page"
         value={query}
         onChangeText={setQuery}
         placeholder={t('search.placeholder')}
-        inputStyle={styles.searchInput}
+        returnKeyType="search"
+        rightAccessory={
+          query.length > 0 ? (
+            <IconButton
+              icon="close"
+              size={20}
+              iconColor={theme.colors.onSurfaceVariant}
+              onPress={() => setQuery('')}
+              accessibilityLabel={t('search.clearA11y')}
+            />
+          ) : undefined
+        }
       />
-      <Button mode="contained-tonal" icon="plus" onPress={() => openEditor()}>
+      <Button
+        mode="contained"
+        icon="plus"
+        onPress={() => openEditor()}
+        style={[styles.addButton, { borderRadius: deco.radius.pill }]}
+        contentStyle={styles.addButtonContent}
+      >
         {t('manage.addAction')}
       </Button>
       {activeCount > 0 ? (
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        <Text style={[typeScale.caption, styles.caption, { color: theme.colors.onSurfaceVariant }]}>
           {t('manage.catalogCaption')}
         </Text>
       ) : null}
@@ -149,7 +170,7 @@ export default function IngredientsScreen() {
     if (row.kind === 'header') {
       return (
         <Text
-          variant="labelLarge"
+          accessibilityRole="header"
           style={[styles.sectionHeader, { color: theme.colors.onSurfaceVariant }]}
         >
           {row.section === 'active'
@@ -164,7 +185,7 @@ export default function IngredientsScreen() {
       <View
         style={[
           styles.card,
-          { backgroundColor: theme.colors.surface, borderRadius: deco.radius.md },
+          { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg },
         ]}
       >
         <SettingsRow
@@ -197,17 +218,18 @@ export default function IngredientsScreen() {
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={header}
       ListEmptyComponent={
-        <QuietText variant="bodyMedium" style={styles.empty}>
-          {query.trim()
-            ? t('search.noResults', { query: query.trim() })
-            : t('manage.emptyCatalog')}
-        </QuietText>
+        <EmptyState
+          message={
+            query.trim()
+              ? t('search.noResults', { query: query.trim() })
+              : t('manage.emptyCatalog')
+          }
+        />
       }
       ListFooterComponent={
         archivedCount > 0 ? (
           <Text
-            variant="bodySmall"
-            style={[styles.caption, { color: theme.colors.onSurfaceVariant }]}
+            style={[typeScale.caption, styles.caption, { color: theme.colors.onSurfaceVariant }]}
           >
             {t('manage.archivedCaption')}
           </Text>
@@ -219,39 +241,40 @@ export default function IngredientsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.sm,
+    paddingBottom: space.xxl,
     flexGrow: 1,
-    paddingBottom: 32,
   },
   headerWrap: {
-    gap: 12,
-    paddingBottom: 8,
+    gap: space.md,
+    paddingBottom: space.sm,
+  },
+  addButton: {
+    alignSelf: 'flex-start',
+  },
+  addButtonContent: {
+    minHeight: 48,
+    paddingHorizontal: space.sm,
   },
   sectionHeader: {
-    paddingHorizontal: 8,
-    paddingTop: 16,
-    paddingBottom: 6,
+    ...typeScale.caption,
+    fontSize: 14,
+    paddingHorizontal: space.xs,
+    paddingTop: space.xl,
+    paddingBottom: space.sm,
   },
   card: {
     overflow: 'hidden',
-    marginBottom: 6,
+    marginBottom: layout.rowGap,
   },
   caption: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    lineHeight: 18,
+    paddingHorizontal: space.xs,
+    paddingTop: space.sm,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  searchInput: {
-    minHeight: 0,
-  },
-  empty: {
-    textAlign: 'center',
-    marginTop: 24,
-    paddingHorizontal: 24,
   },
 });

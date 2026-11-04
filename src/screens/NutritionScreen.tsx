@@ -1,10 +1,12 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Button, IconButton, Searchbar, Text, useTheme } from 'react-native-paper';
+import { StyleSheet } from 'react-native';
+import { Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import EmptyState from '../components/EmptyState';
 import QuietText from '../components/QuietText';
+import FilledField from '../components/sheet/FilledField';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { foodDisplayName } from '../nutrition/seedCatalog';
@@ -29,6 +31,8 @@ import { activeFoodItems, useFoodStore } from '../store/foodStore';
 import { getDateLocale } from '../i18n';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { weekDates } from '../utils/dates';
+import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import FoodEditorDialog from './nutrition/FoodEditorDialog';
 import FoodListControls from './nutrition/FoodListControls';
 import FoodRow from './nutrition/FoodRow';
@@ -282,7 +286,7 @@ function NutritionScreen({
         keyboardShouldPersistTaps="handled"
       >
         {error ? (
-          <Text variant="bodyMedium" style={{ color: theme.colors.error, marginBottom: 12 }}>
+          <Text style={[typeScale.secondary, styles.error, { color: theme.colors.error }]}>
             {t('errors.loadFailed')}
           </Text>
         ) : null}
@@ -299,23 +303,32 @@ function NutritionScreen({
           onSelect={setSelectedDate}
         />
 
-        <Searchbar
+        <FilledField
+          fill="page"
           value={query}
           onChangeText={setQuery}
           placeholder={t('search.placeholder')}
+          returnKeyType="search"
           style={styles.search}
-          inputStyle={styles.searchInput}
+          rightAccessory={
+            query.length > 0 ? (
+              <IconButton
+                icon="close"
+                size={20}
+                iconColor={theme.colors.onSurfaceVariant}
+                onPress={() => setQuery('')}
+                accessibilityLabel={t('search.clearA11y')}
+              />
+            ) : undefined
+          }
         />
 
         {catalog.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
-              {t('list.emptyCatalog')}
-            </QuietText>
-            <Button mode="contained-tonal" icon="playlist-plus" onPress={openIngredients}>
-              {t('list.openIngredients')}
-            </Button>
-          </View>
+          <EmptyState
+            message={t('list.emptyCatalog')}
+            actionLabel={t('list.openIngredients')}
+            onAction={openIngredients}
+          />
         ) : null}
 
         {catalog.length > 0 && visible.length > 0 ? (
@@ -329,9 +342,9 @@ function NutritionScreen({
         ) : null}
 
         {catalog.length > 0 && visible.length === 0 && !searching ? (
-          <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
-            {isFoodFilterActive(filter) ? t('filters.noMatches') : t('list.emptyWeek')}
-          </QuietText>
+          <EmptyState
+            message={isFoodFilterActive(filter) ? t('filters.noMatches') : t('list.emptyWeek')}
+          />
         ) : null}
 
         {visible.map(({ item, name }) => (
@@ -353,17 +366,23 @@ function NutritionScreen({
           </QuietText>
         ) : null}
 
-        {showAddFromQuery ? (
-          <View style={styles.addWrap}>
-            {visible.length === 0 ? (
-              <QuietText variant="bodyMedium" style={homeTabScreenStyles.empty}>
-                {t('search.noResults', { query: trimmedQuery })}
-              </QuietText>
-            ) : null}
-            <Button mode="contained-tonal" icon="plus" onPress={() => setAddOpen(true)}>
-              {t('search.addNamed', { query: trimmedQuery })}
-            </Button>
-          </View>
+        {showAddFromQuery && visible.length === 0 ? (
+          <EmptyState
+            message={t('search.noResults', { query: trimmedQuery })}
+            actionLabel={t('search.addNamed', { query: trimmedQuery })}
+            onAction={() => setAddOpen(true)}
+          />
+        ) : null}
+
+        {showAddFromQuery && visible.length > 0 ? (
+          <Button
+            mode="text"
+            icon="plus"
+            onPress={() => setAddOpen(true)}
+            style={styles.addMore}
+          >
+            {t('search.addNamed', { query: trimmedQuery })}
+          </Button>
         ) : null}
       </HomeTabScrollView>
 
@@ -378,20 +397,15 @@ function NutritionScreen({
 }
 
 const styles = StyleSheet.create({
+  error: {
+    marginBottom: space.md,
+  },
   search: {
-    marginBottom: 12,
+    marginBottom: space.lg,
   },
-  searchInput: {
-    minHeight: 0,
-  },
-  addWrap: {
-    marginTop: 8,
-    gap: 12,
-  },
-  emptyWrap: {
-    marginTop: 24,
-    gap: 16,
-    alignItems: 'center',
+  addMore: {
+    alignSelf: 'flex-start',
+    marginTop: space.sm,
   },
   journalButton: {
     margin: 0,

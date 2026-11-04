@@ -1,16 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import {
-  ActivityIndicator,
-  Button,
-  Chip,
-  HelperText,
-  SegmentedButtons,
-  Switch,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../navigation/types';
@@ -35,7 +25,13 @@ import {
   type NumericNutrientField,
 } from './nutrition/ingredientEditorState';
 import MonthPicker from './nutrition/MonthPicker';
-import { space } from '../theme/spacing';
+import ChoiceChip from '../components/ChoiceChip';
+import SegmentedControl from '../components/SegmentedControl';
+import SettingsSwitch from '../components/settings/SettingsSwitch';
+import FilledField from '../components/sheet/FilledField';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IngredientEditor'>;
 
@@ -70,6 +66,7 @@ function toggleMonth(months: readonly number[], month: number): number[] {
  */
 export default function IngredientEditorScreen({ navigation, route }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t, i18n } = useTranslation('nutrition');
   const { t: tCommon } = useTranslation('common');
   const foodId = route.params?.foodId;
@@ -217,54 +214,49 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
     );
   }
 
+  const heading = [typeScale.rowName, { color: theme.colors.onSurface }];
+  const hint = [typeScale.caption, { color: theme.colors.onSurfaceVariant }];
+  const tile = [styles.tile, { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg }];
+
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <TextInput
-        label={t('editor.nameLabel')}
-        value={draft.name}
-        onChangeText={(value) => set('name', value)}
-        maxLength={FOOD_NAME_MAX_LENGTH}
-        mode="outlined"
-        autoFocus={!existing}
-      />
+      <View style={tile}>
+        <FilledField
+          label={t('editor.nameLabel')}
+          value={draft.name}
+          onChangeText={(value) => set('name', value)}
+          maxLength={FOOD_NAME_MAX_LENGTH}
+          autoFocus={!existing}
+        />
 
-      <View style={styles.section}>
-        <Text variant="labelLarge">{t('editor.groupLabel')}</Text>
+        <Text style={heading}>{t('editor.groupLabel')}</Text>
         <View style={styles.chipWrap}>
           {FOOD_GROUPS.map((group) => (
-            <Chip
+            <ChoiceChip
               key={group}
-              compact
+              label={t(`groups.${group}`)}
               selected={group === draft.group}
-              showSelectedCheck={false}
               onPress={() => handleGroupChange(group)}
-            >
-              {t(`groups.${group}`)}
-            </Chip>
+            />
           ))}
         </View>
-      </View>
 
-      <View style={styles.switchRow}>
-        <View style={styles.switchLabel}>
-          <Text variant="bodyMedium">{t('editor.countsAsPlantLabel')}</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {t('editor.countsAsPlantHint')}
-          </Text>
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabel}>
+            <Text style={heading}>{t('editor.countsAsPlantLabel')}</Text>
+            <Text style={hint}>{t('editor.countsAsPlantHint')}</Text>
+          </View>
+          <SettingsSwitch
+            value={draft.countsAsPlant}
+            onValueChange={(value) => set('countsAsPlant', value)}
+            accessibilityLabel={t('editor.countsAsPlantLabel')}
+          />
         </View>
-        <Switch
-          value={draft.countsAsPlant}
-          onValueChange={(value) => set('countsAsPlant', value)}
-        />
       </View>
 
-      <View style={styles.sectionGap} />
-
-      <View style={styles.section}>
-        <Text variant="labelLarge">{t('editor.seasonLabel')}</Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          {t('editor.seasonHint')}
-        </Text>
+      <View style={tile}>
+        <Text style={heading}>{t('editor.seasonLabel')}</Text>
+        <Text style={hint}>{t('editor.seasonHint')}</Text>
         <MonthPicker
           label={t('editor.seasonLabel')}
           selected={draft.seasonMonths}
@@ -273,9 +265,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
 
         {draft.seasonMonths.length > 0 ? (
           <>
-            <Text variant="labelLarge" style={styles.subLabel}>
-              {t('editor.peakLabel')}
-            </Text>
+            <Text style={[heading, styles.subLabel]}>{t('editor.peakLabel')}</Text>
             <MonthPicker
               label={t('editor.peakLabel')}
               selected={draft.peakMonths}
@@ -286,27 +276,23 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         ) : null}
       </View>
 
-      <View style={styles.sectionGap} />
+      <View style={tile}>
+        <Text style={heading}>{t('editor.nutritionLabel')}</Text>
+        <Text style={hint}>{t('editor.carbsHint')}</Text>
 
-      <View style={styles.section}>
-        <Text variant="labelLarge">{t('editor.nutritionLabel')}</Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          {t('editor.carbsHint')}
-        </Text>
-
-        <SegmentedButtons
+        <SegmentedControl
           value={draft.basis}
-          onValueChange={(value) => set('basis', value as IngredientDraft['basis'])}
-          buttons={[
+          onChange={(value) => set('basis', value)}
+          options={[
             { value: 'per100g', label: t('nutrients.per100g') },
             { value: 'per100ml', label: t('nutrients.per100ml') },
           ]}
         />
 
-        <SegmentedButtons
+        <SegmentedControl<FoodState | 'none'>
           value={draft.state}
-          onValueChange={(value) => set('state', value as FoodState | 'none')}
-          buttons={[
+          onChange={(value) => set('state', value)}
+          options={[
             { value: 'none', label: t('states.unset') },
             ...FOOD_STATES.map((state) => ({ value: state, label: t(`states.${state}`) })),
           ]}
@@ -314,43 +300,33 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
 
         <View style={styles.grid}>
           {NUMERIC_NUTRIENT_FIELDS.map((field) => (
-            <TextInput
+            <FilledField
               key={field}
               label={numericLabel(field)}
               value={draft[field]}
               onChangeText={(value) => set(field, value)}
               keyboardType="decimal-pad"
-              mode="outlined"
-              dense
               style={styles.gridItem}
             />
           ))}
         </View>
 
-        <TextInput
+        <FilledField
           label={t('fields.glycemicIndex')}
           value={draft.glycemicIndex}
           onChangeText={(value) => set('glycemicIndex', value)}
           keyboardType="decimal-pad"
-          mode="outlined"
-          dense
         />
-        <HelperText type="info" visible>
-          {t('editor.giHint')}
-        </HelperText>
+        <Text style={hint}>{t('editor.giHint')}</Text>
       </View>
 
-      <View style={styles.sectionGap} />
-
-      <View style={styles.section}>
-        <Text variant="labelLarge">{t('editor.portionsLabel')}</Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          {t('editor.portionsHint')}
-        </Text>
+      <View style={tile}>
+        <Text style={heading}>{t('editor.portionsLabel')}</Text>
+        <Text style={hint}>{t('editor.portionsHint')}</Text>
         {draft.portions.map((portion, index) => (
           <View key={index} style={styles.portionRow}>
-            <TextInput
-              label={t('fields.portionLabel')}
+            <FilledField
+              placeholder={t('fields.portionLabel')}
               value={portion.label}
               onChangeText={(value) =>
                 set(
@@ -360,12 +336,10 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
                   ),
                 )
               }
-              mode="outlined"
-              dense
               style={styles.portionLabel}
             />
-            <TextInput
-              label={t('fields.portionGrams')}
+            <FilledField
+              placeholder={t('fields.portionGrams')}
               value={portion.grams}
               onChangeText={(value) =>
                 set(
@@ -376,12 +350,12 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
                 )
               }
               keyboardType="decimal-pad"
-              mode="outlined"
-              dense
               style={styles.portionGrams}
             />
-            <Button
-              compact
+            <IconButton
+              icon="close"
+              size={20}
+              iconColor={theme.colors.onSurfaceVariant}
               onPress={() =>
                 set(
                   'portions',
@@ -389,63 +363,66 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
                 )
               }
               accessibilityLabel={tCommon('actions.delete')}
-            >
-              ×
-            </Button>
+            />
           </View>
         ))}
         {draft.portions.length < FOOD_PORTION_MAX ? (
           <Button
             icon="plus"
+            mode="text"
             onPress={() => set('portions', [...draft.portions, { label: '', grams: '' }])}
+            style={styles.inlineButton}
           >
             {t('editor.addPortion')}
           </Button>
         ) : null}
       </View>
 
-      <View style={styles.sectionGap} />
-
-      <View style={styles.section}>
-        <Text variant="labelLarge">{t('editor.matchingLabel')}</Text>
-        <TextInput
+      <View style={tile}>
+        <Text style={heading}>{t('editor.matchingLabel')}</Text>
+        <FilledField
           label={t('fields.aliases')}
           value={draft.aliases}
           onChangeText={(value) => set('aliases', value)}
-          mode="outlined"
-          dense
         />
-        <HelperText type="info" visible>
-          {t('editor.aliasesHint')}
-        </HelperText>
-        <TextInput
+        <Text style={hint}>{t('editor.aliasesHint')}</Text>
+        <FilledField
           label={t('fields.diversityKey')}
           value={draft.diversityKey}
           onChangeText={(value) => set('diversityKey', value)}
           autoCapitalize="none"
-          mode="outlined"
-          dense
         />
-        <HelperText type="info" visible>
-          {t('editor.diversityKeyHint')}
-        </HelperText>
+        <Text style={hint}>{t('editor.diversityKeyHint')}</Text>
       </View>
 
       {error ? (
-        <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
-          {error}
-        </Text>
+        <Text style={[typeScale.secondary, { color: theme.colors.error }]}>{error}</Text>
       ) : null}
 
-      <Button mode="contained" onPress={() => void handleSave()} loading={saving} disabled={saving}>
-        {t('editor.save')}
-      </Button>
-
-      {existing ? (
-        <Button textColor={theme.colors.error} onPress={handleDelete}>
-          {t('remove.action')}
+      <View style={styles.footer}>
+        {existing ? (
+          <IconButton
+            icon="delete-outline"
+            size={24}
+            iconColor={theme.colors.error}
+            onPress={handleDelete}
+            accessibilityLabel={t('remove.action')}
+          />
+        ) : (
+          <View />
+        )}
+        <Button
+          mode="contained"
+          onPress={() => void handleSave()}
+          loading={saving}
+          disabled={saving}
+          style={[styles.save, { borderRadius: deco.radius.pill }]}
+          contentStyle={styles.saveContent}
+          labelStyle={styles.saveLabel}
+        >
+          {t('editor.save')}
         </Button>
-      ) : null}
+      </View>
     </ScrollView>
   );
 }
@@ -457,37 +434,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   container: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 48,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.sm,
+    paddingBottom: space.xxl,
+    gap: space.lg,
   },
-  section: {
-    gap: 8,
-  },
-  sectionGap: {
-    height: space.md,
+  tile: {
+    padding: space.lg,
+    gap: space.md,
   },
   subLabel: {
-    marginTop: 8,
+    marginTop: space.sm,
   },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: space.sm,
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: space.md,
   },
   switchLabel: {
     flex: 1,
     minWidth: 0,
+    gap: space.xxs,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: space.sm,
   },
   gridItem: {
     flexGrow: 1,
@@ -496,12 +473,30 @@ const styles = StyleSheet.create({
   portionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.sm,
   },
   portionLabel: {
     flex: 2,
   },
   portionGrams: {
     flex: 1,
+  },
+  inlineButton: {
+    alignSelf: 'flex-start',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: space.sm,
+  },
+  save: {
+    minWidth: 132,
+  },
+  saveContent: {
+    minHeight: 52,
+  },
+  saveLabel: {
+    ...typeScale.rowName,
   },
 });

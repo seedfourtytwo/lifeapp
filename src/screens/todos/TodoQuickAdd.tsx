@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text, TextInput, useTheme } from 'react-native-paper';
+import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
+import FilledField from '../../components/sheet/FilledField';
 import { TODO_TITLE_MAX_LENGTH } from '../../protocol';
 import { dictationMicIcon } from '../../dictation/dictationField';
 import { livePreviewText } from '../../dictation/livePreview';
@@ -24,7 +25,7 @@ type Props = {
 /**
  * The one-line composer at the top of the Todos tab.
  *
- * A dense field has one trailing slot, so it shows whichever control the field
+ * The field has one trailing slot, so it shows whichever control the field
  * is waiting for: the mic while nothing has been entered, the tick while a take
  * is open, the plus once there is a title to file. Dictation deliberately stops
  * short of creating the todo — a misheard task filed on its own is worse than
@@ -81,9 +82,8 @@ export default function TodoQuickAdd({
 
   return (
     <View style={styles.wrap}>
-      <TextInput
-        mode="outlined"
-        dense
+      <FilledField
+        fill="page"
         value={shown}
         onChangeText={(next) => {
           dictation.clearNotices();
@@ -95,18 +95,18 @@ export default function TodoQuickAdd({
         onSubmitEditing={onSubmit}
         blurOnSubmit={false}
         editable={!dictation.sessionOpen}
-        right={
+        rightAccessory={
           showMic ? (
-            <TextInput.Icon
+            <IconButton
               icon={mic.icon}
+              size={22}
+              iconColor={theme.colors.onSurfaceVariant}
               disabled={mic.disabled}
               onPress={
                 mic.action === 'finish'
                   ? dictation.finish
                   : () => setMicPresses((presses) => presses + 1)
               }
-              // The mic is about to dismiss the keyboard; do not raise it first.
-              forceTextInputFocus={false}
               accessibilityLabel={
                 mic.action === 'finish'
                   ? tCommon('dictation.finishA11y')
@@ -114,7 +114,13 @@ export default function TodoQuickAdd({
               }
             />
           ) : hasText ? (
-            <TextInput.Icon icon="plus" onPress={onSubmit} accessibilityLabel={t('add.action')} />
+            <IconButton
+              icon="plus"
+              size={22}
+              iconColor={theme.colors.primary}
+              onPress={onSubmit}
+              accessibilityLabel={t('add.action')}
+            />
           ) : undefined
         }
       />
@@ -140,9 +146,10 @@ export default function TodoQuickAdd({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: space.lg,
+    marginBottom: space.xl,
   },
   line: {
     marginTop: space.xs,
+    paddingHorizontal: space.xs,
   },
 });

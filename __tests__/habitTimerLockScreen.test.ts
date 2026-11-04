@@ -27,7 +27,7 @@ describe('buildHabitTimerLockScreenMeta', () => {
       new Date('2025-01-01T10:01:30.000Z').getTime(),
     );
     expect(meta.title).toBe('Mobility');
-    expect(meta.artist).toBe('Life Dashboard');
+    expect(meta.artist).toBe('Life');
     expect(meta.albumTitle).toBe('Running · 1:30 / 15:00');
   });
 

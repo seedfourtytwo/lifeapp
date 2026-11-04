@@ -12,7 +12,6 @@
   },
   "list": {
     "empty": "Nothing to do.",
-    "emptyHint": "Add something above and it shows up here.",
     "reorderHint": "Long-press to reorder",
     "historyA11y": "Completed todos",
     "loadFailed": "Could not load your todos.",
@@ -29,8 +28,7 @@
   },
   "undo": {
     "done": "Done — {{title}}",
-    "deleted": "Deleted — {{title}}",
-    "action": "Undo"
+    "deleted": "Deleted — {{title}}"
   },
   "editor": {
     "newTitle": "New todo",

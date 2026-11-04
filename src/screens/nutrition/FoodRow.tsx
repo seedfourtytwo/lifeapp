@@ -11,7 +11,8 @@ import {
 } from '../../protocol';
 import { FOOD_GROUP_ICONS } from './foodGroupIcons';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { space } from '../../theme/spacing';
+import { layout, space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 
 type Props = {
   item: FoodItem;
@@ -95,9 +96,9 @@ function FoodRow({
       <View style={styles.text}>
         <View style={styles.nameRow}>
           <Text
-            variant="bodyLarge"
             numberOfLines={1}
             style={[
+              typeScale.rowName,
               styles.name,
               { color: logged ? theme.colors.onSecondaryContainer : theme.colors.onSurface },
             ]}
@@ -114,9 +115,11 @@ function FoodRow({
           ) : null}
         </View>
         <Text
-          variant="bodySmall"
           numberOfLines={1}
-          style={{ color: theme.colors.onSurfaceVariant }}
+          style={[
+            typeScale.secondary,
+            { color: logged ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant },
+          ]}
         >
           {summary ?? t(`groups.${item.group}`)}
         </Text>
@@ -148,19 +151,21 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.lg,
+    minHeight: 64,
     paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    marginBottom: space.sm,
+    paddingHorizontal: space.lg,
+    marginBottom: layout.rowGap,
   },
   text: {
     flex: 1,
     minWidth: 0,
+    gap: space.xxs,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: space.xs + space.xxs,
     minWidth: 0,
   },
   name: {

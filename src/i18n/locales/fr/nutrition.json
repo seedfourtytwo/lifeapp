@@ -16,7 +16,8 @@
     "placeholder": "Rechercher un aliment",
     "noResults": "Aucun aliment ne correspond à « {{query}} ».",
     "addNamed": "Ajouter « {{query}} »",
-    "tooMany": "Affichage des {{count}} premiers. Continuez à taper pour affiner."
+    "tooMany": "Affichage des {{count}} premiers. Continuez à taper pour affiner.",
+    "clearA11y": "Effacer la recherche"
   },
   "list": {
     "a11yToggleOn": "Marquer {{name}} comme mangé",

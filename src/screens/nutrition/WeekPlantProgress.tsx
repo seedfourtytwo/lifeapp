@@ -4,6 +4,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import { clamp01 } from '../../utils/clamp01';
 import type { WeekDiversity } from '../../nutrition/weekDiversity';
 
@@ -34,10 +35,10 @@ export default function WeekPlantProgress({ diversity }: Props) {
       })}
     >
       <View style={styles.headingRow}>
-        <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+        <Text style={[typeScale.secondary, { color: theme.colors.onSurfaceVariant }]}>
           {t('week.plantsHeading')}
         </Text>
-        <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+        <Text style={[typeScale.data, styles.count, { color: theme.colors.onSurface }]}>
           {t('week.count', { count: diversity.plantCount, target: diversity.target })}
         </Text>
       </View>
@@ -60,7 +61,7 @@ export default function WeekPlantProgress({ diversity }: Props) {
       </View>
 
       <View style={styles.footerRow}>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
           {met
             ? t('week.targetMet')
             : t('week.remaining', {
@@ -68,7 +69,7 @@ export default function WeekPlantProgress({ diversity }: Props) {
                 target: diversity.target,
               })}
         </Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
           {t('week.totalFoods', { count: diversity.totalCount })}
         </Text>
       </View>
@@ -78,9 +79,14 @@ export default function WeekPlantProgress({ diversity }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: space.md,
-    gap: space.sm,
-    marginBottom: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.lg,
+    gap: space.md,
+    marginBottom: space.lg,
+  },
+  count: {
+    fontSize: 17,
+    lineHeight: 22,
   },
   // Both rows wrap: at large text the two halves stack instead of colliding.
   headingRow: {

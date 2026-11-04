@@ -12,7 +12,6 @@
   },
   "list": {
     "empty": "Rien à faire.",
-    "emptyHint": "Ajoutez quelque chose ci-dessus, ça s'affichera ici.",
     "reorderHint": "Appui long pour réordonner",
     "historyA11y": "Tâches terminées",
     "loadFailed": "Impossible de charger vos tâches.",
@@ -29,8 +28,7 @@
   },
   "undo": {
     "done": "Fait — {{title}}",
-    "deleted": "Supprimé — {{title}}",
-    "action": "Annuler"
+    "deleted": "Supprimé — {{title}}"
   },
   "editor": {
     "newTitle": "Nouvelle tâche",

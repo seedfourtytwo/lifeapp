@@ -9,7 +9,8 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
-import { Text, TextInput } from 'react-native-paper';
+import { TextInput } from 'react-native';
+import { Text } from 'react-native-paper';
 import '../src/i18n';
 import type { DictationLivePreview } from '../src/dictation/livePreview';
 
@@ -66,6 +67,7 @@ jest.mock('../src/dictation/useDictationField', () => ({
 
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires */
 const TodoQuickAdd = require('../src/screens/todos/TodoQuickAdd').default;
+const FilledField = require('../src/components/sheet/FilledField').default;
 /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires */
 
 type Adornment = { props: Record<string, unknown> } | null | undefined;
@@ -87,12 +89,13 @@ function render(props: { value?: string; onSubmit?: () => void }) {
   });
   mounted.push(tree);
   const input = tree.root.findByType(TextInput);
+  const field = tree.root.findByType(FilledField);
   return {
     tree,
     input,
     onChangeText,
     onSubmit,
-    right: input.props.right as Adornment,
+    right: field.props.rightAccessory as Adornment,
   };
 }
 
@@ -127,9 +130,6 @@ describe('todo quick-add trailing control', () => {
   it('offers the mic while the field is empty', () => {
     const { right } = render({});
     expect(right?.props.icon).toBe('microphone-outline');
-    // Pressing it must not also focus the field: the take is about to dismiss
-    // the keyboard, and raising it first makes the sheet jump.
-    expect(right?.props.forceTextInputFocus).toBe(false);
   });
 
   it('offers the plus once there is something to file', () => {
@@ -155,7 +155,7 @@ describe('todo quick-add trailing control', () => {
   it('shows no mic at all where dictation does not exist', () => {
     // iOS, web, and any Android phone without the engine: absent, not broken.
     mockField.supported = false;
-    expect(render({}).right).toBeUndefined();
+    expect(render({}).right ?? undefined).toBeUndefined();
   });
 
   it('still files a typed todo where dictation does not exist', () => {
@@ -204,11 +204,11 @@ describe('todo quick-add trailing control', () => {
   });
 
   it('says what went wrong under the field', () => {
-    mockField.error = 'Allow Microphone for Life Dashboard';
+    mockField.error = 'Allow Microphone for Life';
     const { tree } = render({});
     const shown = tree.root
       .findAllByType(Text)
       .map((node) => node.props.children);
-    expect(shown).toContain('Allow Microphone for Life Dashboard');
+    expect(shown).toContain('Allow Microphone for Life');
   });
 });

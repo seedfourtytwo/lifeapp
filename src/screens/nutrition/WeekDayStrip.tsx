@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
 import { getDateLocale } from '../../i18n';
 import { parseLocalDate } from '../../protocol';
 import { formatFullDate } from '../../utils/dates';
@@ -93,20 +94,21 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 4,
-    marginBottom: 12,
+    gap: space.xs,
+    marginBottom: space.lg,
   },
   day: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
-    gap: 1,
+    minHeight: 56,
+    paddingVertical: space.sm,
+    gap: space.xxs,
   },
   dot: {
     width: 4,
     height: 4,
     // Geometric: half the size is what makes it round.
     borderRadius: 2,
-    marginTop: 2,
+    marginTop: space.xxs,
   },
 });

@@ -48,7 +48,7 @@ describe('i18n language resolution', () => {
     expect(getSpeechLocale().toLowerCase().startsWith('fr')).toBe(true);
 
     await applyAppLanguage('en');
-    expect(i18n.t('settings:appearance.sectionTitle')).toBe('Appearance');
+    expect(i18n.t('settings:appearance.sectionTitle')).toBe('Look');
     expect(getDateLocale()).toBe('en-US');
     expect(getSpeechLocale().toLowerCase().startsWith('en')).toBe(true);
   });

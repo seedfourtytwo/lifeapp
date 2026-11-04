@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import SettingsGroup from '../../components/settings/SettingsGroup';
 import SettingsRow from '../../components/settings/SettingsRow';
 import type { RootStackParamList } from '../../navigation/types';
-import { space } from '../../theme/spacing';
+import { layout, space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { HomeTabScrollView } from '../shared/HomeTabScrollView';
 import { homeTabScreenStyles } from '../shared/screenStyles';
@@ -54,7 +54,7 @@ function SettingsMenuScreen() {
           onPress={() => navigation.navigate('Journal')}
         />
         <SettingsRow
-          icon="calendar-month"
+          icon="calendar-month-outline"
           title={t('menu.calendarTitle')}
           chevron
           onPress={() => navigation.navigate('Calendar')}
@@ -87,7 +87,7 @@ function SettingsMenuScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    gap: space.lg,
+    gap: layout.sectionGap,
     paddingBottom: space.xl,
   },
   /** Matches the day header's title row on the other Home pages. */

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Chip, IconButton, Menu, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { FOOD_GROUPS, type FoodGroup } from '../../protocol';
 import {
@@ -10,7 +10,10 @@ import {
   type FoodFilterState,
   type FoodSortKey,
 } from '../../nutrition/foodFilters';
+import ChoiceChip from '../../components/ChoiceChip';
 import Rule from '../../components/Rule';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 
 type Props = {
   filter: FoodFilterState;
@@ -35,6 +38,9 @@ export default function FoodListControls({
   const [sortMenu, setSortMenu] = useState(false);
 
   const activeCount = countActiveFoodFilters(filter);
+  // The chips sit on the page, not on a sheet: an idle one takes the tile
+  // colour, or it would vanish into the ground.
+  const idle = { backgroundColor: theme.colors.surface };
 
   return (
     <View style={styles.wrap}>
@@ -49,15 +55,13 @@ export default function FoodListControls({
             visible={groupMenu}
             onDismiss={() => setGroupMenu(false)}
             anchor={
-              <Chip
-                compact
-                icon="shape-outline"
+              <ChoiceChip
+                role="checkbox"
+                label={filter.group ? t(`groups.${filter.group}`) : t('filters.allGroups')}
                 selected={filter.group != null}
-                showSelectedCheck={false}
                 onPress={() => setGroupMenu(true)}
-              >
-                {filter.group ? t(`groups.${filter.group}`) : t('filters.allGroups')}
-              </Chip>
+                style={filter.group == null ? idle : undefined}
+              />
             }
           >
             <Menu.Item
@@ -82,32 +86,26 @@ export default function FoodListControls({
             ))}
           </Menu>
 
-          <Chip
-            compact
+          <ChoiceChip
+            role="checkbox"
+            label={t('filters.plantsOnly')}
             selected={filter.plantsOnly}
-            showSelectedCheck={false}
             onPress={() => onFilterChange({ ...filter, plantsOnly: !filter.plantsOnly })}
-          >
-            {t('filters.plantsOnly')}
-          </Chip>
+            style={filter.plantsOnly ? undefined : idle}
+          />
 
-          <Chip
-            compact
+          <ChoiceChip
+            role="checkbox"
+            label={t('filters.inSeason')}
             selected={filter.inSeasonOnly}
-            showSelectedCheck={false}
             onPress={() => onFilterChange({ ...filter, inSeasonOnly: !filter.inSeasonOnly })}
-          >
-            {t('filters.inSeason')}
-          </Chip>
+            style={filter.inSeasonOnly ? undefined : idle}
+          />
 
           {activeCount > 0 ? (
-            <Chip
-              compact
-              icon="close"
-              onPress={() => onFilterChange(DEFAULT_FOOD_FILTER)}
-            >
+            <Button compact mode="text" onPress={() => onFilterChange(DEFAULT_FOOD_FILTER)}>
               {t('filters.clear')}
-            </Chip>
+            </Button>
           ) : null}
         </ScrollView>
 
@@ -117,7 +115,8 @@ export default function FoodListControls({
           anchor={
             <IconButton
               icon="sort"
-              size={20}
+              size={22}
+              iconColor={theme.colors.onSurfaceVariant}
               onPress={() => setSortMenu(true)}
               accessibilityLabel={t('sort.a11y', { value: t(`sort.${sort}`) })}
               style={styles.sortButton}
@@ -138,7 +137,7 @@ export default function FoodListControls({
         </Menu>
       </View>
 
-      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+      <Text style={[typeScale.caption, styles.count, { color: theme.colors.onSurfaceVariant }]}>
         {t('filters.resultCount', { count: resultCount })}
       </Text>
     </View>
@@ -147,19 +146,23 @@ export default function FoodListControls({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 4,
-    marginBottom: 8,
+    gap: space.sm,
+    marginBottom: space.md,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: space.xs,
   },
   chips: {
     flexDirection: 'row',
-    gap: 6,
-    paddingRight: 4,
+    gap: space.sm,
+    paddingVertical: space.xs,
+    paddingRight: space.xs,
     alignItems: 'center',
+  },
+  count: {
+    paddingHorizontal: space.xs,
   },
   sortButton: {
     margin: 0,

@@ -1,21 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  ActivityIndicator,
-  Button,
-  Searchbar,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import QuietText from '../components/QuietText';
+import EmptyState from '../components/EmptyState';
+import FilledField from '../components/sheet/FilledField';
 import { getDatabase } from '../db/client';
 import * as todoRepo from '../db/repositories/todoRepository';
 import { getDateLocale } from '../i18n';
 import { toDateString, type Todo } from '../protocol';
 import { formatShortDate } from '../utils/dates';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 
 /** Enough to scroll through a year of todos without mounting a decade of them. */
 const HISTORY_LIMIT = 200;
@@ -95,52 +91,51 @@ export default function TodoHistoryScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Searchbar
+      <FilledField
+        fill="page"
         value={search}
         onChangeText={setSearch}
         placeholder={t('history.searchPlaceholder')}
+        returnKeyType="search"
         style={styles.search}
       />
 
-      <View style={styles.dateRow}>
-        <TextInput
-          mode="outlined"
-          dense
-          style={styles.dateInput}
-          label={t('history.dateFilter')}
-          placeholder="YYYY-MM-DD"
-          value={dateFilter}
-          onChangeText={setDateFilter}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="numbers-and-punctuation"
-          maxLength={10}
-        />
-        {dateFilter.length > 0 ? (
-          <Button compact onPress={() => setDateFilter('')}>
-            {t('history.dateClear')}
-          </Button>
-        ) : null}
-      </View>
+      <FilledField
+        fill="page"
+        label={t('history.dateFilter')}
+        placeholder="YYYY-MM-DD"
+        value={dateFilter}
+        onChangeText={setDateFilter}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="numbers-and-punctuation"
+        maxLength={10}
+        style={styles.dateField}
+        rightAccessory={
+          dateFilter.length > 0 ? (
+            <Button compact onPress={() => setDateFilter('')}>
+              {t('history.dateClear')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {loading ? <ActivityIndicator style={styles.spinner} /> : null}
 
       {error ? (
-        <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+        <Text style={[typeScale.secondary, { color: theme.colors.error }]}>
           {t('history.loadFailed')}
         </Text>
       ) : null}
 
       {!loading && !error && todos.length === 0 ? (
-        <QuietText variant="bodyMedium" style={styles.empty}>
-          {filtering ? t('history.emptySearch') : t('history.empty')}
-        </QuietText>
+        <EmptyState message={filtering ? t('history.emptySearch') : t('history.empty')} />
       ) : null}
 
       {days.map((day) => (
         <View key={day.date} style={styles.day}>
           <Text
-            variant="labelMedium"
+            accessibilityRole="header"
             style={[styles.dayHeading, { color: theme.colors.onSurfaceVariant }]}
           >
             {formatShortDate(day.date)}
@@ -151,25 +146,24 @@ export default function TodoHistoryScreen() {
               style={[
                 styles.row,
                 {
-                  backgroundColor: theme.colors.surfaceVariant,
-                  borderRadius: deco.radius.md,
+                  backgroundColor: theme.colors.surface,
+                  borderRadius: deco.radius.lg,
                 },
               ]}
             >
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+              <Text style={[typeScale.body, { color: theme.colors.onSurface }]}>
                 {todo.title}
               </Text>
               {todo.note ? (
                 <Text
-                  variant="bodySmall"
                   numberOfLines={3}
-                  style={{ color: theme.colors.onSurfaceVariant }}
+                  style={[typeScale.secondary, { color: theme.colors.onSurfaceVariant }]}
                 >
                   {todo.note}
                 </Text>
               ) : null}
               {todo.completedAt ? (
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
                   {t('history.completedAt', { time: formatTime(todo.completedAt) })}
                 </Text>
               ) : null}
@@ -183,37 +177,33 @@ export default function TodoHistoryScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.sm,
+    paddingBottom: space.xxl,
     flexGrow: 1,
   },
   search: {
-    marginBottom: 12,
+    marginBottom: space.md,
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 16,
-  },
-  dateInput: {
-    flex: 1,
+  dateField: {
+    marginBottom: layout.sectionGap,
   },
   spinner: {
-    marginTop: 24,
-  },
-  empty: {
-    textAlign: 'center',
-    marginTop: 48,
+    marginTop: space.xl,
   },
   day: {
-    marginBottom: 16,
+    marginBottom: layout.sectionGap - layout.rowGap,
   },
   dayHeading: {
-    marginBottom: 6,
+    ...typeScale.caption,
+    fontSize: 14,
+    marginBottom: space.sm,
+    paddingHorizontal: space.xs,
   },
   row: {
-    padding: 12,
-    marginBottom: 8,
-    gap: 2,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    marginBottom: layout.rowGap,
+    gap: space.xxs,
   },
 });

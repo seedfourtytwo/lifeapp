@@ -16,7 +16,8 @@
     "placeholder": "Search foods",
     "noResults": "No food matches “{{query}}”.",
     "addNamed": "Add “{{query}}”",
-    "tooMany": "Showing the first {{count}}. Keep typing to narrow it down."
+    "tooMany": "Showing the first {{count}}. Keep typing to narrow it down.",
+    "clearA11y": "Clear search"
   },
   "list": {
     "a11yToggleOn": "Mark {{name}} as eaten",

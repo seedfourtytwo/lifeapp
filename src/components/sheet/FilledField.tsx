@@ -22,6 +22,11 @@ export type FilledFieldProps = Omit<TextInputProps, 'style'> & {
   error?: string | null;
   /** Sits inside the field on the right: a mic, a clear button. */
   rightAccessory?: React.ReactNode;
+  /**
+   * What the field sits on. On a sheet it is a well of the page colour; on
+   * the page itself that well would vanish, so it takes the tile colour.
+   */
+  fill?: 'sheet' | 'page';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -34,7 +39,7 @@ const MULTILINE_MIN_HEIGHT = 112;
  * floats into the border is what made every editor look like a stock form.
  */
 const FilledField = forwardRef<TextInput, FilledFieldProps>(function FilledField(
-  { label, error, rightAccessory, style, multiline, ...input },
+  { label, error, rightAccessory, fill = 'sheet', style, multiline, ...input },
   ref,
 ) {
   const theme = useTheme();
@@ -52,7 +57,7 @@ const FilledField = forwardRef<TextInput, FilledFieldProps>(function FilledField
         style={[
           styles.box,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: fill === 'page' ? theme.colors.surface : theme.colors.background,
             borderRadius: deco.radius.md,
             minHeight: multiline ? MULTILINE_MIN_HEIGHT : MIN_HEIGHT,
             alignItems: multiline ? 'flex-start' : 'center',

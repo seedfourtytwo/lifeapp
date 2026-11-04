@@ -1,5 +1,5 @@
 {
-  "appName": "Life Dashboard",
+  "appName": "Life",
   "actions": {
     "save": "Save",
     "cancel": "Cancel",
@@ -114,7 +114,7 @@
   "dictation": {
     "webOnly": "Dictation works in the phone app, not in the browser.",
     "notAvailable": "On-device speech recognition is not available on this phone.",
-    "micLifeApp": "Allow Microphone for Life Dashboard: Settings → Apps → Life Dashboard → Permissions → Microphone.",
+    "micLifeApp": "Allow Microphone for Life: Settings → Apps → Life → Permissions → Microphone.",
     "checkingModel": "Preparing offline speech…",
     "finishingTranscription": "Finishing transcription…",
     "downloadProgress": "Downloading speech model ({{locale}}): {{progress}}%",

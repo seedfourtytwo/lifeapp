@@ -9,7 +9,7 @@
     "ingredientsTitle": "Ingrédients"
   },
   "appearance": {
-    "sectionTitle": "Apparence",
+    "sectionTitle": "Affichage",
     "themeSystem": "Système",
     "languageSectionTitle": "Langue",
     "languageSystem": "Système",
@@ -19,21 +19,19 @@
     "themeDark": "Sombre"
   },
   "homeChrome": {
-    "sectionTitle": "Accueil",
-    "weatherTitle": "Météo",
+    "weatherTitle": "Météo sur l’accueil",
     "on": "Activé",
     "off": "Désactivé"
   },
   "data": {
-    "sectionTitle": "Données",
-    "exportTitle": "Exporter la sauvegarde",
-    "exportDescription": "Partager une sauvegarde JSON — choisir Proton Drive ou une autre appli",
-    "importTitle": "Importer une sauvegarde",
-    "importDescriptionAvailable": "Choisir un fichier de sauvegarde depuis Proton Drive, Fichiers ou une autre appli",
+    "sectionTitle": "Vos données",
+    "exportTitle": "Sauvegarder",
+    "exportDescription": "Enregistrer une copie dans Proton Drive ou une autre appli",
+    "importTitle": "Restaurer une sauvegarde",
+    "importDescriptionAvailable": "Remplace tout sur ce téléphone",
     "importDescriptionUnavailable": "Nécessite une nouvelle version de l’application",
-    "clearDataTitle": "Effacer des données…",
-    "clearDataDescription": "Historique, calendrier, cache, préférences ou suivis",
-    "caption": "L’import remplace toutes les données locales.",
+    "clearDataTitle": "Effacer des données",
+    "clearDataDescription": "Choisir quoi supprimer",
     "backupSavedTitle": "Sauvegarde enregistrée",
     "backupSavedBody": "Votre sauvegarde JSON a été téléchargée.",
     "backupSharedTitle": "Sauvegarde partagée",
@@ -52,14 +50,14 @@
     "clearFailedBodyFallback": "Impossible d'effacer les données locales.",
     "clearedTitle": "Données effacées",
     "clearedBodyFallback": "Les données sélectionnées ont été supprimées.",
-    "exportShareTitle": "Exporter la sauvegarde Life Dashboard",
+    "exportShareTitle": "Sauvegarde Life",
     "couldNotAccessStorage": "Impossible d'accéder au stockage de l'application pour l'export",
     "clearConfirmTitle": "Effacer les données sélectionnées ?",
     "clearConfirmDefinitionsTitle": "Supprimer les habitudes et compteurs ?",
     "clearConfirmSuffix": "Cette action est irréversible.",
     "clearConfirmAction": "Effacer",
     "clearConfirmDefinitionsAction": "Supprimer tout ce qui est sélectionné",
-    "clearNotebookTitle": "Effacer un carnet…",
+    "clearNotebookTitle": "Effacer un carnet",
     "clearNotebookDescription": "Supprimer tous les jours d’un journal. Le carnet reste.",
     "clearNotebookConfirmTitle": "Effacer tout « {{name}} » ?",
     "clearNotebookConfirmBody": "Tous les jours de ce carnet sont supprimés. Le carnet lui-même reste. Cette action est irréversible.",
@@ -71,8 +69,7 @@
     "clearNotebookFailedTitle": "Impossible d’effacer le carnet"
   },
   "about": {
-    "title": "Life Dashboard",
-    "version": "Version {{version}}"
+    "version": "Life {{version}}"
   },
   "weather": {
     "sectionTitle": "Météo",
@@ -148,5 +145,8 @@
       "weather": "Prévisions météo en cache",
       "preferences": "Préférences de l'application (thème, options, position de la bulle)"
     }
+  },
+  "general": {
+    "sectionTitle": "Général"
   }
 }

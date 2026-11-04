@@ -1,9 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Checkbox, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { layout, space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import { formatShortDate } from '../../utils/dates';
 import { todoSection, type Todo } from '../../protocol';
 
@@ -68,25 +70,29 @@ export default function TodoRow({
       accessibilityRole="button"
       accessibilityLabel={t('row.openA11y', { title: todo.title })}
       accessibilityHint={reorderHint}
-      style={[
+      style={({ pressed }) => [
         styles.row,
         {
           backgroundColor: theme.colors.surface,
-          borderRadius: deco.radius.md,
-          borderColor: overdue ? theme.colors.error : 'transparent',
-          borderWidth: overdue ? deco.borderWidth : 0,
+          borderRadius: deco.radius.lg,
+          transform: [{ scale: pressed ? PRESSED_SCALE : 1 }],
         },
       ]}
     >
       {/* Its own hit target: ticking must never be a mis-tap away from editing. */}
-      <Checkbox.Android
-        status="unchecked"
+      <Pressable
         onPress={() => onToggle(todo)}
+        hitSlop={0}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: false }}
         accessibilityLabel={t('row.doneA11y', { title: todo.title })}
-      />
+        style={styles.tickTarget}
+      >
+        <View style={[styles.tickRing, { borderColor: theme.colors.onSurfaceVariant }]} />
+      </Pressable>
 
       <View style={styles.body}>
-        <Text variant="bodyLarge" numberOfLines={2} style={{ color: theme.colors.onSurface }}>
+        <Text style={[typeScale.body, { color: theme.colors.onSurface }]} numberOfLines={2}>
           {todo.title}
         </Text>
 
@@ -94,11 +100,10 @@ export default function TodoRow({
           <View style={styles.meta}>
             {deadline ? (
               <Text
-                variant="labelSmall"
-                style={{
-                  color: overdue ? theme.colors.error : theme.colors.onSurfaceVariant,
-                  fontWeight: overdue ? '700' : '500',
-                }}
+                style={[
+                  typeScale.secondary,
+                  { color: overdue ? theme.colors.error : theme.colors.onSurfaceVariant },
+                ]}
               >
                 {deadline}
               </Text>
@@ -118,23 +123,43 @@ export default function TodoRow({
   );
 }
 
+/** The same give as a habit tile under a finger. */
+const PRESSED_SCALE = 0.98;
+const TICK_TARGET = 48;
+const TICK_RING = 30;
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 12,
-    paddingVertical: 6,
-    marginBottom: 8,
-    gap: 4,
+    minHeight: 60,
+    paddingLeft: space.xs,
+    paddingRight: space.lg,
+    paddingVertical: space.sm,
+    marginBottom: layout.rowGap,
+    gap: space.xs,
+  },
+  tickTarget: {
+    width: TICK_TARGET,
+    height: TICK_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tickRing: {
+    width: TICK_RING,
+    height: TICK_RING,
+    // Half the size: the ring is a circle.
+    borderRadius: TICK_RING / 2,
+    borderWidth: 1.5,
   },
   body: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: space.xxs,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: space.xs + space.xxs,
   },
 });

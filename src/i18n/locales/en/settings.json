@@ -9,7 +9,7 @@
     "ingredientsTitle": "Ingredients"
   },
   "appearance": {
-    "sectionTitle": "Appearance",
+    "sectionTitle": "Look",
     "themeSystem": "System",
     "languageSectionTitle": "Language",
     "languageSystem": "System",
@@ -19,21 +19,19 @@
     "themeDark": "Dark"
   },
   "homeChrome": {
-    "sectionTitle": "Home",
-    "weatherTitle": "Weather",
+    "weatherTitle": "Weather on Home",
     "on": "On",
     "off": "Off"
   },
   "data": {
-    "sectionTitle": "Data",
-    "exportTitle": "Export backup",
-    "exportDescription": "Share a JSON backup — pick Proton Drive or another app",
-    "importTitle": "Import backup",
-    "importDescriptionAvailable": "Pick a backup file from Proton Drive, Files, or another app",
+    "sectionTitle": "Your data",
+    "exportTitle": "Back up",
+    "exportDescription": "Save a copy to Proton Drive or another app",
+    "importTitle": "Restore from a backup",
+    "importDescriptionAvailable": "Replaces everything on this phone",
     "importDescriptionUnavailable": "Needs a fresh app build",
-    "clearDataTitle": "Clear data…",
-    "clearDataDescription": "History, calendar, cache, prefs, or trackers",
-    "caption": "Import replaces all local data.",
+    "clearDataTitle": "Clear data",
+    "clearDataDescription": "Choose what to remove",
     "backupSavedTitle": "Backup saved",
     "backupSavedBody": "Your JSON backup was downloaded.",
     "backupSharedTitle": "Backup shared",
@@ -52,14 +50,14 @@
     "clearFailedBodyFallback": "Could not clear local data.",
     "clearedTitle": "Data cleared",
     "clearedBodyFallback": "Selected data was removed.",
-    "exportShareTitle": "Export Life Dashboard backup",
+    "exportShareTitle": "Life backup",
     "couldNotAccessStorage": "Could not access app storage for export",
     "clearConfirmTitle": "Clear selected data?",
     "clearConfirmDefinitionsTitle": "Remove habits & counters?",
     "clearConfirmSuffix": "This cannot be undone.",
     "clearConfirmAction": "Clear",
     "clearConfirmDefinitionsAction": "Remove everything selected",
-    "clearNotebookTitle": "Clear a notebook…",
+    "clearNotebookTitle": "Clear a notebook",
     "clearNotebookDescription": "Delete every day in one journal. The notebook stays.",
     "clearNotebookConfirmTitle": "Clear all of {{name}}?",
     "clearNotebookConfirmBody": "Every day in this notebook is deleted. The notebook itself stays. This cannot be undone.",
@@ -71,8 +69,7 @@
     "clearNotebookFailedTitle": "Could not clear notebook"
   },
   "about": {
-    "title": "Life Dashboard",
-    "version": "Version {{version}}"
+    "version": "Life {{version}}"
   },
   "weather": {
     "sectionTitle": "Weather",
@@ -148,5 +145,8 @@
       "weather": "Cached weather forecasts",
       "preferences": "App preferences (theme, toggles, bubble position)"
     }
+  },
+  "general": {
+    "sectionTitle": "General"
   }
 }
