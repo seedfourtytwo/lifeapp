@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
-import { Button, Chip, Switch, Text, TextInput } from 'react-native-paper';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import ChoiceChip from '../ChoiceChip';
+import QuietText from '../QuietText';
+import { SettingsSwitch } from '../settings';
+import { FilledField } from '../sheet';
+import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 
 const PRESET_INCREMENTS = [1, 5, 10, 25, 50, 100] as const;
@@ -88,103 +96,138 @@ function CounterEditorFields({
         title={t('counterFields.sectionTitle')}
         description={t('counterFields.sectionDescription')}
       >
-        <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
-          {t('counterFields.quickButtonsLabel')}
-        </Text>
+        <QuietText style={typeScale.caption}>{t('counterFields.quickButtonsLabel')}</QuietText>
         {values.length > 0 ? (
-          <View style={[styles.chipRow, styles.field]}>
+          <View style={styles.chipRow}>
             {values.map((value) => (
-              <Chip
+              <RemovableStep
                 key={value}
-                onClose={() => removeValue(value)}
-                compact
-                style={styles.weekdayChip}
-              >
-                +{value}
-              </Chip>
+                value={value}
+                onRemove={() => removeValue(value)}
+                accessibilityLabel={t('counterFields.removeA11y', { value })}
+              />
             ))}
           </View>
         ) : (
-          <Text variant="bodySmall" style={[styles.hint, styles.field]}>
+          <QuietText style={[typeScale.caption, styles.hint]}>
             {t('counterFields.quickButtonsEmptyHint')}
-          </Text>
+          </QuietText>
         )}
 
-        <Text variant="bodySmall" style={[styles.hint, styles.inlineLabel]}>
-          {t('counterFields.tapToAddLabel')}
-        </Text>
-        <View style={[styles.chipRow, styles.field]}>
+        <QuietText style={typeScale.caption}>{t('counterFields.tapToAddLabel')}</QuietText>
+        <View style={styles.chipRow}>
           {PRESET_INCREMENTS.map((preset) => (
-            <Chip
+            <ChoiceChip
               key={preset}
+              role="checkbox"
+              label={`+${preset}`}
               selected={values.includes(preset)}
               onPress={() => togglePreset(preset)}
-              compact
-              style={styles.weekdayChip}
-            >
-              +{preset}
-            </Chip>
+            />
           ))}
         </View>
 
-        <View style={[styles.timeRow, styles.field]}>
-          <TextInput
+        <View style={styles.timeRow}>
+          <FilledField
             label={t('counterFields.customLabel')}
             placeholder={t('counterFields.customPlaceholder')}
             value={customValue}
             onChangeText={setCustomValue}
             keyboardType="number-pad"
-            mode="outlined"
             style={styles.timeField}
             onSubmitEditing={addCustom}
             returnKeyType="done"
           />
           <Button
-            mode="outlined"
+            mode="text"
             onPress={addCustom}
             disabled={!customValue.trim()}
-            style={{ alignSelf: 'center' }}
+            style={local.addButton}
           >
             {t('counterFields.add')}
           </Button>
         </View>
 
-        <TextInput
+        <FilledField
           label={t('counterFields.dailyTargetLabel')}
           placeholder={t('counterFields.dailyTargetPlaceholder')}
           value={dailyTarget}
           onChangeText={onDailyTargetChange}
           keyboardType="number-pad"
-          mode="outlined"
         />
       </FormSection>
 
       {showStreakToggle ? (
-        <>
-          <View style={styles.sectionGap} />
-          <FormSection
-            title={t('counterFields.streakSectionTitle')}
-            description={t('counterFields.streakSectionDescription')}
-            collapsible
-            defaultCollapsed={!showStreakOnCard}
-          >
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabel}>
-                <Text variant="bodyMedium">{t('counterFields.showStreakLabel')}</Text>
-                <Text variant="bodySmall" style={styles.hint}>
-                  {t('counterFields.showStreakHint')}
-                </Text>
-              </View>
-              <Switch
-                value={showStreakOnCard}
-                onValueChange={onShowStreakOnCardChange}
-              />
+        <FormSection
+          title={t('counterFields.streakSectionTitle')}
+          description={t('counterFields.streakSectionDescription')}
+          collapsible
+          defaultCollapsed={!showStreakOnCard}
+          value={showStreakOnCard ? t('editor.streakShown') : t('editor.streakHidden')}
+        >
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabel}>
+              <Text style={typeScale.body}>{t('counterFields.showStreakLabel')}</Text>
+              <QuietText style={[typeScale.caption, styles.hint]}>
+                {t('counterFields.showStreakHint')}
+              </QuietText>
             </View>
-          </FormSection>
-        </>
+            <SettingsSwitch
+              value={showStreakOnCard}
+              onValueChange={onShowStreakOnCardChange}
+              accessibilityLabel={t('counterFields.showStreakLabel')}
+            />
+          </View>
+        </FormSection>
       ) : null}
     </>
   );
 }
+
+/** A quick button the counter already has: a moss pill that drops it on tap. */
+function RemovableStep({
+  value,
+  onRemove,
+  accessibilityLabel,
+}: {
+  value: number;
+  onRemove: () => void;
+  accessibilityLabel: string;
+}) {
+  const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
+  return (
+    <Pressable
+      onPress={onRemove}
+      hitSlop={{ top: 4, bottom: 4 }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={[local.step, { backgroundColor: theme.colors.primary, borderRadius: deco.radius.pill }]}
+    >
+      <Text style={[local.stepLabel, { color: theme.colors.onPrimary }]}>+{value}</Text>
+      <MaterialCommunityIcons name="close" size={16} color={theme.colors.onPrimary} />
+    </Pressable>
+  );
+}
+
+const local = StyleSheet.create({
+  addButton: {
+    alignSelf: 'flex-end',
+    marginBottom: space.xs,
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    minHeight: 40,
+    paddingLeft: space.lg,
+    paddingRight: space.md,
+  },
+  stepLabel: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+});
 
 export default React.memo(CounterEditorFields);

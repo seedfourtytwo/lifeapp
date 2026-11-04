@@ -8,6 +8,9 @@ type Props = {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /** `checkbox` for a pick-many row (weekdays); a pick-one row stays `radio`. */
+  role?: 'radio' | 'checkbox';
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -21,7 +24,14 @@ const HIT_SLOP = { top: 4, bottom: 4, left: 0, right: 0 };
  * paints picked and unpicked in one container colour and whose height drifts
  * with its icon slot.
  */
-export default function ChoiceChip({ label, selected, onPress, style }: Props) {
+export default function ChoiceChip({
+  label,
+  selected,
+  onPress,
+  role = 'radio',
+  accessibilityLabel,
+  style,
+}: Props) {
   const theme = useTheme();
   const { decorations: deco } = useAppTheme();
   return (
@@ -29,8 +39,9 @@ export default function ChoiceChip({ label, selected, onPress, style }: Props) {
       testID="choice-chip"
       onPress={onPress}
       hitSlop={HIT_SLOP}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      accessibilityRole={role}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={role === 'checkbox' ? { checked: selected } : { selected }}
       android_ripple={{ color: theme.colors.outlineVariant }}
       style={[
         styles.chip,

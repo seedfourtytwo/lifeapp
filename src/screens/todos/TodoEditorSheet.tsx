@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Dialog, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import ChoiceChip from '../../components/ChoiceChip';
 import QuietText from '../../components/QuietText';
+import { EditorSheet, FilledField } from '../../components/sheet';
 import { TODO_NOTE_MAX_LENGTH, TODO_TITLE_MAX_LENGTH, type Todo } from '../../protocol';
 import { dictationMicIcon } from '../../dictation/dictationField';
 import { livePreviewText } from '../../dictation/livePreview';
 import { useDictationField } from '../../dictation/useDictationField';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import { dueChipDates, matchDueChip, type DueChip } from './dueChips';
-import { useDialogKeyboardLift } from '../../hooks/useDialogKeyboardLift';
 
 export interface TodoDraft {
   title: string;
@@ -60,7 +61,6 @@ export default function TodoEditorSheet({
   const theme = useTheme();
   const { t } = useTranslation('todos');
   const { t: tCommon } = useTranslation('common');
-  const keyboardLift = useDialogKeyboardLift(visible);
 
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -91,7 +91,7 @@ export default function TodoEditorSheet({
     ? { text: dictation.error, tone: 'error' as const }
     : (dictation.status && { text: dictation.status.message, tone: 'notice' as const }) ||
       dictation.notice;
-  // A take in flight owns the dialog: closing or saving now would throw the
+  // A take in flight owns the sheet: closing or saving now would throw the
   // words away between the mic stopping and the transcript arriving.
   const locked = saving || dictation.busy;
 
@@ -157,150 +157,120 @@ export default function TodoEditorSheet({
   };
 
   return (
-    <Portal>
-      <Dialog visible={visible} onDismiss={locked ? () => {} : onDismiss}
-        style={keyboardLift > 0 ? { marginBottom: keyboardLift } : undefined}
-      >
-        <Dialog.Title>{todo ? t('editor.editTitle') : t('editor.newTitle')}</Dialog.Title>
-        <Dialog.Content style={styles.content}>
-          <TextInput
-            mode="outlined"
-            label={t('editor.titleLabel')}
-            value={title}
+    <EditorSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      dismissable={!locked}
+      title={todo ? t('editor.editTitle') : t('editor.newTitle')}
+      primaryAction={{ label: t('editor.save'), onPress: () => void handleSave(), disabled: locked }}
+      destructiveAction={
+        todo && onDelete
+          ? { accessibilityLabel: t('editor.delete'), onPress: handleDelete, disabled: locked }
+          : undefined
+      }
+    >
+      <FilledField
+        placeholder={t('editor.titleLabel')}
+        value={title}
+        onChangeText={(next) => {
+          setTitle(next);
+          setError(null);
+        }}
+        maxLength={TODO_TITLE_MAX_LENGTH}
+        autoFocus={!todo}
+        returnKeyType="done"
+      />
+
+      <View style={styles.due}>
+        <QuietText style={typeScale.caption}>{t('editor.deadlineLabel')}</QuietText>
+        <View
+          style={styles.chips}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('editor.deadlineLabel')}
+        >
+          {[...QUICK_CHIPS, 'custom' as const].map((chip) => (
+            <ChoiceChip
+              key={chip}
+              label={t(CHIP_LABEL_KEY[chip])}
+              selected={selectedChip === chip}
+              onPress={() => pickChip(chip)}
+            />
+          ))}
+        </View>
+        {customDate ? (
+          <FilledField
+            accessibilityLabel={t('editor.deadlineLabel')}
+            placeholder={t('editor.deadlinePlaceholder')}
+            value={dueDate}
             onChangeText={(next) => {
-              setTitle(next);
+              setDueDate(next);
               setError(null);
             }}
-            maxLength={TODO_TITLE_MAX_LENGTH}
-            autoFocus={!todo}
-            returnKeyType="done"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="numbers-and-punctuation"
+            maxLength={10}
           />
+        ) : null}
+      </View>
 
-          <View
-            style={styles.chips}
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('editor.deadlineLabel')}
-          >
-            {[...QUICK_CHIPS, 'custom' as const].map((chip) => (
-              <ChoiceChip
-                key={chip}
-                label={t(CHIP_LABEL_KEY[chip])}
-                selected={selectedChip === chip}
-                onPress={() => pickChip(chip)}
-              />
-            ))}
-          </View>
-
-          {customDate ? (
-            <TextInput
-              mode="outlined"
-              label={t('editor.deadlineLabel')}
-              placeholder={t('editor.deadlinePlaceholder')}
-              value={dueDate}
-              onChangeText={(next) => {
-                setDueDate(next);
-                setError(null);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
+      <FilledField
+        placeholder={t('editor.noteLabel')}
+        value={shownNote}
+        onChangeText={(next) => {
+          dictation.clearNotices();
+          setNote(next);
+        }}
+        maxLength={TODO_NOTE_MAX_LENGTH}
+        multiline
+        editable={!dictation.sessionOpen}
+        rightAccessory={
+          dictation.supported ? (
+            <IconButton
+              icon={mic.icon}
+              size={22}
+              iconColor={theme.colors.onSurfaceVariant}
+              disabled={mic.disabled}
+              onPress={mic.action === 'finish' ? dictation.finish : dictation.start}
+              accessibilityLabel={
+                mic.action === 'finish'
+                  ? tCommon('dictation.finishA11y')
+                  : tCommon('dictation.startA11y')
+              }
             />
-          ) : null}
+          ) : undefined
+        }
+      />
 
-          <TextInput
-            mode="outlined"
-            style={styles.note}
-            label={t('editor.noteLabel')}
-            value={shownNote}
-            onChangeText={(next) => {
-              dictation.clearNotices();
-              setNote(next);
-            }}
-            maxLength={TODO_NOTE_MAX_LENGTH}
-            multiline
-            editable={!dictation.sessionOpen}
-            right={
-              dictation.supported ? (
-                <TextInput.Icon
-                  icon={mic.icon}
-                  disabled={mic.disabled}
-                  onPress={mic.action === 'finish' ? dictation.finish : dictation.start}
-                  // The mic is about to dismiss the keyboard; do not raise it first.
-                  forceTextInputFocus={false}
-                  accessibilityLabel={
-                    mic.action === 'finish'
-                      ? tCommon('dictation.finishA11y')
-                      : tCommon('dictation.startA11y')
-                  }
-                />
-              ) : undefined
-            }
-          />
+      {dictationLine ? (
+        dictationLine.tone === 'error' ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[typeScale.caption, { color: theme.colors.error }]}
+          >
+            {dictationLine.text}
+          </Text>
+        ) : (
+          <QuietText style={typeScale.caption} accessibilityLiveRegion="polite">
+            {dictationLine.text}
+          </QuietText>
+        )
+      ) : null}
 
-          {dictationLine ? (
-            dictationLine.tone === 'error' ? (
-              <Text
-                variant="bodySmall"
-                accessibilityLiveRegion="polite"
-                style={{ color: theme.colors.error }}
-              >
-                {dictationLine.text}
-              </Text>
-            ) : (
-              <QuietText variant="bodySmall" accessibilityLiveRegion="polite">
-                {dictationLine.text}
-              </QuietText>
-            )
-          ) : null}
-
-          {error ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-              {error}
-            </Text>
-          ) : null}
-
-          {todo && onDelete ? (
-            <View style={styles.deleteRow}>
-              <Button
-                compact
-                icon="trash-can-outline"
-                textColor={theme.colors.error}
-                disabled={locked}
-                onPress={handleDelete}
-              >
-                {t('editor.delete')}
-              </Button>
-            </View>
-          ) : null}
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button disabled={locked} onPress={onDismiss}>
-            {tCommon('actions.cancel')}
-          </Button>
-          <Button disabled={locked} onPress={() => void handleSave()}>
-            {t('editor.save')}
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
-    </Portal>
+      {error ? (
+        <Text style={[typeScale.caption, { color: theme.colors.error }]}>{error}</Text>
+      ) : null}
+    </EditorSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    gap: space.md,
+  due: {
+    gap: space.sm,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.sm,
-  },
-  /** Capped so a long note cannot push the actions off a short screen. */
-  note: {
-    maxHeight: 140,
-  },
-  deleteRow: {
-    flexDirection: 'row',
   },
 });

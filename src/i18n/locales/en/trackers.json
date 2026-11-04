@@ -66,7 +66,6 @@
     "editCounterTitle": "Edit counter",
     "newHabitTitle": "New habit",
     "editHabitTitle": "Edit habit",
-    "nameSectionTitle": "Name",
     "nameLabel": "Name",
     "iconSectionTitle": "Icon",
     "iconSectionDescription": "Optional — shown on Home next to the name.",
@@ -75,10 +74,10 @@
     "iconChoiceA11y": "Icon {{icon}}",
     "iconSearchPlaceholder": "Search icons",
     "iconSearchEmpty": "No matching icons",
-    "close": "Close",
     "delete": "Delete",
-    "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "streakShown": "Shown",
+    "streakHidden": "Hidden"
   },
   "counterFields": {
     "sectionTitle": "Counter settings",
@@ -94,7 +93,8 @@
     "streakSectionTitle": "Streak",
     "streakSectionDescription": "Shown beside the counter name when you have a daily target.",
     "showStreakLabel": "Show streak on card",
-    "showStreakHint": "Counts consecutive days you hit the daily target — even before today's total reaches it"
+    "showStreakHint": "Counts consecutive days you hit the daily target — even before today's total reaches it",
+    "removeA11y": "Remove the +{{value}} button"
   },
   "habitFields": {
     "typeSectionTitle": "Type",
@@ -103,7 +103,6 @@
     "noteLabel": "Note (optional)",
     "notePlaceholder": "e.g. 1 cup, stretch",
     "streakSectionTitle": "Streak",
-    "streakSectionDescription": "Shown beside the habit name — motivating before you check off.",
     "showStreakLabel": "Show streak on card",
     "showStreakHint": "Success streak beside the name — shown even before today's check-off",
     "repeatSectionTitle": "Repeat",
@@ -142,7 +141,8 @@
     "everyNDaysReminderUnavailableHint": "Reminders are not available for every-N-days schedules yet.",
     "reminderBeforeStartLabel": "Reminder before start",
     "minutesBeforeLabel": "Minutes before",
-    "minutesBeforePlaceholder": "15"
+    "minutesBeforePlaceholder": "15",
+    "timeWindowOff": "Any time"
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Daily goal (minutes)",

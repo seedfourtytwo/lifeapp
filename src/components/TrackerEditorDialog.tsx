@@ -1,27 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import {
-  Button,
-  IconButton,
-  Modal,
-  Portal,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { useAppTheme } from '../hooks/useAppTheme';
+import { EditorSheet, FilledField } from './sheet';
 import CounterEditorFields from './trackerEditor/CounterEditorFields';
 import { newEditorSession } from './trackerEditor/trackerEditorSession';
-import FormSection from './trackerEditor/FormSection';
 import HabitEditorFields from './trackerEditor/HabitEditorFields';
 import IconPickerField from './trackerEditor/IconPickerField';
 import type {
@@ -72,13 +54,7 @@ export default function TrackerEditorDialog({
   onSave,
   onDelete,
 }: Props) {
-  const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { t: tCommon } = useTranslation('common');
-  const { decorations: deco } = useAppTheme();
-  const { width, height } = useWindowDimensions();
-  const sheetWidth = Math.min(width - 24, 480);
-  const sheetMaxHeight = Math.min(height * 0.9, 720);
 
   const visible = session !== null;
   const mode = session?.mode ?? 'counter';
@@ -139,167 +115,51 @@ export default function TrackerEditorDialog({
     return editingId ? t('editor.editHabitTitle') : t('editor.newHabitTitle');
   }, [editingId, mode, t]);
 
+  const busy = saving || deleting;
+
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        dismissable={!saving && !deleting}
-        onDismiss={saving || deleting ? undefined : closeEditor}
-        contentContainerStyle={[
-          styles.modalContainer,
-          { width: sheetWidth, maxHeight: sheetMaxHeight },
-        ]}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardAvoid}
-        >
-          <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: theme.colors.surface,
-                borderRadius: deco.radius.lg,
-              },
-            ]}
-          >
-            <View style={styles.header}>
-              <Text
-                variant="titleLarge"
-                style={styles.headerTitle}
-              >
-                {title}
-              </Text>
-              <IconButton
-                icon="close"
-                onPress={closeEditor}
-                accessibilityLabel={tCommon('actions.close')}
-              />
-            </View>
+    <EditorSheet
+      visible={visible}
+      onDismiss={closeEditor}
+      dismissable={!busy}
+      title={title}
+      primaryAction={{
+        label: t('editor.save'),
+        onPress: handleSave,
+        disabled: !name.trim() || busy,
+        loading: saving,
+      }}
+      destructiveAction={
+        editingId && onDelete
+          ? { accessibilityLabel: t('editor.delete'), onPress: onDelete, disabled: busy }
+          : undefined
+      }
+    >
+      <FilledField
+        placeholder={t('editor.nameLabel')}
+        value={name}
+        onChangeText={setName}
+        autoCorrect={false}
+        // A label like "Name" invites Android autofill to re-fill the field
+        // mid-edit, which duplicates text the same way a lagging controlled
+        // value does. Belt and braces alongside the memoized form below.
+        autoComplete="off"
+      />
 
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <FormSection title={t('editor.nameSectionTitle')}>
-                <TextInput
-                  label={t('editor.nameLabel')}
-                  value={name}
-                  onChangeText={setName}
-                  mode="outlined"
-                  autoCorrect={false}
-                  // A label like "Name" invites Android autofill to re-fill the
-                  // field mid-edit, which duplicates text the same way a lagging
-                  // controlled value does. Belt and braces alongside the memoized
-                  // form below.
-                  autoComplete="off"
-                />
-              </FormSection>
+      <IconPickerField value={icon} onChange={setIcon} />
 
-              <IconPickerField value={icon} onChange={setIcon} />
-
-              {mode === 'counter' ? (
-                <CounterEditorFields
-                  increments={increments}
-                  dailyTarget={dailyTarget}
-                  showStreakOnCard={showStreakOnCard}
-                  onIncrementsChange={setIncrements}
-                  onDailyTargetChange={setDailyTarget}
-                  onShowStreakOnCardChange={setShowStreakOnCard}
-                />
-              ) : session && mode === 'habit' ? (
-                <HabitEditorFields
-                  state={habitFields}
-                  onChange={handleHabitFieldsChange}
-                />
-              ) : null}
-            </ScrollView>
-
-            <View style={styles.footer}>
-              {editingId && onDelete ? (
-                <Button
-                  mode="outlined"
-                  icon="delete-outline"
-                  textColor={theme.colors.onErrorContainer}
-                  style={{
-                    borderColor: theme.colors.error,
-                    backgroundColor: theme.colors.errorContainer,
-                    borderRadius: deco.buttonRadius,
-                  }}
-                  onPress={onDelete}
-                  loading={deleting}
-                  disabled={saving || deleting}
-                >
-                  {t('editor.delete')}
-                </Button>
-              ) : (
-                <View />
-              )}
-              <View style={styles.footerActions}>
-                <Button onPress={closeEditor} disabled={saving || deleting}>
-                  {t('editor.cancel')}
-                </Button>
-                <Button
-                  mode="contained"
-                  loading={saving}
-                  onPress={handleSave}
-                  disabled={!name.trim() || saving || deleting}
-                  style={{ borderRadius: deco.buttonRadius }}
-                >
-                  {t('editor.save')}
-                </Button>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </Portal>
+      {mode === 'counter' ? (
+        <CounterEditorFields
+          increments={increments}
+          dailyTarget={dailyTarget}
+          showStreakOnCard={showStreakOnCard}
+          onIncrementsChange={setIncrements}
+          onDailyTargetChange={setDailyTarget}
+          onShowStreakOnCardChange={setShowStreakOnCard}
+        />
+      ) : session && mode === 'habit' ? (
+        <HabitEditorFields state={habitFields} onChange={handleHabitFieldsChange} />
+      ) : null}
+    </EditorSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  modalContainer: {
-    alignSelf: 'center',
-    marginHorizontal: 12,
-  },
-  keyboardAvoid: {
-    flexGrow: 0,
-  },
-  sheet: {
-    overflow: 'hidden',
-    maxHeight: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 4,
-    paddingTop: 4,
-  },
-  headerTitle: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 0,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  footerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-});

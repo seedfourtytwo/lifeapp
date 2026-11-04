@@ -5,10 +5,22 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
-import { Button, PaperProvider, TextInput } from 'react-native-paper';
+import { TextInput } from 'react-native';
+import { Button, PaperProvider } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ChoiceChip from '../src/components/ChoiceChip';
 import '../src/i18n';
 import type { Todo } from '../src/protocol';
+
+const METRICS = {
+  frame: { x: 0, y: 0, width: 412, height: 892 },
+  insets: { top: 24, left: 0, right: 0, bottom: 24 },
+};
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
 
 jest.mock('../src/dictation/useDictationField', () => ({
   useDictationField: () => ({
@@ -39,15 +51,19 @@ function render(todo: Partial<Todo> | null = null) {
   act(() => {
     tree = TestRenderer.create(
       React.createElement(
-        PaperProvider,
-        null,
-        React.createElement(TodoEditorSheet, {
+        SafeAreaProvider,
+        { initialMetrics: METRICS },
+        React.createElement(
+          PaperProvider,
+          null,
+          React.createElement(TodoEditorSheet, {
           visible: true,
           today: TODAY,
           todo: todo ? ({ id: 't1', title: 'Call the vet', note: null, dueDate: null, ...todo } as Todo) : null,
-          onDismiss: jest.fn(),
-          onSave,
-        }),
+            onDismiss: jest.fn(),
+            onSave,
+          }),
+        ),
       ),
     );
   });

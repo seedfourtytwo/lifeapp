@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button,
-  Chip,
-  Dialog,
-  Portal,
-  Switch,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import ChoiceChip from '../../components/ChoiceChip';
+import QuietText from '../../components/QuietText';
+import { SettingsSwitch } from '../../components/settings';
+import { EditorSheet, FilledField } from '../../components/sheet';
 import {
   FOOD_GROUPS,
   FOOD_NAME_MAX_LENGTH,
@@ -18,7 +13,8 @@ import {
   type FoodGroup,
 } from '../../protocol';
 import type { FoodItemInput } from '../../nutrition/foodCatalog';
-import { useDialogKeyboardLift } from '../../hooks/useDialogKeyboardLift';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 
 type Props = {
   visible: boolean;
@@ -35,10 +31,8 @@ type Props = {
  * food and no risk of a partial form silently dropping fields it cannot show.
  */
 export default function FoodEditorDialog({ visible, initialName, onDismiss, onSave }: Props) {
-  const keyboardLift = useDialogKeyboardLift(visible);
   const theme = useTheme();
   const { t } = useTranslation('nutrition');
-  const { t: tCommon } = useTranslation('common');
   const [name, setName] = useState('');
   const [group, setGroup] = useState<FoodGroup>('vegetable');
   const [countsAsPlant, setCountsAsPlant] = useState(false);
@@ -82,81 +76,80 @@ export default function FoodEditorDialog({ visible, initialName, onDismiss, onSa
   };
 
   return (
-    <Portal>
-      <Dialog visible={visible} onDismiss={onDismiss}
-        style={keyboardLift > 0 ? { marginBottom: keyboardLift } : undefined}
-      >
-        <Dialog.Title>{t('editor.addTitle')}</Dialog.Title>
-        <Dialog.Content style={styles.content}>
-          <TextInput
-            label={t('editor.nameLabel')}
-            value={name}
-            onChangeText={(next) => {
-              setName(next);
-              setError(null);
-            }}
-            maxLength={FOOD_NAME_MAX_LENGTH}
-            autoFocus
-            mode="outlined"
-          />
+    <EditorSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      dismissable={!saving}
+      title={t('editor.addTitle')}
+      primaryAction={{
+        label: t('editor.save'),
+        onPress: () => void handleSave(),
+        disabled: saving,
+        loading: saving,
+      }}
+    >
+      <FilledField
+        placeholder={t('editor.nameLabel')}
+        value={name}
+        onChangeText={(next) => {
+          setName(next);
+          setError(null);
+        }}
+        maxLength={FOOD_NAME_MAX_LENGTH}
+        autoFocus
+      />
 
-          <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            {t('editor.groupLabel')}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.groupRow}>
-              {FOOD_GROUPS.map((candidate) => (
-                <Chip
-                  key={candidate}
-                  selected={candidate === group}
-                  showSelectedCheck={false}
-                  onPress={() => handleGroupChange(candidate)}
-                  compact
-                >
-                  {t(`groups.${candidate}`)}
-                </Chip>
-              ))}
-            </View>
-          </ScrollView>
+      <View style={styles.group}>
+        <QuietText style={typeScale.caption}>{t('editor.groupLabel')}</QuietText>
+        <View
+          style={styles.chips}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('editor.groupLabel')}
+        >
+          {FOOD_GROUPS.map((candidate) => (
+            <ChoiceChip
+              key={candidate}
+              label={t(`groups.${candidate}`)}
+              selected={candidate === group}
+              onPress={() => handleGroupChange(candidate)}
+            />
+          ))}
+        </View>
+      </View>
 
-          <View style={styles.switchRow}>
-            <Text variant="bodyMedium" style={styles.switchLabel}>
-              {t('editor.countsAsPlantLabel')}
-            </Text>
-            <Switch value={countsAsPlant} onValueChange={setCountsAsPlant} />
-          </View>
+      <View style={styles.switchRow}>
+        <Text style={[typeScale.body, styles.switchLabel, { color: theme.colors.onSurface }]}>
+          {t('editor.countsAsPlantLabel')}
+        </Text>
+        <SettingsSwitch
+          value={countsAsPlant}
+          onValueChange={setCountsAsPlant}
+          accessibilityLabel={t('editor.countsAsPlantLabel')}
+        />
+      </View>
 
-          {error ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-              {error}
-            </Text>
-          ) : null}
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onPress={onDismiss}>{tCommon('actions.cancel')}</Button>
-          <Button onPress={handleSave} disabled={saving}>
-            {t('editor.save')}
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
-    </Portal>
+      {error ? (
+        <Text style={[typeScale.caption, { color: theme.colors.error }]}>{error}</Text>
+      ) : null}
+    </EditorSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    gap: 12,
+  group: {
+    gap: space.sm,
   },
-  groupRow: {
+  chips: {
     flexDirection: 'row',
-    gap: 6,
-    paddingVertical: 2,
+    flexWrap: 'wrap',
+    gap: space.sm,
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: space.md,
+    minHeight: 48,
   },
   switchLabel: {
     flex: 1,

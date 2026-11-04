@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { TextInput, useTheme } from 'react-native-paper';
+import { useTheme } from 'react-native-paper';
 import QuietText from '../QuietText';
+import { FilledField } from '../sheet';
+import { typeScale } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 import {
   TRACKER_ICON_IDS,
@@ -22,9 +24,8 @@ type CellProps = {
   onPress: () => void;
   accessibilityLabel: string;
   children: React.ReactNode;
-  selectedBorder: string;
   selectedBg: string;
-  surface: string;
+  idleBg: string;
   radius: number;
 };
 
@@ -33,9 +34,8 @@ function IconPickerCell({
   onPress,
   accessibilityLabel,
   children,
-  selectedBorder,
   selectedBg,
-  surface,
+  idleBg,
   radius,
 }: CellProps) {
   return (
@@ -45,8 +45,7 @@ function IconPickerCell({
         styles.cell,
         {
           borderRadius: radius,
-          borderColor: selected ? selectedBorder : 'transparent',
-          backgroundColor: selected ? selectedBg : surface,
+          backgroundColor: selected ? selectedBg : idleBg,
         },
         pressed && styles.pressed,
       ]}
@@ -70,9 +69,7 @@ function IconPickerField({ value, onChange }: Props) {
   const { t } = useTranslation('trackers');
   const [query, setQuery] = useState('');
 
-  const selectedBorder = theme.colors.primary;
-  const selectedBg = `${theme.colors.primary}18`;
-  const surface = theme.colors.surface;
+
   const searching = query.trim().length > 0;
 
   const visibleIds = useMemo(
@@ -81,9 +78,8 @@ function IconPickerField({ value, onChange }: Props) {
   );
 
   const cellChrome = {
-    selectedBorder,
-    selectedBg,
-    surface,
+    selectedBg: theme.colors.primary,
+    idleBg: theme.colors.background,
     radius: deco.radius.md,
   };
 
@@ -93,17 +89,20 @@ function IconPickerField({ value, onChange }: Props) {
       description={t('editor.iconSectionDescription')}
       collapsible
       defaultCollapsed
+      value={
+        value ? (
+          <TrackerIcon name={value} size={22} color={theme.colors.onSurface} />
+        ) : (
+          <QuietText style={typeScale.secondary}>{t('editor.iconNone')}</QuietText>
+        )
+      }
     >
-      <TextInput
-        mode="outlined"
-        dense
+      <FilledField
         value={query}
         onChangeText={setQuery}
         placeholder={t('editor.iconSearchPlaceholder')}
         autoCorrect={false}
         autoCapitalize="none"
-        accessibilityLabel={t('editor.iconSearchPlaceholder')}
-        style={styles.search}
       />
 
       <ScrollView
@@ -125,7 +124,7 @@ function IconPickerField({ value, onChange }: Props) {
                   styles.noneSlash,
                   {
                     backgroundColor:
-                      value === null ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                      value === null ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
                   },
                 ]}
               />
@@ -145,7 +144,7 @@ function IconPickerField({ value, onChange }: Props) {
                 <TrackerIcon
                   name={iconId}
                   size={22}
-                  color={selected ? theme.colors.primary : theme.colors.onSurface}
+                  color={selected ? theme.colors.onPrimary : theme.colors.onSurface}
                 />
               </IconPickerCell>
             );
@@ -154,7 +153,7 @@ function IconPickerField({ value, onChange }: Props) {
       </ScrollView>
 
       {searching && visibleIds.length === 0 ? (
-        <QuietText variant="bodySmall" style={styles.empty}>
+        <QuietText style={typeScale.caption}>
           {t('editor.iconSearchEmpty')}
         </QuietText>
       ) : null}
@@ -163,10 +162,6 @@ function IconPickerField({ value, onChange }: Props) {
 }
 
 const styles = StyleSheet.create({
-  search: {
-    marginTop: 4,
-    marginBottom: 8,
-  },
   gridScroll: {
     maxHeight: 280,
   },
@@ -176,7 +171,6 @@ const styles = StyleSheet.create({
   cell: {
     width: 44,
     height: 44,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -190,9 +184,6 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
     transform: [{ rotate: '-35deg' }],
-  },
-  empty: {
-    marginTop: 8,
   },
 });
 

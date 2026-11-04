@@ -66,7 +66,6 @@
     "editCounterTitle": "Modifier le compteur",
     "newHabitTitle": "Nouvelle habitude",
     "editHabitTitle": "Modifier l'habitude",
-    "nameSectionTitle": "Nom",
     "nameLabel": "Nom",
     "iconSectionTitle": "Icône",
     "iconSectionDescription": "Facultatif — affiché sur l’accueil à côté du nom.",
@@ -75,10 +74,10 @@
     "iconChoiceA11y": "Icône {{icon}}",
     "iconSearchPlaceholder": "Rechercher une icône",
     "iconSearchEmpty": "Aucune icône correspondante",
-    "close": "Fermer",
     "delete": "Supprimer",
-    "cancel": "Annuler",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "streakShown": "Affichée",
+    "streakHidden": "Masquée"
   },
   "counterFields": {
     "sectionTitle": "Paramètres du compteur",
@@ -94,7 +93,8 @@
     "streakSectionTitle": "Série",
     "streakSectionDescription": "Affichée à côté du nom du compteur lorsque vous avez un objectif quotidien.",
     "showStreakLabel": "Afficher la série sur la carte",
-    "showStreakHint": "Compte les jours consécutifs où vous atteignez l'objectif — même avant le total du jour"
+    "showStreakHint": "Compte les jours consécutifs où vous atteignez l'objectif — même avant le total du jour",
+    "removeA11y": "Retirer le bouton +{{value}}"
   },
   "habitFields": {
     "typeSectionTitle": "Type",
@@ -103,7 +103,6 @@
     "noteLabel": "Note (facultatif)",
     "notePlaceholder": "ex. 1 tasse, étirements",
     "streakSectionTitle": "Série",
-    "streakSectionDescription": "Affichée à côté du nom de l'habitude — motivante avant même de cocher.",
     "showStreakLabel": "Afficher la série sur la carte",
     "showStreakHint": "Série de réussite à côté du nom — affichée même avant la coche du jour",
     "repeatSectionTitle": "Répétition",
@@ -142,7 +141,8 @@
     "everyNDaysReminderUnavailableHint": "Les rappels ne sont pas encore disponibles pour les programmations tous-les-N-jours.",
     "reminderBeforeStartLabel": "Rappel avant le début",
     "minutesBeforeLabel": "Minutes avant",
-    "minutesBeforePlaceholder": "15"
+    "minutesBeforePlaceholder": "15",
+    "timeWindowOff": "Toute la journée"
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Objectif quotidien (minutes)",

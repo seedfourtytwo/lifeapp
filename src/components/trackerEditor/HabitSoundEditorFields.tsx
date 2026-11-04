@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Chip, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { Button } from 'react-native-paper';
+import ChoiceChip from '../ChoiceChip';
+import QuietText from '../QuietText';
+import SegmentedControl from '../SegmentedControl';
+import { FilledField } from '../sheet';
+import { typeScale } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 import {
   playHabitSound,
@@ -112,10 +117,9 @@ export default function HabitSoundEditorFields({
     }
   };
 
-  const setPlaybackMode = (value: string) => {
-    if (!value) return;
+  const setPlaybackMode = (value: HabitTimerPlaybackMode) => {
     stopPreview();
-    onSoundChange({ habitSoundPlaybackMode: value as HabitTimerPlaybackMode });
+    onSoundChange({ habitSoundPlaybackMode: value });
   };
 
   const selectTrack = (trackId: string) => {
@@ -132,42 +136,40 @@ export default function HabitSoundEditorFields({
 
   return (
     <View style={styles.sectionBody}>
-      <TextInput
+      <FilledField
         label={t('habitSoundFields.dailyGoalLabel')}
         placeholder={t('habitSoundFields.dailyGoalPlaceholder')}
         value={dailyGoalMinutes}
         onChangeText={onDailyGoalMinutesChange}
         keyboardType="number-pad"
-        mode="outlined"
-        style={styles.field}
       />
-      <Text variant="labelMedium" style={styles.inlineLabel}>
-        {t('habitSoundFields.soundWhileRunningLabel')}
-      </Text>
-      <Text variant="bodySmall" style={styles.hint}>
-        {t('habitSoundFields.soundHint')}
-      </Text>
+      <View style={styles.switchLabel}>
+        <QuietText style={typeScale.caption}>
+          {t('habitSoundFields.soundWhileRunningLabel')}
+        </QuietText>
+        <QuietText style={[typeScale.caption, styles.hint]}>
+          {t('habitSoundFields.soundHint')}
+        </QuietText>
+      </View>
       {BUNDLED_HABIT_SOUND_CATALOG.length === 0 ? (
-        <Text variant="bodySmall" style={styles.hint}>
+        <QuietText style={[typeScale.caption, styles.hint]}>
           {t('habitSoundFields.noTracksBundledHint')}
-        </Text>
+        </QuietText>
       ) : (
-        <View style={[styles.chipRow, styles.sectionBody]}>
+        <View style={styles.chipRow} accessibilityRole="radiogroup">
           {BUNDLED_HABIT_SOUND_CATALOG.map((track) => (
-            <Chip
+            <ChoiceChip
               key={track.id}
+              label={track.label}
               selected={sound.habitSoundTrackId === track.id}
               onPress={() => selectTrack(track.id)}
-              compact
-            >
-              {track.label}
-            </Chip>
+            />
           ))}
         </View>
       )}
       <View style={styles.chipRow}>
         <Button
-          mode="outlined"
+          mode="text"
           icon={previewPlaying ? 'stop' : previewLoading ? undefined : 'play-circle-outline'}
           compact
           loading={previewLoading}
@@ -181,29 +183,29 @@ export default function HabitSoundEditorFields({
               : t('habitSoundFields.previewSound')}
         </Button>
         {hasSound ? (
-          <Chip compact icon="close" onPress={clearSound}>
+          <Button mode="text" compact icon="close" onPress={clearSound}>
             {t('habitSoundFields.clearSound')}
-          </Chip>
+          </Button>
         ) : null}
       </View>
       {hasSound ? (
         <>
-          <Text variant="labelMedium" style={styles.inlineLabel}>
+          <QuietText style={typeScale.caption}>
             {t('habitSoundFields.whenTimerRunsLabel')}
-          </Text>
-          <SegmentedButtons
+          </QuietText>
+          <SegmentedControl
             value={sound.habitSoundPlaybackMode}
-            onValueChange={setPlaybackMode}
-            buttons={[
+            onChange={setPlaybackMode}
+            options={[
               { value: 'play_once', label: t('habitSoundFields.trackLength') },
               { value: 'loop', label: t('habitSoundFields.loop') },
             ]}
           />
-          <Text variant="bodySmall" style={styles.hint}>
+          <QuietText style={[typeScale.caption, styles.hint]}>
             {sound.habitSoundPlaybackMode === 'play_once'
               ? t('habitSoundFields.playOnceHint')
               : t('habitSoundFields.loopHint')}
-          </Text>
+          </QuietText>
         </>
       ) : null}
     </View>
