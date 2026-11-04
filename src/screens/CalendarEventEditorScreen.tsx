@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, IconButton, Menu, useTheme } from 'react-native-paper';
+import { Menu, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ import {
   parseTimeParts,
   type TimeParts,
 } from './calendar/eventEditorHelpers';
-import { FilledField } from '../components/sheet';
+import { FilledField, SheetFooter } from '../components/sheet';
 import { SettingsGroup, SettingsRow } from '../components/settings';
 import { sheetBottomPadding } from '../components/sheet/sheetGesture';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -347,47 +347,28 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         </View>
       </ScrollView>
 
-      <View
+      <SheetFooter
         testID="event-editor-footer"
-        style={[
-          styles.footer,
-          {
-            backgroundColor: theme.colors.background,
-            paddingBottom: sheetBottomPadding({ keyboardHeight, safeBottom: insets.bottom }),
-          },
-        ]}
-      >
-        {eventId ? (
-          <IconButton
-            icon="trash-can-outline"
-            iconColor={theme.colors.error}
-            size={24}
-            onPress={handleDelete}
-            accessibilityLabel={t('editor.deleteEvent')}
-            style={styles.delete}
-          />
-        ) : (
-          <View />
-        )}
-        <Button
-          mode="contained"
-          onPress={() => void handleSave()}
-          loading={saving}
-          disabled={saving}
-          style={[styles.save, { borderRadius: deco.radius.pill }]}
-          contentStyle={styles.saveContent}
-          labelStyle={styles.saveLabel}
-        >
-          {t('editor.save')}
-        </Button>
-      </View>
+        destructiveAction={
+          eventId
+            ? { accessibilityLabel: t('editor.deleteEvent'), onPress: handleDelete }
+            : undefined
+        }
+        primaryAction={{
+          label: t('editor.save'),
+          onPress: () => void handleSave(),
+          loading: saving,
+          disabled: saving,
+        }}
+        style={{
+          paddingHorizontal: layout.gutter,
+          backgroundColor: theme.colors.background,
+          paddingBottom: sheetBottomPadding({ keyboardHeight, safeBottom: insets.bottom }),
+        }}
+      />
     </View>
   );
 }
-
-/** The footer's Save matches the editor sheet's: a moss pill you can hit without looking. */
-const SAVE_MIN_WIDTH = 132;
-const SAVE_MIN_HEIGHT = 52;
 
 const styles = StyleSheet.create({
   root: {
@@ -404,28 +385,5 @@ const styles = StyleSheet.create({
   },
   tile: {
     padding: space.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.gutter,
-    paddingTop: space.md,
-  },
-  delete: {
-    margin: 0,
-    marginLeft: -space.sm,
-  },
-  save: {
-    minWidth: SAVE_MIN_WIDTH,
-  },
-  saveContent: {
-    minHeight: SAVE_MIN_HEIGHT,
-    paddingHorizontal: space.md,
-  },
-  saveLabel: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '600',
   },
 });

@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Button, IconButton, Portal, Text, useTheme } from 'react-native-paper';
+import { Portal, Text, useTheme } from 'react-native-paper';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -20,22 +20,13 @@ import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { springOrSnap, timingOrSnap } from '../../utils/motion';
+import SheetFooter, {
+  type EditorSheetDestructiveAction,
+  type EditorSheetPrimaryAction,
+} from './SheetFooter';
 import { dragOffset, sheetBottomPadding, shouldDismissOnRelease } from './sheetGesture';
 
-export type EditorSheetPrimaryAction = {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-};
-
-export type EditorSheetDestructiveAction = {
-  /** Read out for the icon; the button itself has no words. */
-  accessibilityLabel: string;
-  onPress: () => void;
-  icon?: string;
-  disabled?: boolean;
-};
+export type { EditorSheetDestructiveAction, EditorSheetPrimaryAction };
 
 export type EditorSheetProps = {
   visible: boolean;
@@ -54,8 +45,6 @@ export type EditorSheetProps = {
 const RISE_MS = 280;
 const CLOSE_MS = 200;
 const GRABBER = { width: 36, height: 4 };
-const SAVE_MIN_WIDTH = 132;
-const SAVE_MIN_HEIGHT = 52;
 /** Widest a sheet grows on a tablet or a phone on its side. */
 const SHEET_MAX_WIDTH = 640;
 
@@ -223,37 +212,12 @@ export default function EditorSheet({
           </ScrollView>
 
           {hasFooter ? (
-            <View
+            <SheetFooter
               testID="editor-sheet-footer"
-              style={[styles.footer, { paddingBottom: bottomPadding }]}
-            >
-              {destructiveAction ? (
-                <IconButton
-                  icon={destructiveAction.icon ?? 'trash-can-outline'}
-                  iconColor={theme.colors.error}
-                  size={24}
-                  onPress={destructiveAction.onPress}
-                  disabled={destructiveAction.disabled}
-                  accessibilityLabel={destructiveAction.accessibilityLabel}
-                  style={styles.destructive}
-                />
-              ) : (
-                <View />
-              )}
-              {primaryAction ? (
-                <Button
-                  mode="contained"
-                  onPress={primaryAction.onPress}
-                  disabled={primaryAction.disabled}
-                  loading={primaryAction.loading}
-                  style={[styles.save, { borderRadius: deco.radius.pill }]}
-                  contentStyle={styles.saveContent}
-                  labelStyle={styles.saveLabel}
-                >
-                  {primaryAction.label}
-                </Button>
-              ) : null}
-            </View>
+              primaryAction={primaryAction}
+              destructiveAction={destructiveAction}
+              style={{ paddingBottom: bottomPadding }}
+            />
           ) : null}
         </Animated.View>
       </View>
@@ -288,28 +252,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     gap: space.lg,
     paddingBottom: space.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.xl,
-    paddingTop: space.md,
-  },
-  destructive: {
-    margin: 0,
-    marginLeft: -space.sm,
-  },
-  save: {
-    minWidth: SAVE_MIN_WIDTH,
-  },
-  saveContent: {
-    minHeight: SAVE_MIN_HEIGHT,
-    paddingHorizontal: space.md,
-  },
-  saveLabel: {
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '600',
   },
 });
