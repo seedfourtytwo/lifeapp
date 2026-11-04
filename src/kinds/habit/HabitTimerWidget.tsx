@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { IconButton, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
-import { useAppTheme } from '../../hooks/useAppTheme';
 import {
   formatHabitHomeTimerLabel,
   getHabitTimerEffectiveTargetSeconds,
@@ -15,22 +14,18 @@ import {
   liveTimerTotalSeconds,
   type HabitConfig,
 } from '../../protocol';
-import { getCounterProgressBarColors } from '../../utils/color';
 import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
-import {
-  describeHabitCardSound,
-  formatHabitStreakLabel,
-  getHabitStreakDays,
-} from './habitCardLabels';
+import { describeHabitCardSound, formatHabitStreakLabel } from './habitCardLabels';
 import { HabitSoundIndicator } from './HabitSoundIndicator';
+import { TrackerCardRoundButton } from '../TrackerCardRoundButton';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 
-const ACTION_ICON_SIZE = 30;
+const NOTE_ICON_SIZE = 24;
 
 export function HabitTimerWidget({
   element,
@@ -55,7 +50,6 @@ export function HabitTimerWidget({
 }: WidgetProps<HabitConfig>) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { themeMode, decorations: deco } = useAppTheme();
   const [, setTick] = useState(0);
   const [resetBubblesOpen, setResetBubblesOpen] = useState(false);
   const loggedTotalAtSessionStart = useRef(todayTotal);
@@ -70,7 +64,6 @@ export function HabitTimerWidget({
     !hasSecondsTarget &&
     hasHabitTimerSound(config.timerSound) &&
     getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
-  const streakDays = getHabitStreakDays(config, streak);
   const streakLabel = formatHabitStreakLabel(config, streak);
   const soundIndicator = describeHabitCardSound(config);
 
@@ -128,7 +121,6 @@ export function HabitTimerWidget({
 
   const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
-  const progressBarColors = getCounterProgressBarColors(themeMode);
 
   /** Idle + zero today: show target only (or hide for open-ended). Elapsed appears once started. */
   const totalLabel = formatHabitHomeTimerLabel({
@@ -141,11 +133,7 @@ export function HabitTimerWidget({
     ? theme.colors.primary
     : theme.colors.onSurfaceVariant;
 
-  const playIcon = !isRunning
-    ? 'play-circle'
-    : isPaused
-      ? 'play-circle'
-      : 'pause-circle';
+  const playIcon = isRunning && !isPaused ? 'pause' : 'play';
 
   const playA11y = !isRunning
     ? t('habitWidget.startTimerA11y')
@@ -160,28 +148,14 @@ export function HabitTimerWidget({
   };
 
   return (
-    <TrackerCard
-      progress={
-        hasCompletionTarget
-          ? {
-              value: progress,
-              color: isComplete
-                ? progressBarColors.complete
-                : progressBarColors.active,
-              trackColor: theme.colors.outlineVariant,
-              height: deco.progressHeight,
-            }
-          : null
-      }
-    >
+    <TrackerCard>
       <View style={styles.oneLineRow}>
         <TrackerCardTitle
           name={element.name}
           icon={config.icon}
-          progress={hasCompletionTarget ? progress : isComplete ? 1 : 0}
+          progress={hasCompletionTarget ? progress : null}
           complete={isComplete}
-          streakDays={streakDays}
-          streakAccessibilityLabel={streakLabel}
+          streakLabel={streakLabel}
           {...trackerCardTitleInteractions({
             onOpenDetails,
             onLongPressReorder,
@@ -203,7 +177,6 @@ export function HabitTimerWidget({
 
           {totalLabel ? (
             <Text
-              variant="titleSmall"
               numberOfLines={1}
               style={[styles.timerLabel, { color: metaColor }]}
               accessibilityLabel={totalLabel}
@@ -228,9 +201,8 @@ export function HabitTimerWidget({
                 : []
             }
           >
-            <IconButton
+            <TrackerCardRoundButton
               icon={playIcon}
-              size={ACTION_ICON_SIZE}
               onPress={() => {
                 closeResetBubbles();
                 void onTimerPress?.();
@@ -241,9 +213,6 @@ export function HabitTimerWidget({
                   : undefined
               }
               delayLongPress={350}
-              iconColor={theme.colors.primary}
-              style={styles.iconButton}
-              hitSlop={4}
               accessibilityLabel={playA11y}
               accessibilityHint={
                 canResetToday ? t('habitWidget.playLongPressResetHint') : undefined
@@ -252,13 +221,10 @@ export function HabitTimerWidget({
           </ActionBubbleTray>
 
           {showManualDone ? (
-            <IconButton
-              icon="check-circle"
-              size={ACTION_ICON_SIZE}
+            <TrackerCardRoundButton
+              icon="check"
+              tone="solid"
               onPress={() => void onTimerFinish?.()}
-              iconColor={theme.colors.primary}
-              style={styles.iconButton}
-              hitSlop={4}
               accessibilityLabel={t('habitWidget.finishSessionA11y')}
             />
           ) : null}
@@ -269,7 +235,7 @@ export function HabitTimerWidget({
               hasNote
               onPress={onDictateNote}
               onLongPress={onEditNote}
-              size={ACTION_ICON_SIZE - 4}
+              size={NOTE_ICON_SIZE}
               style={styles.iconButton}
             />
           ) : null}

@@ -1,27 +1,24 @@
 import { StyleSheet } from 'react-native';
-import { space } from '../theme/spacing';
+import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
 /**
- * Shared Home tracker card layout (tick-off, timer, counter).
+ * Shared Home tracker row layout (tick-off, timer, counter).
  * Owned by TrackerCard + kind widgets — do not fork per kind.
  */
 export const trackerCardStyles = StyleSheet.create({
   card: {
-    marginBottom: 8,
-    overflow: 'hidden',
+    marginBottom: layout.rowGap,
   },
-  cardContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 0,
-  },
-  /** Tracker one-liner: identity · spacer · trailing actions. */
+  /** Tracker one-liner: disc and name · spacer · trailing actions. */
   oneLineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    minHeight: 56,
+    gap: space.sm,
+    minHeight: layout.rowHeight,
+    paddingLeft: space.md,
+    paddingRight: space.sm,
+    paddingVertical: space.sm,
   },
   titlePress: {
     flex: 1,
@@ -32,38 +29,33 @@ export const trackerCardStyles = StyleSheet.create({
     alignItems: 'center',
     gap: space.md,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  /** Name and, for text-only rows, its streak — shrinks before the actions do. */
+  /** Name and its streak caption — shrinks before the actions do. */
   nameWrap: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
   },
   name: {
-    fontWeight: '500',
-    flexShrink: 1,
+    ...typeScale.rowName,
   },
-  /** Timer/meta cluster — tight right rail. */
+  caption: {
+    ...typeScale.secondary,
+  },
+  /** Timer/count and the row's action — a tight right rail. */
   trailingCluster: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 4,
+    gap: space.sm,
   },
   timerLabel: {
     // Mono figures: a running clock stops jittering as the digits change.
     ...typeScale.timer,
-    marginRight: 2,
     // Shrinks against the title rather than clipping at a fixed width, so a
     // scaled-up "1:02:44" stays whole.
     flexShrink: 1,
     textAlign: 'right',
   },
-  /** Primary habit/counter actions — fill more of the card height. */
+  /** Secondary row actions, e.g. today's note. */
   iconButton: {
     margin: 0,
     width: 48,

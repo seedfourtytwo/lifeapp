@@ -19,7 +19,8 @@
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
 import { trackerCardStyles } from '../src/kinds/trackerCardStyles';
-import { StreakFireCount } from '../src/kinds/StreakFireCount';
+import '../src/i18n';
+import { TrackerCardTitle } from '../src/kinds/TrackerCardTitle';
 import { forecastStripStyles } from '../src/components/weather/WeatherForecastStrip';
 import { noteIconButtonStyles } from '../src/notes/NoteIconButton';
 
@@ -94,29 +95,17 @@ describe('text that cannot reflow caps its own scaling', () => {
     return found;
   }
 
-  function streakFontCaps(variant: 'badge' | 'inline'): unknown[] {
+  it('leaves the streak caption under a row name free to scale', () => {
     let tree!: ReactTestRenderer;
     act(() => {
       tree = TestRenderer.create(
-        React.createElement(StreakFireCount, { days: 41, color: '#000000', variant }),
+        React.createElement(TrackerCardTitle, { name: 'Read', streakLabel: '41 days in a row' }),
       );
     });
-    const caps = fontCaps(tree.toJSON() as Node);
+    // It sits on its own line under the name, where growing is fine.
+    expect(fontCaps(tree.toJSON() as Node)).toEqual([]);
     act(() => {
       tree.unmount();
     });
-    return caps;
-  }
-
-  it('caps the streak badge, which is pinned over the identity mark', () => {
-    const caps = streakFontCaps('badge');
-    expect(caps).toEqual([expect.any(Number)]);
-    expect(caps[0] as number).toBeGreaterThan(1);
-    expect(caps[0] as number).toBeLessThanOrEqual(1.5);
-  });
-
-  it('leaves the inline streak count free to scale', () => {
-    // Same content, but in a normal row where growing is fine.
-    expect(streakFontCaps('inline')).toEqual([]);
   });
 });

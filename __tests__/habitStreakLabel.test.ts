@@ -38,8 +38,8 @@ describe('formatHabitStreakLabel', () => {
   });
 
   it('shows success streak even when today is not done (streak through yesterday)', () => {
-    expect(formatHabitStreakLabel(withStreak, 3)).toBe('3-day streak');
-    expect(formatHabitStreakLabel(withStreak, 1)).toBe('1-day streak');
+    expect(formatHabitStreakLabel(withStreak, 3)).toBe('3 days in a row');
+    expect(formatHabitStreakLabel(withStreak, 1)).toBe('1 day in a row');
   });
 
   it('hides streak when count is zero', () => {
@@ -53,7 +53,7 @@ describe('formatHabitStreakLabel', () => {
 
   it('defaults to showing when showStreakOnCard is omitted', () => {
     const defaultsOn = HabitConfigSchema.parse({ timeSlot: 'anytime' });
-    expect(formatHabitStreakLabel(defaultsOn, 2)).toBe('2-day streak');
+    expect(formatHabitStreakLabel(defaultsOn, 2)).toBe('2 days in a row');
   });
 });
 

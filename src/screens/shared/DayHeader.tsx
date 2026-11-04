@@ -8,15 +8,17 @@ import { formatShortDate } from '../../utils/dates';
 import { APP_DAY_RESET_TIME_LABEL, currentAppCalendarDate } from '../../utils/dayRollover';
 import ActivityStrip, { type ActivityDay } from './ActivityStrip';
 import DayHeaderPeeks from './DayHeaderPeeks';
+import type { DayHeaderMeta } from './dayHeaderMeta';
 
 type Props = {
   /** Calendar "now" from `useAppCalendarNow` — advances on day rollover. */
   now: Date;
   /**
-   * Short uppercase status: what today looks like so far. Written by the tab,
-   * because "3 of 5 done" means something different on Habits than on Todos.
+   * What today looks like so far, written by the tab — "3 of 5 done" means
+   * something different on Habits than on Todos. A pair sets the run apart on
+   * the right: "2 of 6 done" … "13 days in a row".
    */
-  meta?: string | null;
+  meta?: string | DayHeaderMeta | null;
   /** Recent days for the strip; empty hides it. */
   activity?: ActivityDay[];
   activityLabel?: string;
@@ -49,6 +51,8 @@ export default function DayHeader({
   const theme = useTheme();
   const { t } = useTranslation('home');
   const date = formatShortDate(currentAppCalendarDate(now));
+  const status = typeof meta === 'string' ? { lead: meta, trail: null } : meta;
+  const metaStyle = [typeScale.secondary, { color: theme.colors.onSurfaceVariant }];
 
   return (
     <View style={styles.header}>
@@ -70,13 +74,17 @@ export default function DayHeader({
         </View>
       </View>
 
-      {meta ? (
-        <Text
-          style={[typeScale.meta, { color: theme.colors.onSurfaceVariant }]}
-          numberOfLines={1}
-        >
-          {meta}
-        </Text>
+      {status ? (
+        <View style={styles.metaRow}>
+          <Text style={[metaStyle, styles.metaLead]} numberOfLines={1}>
+            {status.lead}
+          </Text>
+          {status.trail ? (
+            <Text style={metaStyle} numberOfLines={1}>
+              {status.trail}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
 
       {activity.length > 0 && activityLabel ? (
@@ -88,7 +96,17 @@ export default function DayHeader({
 
 const styles = StyleSheet.create({
   header: {
-    marginBottom: space.md,
+    marginBottom: space.lg,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: space.md,
+    marginTop: space.xs,
+  },
+  metaLead: {
+    flexShrink: 1,
   },
   titleRow: {
     flexDirection: 'row',
@@ -104,7 +122,6 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
     flexShrink: 0,
   },
 });

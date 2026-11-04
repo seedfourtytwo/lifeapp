@@ -25,6 +25,7 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitCard from './habits/HabitCard';
 import EmptyTabState from './shared/EmptyTabState';
 import DayHeader from './shared/DayHeader';
+import { habitHeaderMeta } from './shared/dayHeaderMeta';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
 import NotebookButtons from './shared/NotebookButtons';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
@@ -134,20 +135,21 @@ export default function HabitsScreen({
   const activity = useRecentActivity(allHabitIds);
 
   /**
-   * "3 of 5 done · 41-day streak". The streak shown is the best one running,
+   * "3 of 5 done" and "41 days in a row". The run shown is the best one going,
    * because the header answers "how am I doing", not "how is each habit doing".
    */
-  const headerMeta = useMemo(() => {
-    if (habits.length === 0) return t('dayHeader.habitsNoneDue');
-    const done = habits.filter((habit) => habitDoneToday[habit.id] ?? false).length;
-    const parts = [t('dayHeader.habitsDone', { done, total: habits.length })];
-    const bestStreak = habits.reduce(
-      (best, habit) => Math.max(best, habitStreaks[habit.id] ?? 0),
-      0,
-    );
-    if (bestStreak > 0) parts.push(t('dayHeader.streak', { count: bestStreak }));
-    return parts.join(t('dayHeader.separator'));
-  }, [habits, habitDoneToday, habitStreaks, t]);
+  const headerMeta = useMemo(
+    () =>
+      habitHeaderMeta({
+        due: habits.length,
+        done: habits.filter((habit) => habitDoneToday[habit.id] ?? false).length,
+        bestStreak: habits.reduce(
+          (best, habit) => Math.max(best, habitStreaks[habit.id] ?? 0),
+          0,
+        ),
+      }),
+    [habits, habitDoneToday, habitStreaks],
+  );
 
   const activityLabel = useMemo(
     () =>
@@ -335,4 +337,4 @@ export default function HabitsScreen({
 }
 
 const styles = homeTabScreenStyles;
-const addButtonStyle = { margin: 0 };
+const addButtonStyle = { margin: 0, width: 44, height: 44 };

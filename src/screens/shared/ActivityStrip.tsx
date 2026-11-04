@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useAppTheme } from '../../hooks/useAppTheme';
+import { useTheme } from 'react-native-paper';
 import { space } from '../../theme/spacing';
 
 /** Thin enough to read as texture; half of it rounds each end. */
-const CELL_HEIGHT = 4;
+const CELL_HEIGHT = 6;
 
 /** One cell: a calendar date and whether anything was logged on it. */
 export type ActivityDay = {
@@ -31,7 +31,7 @@ type Props = {
  * Purely presentational, so it can be rendered from a test without a database.
  */
 export default function ActivityStrip({ days, accessibilityLabel }: Props) {
-  const { palette } = useAppTheme();
+  const theme = useTheme();
 
   if (days.length === 0) return null;
 
@@ -50,8 +50,8 @@ export default function ActivityStrip({ days, accessibilityLabel }: Props) {
             {
               borderRadius: CELL_HEIGHT / 2,
               backgroundColor: day.active
-                ? palette.accent
-                : palette.track,
+                ? theme.colors.primary
+                : theme.colors.outlineVariant,
             },
           ]}
         />
@@ -64,8 +64,7 @@ const styles = StyleSheet.create({
   strip: {
     flexDirection: 'row',
     gap: space.xs,
-    marginTop: space.sm,
-    marginBottom: space.xs,
+    marginTop: space.md,
   },
   cell: {
     flex: 1,

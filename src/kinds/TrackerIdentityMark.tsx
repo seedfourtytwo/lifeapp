@@ -1,106 +1,78 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from 'react-native-paper';
 import type { TrackerIconId } from '../protocol';
 import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
 import { clamp01 } from '../utils/clamp01';
-import { StreakFireCount } from './StreakFireCount';
+import { useDoneFill } from './useDoneFill';
 
 const MARK_SIZE = 44;
-const RING_STROKE = 2.75;
-const RING_RADIUS = (MARK_SIZE - RING_STROKE) / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const ICON_SIZE = 22;
+const ARC_STROKE = 3;
+const ARC_RADIUS = (MARK_SIZE - ARC_STROKE) / 2;
+const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS;
 
 type Props = {
   icon: TrackerIconId;
-  /** 0–1 fill for the outer ring; omit to show track only. */
+  /** 0–1 of today's target, drawn as an arc round the disc while under way. */
   progress?: number | null;
-  /** When true, ring/well use the complete accent. */
+  /** Done: the disc fills solid moss and the glyph turns filled. */
   complete?: boolean;
-  streakDays?: number | null;
 };
 
 /**
- * Home leading mark: icon in a well with an optional progress ring and streak badge.
+ * A row's leading disc. At rest it is a quiet well with an outline glyph; done,
+ * it floods moss — the one bold thing on Home. A timer or counter part of the
+ * way to its target shows that share as a moss arc round the well.
  */
-export function TrackerIdentityMark({
-  icon,
-  progress = null,
-  complete = false,
-  streakDays = null,
-}: Props) {
+export function TrackerIdentityMark({ icon, progress = null, complete = false }: Props) {
   const theme = useTheme();
-  const fill = clamp01(progress ?? (complete ? 1 : 0));
-  const streakDaysShown =
-    typeof streakDays === 'number' && streakDays > 0 ? streakDays : null;
-  const accent = theme.colors.primary;
-  const track = theme.colors.outlineVariant;
-  const wellBg = complete
-    ? `${theme.colors.primary}22`
-    : theme.colors.surfaceVariant;
-  const iconColor = complete ? theme.colors.primary : theme.colors.onSurface;
+  const doneFill = useDoneFill(complete);
+  const share = clamp01(progress ?? 0);
+  const underWay = !complete && share > 0;
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.mark}>
+    <View style={[styles.disc, { backgroundColor: theme.colors.surfaceVariant }]}>
+      {underWay ? (
         <Svg width={MARK_SIZE} height={MARK_SIZE} style={StyleSheet.absoluteFill}>
           <Circle
             cx={MARK_SIZE / 2}
             cy={MARK_SIZE / 2}
-            r={RING_RADIUS}
-            stroke={track}
-            strokeWidth={RING_STROKE}
+            r={ARC_RADIUS}
+            stroke={theme.colors.primary}
+            strokeWidth={ARC_STROKE}
             fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${ARC_CIRCUMFERENCE} ${ARC_CIRCUMFERENCE}`}
+            strokeDashoffset={ARC_CIRCUMFERENCE * (1 - share)}
+            transform={`rotate(-90 ${MARK_SIZE / 2} ${MARK_SIZE / 2})`}
           />
-          {fill > 0 ? (
-            <Circle
-              cx={MARK_SIZE / 2}
-              cy={MARK_SIZE / 2}
-              r={RING_RADIUS}
-              stroke={accent}
-              strokeWidth={RING_STROKE}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
-              strokeDashoffset={RING_CIRCUMFERENCE * (1 - fill)}
-              transform={`rotate(-90 ${MARK_SIZE / 2} ${MARK_SIZE / 2})`}
-            />
-          ) : null}
         </Svg>
-        <View style={[styles.well, { backgroundColor: wellBg }]}>
-          <TrackerIcon name={icon} size={22} color={iconColor} />
-        </View>
-      </View>
-      {streakDaysShown != null ? (
-        <StreakFireCount
-          days={streakDaysShown}
-          color={theme.colors.primary}
-          variant="badge"
-          badgeBackgroundColor={theme.colors.primaryContainer}
-          badgeBorderColor={theme.colors.surface}
-        />
       ) : null}
+      <TrackerIcon name={icon} size={ICON_SIZE} color={theme.colors.onSurfaceVariant} />
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.fill, { backgroundColor: theme.colors.primary, opacity: doneFill }]}
+      >
+        <TrackerIcon name={icon} size={ICON_SIZE} color={theme.colors.onPrimary} filled />
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  disc: {
     width: MARK_SIZE,
     height: MARK_SIZE,
-  },
-  mark: {
-    width: MARK_SIZE,
-    height: MARK_SIZE,
+    // Geometry: half the size is what makes it a circle.
+    borderRadius: MARK_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  well: {
-    width: MARK_SIZE - RING_STROKE * 2 - 4,
-    height: MARK_SIZE - RING_STROKE * 2 - 4,
-    // Geometric: a circular well, not a themed corner.
-    borderRadius: 999,
+  fill: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },

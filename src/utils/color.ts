@@ -1,4 +1,3 @@
-import type { ResolvedTheme } from '../protocol/appSettings';
 import { clamp01 } from './clamp01';
 
 export function parseHex(hex: string): [number, number, number] {
@@ -20,21 +19,6 @@ export function lerpHex(from: string, to: string, amount: number): string {
     Math.round(b1 + (b2 - b1) * t),
   ];
   return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
-}
-
-export interface CounterProgressBarColors {
-  active: string;
-  complete: string;
-}
-
-/** A counter fills in a light moss while it climbs and the full moss once it is met. */
-const COUNTER_PROGRESS_BAR: Record<ResolvedTheme, CounterProgressBarColors> = {
-  light: { active: '#7FA893', complete: '#2E6A4E' },
-  dark: { active: '#4F7A63', complete: '#86C9A3' },
-};
-
-export function getCounterProgressBarColors(mode: ResolvedTheme): CounterProgressBarColors {
-  return COUNTER_PROGRESS_BAR[mode];
 }
 
 /** Append alpha (0–1) to a `#RRGGBB` color for translucent fills. */

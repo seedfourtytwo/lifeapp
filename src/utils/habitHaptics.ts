@@ -97,3 +97,17 @@ export async function playReorderDragHaptic(): Promise<void> {
   }
   vibrateFallback(14);
 }
+
+/** The lightest tap, for a counter's +. */
+export async function playCounterTapHaptic(): Promise<void> {
+  const Haptics = await getHaptics();
+  if (Haptics) {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    } catch {
+      // fall through
+    }
+  }
+  vibrateFallback(8);
+}

@@ -173,8 +173,8 @@
     "invalidTotalTitle": "Total invalide",
     "invalidTotalBody": "Entrez un nombre entier supérieur ou égal à zéro.",
     "couldNotUpdateTitle": "Mise à jour impossible",
-    "streakOne": "Série de 1 jour",
-    "streakMany": "Série de {{count}} jours",
+    "streakOne": "1 jour d'affilée",
+    "streakMany": "{{count}} jours d'affilée",
     "addIncrementA11y": "Ajouter {{count}}",
     "expandIncrementsHint": "Appui long pour afficher d'autres incréments",
     "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner"
@@ -193,8 +193,8 @@
     "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner",
     "couldNotFinishTimerTitle": "Impossible de terminer le minuteur",
     "couldNotResetTodayTitle": "Impossible de réinitialiser aujourd'hui",
-    "streakOne": "Série de 1 jour",
-    "streakMany": "Série de {{count}} jours",
+    "streakOne": "1 jour d'affilée",
+    "streakMany": "{{count}} jours d'affilée",
     "soundLoopsA11y": "Le son tourne en boucle pendant le minuteur",
     "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête"
   },

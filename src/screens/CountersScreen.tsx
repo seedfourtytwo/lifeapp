@@ -21,6 +21,7 @@ import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import EmptyTabState from './shared/EmptyTabState';
 import DayHeader from './shared/DayHeader';
+import { counterHeaderMeta } from './shared/dayHeaderMeta';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
 import NotebookButtons from './shared/NotebookButtons';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
@@ -92,19 +93,14 @@ export default function CountersScreen({
    */
   const headerMeta = useMemo(() => {
     if (counters.length === 0) return null;
-    const logged = counters.filter((c) => (dailyTotals[c.id] ?? 0) > 0).length;
-    const parts = [
-      logged === 0
-        ? t('dayHeader.countersNone')
-        : t('dayHeader.countersLogged', { count: logged }),
-    ];
-    const bestStreak = counters.reduce(
-      (best, counter) => Math.max(best, counterStreaks[counter.id] ?? 0),
-      0,
-    );
-    if (bestStreak > 0) parts.push(t('dayHeader.streak', { count: bestStreak }));
-    return parts.join(t('dayHeader.separator'));
-  }, [counters, dailyTotals, counterStreaks, t]);
+    return counterHeaderMeta({
+      logged: counters.filter((c) => (dailyTotals[c.id] ?? 0) > 0).length,
+      bestStreak: counters.reduce(
+        (best, counter) => Math.max(best, counterStreaks[counter.id] ?? 0),
+        0,
+      ),
+    });
+  }, [counters, dailyTotals, counterStreaks]);
 
   const activityLabel = useMemo(
     () =>

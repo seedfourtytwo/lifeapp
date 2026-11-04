@@ -1,28 +1,12 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  useWindowDimensions,
-  View,
-  StyleSheet,
-} from 'react-native';
-import {
-  Button,
-  IconButton,
-  Modal,
-  Portal,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../../hooks/useAppTheme';
+import { EditorSheet, FilledField } from '../../components/sheet';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { type CounterConfig } from '../../protocol';
-import { getCounterProgressBarColors } from '../../utils/color';
+import { playCounterTapHaptic } from '../../utils/habitHaptics';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
@@ -30,12 +14,9 @@ import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
-import {
-  formatCounterStreakLabel,
-  getCounterStreakDays,
-} from './counterCardLabels';
+import { formatCounterStreakLabel } from './counterCardLabels';
 
-const ACTION_ICON_SIZE = 30;
+const NOTE_ICON_SIZE = 24;
 
 export function CounterWidget({
   element,
@@ -58,21 +39,15 @@ export function CounterWidget({
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
-  const { width } = useWindowDimensions();
-  const { themeMode, decorations: deco } = useAppTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [bubblesOpen, setBubblesOpen] = useState(false);
 
-  const sheetWidth = Math.min(width - 24, 400);
-
   const dailyTarget = config.dailyTarget;
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
   const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
-  const progressBarColors = getCounterProgressBarColors(themeMode);
-  const streakDays = getCounterStreakDays(config, streak);
   const streakLabel = formatCounterStreakLabel(config, streak);
 
   const increments = config.quickIncrements;
@@ -118,12 +93,13 @@ export function CounterWidget({
 
   const logIncrement = (increment: number) => {
     setBubblesOpen(false);
+    void playCounterTapHaptic();
     onLog?.(increment, { source: 'quick_button', increment });
   };
 
-  // Tonal, not a solid slab: the +1 is the row's action, not its loudest thing.
+  // A moss tint, not a solid slab: the +1 is the row's action, not its loudest thing.
   const primaryBg = theme.colors.primaryContainer;
-  const primaryFg = theme.colors.onPrimaryContainer;
+  const primaryFg = theme.colors.primary;
 
   const bubbles = [
     ...extraIncrements.map((increment) => ({
@@ -136,28 +112,14 @@ export function CounterWidget({
 
   return (
     <>
-      <TrackerCard
-        progress={
-          hasTarget
-            ? {
-                value: progress,
-                color: isComplete
-                  ? progressBarColors.complete
-                  : progressBarColors.active,
-                trackColor: theme.colors.outlineVariant,
-                height: deco.progressHeight,
-              }
-            : null
-        }
-      >
+      <TrackerCard>
         <View style={cardStyles.oneLineRow}>
           <TrackerCardTitle
             name={element.name}
             icon={config.icon}
             progress={hasTarget ? progress : null}
             complete={isComplete}
-            streakDays={streakDays}
-            streakAccessibilityLabel={streakLabel}
+            streakLabel={streakLabel}
             {...trackerCardTitleInteractions({
               onOpenDetails,
               onLongPressReorder,
@@ -174,13 +136,12 @@ export function CounterWidget({
               onPress={onSetDailyTotal ? openEdit : undefined}
               disabled={!onSetDailyTotal}
               hitSlop={space.sm}
-              style={({ pressed }) => [styles.countHit, pressed && cardStyles.pressed]}
+              style={({ pressed }) => [styles.countHit, pressed && styles.pressed]}
               accessibilityRole={onSetDailyTotal ? 'button' : undefined}
               accessibilityLabel={countText}
               accessibilityHint={onSetDailyTotal ? t('counterWidget.tapCountToSetHint') : undefined}
             >
               <Text
-                variant="titleSmall"
                 numberOfLines={1}
                 style={[cardStyles.timerLabel, { color: metaColor }]}
               >
@@ -203,11 +164,8 @@ export function CounterWidget({
                 delayLongPress={350}
                 style={({ pressed }) => [
                   styles.incrementHit,
-                  {
-                    backgroundColor: primaryBg,
-                    borderRadius: deco.buttonRadius,
-                  },
-                  pressed && cardStyles.pressed,
+                  { backgroundColor: primaryBg },
+                  pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={t('counterWidget.addIncrementA11y', {
@@ -229,7 +187,7 @@ export function CounterWidget({
                 hasNote
                 onPress={onDictateNote}
                 onLongPress={onEditNote}
-                size={ACTION_ICON_SIZE - 4}
+                size={NOTE_ICON_SIZE}
                 style={cardStyles.iconButton}
               />
             ) : null}
@@ -237,76 +195,31 @@ export function CounterWidget({
         </View>
       </TrackerCard>
 
-      <Portal>
-        <Modal
-          visible={editVisible}
-          onDismiss={closeEdit}
-          contentContainerStyle={[styles.modalContainer, { width: sheetWidth }]}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.keyboardAvoid}
-          >
-            <View
-              style={[
-                styles.sheet,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderRadius: deco.radius.lg,
-                },
-              ]}
-            >
-              <View style={styles.sheetHeader}>
-                <Text
-                  variant="titleLarge"
-                  style={[styles.sheetTitle, { color: theme.colors.onSurface }]}
-                >
-                  {t('counterWidget.editTotalTitle')}
-                </Text>
-                <IconButton
-                  icon="close"
-                  onPress={closeEdit}
-                  disabled={saving}
-                  accessibilityLabel={tCommon('actions.close')}
-                />
-              </View>
-
-              <View style={styles.sheetBody}>
-                <Text
-                  variant="bodySmall"
-                  style={[styles.sheetHint, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  {t('counterWidget.replacesTotalHint', { unit: config.unit })}
-                </Text>
-                <TextInput
-                  label={t('counterWidget.totalLabel', { unit: config.unit })}
-                  value={editValue}
-                  onChangeText={setEditValue}
-                  keyboardType="number-pad"
-                  mode="outlined"
-                  autoFocus
-                  selectTextOnFocus
-                />
-              </View>
-
-              <View style={styles.sheetFooter}>
-                <Button onPress={closeEdit} disabled={saving}>
-                  {tCommon('actions.cancel')}
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={() => void saveEdit()}
-                  loading={saving}
-                  disabled={saving}
-                  style={{ borderRadius: deco.buttonRadius }}
-                >
-                  {tCommon('actions.save')}
-                </Button>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      </Portal>
+      <EditorSheet
+        visible={editVisible}
+        onDismiss={closeEdit}
+        dismissable={!saving}
+        title={t('counterWidget.editTotalTitle')}
+        primaryAction={{
+          label: tCommon('actions.save'),
+          onPress: () => void saveEdit(),
+          loading: saving,
+          disabled: saving,
+        }}
+      >
+        <FilledField
+          label={t('counterWidget.totalLabel', { unit: config.unit })}
+          value={editValue}
+          onChangeText={setEditValue}
+          keyboardType="number-pad"
+          autoFocus
+          selectTextOnFocus
+          onSubmitEditing={() => void saveEdit()}
+        />
+        <Text style={[typeScale.caption, styles.hint, { color: theme.colors.onSurfaceVariant }]}>
+          {t('counterWidget.replacesTotalHint', { unit: config.unit })}
+        </Text>
+      </EditorSheet>
     </>
   );
 }
@@ -318,52 +231,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   incrementHit: {
-    minWidth: 52,
-    minHeight: 48,
+    minWidth: 56,
+    minHeight: 44,
     paddingHorizontal: space.md,
+    // Geometry: half the height makes it a pill.
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   incrementLabel: {
     ...typeScale.data,
-    fontSize: 18,
+    fontSize: 17,
   },
-  modalContainer: {
-    alignSelf: 'center',
-    marginHorizontal: 12,
+  pressed: {
+    transform: [{ scale: 0.94 }],
   },
-  keyboardAvoid: {
-    flexGrow: 0,
-  },
-  sheet: {
-    overflow: 'hidden',
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 4,
-    paddingTop: 4,
-  },
-  sheetTitle: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  sheetBody: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 12,
-  },
-  sheetHint: {
-    lineHeight: 18,
-  },
-  sheetFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
+  hint: {
+    marginTop: space.sm,
   },
 });

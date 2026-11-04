@@ -173,8 +173,8 @@
     "invalidTotalTitle": "Invalid total",
     "invalidTotalBody": "Enter a whole number zero or greater.",
     "couldNotUpdateTitle": "Could not update",
-    "streakOne": "1-day streak",
-    "streakMany": "{{count}}-day streak",
+    "streakOne": "1 day in a row",
+    "streakMany": "{{count}} days in a row",
     "addIncrementA11y": "Add {{count}}",
     "expandIncrementsHint": "Long press to show more increments",
     "reorderLongPressHint": "Hold to see the name; keep holding to reorder"
@@ -193,8 +193,8 @@
     "reorderLongPressHint": "Hold to see the name; keep holding to reorder",
     "couldNotFinishTimerTitle": "Could not finish timer",
     "couldNotResetTodayTitle": "Could not reset today",
-    "streakOne": "1-day streak",
-    "streakMany": "{{count}}-day streak",
+    "streakOne": "1 day in a row",
+    "streakMany": "{{count}} days in a row",
     "soundLoopsA11y": "Sound loops while the timer runs",
     "soundPlaysOnceA11y": "Sound plays once, then the timer stops"
   },

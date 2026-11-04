@@ -20,8 +20,8 @@ describe('formatCounterStreakLabel', () => {
   });
 
   it('shows streak when target exists and count is positive', () => {
-    expect(formatCounterStreakLabel(withTarget, 3)).toBe('3-day streak');
-    expect(formatCounterStreakLabel(withTarget, 1)).toBe('1-day streak');
+    expect(formatCounterStreakLabel(withTarget, 3)).toBe('3 days in a row');
+    expect(formatCounterStreakLabel(withTarget, 1)).toBe('1 day in a row');
   });
 
   it('hides when count is zero, opted out, or no target', () => {
@@ -36,6 +36,6 @@ describe('formatCounterStreakLabel', () => {
       quickIncrements: [1000],
       dailyTarget: 8000,
     });
-    expect(formatCounterStreakLabel(defaultsOn, 2)).toBe('2-day streak');
+    expect(formatCounterStreakLabel(defaultsOn, 2)).toBe('2 days in a row');
   });
 });

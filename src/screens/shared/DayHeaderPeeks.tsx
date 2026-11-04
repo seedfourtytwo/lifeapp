@@ -5,7 +5,6 @@ import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import CalendarPeekSheet from '../../components/CalendarPeekSheet';
 import WeatherPeekSheet from '../../components/weather/WeatherPeekSheet';
-import { useAppTheme } from '../../hooks/useAppTheme';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useWeatherStore } from '../../store/weatherStore';
 import { space } from '../../theme/spacing';
@@ -34,7 +33,6 @@ interface Props {
 export default function DayHeaderPeeks({ now }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
-  const { palette } = useAppTheme();
   const weatherEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const placeName = useSettingsStore((s) => s.weatherPlaceName);
   const forecast = useWeatherStore((s) => s.forecast);
@@ -73,8 +71,8 @@ export default function DayHeaderPeeks({ now }: Props) {
           >
             <MaterialCommunityIcons
               name={conditionIconName(status.condition)}
-              size={18}
-              color={status.hasForecast ? theme.colors.onSurface : theme.colors.outline}
+              size={22}
+              color={theme.colors.onSurfaceVariant}
             />
             <Text
               style={[
@@ -99,7 +97,11 @@ export default function DayHeaderPeeks({ now }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('calendarPeek.openCalendar')}
         >
-          <MaterialCommunityIcons name="calendar-blank-outline" size={20} color={palette.accent} />
+          <MaterialCommunityIcons
+            name="calendar-blank-outline"
+            size={24}
+            color={theme.colors.onSurfaceVariant}
+          />
         </Pressable>
       </View>
 
@@ -122,7 +124,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
     flexShrink: 0,
   },
   chip: {
@@ -130,8 +131,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.xs,
     // A floor, not a fixed size: the temperature is text and may grow.
-    minHeight: 32,
-    minWidth: 32,
+    minHeight: 48,
+    minWidth: 44,
     justifyContent: 'center',
   },
   temp: {
