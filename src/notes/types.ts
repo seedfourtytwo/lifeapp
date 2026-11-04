@@ -1,10 +1,10 @@
 import { i18n } from '../i18n';
-import type { TrackerIconId } from '../protocol';
+import type { JournalNotebookColor, TrackerIconId } from '../protocol';
 
 export type HomeNotebookChip = {
   id: string;
   name: string;
-  color: string;
+  color: JournalNotebookColor;
   icon?: TrackerIconId;
   hasToday: boolean;
   /** Chapters written in this notebook today — the icon badges two or more. */

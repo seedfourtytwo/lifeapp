@@ -1,12 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Modal, Portal, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -21,12 +19,6 @@ export type HeaderPeekSheetProps = {
   onDismiss: () => void;
   /** Sheet heading — what this peek is about. Never the date. */
   title: string;
-  /**
-   * Makes the heading a button, with a chevron: the calendar peek uses it to
-   * hand off to the full screen.
-   */
-  onTitlePress?: () => void;
-  titleA11yLabel?: string;
   /** One quiet line under the heading. */
   subtitle?: string | null;
   /** Buttons pinned under the body. */
@@ -56,15 +48,13 @@ export default function HeaderPeekSheet({
   visible,
   onDismiss,
   title,
-  onTitlePress,
-  titleA11yLabel,
   subtitle = null,
   footer,
   maxHeightRatio = 0.7,
   children,
 }: HeaderPeekSheetProps) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const reduceMotion = useReduceMotion();
@@ -89,22 +79,6 @@ export default function HeaderPeekSheet({
     outputRange: [RISE_PX, 0],
   });
 
-  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
-
-  const heading = (
-    <>
-      <Text
-        style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
-        accessibilityRole={onTitlePress ? undefined : 'header'}
-        numberOfLines={1}
-      >
-        {title}
-      </Text>
-      {onTitlePress ? (
-        <MaterialCommunityIcons name="chevron-right" size={22} color={accent} />
-      ) : null}
-    </>
-  );
 
   return (
     <Portal>
@@ -131,18 +105,15 @@ export default function HeaderPeekSheet({
             },
           ]}
         >
-          {onTitlePress ? (
-            <Pressable
-              onPress={onTitlePress}
-              style={styles.headingRow}
-              accessibilityRole="button"
-              accessibilityLabel={titleA11yLabel ?? title}
+          <View style={styles.headingRow}>
+            <Text
+              style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
+              accessibilityRole="header"
+              numberOfLines={1}
             >
-              {heading}
-            </Pressable>
-          ) : (
-            <View style={styles.headingRow}>{heading}</View>
-          )}
+              {title}
+            </Text>
+          </View>
 
           {subtitle ? (
             <QuietText variant="bodySmall" style={styles.subtitle}>

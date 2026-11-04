@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { space } from '../../theme/spacing';
 
 type Props = {
   title: string;
@@ -130,7 +131,7 @@ export const formSectionStyles = StyleSheet.create({
   timeField: {
     flex: 1,
   },
-  divider: {
-    marginTop: 16,
+  sectionGap: {
+    height: space.lg,
   },
 });

@@ -31,8 +31,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
   const { t: tCommon } = useTranslation('common');
-  const { decorations: deco, isCartoon } = useAppTheme();
-  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
+  const { palette } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
@@ -79,20 +78,12 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
       visible={visible}
       onDismiss={onClose}
       title={t('calendarPeek.title')}
-      onTitlePress={openFullCalendar}
-      titleA11yLabel={t('calendarPeek.openFullCalendar')}
-      subtitle={
-        isEmpty ? t('calendarPeek.emptySubtitle') : t('calendarPeek.withListSubtitle')
-      }
+      subtitle={isEmpty ? null : t('calendarPeek.withListSubtitle')}
       footer={
         <>
-          {!isEmpty ? (
-            <Button mode="text" compact onPress={openFullCalendar} icon="calendar-month">
-              {t('calendarPeek.fullCalendar')}
-            </Button>
-          ) : (
-            <View />
-          )}
+          <Button mode="text" compact onPress={openFullCalendar} icon="calendar-month">
+            {t('calendarPeek.fullCalendar')}
+          </Button>
           <View style={styles.footerRight}>
             <Button mode="text" compact onPress={openAddEvent} icon="plus">
               {t('calendarPeek.add')}
@@ -105,26 +96,9 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
       }
     >
       {isEmpty ? (
-        <View style={styles.empty}>
-          <MaterialCommunityIcons
-            name="calendar-blank-outline"
-            size={40}
-            color={theme.colors.outline}
-            style={styles.emptyGlyph}
-          />
-          <QuietText variant="bodyMedium" style={styles.emptyBody}>
-            {t('calendarPeek.emptyBody')}
-          </QuietText>
-          <Button
-            mode="contained-tonal"
-            icon="calendar-month"
-            onPress={openFullCalendar}
-            style={{ borderRadius: deco.buttonRadius }}
-            buttonColor={isCartoon ? theme.colors.secondaryContainer : undefined}
-          >
-            {t('calendarPeek.openCalendar')}
-          </Button>
-        </View>
+        <QuietText variant="bodyMedium" style={styles.empty}>
+          {t('calendarPeek.emptySubtitle')}
+        </QuietText>
       ) : (
         <ScrollView
           style={styles.list}
@@ -140,7 +114,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
                 {showHeading ? (
                   <Text
                     variant="labelLarge"
-                    style={[styles.dayHeading, { color: accent }]}
+                    style={[styles.dayHeading, { color: palette.accent }]}
                   >
                     {formatDayHeading(occ.start)}
                   </Text>
@@ -204,15 +178,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   empty: {
-    alignItems: 'center',
-    paddingVertical: space.lg,
-    gap: space.md,
-  },
-  emptyGlyph: {
-    marginBottom: space.xs,
-  },
-  emptyBody: {
-    textAlign: 'center',
+    paddingVertical: space.md,
   },
   dayHeading: {
     marginTop: space.sm,

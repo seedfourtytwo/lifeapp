@@ -1,16 +1,12 @@
 import React from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { Keyboard, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Modal, Portal, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { useDialogKeyboardLift } from '../hooks/useDialogKeyboardLift';
 import { space } from '../theme/spacing';
 import { NOTE_BODY_APPROACHING_REMAINING, NOTE_BODY_MAX_LENGTH } from './noteBodyLimits';
 import { NoteEditorActions } from './NoteEditorActions';
@@ -92,7 +88,11 @@ function DictationKeepAwake() {
 /**
  * Shared editor for tracker notes and the daily journal.
  * Mic-first preview; tap the body to type. Header X dismisses.
- * Done stops the mic; Save writes and closes when there is draft text.
+ * Done stops the mic; Save writes and closes when there is draft text. A quick
+ * dictation — opened by a mic glyph — is filed by Done itself.
+ *
+ * The sheet lives in a portal above the navigation stack, so it closes itself
+ * when its screen loses focus rather than staying drawn over the next one.
  *
  * For a journal this edits *one chapter* of a notebook day. Taking text out of
  * it — share, copy, and the never/stale/current colour — spans the day, and
@@ -130,6 +130,8 @@ export default function NoteEditorSheet({
   const { decorations: deco, isCartoon } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const keyboardLift = useDialogKeyboardLift(visible);
+  const focused = useIsFocused();
   const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.max(280, windowWidth - SHEET_GUTTER * 2));
   const previewMaxHeight = Math.round(Math.min(windowHeight * 0.52, windowHeight - 320));
   const previewMinHeight = Math.round(Math.min(windowHeight * 0.28, previewMaxHeight));
@@ -141,6 +143,10 @@ export default function NoteEditorSheet({
     initialBody,
     onPersist,
   });
+
+  // Set by Done, read when the take has been committed: Done files a quick
+  // dictation, while a take that ended on its own leaves the sheet open.
+  const doneRequestedRef = React.useRef(false);
 
   const isJournal = kind === 'journal';
   const noun = isJournal ? t('note.journalNoun') : t('note.noteNoun');
@@ -167,10 +173,14 @@ export default function NoteEditorSheet({
       if (open) persist.setTextEditing(false);
     },
     onFinished: () => {
-      // Opened by a tracker's mic button and nothing was said: get out of the way.
+      const done = doneRequestedRef.current;
+      doneRequestedRef.current = false;
       if (!autoStartDictation || saving) return;
       if (!persist.draftRef.current.trim()) {
+        // Opened by a tracker's mic button and nothing was said: get out of the way.
         onDismiss();
+      } else if (done) {
+        handleSave();
       }
     },
   });
@@ -262,6 +272,12 @@ export default function NoteEditorSheet({
     onDismiss();
   };
 
+  const requestDismissRef = React.useRef(requestDismiss);
+  requestDismissRef.current = requestDismiss;
+  React.useEffect(() => {
+    if (visible && !focused) requestDismissRef.current();
+  }, [visible, focused]);
+
   const applyClearAll = () => {
     if (listening) dictation.cancel();
     persist.clearAll();
@@ -320,12 +336,12 @@ export default function NoteEditorSheet({
         <Modal
           visible={visible}
           onDismiss={requestDismiss}
-          style={styles.modalWrap}
+          style={[styles.modalWrap, { paddingBottom: keyboardLift }]}
           contentContainerStyle={[
             styles.modal,
             {
               width: sheetWidth,
-              maxHeight: windowHeight - insets.top - insets.bottom - 32,
+              maxHeight: windowHeight - insets.top - insets.bottom - 32 - keyboardLift,
               backgroundColor: theme.colors.surface,
               borderRadius: deco.radius.lg,
               ...(Platform.OS === 'android' ? { elevation: 6 } : {}),
@@ -336,10 +352,7 @@ export default function NoteEditorSheet({
             },
           ]}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.keyboardAvoid}
-          >
+          <View style={styles.body}>
             <NoteEditorHeader
               heading={
                 heading?.trim() ||
@@ -484,10 +497,13 @@ export default function NoteEditorSheet({
               saving={saving}
               dictationStarting={dictation.starting}
               dictationFinishing={dictation.finishing}
-              onDone={dictation.finish}
+              onDone={() => {
+                doneRequestedRef.current = true;
+                dictation.finish();
+              }}
               onSave={handleSave}
             />
-          </KeyboardAvoidingView>
+          </View>
         </Modal>
       </Portal>
       {visible && isJournal ? (
@@ -527,7 +543,7 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  keyboardAvoid: {
+  body: {
     flexGrow: 0,
   },
 });

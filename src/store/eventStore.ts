@@ -11,6 +11,7 @@ import {
   toDateString,
   type ActiveTimerSession,
   type HabitConfig,
+  type LifeEvent,
 } from '../protocol';
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
 import { sumEventValues } from '../utils/events';
@@ -116,7 +117,15 @@ interface EventState extends ResettableMirror {
   ) => Promise<void>;
   /** Drop an in-progress timer without writing an event (archive/delete). */
   discardHabitTimer: (elementId: string) => void;
-  resetHabitToday: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
+  /** Clears the day and resolves to the events it removed, so Undo can put them back. */
+  resetHabitToday: (elementId: string, config: HabitConfig, date?: string) => Promise<LifeEvent[]>;
+  /** Undo for `resetHabitToday`: re-inserts what it removed, then reloads that day. */
+  restoreHabitDay: (
+    elementId: string,
+    config: HabitConfig,
+    events: LifeEvent[],
+    date?: string,
+  ) => Promise<void>;
 }
 
 function todayDate(): string {
@@ -821,11 +830,13 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     const dataEpochAtStart = getDataGeneration('protocol');
     const ourWriteEpoch = bumpWriteEpoch(elementId);
+    let removed: LifeEvent[] = [];
     await withDbWriteLock(async () => {
       if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         return;
       }
       const db = await getDatabase();
+      removed = await eventRepo.getEventsForElementOnDate(db, elementId, date);
       await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
 
       if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
@@ -843,6 +854,43 @@ export const useEventStore = create<EventState>((set, get) => ({
         applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
       } catch {
         // Day wipe already applied; streaks can refresh on next focus.
+      }
+    });
+    return removed;
+  },
+
+  restoreHabitDay: async (elementId, config, events, date = todayDate()) => {
+    if (events.length === 0) return;
+    const dataEpochAtStart = getDataGeneration('protocol');
+    const ourWriteEpoch = bumpWriteEpoch(elementId);
+    await withDbWriteLock(async () => {
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) return;
+      const db = await getDatabase();
+      // Only today's own events, and only into a day nothing was logged on since:
+      // a timer started after the reset is newer than the Undo and wins.
+      const since = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+      if (since.length > 0) return;
+      await db.withTransactionAsync(async () => {
+        for (const event of events) {
+          if (event.elementId === elementId && event.date === date) {
+            await eventRepo.insertEvent(db, event);
+          }
+        }
+      });
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) return;
+      const total = sumEventValues(events);
+      applyTodayMaps(
+        elementId,
+        date,
+        { dailyTotal: total, habitDone: isHabitDayComplete(total, config, events) },
+        set,
+        get,
+      );
+      try {
+        const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+        applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+      } catch {
+        // Day restored; streaks can refresh on next focus.
       }
     });
   },

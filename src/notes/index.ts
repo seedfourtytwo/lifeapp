@@ -20,3 +20,4 @@ export { useNoteEditorSession } from './useNoteEditorSession';
 export type { NoteEditorSession, NoteEditorSessionState } from './useNoteEditorSession';
 export { default as NoteEditorHost } from './NoteEditorHost';
 export { NoteIconButton } from './NoteIconButton';
+export { notebookInk } from './notebookInk';

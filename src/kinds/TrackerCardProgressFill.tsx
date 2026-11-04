@@ -5,7 +5,7 @@ import { clamp01 } from '../utils/clamp01';
 
 type Props = {
   progress: number;
-  /** Accent used for the soft wash + leading edge. */
+  /** Accent used for the soft wash. */
   color: string;
   borderRadius: number;
 };
@@ -37,14 +37,7 @@ export function TrackerCardProgressFill({
             backgroundColor: withHexAlpha(color, 0.16),
           },
         ]}
-      >
-        <View
-          style={[
-            styles.edge,
-            { backgroundColor: withHexAlpha(color, 0.42) },
-          ]}
-        />
-      </View>
+      />
     </View>
   );
 }
@@ -56,13 +49,5 @@ const styles = StyleSheet.create({
   },
   wash: {
     height: '100%',
-    position: 'relative',
-  },
-  edge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 3,
   },
 });

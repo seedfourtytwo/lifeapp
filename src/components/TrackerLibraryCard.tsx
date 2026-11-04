@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Menu, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
 import type { TrackerIconId } from '../protocol';
 import { TrackerIcon } from './trackerIcons/TrackerIcon';
 import SettingsRow from './settings/SettingsRow';
@@ -36,21 +35,12 @@ export default function TrackerLibraryCard({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { decorations: deco, isCartoon } = useAppTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const well = (
-    <View
-      style={[
-        settingsRowStyles.iconWell,
-        {
-          backgroundColor: `${accentColor}22`,
-          borderRadius: isCartoon ? deco.radius.sm : 12,
-        },
-      ]}
-    >
+    <View style={settingsRowStyles.iconSlot}>
       {icon ? (
-        <TrackerIcon name={icon} size={22} color={accentColor} />
+        <TrackerIcon name={icon} size={24} color={accentColor} />
       ) : (
         <Text variant="titleSmall" style={{ color: accentColor }}>
           {name.trim().charAt(0).toUpperCase() || '·'}

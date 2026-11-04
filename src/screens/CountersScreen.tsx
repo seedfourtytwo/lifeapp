@@ -15,6 +15,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost } from '../notes';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { nextCounterUndo, type CounterUndo } from '../utils/counterUndo';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import EmptyTabState from './shared/EmptyTabState';
@@ -64,11 +66,14 @@ export default function CountersScreen({
     );
   const now = useAppCalendarNow();
   const [scrollLocked, setScrollLocked] = useState(false);
+  const [counterUndo, setCounterUndo] = useState<CounterUndo | null>(null);
   const scrollRef = useRef<HomeTabScrollViewHandle>(null);
 
   useEffect(() => {
     if (notesActive) return;
     setScrollLocked(false);
+    // Undo belongs to the page it was offered on; leaving the page settles it.
+    setCounterUndo(null);
   }, [notesActive]);
 
   useRefreshCounterTotalsOnFocus();
@@ -129,6 +134,18 @@ export default function CountersScreen({
     const map = new Map(counters.map((element) => [element.id, element]));
     return map;
   }, [counters]);
+
+  const undoLastTaps = () => {
+    const pending = counterUndo;
+    setCounterUndo(null);
+    if (!pending) return;
+    setDailyTotal(pending.elementId, pending.restoreTo).catch((err) => {
+      Alert.alert(
+        tCommon('alerts.couldNotSave'),
+        err instanceof Error ? err.message : tCommon('errors.somethingWentWrong'),
+      );
+    });
+  };
 
   const reload = useCallback(async () => {
     await refreshAllCounterData();
@@ -239,14 +256,26 @@ export default function CountersScreen({
                       ? tTrackers('counterWidget.reorderLongPressHint')
                       : undefined
                   }
-                  onLog={(value, meta) =>
-                    logEvent(element.id, value, meta).catch((err) => {
-                      Alert.alert(
-                        tCommon('alerts.couldNotLog'),
-                        err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
-                      );
-                    })
-                  }
+                  onLog={(value, meta) => {
+                    const before = dailyTotals[element.id] ?? 0;
+                    return logEvent(element.id, value, meta)
+                      .then(() =>
+                        setCounterUndo((prev) =>
+                          nextCounterUndo(prev, {
+                            elementId: element.id,
+                            name: element.name,
+                            before,
+                            added: value,
+                          }),
+                        ),
+                      )
+                      .catch((err) => {
+                        Alert.alert(
+                          tCommon('alerts.couldNotLog'),
+                          err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
+                        );
+                      });
+                  }}
                   onSetDailyTotal={async (total) => {
                     await setDailyTotal(element.id, total);
                   }}
@@ -276,6 +305,15 @@ export default function CountersScreen({
         )}
       </HomeTabScrollView>
       {editorHost}
+      <UndoSnackbar
+        message={
+          counterUndo
+            ? tTrackers('undo.counterAdded', { name: counterUndo.name, count: counterUndo.added })
+            : null
+        }
+        onUndo={undoLastTaps}
+        onDismiss={() => setCounterUndo(null)}
+      />
     </>
   );
 }

@@ -11,7 +11,7 @@ import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { NoteEditorHost, useNoteEditorSession } from '../notes';
+import { NoteEditorHost, notebookInk, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -25,7 +25,7 @@ type DayFilter = 'all' | 'trackers' | string;
 export default function JournalScreen() {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const notebooks = useJournalNotebookStore((s) => s.notebooks);
@@ -245,22 +245,19 @@ export default function JournalScreen() {
               color={filter === 'all' ? theme.colors.primary : theme.colors.onSurfaceVariant}
             />,
           )}
-          {notebooks.map((notebook) =>
-            renderFilterWell(
+          {notebooks.map((notebook) => {
+            const ink = notebookInk(notebook.color, themeMode);
+            return renderFilterWell(
               notebook.id,
               notebook.name,
               notebook.icon ? (
-                <TrackerIcon name={notebook.icon} size={22} color={notebook.color} />
+                <TrackerIcon name={notebook.icon} size={22} color={ink} />
               ) : (
-                <MaterialCommunityIcons
-                  name="notebook-outline"
-                  size={22}
-                  color={notebook.color}
-                />
+                <MaterialCommunityIcons name="notebook-outline" size={22} color={ink} />
               ),
-              notebook.color,
-            ),
-          )}
+              ink,
+            );
+          })}
           {renderFilterWell(
             'trackers',
             t('screen.trackerNotesLabel'),

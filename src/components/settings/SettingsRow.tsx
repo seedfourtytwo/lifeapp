@@ -2,14 +2,13 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Switch, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 type Props = {
   icon?: IconName;
   left?: React.ReactNode;
-  wellColor?: string;
   iconColor?: string;
   title: string;
   description?: string;
@@ -30,7 +29,6 @@ type Props = {
 export default function SettingsRow({
   icon = 'circle-outline',
   left,
-  wellColor,
   iconColor,
   title,
   description,
@@ -48,13 +46,12 @@ export default function SettingsRow({
   accessibilityLabel,
 }: Props) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
   const interactive = Boolean(onPress || onSwitch);
   const isSwitch = onSwitch != null && switchValue !== undefined;
-  const wellBg =
-    wellColor ?? (destructive ? theme.colors.errorContainer : theme.colors.primaryContainer);
+  // A bare glyph, not a tinted well: the row's words carry it, and a column of
+  // coloured tiles down a settings list only added noise.
   const glyphColor =
-    iconColor ?? (destructive ? theme.colors.error : theme.colors.onPrimaryContainer);
+    iconColor ?? (destructive ? theme.colors.error : theme.colors.onSurfaceVariant);
 
   const handlePress = () => {
     if (disabled || busy) return;
@@ -86,16 +83,8 @@ export default function SettingsRow({
       ]}
     >
       {left ?? (
-        <View
-          style={[
-            styles.iconWell,
-            {
-              backgroundColor: wellBg,
-              borderRadius: isCartoon ? deco.radius.sm : 12,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons name={icon} size={22} color={glyphColor} />
+        <View style={styles.iconSlot}>
+          <MaterialCommunityIcons name={icon} size={24} color={glyphColor} />
         </View>
       )}
       <View style={styles.text}>
@@ -143,10 +132,10 @@ export default function SettingsRow({
   );
 }
 
+/** The left column every row's glyph sits in, so titles line up down a group. */
 export const settingsRowStyles = StyleSheet.create({
-  iconWell: {
-    width: 40,
-    height: 40,
+  iconSlot: {
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -157,9 +146,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 12,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    gap: space.lg,
   },
   pressed: {
     opacity: 0.7,
@@ -167,11 +156,11 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  iconWell: settingsRowStyles.iconWell,
+  iconSlot: settingsRowStyles.iconSlot,
   text: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: space.xxs,
   },
   title: {
     marginBottom: 0,

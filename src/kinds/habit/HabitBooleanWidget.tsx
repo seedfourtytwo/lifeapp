@@ -75,9 +75,10 @@ export function HabitBooleanWidget({
             accessibilityRole="checkbox"
           />
 
-          {onDictateNote ? (
+          {/* Only once there is a note; a first one is added from the history. */}
+          {onDictateNote && hasTodayNote ? (
             <NoteIconButton
-              hasNote={Boolean(hasTodayNote)}
+              hasNote
               onPress={onDictateNote}
               onLongPress={onEditNote}
               size={ACTION_ICON_SIZE - 4}

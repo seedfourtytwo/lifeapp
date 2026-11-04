@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
-  Divider,
   List,
   Menu,
   Switch,
@@ -37,6 +36,7 @@ import {
   parseTimeParts,
   type TimeParts,
 } from './calendar/eventEditorHelpers';
+import { space } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CalendarEventEditor'>;
 
@@ -260,7 +260,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         autoFocus={!eventId}
       />
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <List.Item
         title={t('editor.allDay')}
@@ -282,7 +282,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         onEndTimeChange={setEndTime}
       />
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <Menu
         visible={repeatMenuOpen}
@@ -307,7 +307,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         ))}
       </Menu>
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <EventRemindersSection
         reminderOffsets={reminderOffsets}
@@ -323,7 +323,7 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
         onRemove={(offset) => setReminderOffsets((prev) => prev.filter((o) => o !== offset))}
       />
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <TextInput
         label={t('editor.notesLabel')}
@@ -356,8 +356,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginTop: 4,
   },
-  divider: {
-    marginVertical: 4,
+  sectionGap: {
+    height: space.sm,
   },
   notes: {
     marginHorizontal: 16,

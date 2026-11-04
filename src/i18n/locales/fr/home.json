@@ -10,6 +10,7 @@
     "a11y": "{{date}} · remise à zéro à {{time}}"
   },
   "habitsTab": {
+    "addHabitA11y": "Ajouter une habitude",
     "retry": "Réessayer",
     "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
     "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
@@ -60,9 +61,7 @@
     "title": "Calendrier",
     "emptySubtitle": "Aucun événement à venir dans les deux prochaines semaines.",
     "withListSubtitle": "À venir · appuyez sur ✓ pour ignorer cette occurrence",
-    "emptyBody": "Rien ne nécessite votre attention pour le moment.",
     "openCalendar": "Ouvrir le calendrier",
-    "openFullCalendar": "Ouvrir le calendrier complet",
     "fullCalendar": "Calendrier complet",
     "add": "Ajouter",
     "close": "Fermer",

@@ -36,7 +36,7 @@ export default function WeatherForecastStrip({ days }: Props) {
   const theme = useTheme();
   const { decorations: deco, isCartoon } = useAppTheme();
   const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
-  const outlineWidth = isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth;
+  const outlineWidth = isCartoon ? deco.borderWidth : 0;
 
   return (
     <View
@@ -56,7 +56,7 @@ export default function WeatherForecastStrip({ days }: Props) {
         const rainNotable = day.precipProbabilityPct >= RAIN_NOTABLE_PCT;
         return (
           <View key={day.date} style={forecastStripStyles.dayCol}>
-            {index > 0 ? (
+            {isCartoon && index > 0 ? (
               <View
                 pointerEvents="none"
                 style={[
@@ -163,7 +163,7 @@ export const forecastStripStyles = StyleSheet.create({
     left: 0,
     top: space.md,
     bottom: space.md,
-    width: StyleSheet.hairlineWidth,
+    width: 1,
   },
   weekday: {
     fontSize: 10,

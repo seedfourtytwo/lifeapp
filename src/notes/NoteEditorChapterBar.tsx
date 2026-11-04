@@ -146,20 +146,24 @@ export default function NoteEditorChapterBar({
   );
 }
 
+/** Android's minimum touch target; the icons stay 20dp inside it. */
+const TOUCH_TARGET = 48;
+
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xxs,
     marginBottom: space.sm,
   },
   step: {
     margin: 0,
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
   },
   jump: {
     flex: 1,
     minWidth: 0,
-    minHeight: 36,
+    minHeight: TOUCH_TARGET,
     justifyContent: 'center',
     paddingHorizontal: space.sm,
   },

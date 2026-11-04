@@ -61,6 +61,7 @@ function render() {
         null,
         React.createElement(TodoEditorSheet, {
           visible: true,
+          today: '2026-11-04',
           todo: null,
           onDismiss,
           onSave,
@@ -74,9 +75,9 @@ function render() {
     tree,
     onDismiss,
     onSave,
-    /** Title, deadline, note — in the order the dialog lays them out. */
+    /** Title and note; the typed deadline only appears behind "Other day". */
     inputs,
-    note: inputs[2],
+    note: inputs[1],
   };
 }
 
@@ -95,11 +96,10 @@ afterEach(() => {
 });
 
 describe('todo editor dictation', () => {
-  it('puts the mic on the note, not on the title or the deadline', () => {
+  it('puts the mic on the note, not on the title', () => {
     const { inputs, note } = render();
-    expect(inputs).toHaveLength(3);
+    expect(inputs).toHaveLength(2);
     expect((note.props.right as Adornment)?.props.icon).toBe('microphone-outline');
-    // The deadline keeps its own clear button; the title stays bare.
     expect(inputs[0].props.right).toBeUndefined();
   });
 

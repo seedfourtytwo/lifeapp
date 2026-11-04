@@ -4,10 +4,14 @@ import Svg, { Circle, Line, Polyline, Rect } from 'react-native-svg';
 import { Text, useTheme } from 'react-native-paper';
 import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { space } from '../theme/spacing';
+import { AXIS_LABEL_SLOT, chartAxisTicks } from '../utils/chartAxis';
+import { formatAxisLabel } from '../utils/dates';
 
 /**
- * The axis packs one label per day at 9pt. It cannot reflow or wrap without the
- * columns colliding, so scaling is capped here rather than allowed to overrun.
+ * Axis and bar labels sit in fixed slots under narrow columns. They cannot
+ * reflow or wrap without colliding, so scaling is capped rather than allowed
+ * to overrun.
  */
 const CHART_LABEL_MAX_SCALE = 1.2;
 
@@ -23,6 +27,11 @@ export interface InteractiveChartSeries {
   values: number[];
   /** Per-day “met target / completed” for single-series bar tinting. */
   completed?: boolean[];
+  /**
+   * Done / not done per day. When comparing, a yes/no series is drawn as a row
+   * of squares — as a line it only zigzags between 0 and 1.
+   */
+  binary?: boolean;
 }
 
 export interface InteractiveChartWeatherOverlay {
@@ -41,13 +50,14 @@ export interface InteractiveDailyChartProps {
   weatherOverlay?: InteractiveChartWeatherOverlay;
   /** Shown under the chart. */
   footer?: string;
-  /** When true, hide per-bar numeric labels (dense ranges). */
+  /** Long range: hides the numbers over single-series bars. */
   dense?: boolean;
 }
 
 const CHART_HEIGHT = 168;
 const PAD_TOP = 12;
 const PAD_BOTTOM = 4;
+const LANE_GAP = space.sm;
 
 export function InteractiveDailyChart({
   days,
@@ -89,9 +99,6 @@ export function InteractiveDailyChart({
     return { yMax: max, weatherMax: wMax };
   }, [series, movingAverage, weatherOverlay]);
 
-  const toY = (value: number, max: number) =>
-    PAD_TOP + plotHeight - (value / max) * plotHeight;
-
   const n = days.length;
   const colW = n > 0 && width > 0 ? width / n : 0;
 
@@ -119,22 +126,15 @@ export function InteractiveDailyChart({
   }, [weatherOverlay, n, colW, weatherMax, plotHeight]);
 
   const showBarLabels = !dense && !multi && n <= 14;
+  const laneH = multi ? (plotHeight - LANE_GAP * (series.length - 1)) / series.length : 0;
+  const ticks = chartAxisTicks(n, width);
+  const tickStyle = n <= 7 ? 'weekday' : 'day';
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.chartBlock} onLayout={onLayout}>
         {width > 0 && n > 0 ? (
           <Svg width={width} height={CHART_HEIGHT} style={StyleSheet.absoluteFill}>
-            {/* Baseline */}
-            <Line
-              x1={0}
-              y1={CHART_HEIGHT - PAD_BOTTOM}
-              x2={width}
-              y2={CHART_HEIGHT - PAD_BOTTOM}
-              stroke={theme.colors.outlineVariant}
-              strokeWidth={StyleSheet.hairlineWidth}
-            />
-
             {!multi && primary
               ? primary.values.map((value, i) => {
                   const completed = primary.completed?.[i] ?? value > 0;
@@ -165,36 +165,53 @@ export function InteractiveDailyChart({
               : null}
 
             {multi
-              ? series.map((s) => {
-                  const pts = s.values
-                    .map((v, i) => {
-                      const x = colW * i + colW / 2;
-                      const y = toY(v, yMax);
-                      return `${x},${y}`;
-                    })
-                    .join(' ');
-                  return (
-                    <React.Fragment key={`line-${s.id}`}>
-                      <Polyline
-                        points={pts}
-                        fill="none"
-                        stroke={s.color}
-                        strokeWidth={2}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        opacity={0.9}
-                      />
-                      {s.values.map((v, i) => (
+              ? series.map((s, lane) => {
+                  // Comparing: one lane per series, top to bottom in chip order.
+                  // Each series is already scaled 0–1 against its own best day.
+                  const laneTop = PAD_TOP + lane * (laneH + LANE_GAP);
+                  const laneBottom = laneTop + laneH;
+                  return s.values.map((v, i) => {
+                    const cx = colW * i + colW / 2;
+                    const key = `${s.id}-${days[i]?.date ?? i}`;
+                    if (v <= 0) {
+                      return (
                         <Circle
-                          key={`${s.id}-${days[i]?.date ?? i}`}
-                          cx={colW * i + colW / 2}
-                          cy={toY(v, yMax)}
-                          r={days[i]?.date === selectedDate ? 4.5 : 3}
+                          key={key}
+                          cx={cx}
+                          cy={laneTop + laneH / 2}
+                          r={1.5}
+                          fill={theme.colors.outline}
+                        />
+                      );
+                    }
+                    if (s.binary) {
+                      const side = Math.min(colW * 0.7, laneH * 0.7, 14);
+                      return (
+                        <Rect
+                          key={key}
+                          x={cx - side / 2}
+                          y={laneTop + (laneH - side) / 2}
+                          width={side}
+                          height={side}
+                          rx={Math.min(deco.radius.sm, side / 4)}
                           fill={s.color}
                         />
-                      ))}
-                    </React.Fragment>
-                  );
+                      );
+                    }
+                    const barW = Math.min(colW * 0.5, 10);
+                    const barH = Math.max(2, v * laneH);
+                    return (
+                      <Rect
+                        key={key}
+                        x={cx - barW / 2}
+                        y={laneBottom - barH}
+                        width={barW}
+                        height={barH}
+                        rx={Math.min(deco.radius.sm, barW / 4)}
+                        fill={s.color}
+                      />
+                    );
+                  });
                 })
               : null}
 
@@ -274,33 +291,30 @@ export function InteractiveDailyChart({
         </View>
       </View>
 
-      {/* Day labels — subsample when dense */}
+      {/* Day labels: as many as fit, always ending on the latest day. */}
       <View style={styles.labelRow}>
-        {days.map((day, i) => {
-          const show =
-            !dense || i === 0 || i === n - 1 || i % Math.ceil(n / 6) === 0;
+        {ticks.map((i) => {
+          const day = days[i]!;
+          const selected = day.date === selectedDate;
+          const left = Math.min(
+            Math.max(colW * i + colW / 2 - AXIS_LABEL_SLOT / 2, 0),
+            width - AXIS_LABEL_SLOT,
+          );
           return (
-            <View key={`lbl-${day.date}`} style={styles.labelCol}>
-              {show ? (
-                <Text
-                  variant="labelSmall"
-                  style={[
-                    styles.dayLabel,
-                    {
-                      color:
-                        day.date === selectedDate
-                          ? theme.colors.onSurface
-                          : theme.colors.onSurfaceVariant,
-                    },
-                    day.date === selectedDate && styles.dayLabelSelected,
-                  ]}
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={CHART_LABEL_MAX_SCALE}
-                >
-                  {day.label}
-                </Text>
-              ) : null}
-            </View>
+            <Text
+              key={`lbl-${day.date}`}
+              variant="labelSmall"
+              style={[
+                styles.dayLabel,
+                { left, color: selected ? theme.colors.onSurface : theme.colors.onSurfaceVariant },
+                selected && styles.dayLabelSelected,
+              ]}
+              numberOfLines={1}
+              maxFontSizeMultiplier={CHART_LABEL_MAX_SCALE}
+              importantForAccessibility="no"
+            >
+              {formatAxisLabel(day.date, tickStyle)}
+            </Text>
           );
         })}
       </View>
@@ -321,7 +335,7 @@ function formatShort(value: number): string {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginVertical: 4,
+    marginVertical: space.xs,
   },
   chartBlock: {
     height: CHART_HEIGHT,
@@ -340,19 +354,16 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
   valueLabelSpacer: {
-    height: 4,
+    height: space.xs,
   },
   labelRow: {
-    flexDirection: 'row',
-    marginTop: 2,
-  },
-  labelCol: {
-    flex: 1,
-    alignItems: 'center',
-    minHeight: 14,
+    marginTop: space.xs,
+    minHeight: 18,
   },
   dayLabel: {
-    fontSize: 9,
+    position: 'absolute',
+    top: 0,
+    width: AXIS_LABEL_SLOT,
     textAlign: 'center',
   },
   /** Selection reads as weight and a stronger token, not as less dimming. */
@@ -361,6 +372,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: space.sm,
   },
 });

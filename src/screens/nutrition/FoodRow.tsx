@@ -11,6 +11,7 @@ import {
 } from '../../protocol';
 import { FOOD_GROUP_ICONS } from './foodGroupIcons';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
 
 type Props = {
   item: FoodItem;
@@ -76,7 +77,7 @@ function FoodRow({
       onLongPress={() => onLongPress(item)}
       style={[
         styles.row,
-        { borderRadius: deco.radius.md },
+        { borderRadius: deco.radius.md, borderWidth: deco.cardBorderWidth },
         {
           backgroundColor: logged ? theme.colors.secondaryContainer : theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
@@ -148,11 +149,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 6,
+    gap: space.md,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    marginBottom: space.sm,
   },
   text: {
     flex: 1,

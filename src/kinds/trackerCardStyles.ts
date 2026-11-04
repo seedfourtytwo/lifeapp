@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
 /**
@@ -29,23 +30,22 @@ export const trackerCardStyles = StyleSheet.create({
   titleInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: space.md,
   },
   pressed: {
     opacity: 0.7,
   },
-  name: {
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  /** Whispered label while reordering an icon-only row. */
-  reorderNameWrap: {
+  /** Name and, for text-only rows, its streak — shrinks before the actions do. */
+  nameWrap: {
     flex: 1,
     minWidth: 0,
-    marginLeft: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
   },
-  reorderName: {
+  name: {
     fontWeight: '500',
+    flexShrink: 1,
   },
   /** Timer/meta cluster — tight right rail. */
   trailingCluster: {

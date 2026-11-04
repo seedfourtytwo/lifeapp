@@ -213,17 +213,19 @@ export function pressHabitTimer(elementId: string, config: HabitConfig): void {
   pauseHabitTimerSession(elementId, config);
 }
 
+/** Clears today's time; resolves to an Undo that puts it back. */
 export async function resetHabitTimerToday(
   elementId: string,
   config: HabitConfig,
-): Promise<void> {
+): Promise<() => Promise<void>> {
   const date = currentAppCalendarDate();
   stopHabitTimerLockScreenTicker();
   await stopHabitSound();
-  await useEventStore.getState().resetHabitToday(elementId, config, date);
+  const removed = await useEventStore.getState().resetHabitToday(elementId, config, date);
   if (getFocusedHabitId() === elementId) {
     await presentFocusedHabitReady();
   }
+  return () => useEventStore.getState().restoreHabitDay(elementId, config, removed, date);
 }
 
 export { playSoundForConfig };

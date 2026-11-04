@@ -40,6 +40,11 @@ import {
   homeTabIndex,
   type HomeTab,
 } from './home/homePager';
+import { loadHomeStartTab, saveHomeTab } from './home/homeLastTab';
+import { space } from '../theme/spacing';
+
+/** The active page's mark under its dock icon; half of it is its radius. */
+const DOCK_DOT = 4;
 
 /** Throttle GPS refresh so foregrounding doesn't spam location. */
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
@@ -76,7 +81,7 @@ function HomePagerPage({
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation('home');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco, isCartoon, palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: pageWidth } = useWindowDimensions();
   const pagerRef = useRef<ScrollView>(null);
@@ -191,12 +196,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [weatherWidgetEnabled, weatherLocationMode, refreshWeather]);
 
-  const activeColor = isCartoon
-    ? theme.colors.onSecondaryContainer
-    : theme.colors.primary;
-  const activeBg = isCartoon
-    ? theme.colors.secondaryContainer
-    : theme.colors.primaryContainer;
+  const activeColor = palette.accent;
   const quietColor = theme.colors.onSurfaceVariant;
   const topInset =
     insets.top > 0
@@ -269,16 +269,42 @@ export default function HomeScreen() {
     }
   };
 
+  /**
+   * Reopen on the page used last. Every page is already mounted, so this only
+   * moves the pager — and never after the user has moved it themselves.
+   */
+  const startTabApplied = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    void loadHomeStartTab().then((start) => {
+      if (cancelled || startTabApplied.current) return;
+      startTabApplied.current = true;
+      if (start !== tabRef.current) scrollToTab(start, false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [scrollToTab]);
+
+  useEffect(() => {
+    if (!startTabApplied.current) {
+      // The first page shown is the default; a real move cancels the restore.
+      if (tab === 'habits') return;
+      startTabApplied.current = true;
+    }
+    saveHomeTab(tab);
+  }, [tab]);
+
   // Keep pager aligned if window width changes (rotation / fold).
   useEffect(() => {
     pagerRef.current?.scrollTo({ x: homeTabIndex(tabRef.current) * pageWidth, animated: false });
   }, [pageWidth]);
 
   /**
-   * Hardware back. Only More claims it — it swipes back to the page it was
-   * opened from, the way popping the stack used to. Everything else falls
-   * through to the navigator, so back from a content page still leaves the app
-   * and back from a pushed screen (Trackers, Settings…) still pops it: this
+   * Hardware back. More swipes back to the page it was opened from; the other
+   * content pages step back to Habits; only Habits falls through to the
+   * navigator and leaves the app. Back from a pushed screen (Trackers,
+   * Settings…) still pops it: this
    * listener is registered only while Home is the focused screen, and a later
    * listener is asked first, so returning false hands the press straight back.
    */
@@ -368,9 +394,11 @@ export default function HomeScreen() {
           styles.dock,
           {
             paddingBottom: Math.max(insets.bottom, 8),
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.outlineVariant,
-            borderTopWidth: deco.headerBorderWidth > 0 ? deco.headerBorderWidth : StyleSheet.hairlineWidth,
+            // The dock is part of the page, not a bar laid over it: same ground,
+            // no rule above. Cartoon keeps its drawn border, as it does everywhere.
+            backgroundColor: isCartoon ? theme.colors.surface : theme.colors.background,
+            borderTopColor: theme.colors.outline,
+            borderTopWidth: isCartoon ? deco.headerBorderWidth : 0,
           },
         ]}
       >
@@ -382,18 +410,15 @@ export default function HomeScreen() {
             <Pressable
               key={value}
               onPress={() => scrollToTab(value)}
-              style={[
-                styles.dockItem,
-                active && {
-                  backgroundColor: activeBg,
-                  borderRadius: deco.tabRadius,
-                },
-              ]}
+              style={styles.dockItem}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
             >
-              <MaterialCommunityIcons name={icon} size={active ? 26 : 24} color={color} />
+              <MaterialCommunityIcons name={icon} size={24} color={color} />
+              <View
+                style={[styles.dockDot, { backgroundColor: active ? activeColor : 'transparent' }]}
+              />
             </Pressable>
           );
         })}
@@ -420,16 +445,22 @@ const styles = StyleSheet.create({
   dock: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
-    paddingHorizontal: 8,
-    gap: 4,
+    paddingTop: space.xs,
+    paddingHorizontal: space.sm,
+    gap: space.xs,
   },
   dockItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    minHeight: 44,
+    gap: space.xs,
+    paddingTop: space.sm,
+    paddingBottom: space.xs,
+    minHeight: 48,
+  },
+  dockDot: {
+    width: DOCK_DOT,
+    height: DOCK_DOT,
+    borderRadius: DOCK_DOT / 2,
   },
 });

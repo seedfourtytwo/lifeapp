@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Button,
   Chip,
-  Divider,
   HelperText,
   SegmentedButtons,
   Switch,
@@ -36,6 +35,7 @@ import {
   type NumericNutrientField,
 } from './nutrition/ingredientEditorState';
 import MonthPicker from './nutrition/MonthPicker';
+import { space } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IngredientEditor'>;
 
@@ -258,7 +258,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         />
       </View>
 
-      <Divider />
+      <View style={styles.sectionGap} />
 
       <View style={styles.section}>
         <Text variant="labelLarge">{t('editor.seasonLabel')}</Text>
@@ -286,7 +286,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         ) : null}
       </View>
 
-      <Divider />
+      <View style={styles.sectionGap} />
 
       <View style={styles.section}>
         <Text variant="labelLarge">{t('editor.nutritionLabel')}</Text>
@@ -340,7 +340,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         </HelperText>
       </View>
 
-      <Divider />
+      <View style={styles.sectionGap} />
 
       <View style={styles.section}>
         <Text variant="labelLarge">{t('editor.portionsLabel')}</Text>
@@ -404,7 +404,7 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
         ) : null}
       </View>
 
-      <Divider />
+      <View style={styles.sectionGap} />
 
       <View style={styles.section}>
         <Text variant="labelLarge">{t('editor.matchingLabel')}</Text>
@@ -463,6 +463,9 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 8,
+  },
+  sectionGap: {
+    height: space.md,
   },
   subLabel: {
     marginTop: 8,

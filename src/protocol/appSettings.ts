@@ -111,6 +111,8 @@ export const APP_SETTING_KEYS = {
   weatherLat: 'weather_lat',
   weatherLon: 'weather_lon',
   foodJournalNotebookId: 'food_journal_notebook_id',
+  /** Device UI state, not a preference: left out of backups on purpose. */
+  homeLastTab: 'home_last_tab',
 } as const;
 
 /** Accepts flexible input (8:00, 800, 08:00) and returns strict HH:mm. */

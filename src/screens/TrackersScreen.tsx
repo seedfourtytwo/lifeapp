@@ -1,11 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import TrackerEditorDialog from '../components/TrackerEditorDialog';
+import { UndoSnackbar } from '../components/UndoSnackbar';
 import TrackerLibraryCard from '../components/TrackerLibraryCard';
 import TrackersCollapsibleSection from '../components/TrackersCollapsibleSection';
 import {
@@ -41,27 +42,6 @@ function runElementMutation(
   });
 }
 
-function confirmArchive(
-  elementName: string,
-  kindLabel: string,
-  onConfirm: () => Promise<void>,
-  tTrackers: TFunction,
-  tCommon: TFunction,
-): void {
-  Alert.alert(
-    tTrackers('confirm.archiveTitle', { kind: kindLabel }),
-    tTrackers('confirm.archiveBody', { name: elementName }),
-    [
-      { text: tCommon('actions.cancel'), style: 'cancel' },
-      {
-        text: tCommon('actions.archive'),
-        onPress: () =>
-          runElementMutation(onConfirm, tCommon('alerts.couldNotArchive'), tCommon),
-      },
-    ],
-  );
-}
-
 export default function TrackersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
@@ -78,11 +58,59 @@ export default function TrackersScreen() {
   const updateHabit = useElementStore((s) => s.updateHabit);
   const archiveElement = useElementStore((s) => s.archiveElement);
   const restoreElement = useElementStore((s) => s.restoreElement);
+  /** The tracker just archived, while its Undo is on offer. */
+  const [archivedUndo, setArchivedUndo] = useState<{ id: string; name: string } | null>(null);
+
+  /** Archive at once and offer Undo, rather than asking first. */
+  const archiveWithUndo = useCallback(
+    (element: ElementDefinition) =>
+      runElementMutation(
+        async () => {
+          await archiveElement(element.id);
+          setArchivedUndo({ id: element.id, name: element.name });
+        },
+        tCommon('alerts.couldNotArchive'),
+        tCommon,
+      ),
+    [archiveElement, tCommon],
+  );
+
+  const undoArchive = () => {
+    const pending = archivedUndo;
+    setArchivedUndo(null);
+    if (!pending) return;
+    runElementMutation(
+      () => restoreElement(pending.id),
+      tCommon('alerts.couldNotRestore'),
+      tCommon,
+    );
+  };
   const deleteElement = useElementStore((s) => s.deleteElement);
 
   const [editorSession, setEditorSession] = useState<TrackerEditorSession | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  /**
+   * Opened from Home's + to add one tracker: show the editor at once, and go
+   * back to Home when it closes rather than leaving the user in the library.
+   */
+  const route = useRoute<RouteProp<RootStackParamList, 'Trackers'>>();
+  const addFromHome = route.params?.add;
+  const returnAfterEditor = useRef(false);
+  useEffect(() => {
+    if (!addFromHome) return;
+    returnAfterEditor.current = true;
+    setEditorSession(newEditorSession({ mode: addFromHome }));
+    navigation.setParams({ add: undefined });
+  }, [addFromHome, navigation]);
+
+  const closeEditor = () => {
+    setEditorSession(null);
+    if (!returnAfterEditor.current) return;
+    returnAfterEditor.current = false;
+    if (navigation.canGoBack()) navigation.goBack();
+  };
 
   const activeCounters = useMemo(
     () => elements.filter((element) => element.kind === 'counter' && !isElementArchived(element)),
@@ -157,14 +185,7 @@ export default function TrackersScreen() {
             onArchive={
               archived
                 ? undefined
-                : () =>
-                    confirmArchive(
-                      element.name,
-                      kindLabel,
-                      () => archiveElement(element.id),
-                      t,
-                      tCommon,
-                    )
+                : () => archiveWithUndo(element)
             }
             onRestore={
               archived
@@ -202,14 +223,7 @@ export default function TrackersScreen() {
           onArchive={
             archived
               ? undefined
-              : () =>
-                  confirmArchive(
-                    element.name,
-                    kindLabel,
-                    () => archiveElement(element.id),
-                    t,
-                    tCommon,
-                  )
+              : () => archiveWithUndo(element)
           }
           onRestore={
             archived
@@ -225,7 +239,7 @@ export default function TrackersScreen() {
       );
     },
     [
-      archiveElement,
+      archiveWithUndo,
       confirmDelete,
       counterAccent,
       habitAccent,
@@ -253,7 +267,7 @@ export default function TrackersScreen() {
       } else {
         await createHabit(parsed.input);
       }
-      setEditorSession(null);
+      closeEditor();
     } catch (error) {
       const message = error instanceof Error ? error.message : tCommon('errors.failedToSave');
       Alert.alert(tCommon('alerts.couldNotSave'), message);
@@ -318,7 +332,7 @@ export default function TrackersScreen() {
         session={editorSession}
         saving={saving}
         deleting={deleting}
-        onDismiss={() => setEditorSession(null)}
+        onDismiss={closeEditor}
         onSave={(data) => void handleSave(data)}
         onDelete={
           editingElement
@@ -330,6 +344,12 @@ export default function TrackersScreen() {
                 )
             : undefined
         }
+      />
+      <UndoSnackbar
+        message={archivedUndo ? t('undo.archived', { name: archivedUndo.name }) : null}
+        onUndo={undoArchive}
+        onDismiss={() => setArchivedUndo(null)}
+        aboveDock={false}
       />
     </View>
   );

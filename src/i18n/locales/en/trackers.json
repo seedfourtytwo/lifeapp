@@ -38,8 +38,6 @@
     "timeRangeRequiredForVisibility": "Set a time range before limiting visibility"
   },
   "confirm": {
-    "archiveTitle": "Archive {{kind}}?",
-    "archiveBody": "\"{{name}}\" will be hidden from Home. You can restore it from Archive later.",
     "deleteTitle": "Delete {{kind}}?",
     "deleteBody": "\"{{name}}\" and all its history and day notes will be removed permanently."
   },
@@ -56,8 +54,12 @@
     "itemsCountA11y": "{{title}}, {{count}} items"
   },
   "homeIdentity": {
-    "doubleTapHistoryHint": "Double tap to open history",
-    "openHistoryAction": "Open history"
+    "historyHint": "Opens history"
+  },
+  "undo": {
+    "counterAdded": "{{name}} +{{count}}",
+    "timerReset": "{{name}}: today’s time cleared",
+    "archived": "{{name}} archived"
   },
   "editor": {
     "newCounterTitle": "New counter",
@@ -164,7 +166,7 @@
     "loopHint": "Sound loops until you tap Stop."
   },
   "counterWidget": {
-    "editTodaysTotalA11y": "Edit today's total",
+    "tapCountToSetHint": "Tap to set today's total",
     "editTotalTitle": "Edit today's total",
     "replacesTotalHint": "Replaces today's logged {{unit}} with a single total.",
     "totalLabel": "Total ({{unit}})",

@@ -29,6 +29,7 @@
   },
   "undo": {
     "done": "Done — {{title}}",
+    "deleted": "Deleted — {{title}}",
     "action": "Undo"
   },
   "editor": {
@@ -38,16 +39,17 @@
     "noteLabel": "Note",
     "notePlaceholder": "Anything you want to remember about this",
     "deadlineLabel": "Deadline",
-    "deadlineNone": "No deadline",
+    "deadlineNone": "No date",
+    "dueToday": "Today",
+    "dueTomorrow": "Tomorrow",
+    "dueWeekend": "Weekend",
+    "dueNextWeek": "Next week",
+    "dueOther": "Other day",
     "deadlinePlaceholder": "YYYY-MM-DD",
-    "deadlineInvalid": "Use YYYY-MM-DD, or clear it",
-    "deadlineClear": "Clear",
+    "deadlineInvalid": "Use YYYY-MM-DD, or pick No date",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "deleteConfirmTitle": "Delete this todo?",
-    "deleteConfirmBody": "It is removed for good and never appears in history.",
-    "deleteConfirmAction": "Delete",
     "titleRequired": "Give it a title first",
     "noteDictationTruncated": "Note is at the character limit — some dictation was cut."
   },

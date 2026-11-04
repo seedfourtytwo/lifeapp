@@ -19,6 +19,7 @@ import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import type { RootStackParamList } from '../navigation/types';
 import { groupOpenTodos, type Todo } from '../protocol';
 import { useTodoStore } from '../store/todoStore';
+import { space } from '../theme/spacing';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { DOCK_RESERVE } from '../ui/homeInsets';
 import TodoEditorSheet, { type TodoDraft } from './todos/TodoEditorSheet';
@@ -33,6 +34,8 @@ import {
 import { homeTabScreenStyles as styles } from './shared/screenStyles';
 
 const UNDO_DURATION_MS = 5000;
+
+type PendingUndo = { kind: 'done' | 'deleted'; todo: Todo };
 
 type Props = {
   onTrackerDragActiveChange?: (active: boolean) => void;
@@ -75,7 +78,10 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const [draftTitle, setDraftTitle] = useState('');
   const [editing, setEditing] = useState<Todo | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [undoTodo, setUndoTodo] = useState<Todo | null>(null);
+  const [undo, setUndo] = useState<PendingUndo | null>(null);
+  // Snackbar callbacks fire after state has moved on (Paper calls onDismiss
+  // right after the action), so the pending record is read from a ref.
+  const undoRef = useRef<PendingUndo | null>(null);
   const [scrollLocked, setScrollLocked] = useState(false);
   const scrollRef = useRef<HomeTabScrollViewHandle>(null);
 
@@ -83,14 +89,21 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
     void load();
   }, [load]);
 
-  const groups = useMemo(() => groupOpenTodos(todos, today), [todos, today]);
+  // A deleted todo leaves the list at once; the row is only removed from the
+  // database once its Undo has run out.
+  const pendingDeleteId = undo?.kind === 'deleted' ? undo.todo.id : null;
+  const shown = useMemo(
+    () => (pendingDeleteId ? todos.filter((todo) => todo.id !== pendingDeleteId) : todos),
+    [todos, pendingDeleteId],
+  );
+  const groups = useMemo(() => groupOpenTodos(shown, today), [shown, today]);
 
   const headerMeta = useMemo(() => {
-    const open = todos.filter((todo) => !todo.completedAt).length;
+    const open = shown.filter((todo) => !todo.completedAt).length;
     // The home namespace owns the day header everywhere, so it is read from
     // there rather than duplicated into todos.
     return open === 0 ? tHome('dayHeader.todosClear') : tHome('dayHeader.todosOpen', { count: open });
-  }, [todos, tHome]);
+  }, [shown, tHome]);
 
   const handleQuickAdd = useCallback(() => {
     const title = draftTitle.trim();
@@ -99,19 +112,45 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
     void create({ title });
   }, [draftTitle, create]);
 
+  /** Ends the current Undo window: a pending delete is written now. */
+  const settleUndo = useCallback(() => {
+    const pending = undoRef.current;
+    undoRef.current = null;
+    setUndo(null);
+    if (pending?.kind === 'deleted') void remove(pending.todo.id);
+  }, [remove]);
+
+  const offerUndo = useCallback(
+    (next: PendingUndo) => {
+      settleUndo();
+      undoRef.current = next;
+      setUndo(next);
+    },
+    [settleUndo],
+  );
+
+  // Leaving Home mid-window still deletes what was deleted.
+  useEffect(() => settleUndo, [settleUndo]);
+
   const handleToggle = useCallback(
     (todo: Todo) => {
-      setUndoTodo(todo);
+      offerUndo({ kind: 'done', todo });
       void setCompleted(todo.id, true);
     },
-    [setCompleted],
+    [offerUndo, setCompleted],
+  );
+
+  const handleDelete = useCallback(
+    (todo: Todo) => offerUndo({ kind: 'deleted', todo }),
+    [offerUndo],
   );
 
   const handleUndo = useCallback(() => {
-    const todo = undoTodo;
-    setUndoTodo(null);
-    if (todo) void setCompleted(todo.id, false);
-  }, [undoTodo, setCompleted]);
+    const pending = undoRef.current;
+    undoRef.current = null;
+    setUndo(null);
+    if (pending?.kind === 'done') void setCompleted(pending.todo.id, false);
+  }, [setCompleted]);
 
   const handleOpen = useCallback((todo: Todo) => {
     setEditing(todo);
@@ -235,13 +274,14 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
 
       <TodoEditorSheet
         visible={editorOpen}
+        today={today}
         todo={editing}
         onDismiss={() => {
           setEditorOpen(false);
           setEditing(null);
         }}
         onSave={handleSave}
-        onDelete={(todo) => remove(todo.id)}
+        onDelete={handleDelete}
       />
 
       {/*
@@ -250,13 +290,13 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
       */}
       <Portal>
         <Snackbar
-          visible={undoTodo != null}
-          onDismiss={() => setUndoTodo(null)}
+          visible={undo != null}
+          onDismiss={settleUndo}
           duration={UNDO_DURATION_MS}
           wrapperStyle={{ bottom: DOCK_RESERVE + insets.bottom }}
           action={{ label: t('undo.action'), onPress: handleUndo }}
         >
-          {undoTodo ? t('undo.done', { title: undoTodo.title }) : ''}
+          {undo ? t(`undo.${undo.kind}`, { title: undo.todo.title }) : ''}
         </Snackbar>
       </Portal>
     </>
@@ -265,15 +305,13 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
 
 const todoStyles = StyleSheet.create({
   section: {
-    marginBottom: 12,
+    marginBottom: space.md,
   },
   sectionHeading: {
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    marginBottom: space.sm,
   },
   emptyWrap: {
-    gap: 4,
+    gap: space.xs,
   },
 });
 

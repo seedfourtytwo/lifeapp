@@ -169,8 +169,6 @@ export function ActionBubbleTray({
                       backgroundColor: bubbleBg,
                       borderRadius: Math.max(deco.radius.lg, 24),
                       opacity: pressed ? 0.85 : 1,
-                      borderColor: theme.colors.outline,
-                      borderWidth: StyleSheet.hairlineWidth,
                     },
                   ]}
                   accessibilityRole="button"

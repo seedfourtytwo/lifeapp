@@ -38,8 +38,6 @@
     "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité"
   },
   "confirm": {
-    "archiveTitle": "Archiver {{kind}} ?",
-    "archiveBody": "« {{name}} » sera masqué de l'accueil. Vous pourrez le restaurer depuis les archives plus tard.",
     "deleteTitle": "Supprimer {{kind}} ?",
     "deleteBody": "« {{name}} » ainsi que tout son historique et ses notes de jour seront supprimés définitivement."
   },
@@ -56,8 +54,12 @@
     "itemsCountA11y": "{{title}}, {{count}} éléments"
   },
   "homeIdentity": {
-    "doubleTapHistoryHint": "Appuyer deux fois pour ouvrir l’historique",
-    "openHistoryAction": "Ouvrir l’historique"
+    "historyHint": "Ouvre l’historique"
+  },
+  "undo": {
+    "counterAdded": "{{name}} +{{count}}",
+    "timerReset": "{{name}} : temps du jour effacé",
+    "archived": "{{name}} est dans les archives"
   },
   "editor": {
     "newCounterTitle": "Nouveau compteur",
@@ -164,7 +166,7 @@
     "loopHint": "Le son boucle jusqu'à ce que vous appuyiez sur Arrêter."
   },
   "counterWidget": {
-    "editTodaysTotalA11y": "Modifier le total du jour",
+    "tapCountToSetHint": "Toucher pour saisir le total du jour",
     "editTotalTitle": "Modifier le total du jour",
     "replacesTotalHint": "Remplace le total de {{unit}} enregistré aujourd'hui par une valeur unique.",
     "totalLabel": "Total ({{unit}})",

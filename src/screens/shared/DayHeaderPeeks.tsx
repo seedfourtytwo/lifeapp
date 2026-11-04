@@ -34,7 +34,7 @@ interface Props {
 export default function DayHeaderPeeks({ now }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
-  const { isCartoon } = useAppTheme();
+  const { palette } = useAppTheme();
   const weatherEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const placeName = useSettingsStore((s) => s.weatherPlaceName);
   const forecast = useWeatherStore((s) => s.forecast);
@@ -51,8 +51,6 @@ export default function DayHeaderPeeks({ now }: Props) {
     error,
     todayIso: currentAppCalendarDate(now),
   });
-
-  const accent = isCartoon ? theme.colors.secondary : theme.colors.primary;
 
   const toggleWeather = (open: boolean) => {
     setWeatherOpen(open);
@@ -101,7 +99,7 @@ export default function DayHeaderPeeks({ now }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('calendarPeek.openCalendar')}
         >
-          <MaterialCommunityIcons name="calendar-blank-outline" size={20} color={accent} />
+          <MaterialCommunityIcons name="calendar-blank-outline" size={20} color={palette.accent} />
         </Pressable>
       </View>
 

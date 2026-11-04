@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Divider, Surface, Text, useTheme } from 'react-native-paper';
+import { Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import type { DailyJournal } from '../../protocol';
@@ -106,18 +106,15 @@ export default function JournalDaysList({
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
             borderRadius: deco.radius.md,
-            borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+            borderWidth: deco.cardBorderWidth,
           },
         ]}
         elevation={0}
       >
-        {items.map((item, index) => {
+        {items.map((item) => {
           const selected = item.date === selectedDate;
           return (
             <React.Fragment key={item.key}>
-              {index > 0 ? (
-                <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
-              ) : null}
               <Pressable
                 onPress={() => onSelectDate(item.date)}
                 accessibilityRole="button"

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ActivityIndicator, Button, Card, Chip, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import ChoiceChip from '../components/ChoiceChip';
 import QuietText from '../components/QuietText';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
@@ -317,15 +318,13 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
         <View style={styles.rangeRow}>
           {HISTORY_RANGES.map((n) => (
-            <Chip
+            <ChoiceChip
               key={n}
-              compact
+              label={t('history.dayRangeChip', { count: n })}
               selected={rangeDays === n}
               onPress={() => setRangeDays(n)}
               style={styles.rangeChip}
-            >
-              {t('history.dayRangeChip', { count: n })}
-            </Chip>
+            />
           ))}
         </View>
 
@@ -384,7 +383,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               styles.dayPanel,
               {
                 borderColor: theme.colors.outlineVariant,
-                borderWidth: isCartoon ? deco.borderWidth : StyleSheet.hairlineWidth,
+                borderWidth: isCartoon ? deco.borderWidth : 0,
                 borderRadius: isCartoon ? deco.radius.md : 8,
                 backgroundColor: theme.colors.surface,
               },

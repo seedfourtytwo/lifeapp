@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, Text, useTheme } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/types';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
+import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { ACTIVITY_DAYS, useRecentActivity } from '../hooks/useRecentActivity';
 import { refreshAllHabitData } from '../hooks/refreshAllDailyData';
@@ -18,7 +22,7 @@ import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
-import HabitRow from './habits/HabitRow';
+import HabitCard from './habits/HabitCard';
 import EmptyTabState from './shared/EmptyTabState';
 import DayHeader from './shared/DayHeader';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
@@ -56,14 +60,32 @@ export default function HabitsScreen({
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
   const habitStreaks = useEventStore((s) => s.habitStreaks);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const now = useAppCalendarNow();
   const [scrollLocked, setScrollLocked] = useState(false);
+  const [pendingUndo, setPendingUndo] = useState<{
+    message: string;
+    undo: () => Promise<void>;
+  } | null>(null);
   const scrollRef = useRef<HomeTabScrollViewHandle>(null);
 
   useEffect(() => {
     if (notesActive) return;
     setScrollLocked(false);
+    // Undo belongs to the page it was offered on; leaving the page settles it.
+    setPendingUndo(null);
   }, [notesActive]);
+
+  const runUndo = () => {
+    const pending = pendingUndo;
+    setPendingUndo(null);
+    pending?.undo().catch((error) => {
+      Alert.alert(
+        tCommon('alerts.couldNotSave'),
+        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+      );
+    });
+  };
 
   useRefreshHabitDayOnFocus();
 
@@ -215,11 +237,21 @@ export default function HabitsScreen({
         activity={activity}
         activityLabel={activityLabel}
         actions={
-          <NotebookButtons
-            notebooks={notebooks}
-            onDictateNotebook={onDictateNotebook}
-            onEditNotebook={onEditNotebook}
-          />
+          <>
+            <NotebookButtons
+              notebooks={notebooks}
+              onDictateNotebook={onDictateNotebook}
+              onEditNotebook={onEditNotebook}
+            />
+            <IconButton
+              icon="plus"
+              size={24}
+              iconColor={theme.colors.onSurfaceVariant}
+              onPress={() => navigation.navigate('Trackers', { add: 'habit' })}
+              accessibilityLabel={t('habitsTab.addHabitA11y')}
+              style={addButtonStyle}
+            />
+          </>
         }
       />
 
@@ -258,10 +290,9 @@ export default function HabitsScreen({
             const canReorder =
               drag.canDrag && !isDone && reorderPeerIds.includes(habit.id);
             return (
-              <HabitRow
+              <HabitCard
                 habit={habit}
                 config={config}
-                dimmed={isDone}
                 onLongPressReorder={canReorder ? drag.onLongPress : undefined}
                 delayLongPressReorder={drag.delayLongPress}
                 onReorderTouchMove={canReorder ? drag.onTouchMove : undefined}
@@ -270,6 +301,7 @@ export default function HabitsScreen({
                 reorderHint={
                   canReorder ? tTrackers('habitWidget.reorderLongPressHint') : undefined
                 }
+                onOfferUndo={(message, undo) => setPendingUndo({ message, undo })}
                 hasTodayNote={notesToday.has(habit.id)}
                 onDictateNote={() => {
                   onBeforeOpenTrackerNote?.();
@@ -293,8 +325,14 @@ export default function HabitsScreen({
       )}
     </HomeTabScrollView>
       {editorHost}
+      <UndoSnackbar
+        message={pendingUndo?.message ?? null}
+        onUndo={runUndo}
+        onDismiss={() => setPendingUndo(null)}
+      />
     </>
   );
 }
 
 const styles = homeTabScreenStyles;
+const addButtonStyle = { margin: 0 };

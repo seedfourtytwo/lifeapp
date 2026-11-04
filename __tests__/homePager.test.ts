@@ -19,6 +19,7 @@ import {
   HOME_DOCK_ITEMS,
   HOME_TAB_ORDER,
   homeBackTarget,
+  homeStartTab,
   homeTabAtOffset,
   homeTabIndex,
 } from '../src/screens/home/homePager';
@@ -70,26 +71,45 @@ describe('which page an offset lands on', () => {
 });
 
 describe('the Android back button on Home', () => {
-  it('leaves the four content pages to the navigator', () => {
-    // Unchanged from before More became a page: back on a content page is not
-    // ours to intercept — it exits the app, as the system expects.
-    for (const tab of ['habits', 'counters', 'nutrition', 'todos'] as const) {
-      expect(homeBackTarget(tab, 'habits')).toBeNull();
+  it('exits from Habits, the first page', () => {
+    expect(homeBackTarget('habits', 'habits')).toBeNull();
+  });
+
+  it('goes to Habits from the other content pages instead of leaving the app', () => {
+    // Opening on the last-used tab means back can no longer mean "exit" on
+    // every page: one press from Todos would close the app mid-thought.
+    for (const tab of ['counters', 'nutrition', 'todos'] as const) {
+      expect(homeBackTarget(tab, 'habits')).toBe('habits');
     }
   });
 
   it('returns from More to the page it was opened from', () => {
-    // The dock reaches More from any page, and popping the stack used to land
-    // back on that page. Keep that: back is "undo the trip to More".
     expect(homeBackTarget('more', 'counters')).toBe('counters');
     expect(homeBackTarget('more', 'habits')).toBe('habits');
     expect(homeBackTarget('more', 'todos')).toBe('todos');
   });
 
   it('falls back to the page beside More if nothing was recorded', () => {
-    // Defensive: never answer "go to More" while already on More, which would
-    // swallow the press and trap the user on the page.
+    // Never answer "go to More" while already on More, which would swallow
+    // the press and trap the user on the page.
     const beside = HOME_TAB_ORDER[HOME_TAB_ORDER.length - 2];
     expect(homeBackTarget('more', 'more')).toBe(beside);
+  });
+});
+
+describe('the page Home opens on', () => {
+  it('reopens the content page used last', () => {
+    expect(homeStartTab('counters')).toBe('counters');
+    expect(homeStartTab('todos')).toBe('todos');
+  });
+
+  it('never reopens on More, which is a menu, not a place to be', () => {
+    expect(homeStartTab('more')).toBe('habits');
+  });
+
+  it('starts on Habits when nothing or nonsense was stored', () => {
+    expect(homeStartTab(null)).toBe('habits');
+    expect(homeStartTab('')).toBe('habits');
+    expect(homeStartTab('calendar')).toBe('habits');
   });
 });

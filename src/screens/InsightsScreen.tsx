@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
-  Divider,
   SegmentedButtons,
   Surface,
   Switch,
@@ -23,6 +22,7 @@ import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import {
   chartPlotValue,
+  chartUnitLabel,
   type ElementDefinition,
   type TrackerIconId,
 } from '../protocol';
@@ -44,6 +44,7 @@ import { formatTempC } from '../weather/format';
 import { ensureWeatherDailyRange } from '../weather/ensureWeatherDailyRange';
 import type { WeatherDailySnapshot } from '../weather/types';
 import { conditionLabel } from '../weather/codes';
+import Rule from '../components/Rule';
 
 function isHistoryRangeDays(value: number): value is HistoryRangeDays {
   return (HISTORY_RANGES as readonly number[]).includes(value);
@@ -52,7 +53,7 @@ function isHistoryRangeDays(value: number): value is HistoryRangeDays {
 export default function InsightsScreen() {
   const theme = useTheme();
   const { t } = useTranslation('insights');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [rangeDays, setRangeDays] = useState<HistoryRangeDays>(DEFAULT_HISTORY_RANGE);
@@ -236,10 +237,11 @@ export default function InsightsScreen() {
     const normalized = normalizeSeriesToUnit(raw);
     return selectedElements.map((el, i) => ({
       id: el.id,
-      color: seriesColorAt(i),
+      color: seriesColorAt(themeMode, i),
       values: normalized[i] ?? [],
+      binary: el.kind === 'habit' && chartUnitLabel(el) === 'done',
     }));
-  }, [selectedElements, dates, totalsByElement]);
+  }, [selectedElements, dates, totalsByElement, themeMode]);
 
   const weatherOverlay = useMemo(() => {
     if (!showWeather) return undefined;
@@ -280,7 +282,8 @@ export default function InsightsScreen() {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.outlineVariant,
     borderRadius: deco.radius.md,
-    borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+    // Light and dark cards stand off the page by fill; only cartoon draws an outline.
+    borderWidth: deco.cardBorderWidth,
   };
 
   if (loading && elements.length === 0) {
@@ -357,7 +360,7 @@ export default function InsightsScreen() {
             {elements.map((el) => {
               const selected = selectedIds.includes(el.id);
               const colorIndex = selectedIds.indexOf(el.id);
-              const color = selected ? seriesColorAt(colorIndex) : theme.colors.onSurfaceVariant;
+              const color = selected ? seriesColorAt(themeMode, colorIndex) : theme.colors.onSurfaceVariant;
               const disabled = atCap && !selected;
               return (
                 <Pressable
@@ -481,14 +484,14 @@ export default function InsightsScreen() {
                 const note = notesByElement.get(el.id);
                 return (
                   <View key={el.id}>
-                    <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                    <Rule />
                     <View style={styles.seriesDayTop}>
                       <View style={styles.seriesNameRow}>
                         <View
                           style={[
                             styles.swatch,
                             {
-                              backgroundColor: seriesColorAt(i),
+                              backgroundColor: seriesColorAt(themeMode, i),
                               borderRadius: deco.radius.xs,
                             },
                           ]}
@@ -524,7 +527,7 @@ export default function InsightsScreen() {
 
             {showWeather ? (
               <>
-                <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                <Rule />
                 <View style={styles.weatherDay}>
                   <MaterialCommunityIcons
                     name="weather-partly-cloudy"

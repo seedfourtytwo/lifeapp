@@ -17,51 +17,12 @@
  * against their own `on*` pair rather than against a surface.
  */
 import { appCartoonTheme, appDarkTheme, appLightTheme } from '../src/theme/themes';
+import { getAppPalette } from '../src/theme/palette';
+import { compositeOver, contrastRatio } from './support/contrast';
 
 const AA_TEXT = 4.5;
 
-/** Accepts both `#RRGGBB` and the `rgba(r, g, b, a)` strings MD3 ships. */
-function parseColor(value: string): [number, number, number] {
-  const rgba = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-  if (rgba) return [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])];
-
-  const hex = value.replace('#', '');
-  if (!/^[0-9a-f]{6}$/i.test(hex)) {
-    throw new Error(`Unsupported colour format: ${value}`);
-  }
-  return [
-    parseInt(hex.slice(0, 2), 16),
-    parseInt(hex.slice(2, 4), 16),
-    parseInt(hex.slice(4, 6), 16),
-  ];
-}
-
-/** Relative luminance per WCAG 2.1. */
-function luminance(color: string): number {
-  const channel = (value: number) => {
-    const c = value / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  const [r, g, b] = parseColor(color);
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-export function contrastRatio(a: string, b: string): number {
-  const la = luminance(a);
-  const lb = luminance(b);
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-}
-
-/** Composite `fg` at `alpha` over `bg`, the way `opacity` on a Text renders. */
-export function compositeOver(fg: string, bg: string, alpha: number): string {
-  const [fr, fgc, fb] = parseColor(fg);
-  const [br, bgc, bb] = parseColor(bg);
-  const mix = (f: number, b: number) =>
-    Math.round(f * alpha + b * (1 - alpha))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${mix(fr, br)}${mix(fgc, bgc)}${mix(fb, bb)}`;
-}
+export { contrastRatio, compositeOver } from './support/contrast';
 
 const THEMES = [
   { name: 'light', theme: appLightTheme },
@@ -120,5 +81,44 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
       AA_TEXT,
     );
     expect(contrastRatio(dimmed, c.background)).toBeLessThan(AA_TEXT);
+  });
+});
+
+/**
+ * Colours that are not Paper roles but still paint words and marks: the
+ * cartoon theme's accent, the Insights series, the notebook amber. Each sits on
+ * the same grounds as body text and is held to the same floor, because each of
+ * them colours a label somewhere (a chip, a peek title, a notebook name).
+ */
+describe.each(THEMES)('$name palette', ({ name, theme }) => {
+  const c = theme.colors;
+  const palette = getAppPalette(name);
+  const grounds: [string, string][] = [
+    ['surface', c.surface],
+    ['background', c.background],
+  ];
+  const inks: [string, string][] = [
+    ['accent', palette.accent],
+    ['amber', palette.amber],
+    ...palette.series.map((s, i): [string, string] => [`series ${i}`, s]),
+  ];
+
+  it.each(inks.flatMap(([ink, fg]) => grounds.map(([g, bg]) => [`${ink} on ${g}`, fg, bg])))(
+    '%s clears AA',
+    (_label, fg, bg) => {
+      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+    },
+  );
+
+  it('has five distinct series colours', () => {
+    expect(new Set(palette.series).size).toBe(5);
+  });
+
+  /** An empty track has to show on the tinted cards it sits in, not vanish into them. */
+  it.each([
+    ['surface', c.surface],
+    ['surfaceVariant', c.surfaceVariant],
+  ])('progress track is visible on %s', (_g, bg) => {
+    expect(contrastRatio(palette.track, bg)).toBeGreaterThanOrEqual(1.3);
   });
 });

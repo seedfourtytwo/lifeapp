@@ -62,11 +62,20 @@ export function homeTabAtOffset(offsetX: number, pageWidth: number): HomeTab {
  * Where the Android back button should go, or `null` to leave the press to the
  * navigator (which exits the app from Home).
  *
- * Only More answers. Back used to pop More off the stack and land on whichever
- * page you left from, so it still does; the four content pages behave exactly
- * as they did before More joined the pager.
+ * Home reopens on the last page used, so back cannot simply exit everywhere:
+ * the other content pages step back to Habits first, and only Habits exits.
+ * More returns to the page it was opened from, as popping the stack used to.
  */
 export function homeBackTarget(tab: HomeTab, openedFrom: HomeTab): HomeTab | null {
-  if (tab !== 'more') return null;
-  return openedFrom === 'more' ? PAGE_BEFORE_MORE : openedFrom;
+  if (tab === 'more') return openedFrom === 'more' ? PAGE_BEFORE_MORE : openedFrom;
+  return tab === HOME_TAB_ORDER[0] ? null : HOME_TAB_ORDER[0];
+}
+
+/**
+ * The page Home opens on, from what was stored last time. More is a menu you
+ * pass through, so it is never reopened; anything unknown starts on Habits.
+ */
+export function homeStartTab(stored: string | null): HomeTab {
+  const tab = HOME_TAB_ORDER.find((candidate) => candidate === stored);
+  return tab && tab !== 'more' ? tab : HOME_TAB_ORDER[0];
 }

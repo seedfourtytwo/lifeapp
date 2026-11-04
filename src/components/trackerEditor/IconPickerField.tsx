@@ -23,7 +23,6 @@ type CellProps = {
   accessibilityLabel: string;
   children: React.ReactNode;
   selectedBorder: string;
-  idleBorder: string;
   selectedBg: string;
   surface: string;
   radius: number;
@@ -35,7 +34,6 @@ function IconPickerCell({
   accessibilityLabel,
   children,
   selectedBorder,
-  idleBorder,
   selectedBg,
   surface,
   radius,
@@ -47,7 +45,7 @@ function IconPickerCell({
         styles.cell,
         {
           borderRadius: radius,
-          borderColor: selected ? selectedBorder : idleBorder,
+          borderColor: selected ? selectedBorder : 'transparent',
           backgroundColor: selected ? selectedBg : surface,
         },
         pressed && styles.pressed,
@@ -73,7 +71,6 @@ function IconPickerField({ value, onChange }: Props) {
   const [query, setQuery] = useState('');
 
   const selectedBorder = theme.colors.primary;
-  const idleBorder = theme.colors.outlineVariant;
   const selectedBg = `${theme.colors.primary}18`;
   const surface = theme.colors.surface;
   const searching = query.trim().length > 0;
@@ -85,7 +82,6 @@ function IconPickerField({ value, onChange }: Props) {
 
   const cellChrome = {
     selectedBorder,
-    idleBorder,
     selectedBg,
     surface,
     radius: deco.radius.md,
@@ -180,7 +176,7 @@ const styles = StyleSheet.create({
   cell: {
     width: 44,
     height: 44,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,

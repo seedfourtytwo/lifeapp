@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import {
   Button,
-  Divider,
   IconButton,
   Modal,
   Portal,
@@ -20,6 +19,7 @@ import {
 } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { type CounterConfig } from '../../protocol';
 import { getCounterProgressBarColors } from '../../utils/color';
@@ -78,7 +78,8 @@ export function CounterWidget({
   const increments = config.quickIncrements;
   const primaryIncrement = increments[0];
   const extraIncrements = increments.slice(1);
-  const canShowBubbles = extraIncrements.length > 0 || Boolean(onSetDailyTotal);
+  // Setting an exact total is a tap on the count, so the tray is only for +N.
+  const canShowBubbles = extraIncrements.length > 0;
 
   const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
 
@@ -124,8 +125,9 @@ export function CounterWidget({
     onLog?.(increment, { source: 'quick_button', increment });
   };
 
-  const primaryBg = theme.colors.primary;
-  const primaryFg = theme.colors.onPrimary;
+  // Tonal, not a solid slab: the +1 is the row's action, not its loudest thing.
+  const primaryBg = isCartoon ? theme.colors.primary : theme.colors.primaryContainer;
+  const primaryFg = isCartoon ? theme.colors.onPrimary : theme.colors.onPrimaryContainer;
 
   const bubbles = [
     ...extraIncrements.map((increment) => ({
@@ -134,16 +136,6 @@ export function CounterWidget({
       accessibilityLabel: t('counterWidget.addIncrementA11y', { count: increment }),
       onPress: () => logIncrement(increment),
     })),
-    ...(onSetDailyTotal
-      ? [
-          {
-            key: 'edit-total',
-            icon: 'pencil-outline',
-            accessibilityLabel: t('counterWidget.editTodaysTotalA11y'),
-            onPress: openEdit,
-          },
-        ]
-      : []),
   ];
 
   return (
@@ -182,14 +174,23 @@ export function CounterWidget({
           />
 
           <View style={cardStyles.trailingCluster}>
-            <Text
-              variant="titleSmall"
-              numberOfLines={1}
-              style={[cardStyles.timerLabel, { color: metaColor }]}
+            <Pressable
+              onPress={onSetDailyTotal ? openEdit : undefined}
+              disabled={!onSetDailyTotal}
+              hitSlop={space.sm}
+              style={({ pressed }) => [styles.countHit, pressed && cardStyles.pressed]}
+              accessibilityRole={onSetDailyTotal ? 'button' : undefined}
               accessibilityLabel={countText}
+              accessibilityHint={onSetDailyTotal ? t('counterWidget.tapCountToSetHint') : undefined}
             >
-              {countText}
-            </Text>
+              <Text
+                variant="titleSmall"
+                numberOfLines={1}
+                style={[cardStyles.timerLabel, { color: metaColor }]}
+              >
+                {countText}
+              </Text>
+            </Pressable>
 
             <ActionBubbleTray
               open={bubblesOpen}
@@ -209,8 +210,8 @@ export function CounterWidget({
                   {
                     backgroundColor: primaryBg,
                     borderRadius: deco.buttonRadius,
-                    opacity: pressed ? 0.85 : 1,
                   },
+                  pressed && cardStyles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={t('counterWidget.addIncrementA11y', {
@@ -226,9 +227,10 @@ export function CounterWidget({
               </Pressable>
             </ActionBubbleTray>
 
-            {onDictateNote ? (
+            {/* Only once there is a note; a first one is added from the history. */}
+          {onDictateNote && hasTodayNote ? (
               <NoteIconButton
-                hasNote={Boolean(hasTodayNote)}
+                hasNote
                 onPress={onDictateNote}
                 onLongPress={onEditNote}
                 size={ACTION_ICON_SIZE - 4}
@@ -295,8 +297,6 @@ export function CounterWidget({
                 />
               </View>
 
-              <Divider />
-
               <View style={styles.sheetFooter}>
                 <Button onPress={closeEdit} disabled={saving}>
                   {tCommon('actions.cancel')}
@@ -321,10 +321,15 @@ export function CounterWidget({
 }
 
 const styles = StyleSheet.create({
+  countHit: {
+    flexShrink: 1,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
   incrementHit: {
     minWidth: 52,
     minHeight: 48,
-    paddingHorizontal: 14,
+    paddingHorizontal: space.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

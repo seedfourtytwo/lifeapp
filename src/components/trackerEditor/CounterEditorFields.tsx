@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Chip, Divider, Switch, Text, TextInput } from 'react-native-paper';
+import { Button, Chip, Switch, Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 
@@ -161,7 +161,7 @@ function CounterEditorFields({
 
       {showStreakToggle ? (
         <>
-          <Divider style={styles.divider} />
+          <View style={styles.sectionGap} />
           <FormSection
             title={t('counterFields.streakSectionTitle')}
             description={t('counterFields.streakSectionDescription')}

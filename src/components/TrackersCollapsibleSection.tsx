@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Divider, Surface, Text, useTheme } from 'react-native-paper';
+import { Surface, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import Rule from './Rule';
 
 type Props = {
   title: string;
@@ -33,7 +34,7 @@ export default function TrackersCollapsibleSection({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('trackers');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const isEmpty = count === 0;
   const items = React.Children.toArray(children).filter(Boolean);
@@ -46,7 +47,7 @@ export default function TrackersCollapsibleSection({
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
           borderRadius: deco.radius.md,
-          borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+          borderWidth: deco.cardBorderWidth,
         },
       ]}
       elevation={0}
@@ -99,7 +100,7 @@ export default function TrackersCollapsibleSection({
 
       {!collapsed ? (
         <>
-          <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+          <Rule />
           {isEmpty ? (
             <QuietText variant="bodySmall" style={styles.empty}>
               {emptyMessage}
@@ -108,7 +109,7 @@ export default function TrackersCollapsibleSection({
             items.map((child, index) => (
               <React.Fragment key={index}>
                 {index > 0 ? (
-                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                  <Rule />
                 ) : null}
                 {child}
               </React.Fragment>

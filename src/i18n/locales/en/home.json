@@ -10,6 +10,7 @@
     "a11y": "{{date}} · resets at {{time}}"
   },
   "habitsTab": {
+    "addHabitA11y": "Add a habit",
     "retry": "Retry",
     "emptyNoHabits": "No habits yet. Add one to start your daily list.",
     "emptyNoActiveHabits": "No active habits. Restore something from Archive in Trackers.",
@@ -60,9 +61,7 @@
     "title": "Calendar",
     "emptySubtitle": "No upcoming events in the next two weeks.",
     "withListSubtitle": "Upcoming · tap ✓ to silence this occurrence",
-    "emptyBody": "Nothing needing attention right now.",
     "openCalendar": "Open calendar",
-    "openFullCalendar": "Open full calendar",
     "fullCalendar": "Full calendar",
     "add": "Add",
     "close": "Close",

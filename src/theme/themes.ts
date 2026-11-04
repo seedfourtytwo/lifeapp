@@ -13,6 +13,62 @@ export const brand = {
   error: '#B00020',
 } as const;
 
+/**
+ * Every colour Paper owns that the roles above do not name. Left at MD3's
+ * defaults they are Material's purple seed — the elevation ramp painted the
+ * search bar lavender, and the inverse and disabled washes carry the same
+ * tint. Each is mapped onto the slate ramp the rest of the theme already uses.
+ * `__tests__/themeNoLavender.test.ts` checks every colour a theme carries.
+ */
+const SLATE_LIGHT_REST = {
+  onSecondary: '#042F2E',
+  tertiary: '#0369A1',
+  onTertiary: '#FFFFFF',
+  tertiaryContainer: '#E0F2FE',
+  onTertiaryContainer: '#0C4A6E',
+  onBackground: '#0F172A',
+  surfaceDisabled: 'rgba(15, 23, 42, 0.12)',
+  onSurfaceDisabled: 'rgba(15, 23, 42, 0.38)',
+  inverseSurface: '#1E293B',
+  inverseOnSurface: '#F1F5F9',
+  inversePrimary: '#5EEAD4',
+  backdrop: 'rgba(15, 23, 42, 0.4)',
+  // Raised things (menus, the search bar) are white on the stepped page; the
+  // shadow does the lifting, not a tint.
+  elevation: {
+    level0: 'transparent',
+    level1: '#FFFFFF',
+    level2: '#FFFFFF',
+    level3: '#FFFFFF',
+    level4: '#FFFFFF',
+    level5: '#FFFFFF',
+  },
+} as const;
+
+const SLATE_DARK_REST = {
+  onSecondary: '#042F2E',
+  tertiary: '#7DD3FC',
+  onTertiary: '#082F49',
+  tertiaryContainer: '#0C4A6E',
+  onTertiaryContainer: '#E0F2FE',
+  onBackground: '#E2E8F0',
+  surfaceDisabled: 'rgba(226, 232, 240, 0.12)',
+  onSurfaceDisabled: 'rgba(226, 232, 240, 0.38)',
+  inverseSurface: '#E2E8F0',
+  inverseOnSurface: '#1E293B',
+  inversePrimary: '#0F766E',
+  backdrop: 'rgba(2, 6, 23, 0.6)',
+  // In the dark, height reads as lightness: each level a step up the slate ramp.
+  elevation: {
+    level0: 'transparent',
+    level1: '#1E293B',
+    level2: '#233148',
+    level3: '#273449',
+    level4: '#2B3A50',
+    level5: '#334155',
+  },
+} as const;
+
 export const appLightTheme: MD3Theme = {
   ...MD3LightTheme,
   roundness: 12,
@@ -29,7 +85,9 @@ export const appLightTheme: MD3Theme = {
     secondaryContainer: '#CCFBF1',
     onSecondaryContainer: '#115E59',
     error: brand.error,
-    background: '#F8FAFC',
+    // One step below the card, so a card stands off the page by its own fill
+    // and needs no outline (decorations.ts sets light cards borderless).
+    background: '#F1F3F6',
     surface: '#FFFFFF',
     // Set explicitly: the MD3 default is a purple-biased near-black.
     onSurface: '#0F172A',
@@ -39,6 +97,7 @@ export const appLightTheme: MD3Theme = {
     onSurfaceVariant: '#5A6B80',
     outlineVariant: '#E2E8F0',
     outline: '#CBD5E1',
+    ...SLATE_LIGHT_REST,
   },
 };
 
@@ -64,6 +123,7 @@ export const appDarkTheme: MD3Theme = {
     onSurfaceVariant: '#A9B6C7',
     outlineVariant: '#334155',
     outline: '#475569',
+    ...SLATE_DARK_REST,
   },
 };
 
@@ -84,18 +144,28 @@ export const appCartoonTheme: MD3Theme = {
     onSecondaryContainer: '#5C3D0A',
     tertiary: '#5B9BD5',
     onTertiary: '#FFFDF5',
+    tertiaryContainer: '#DCEBF7',
+    onTertiaryContainer: '#1F4E79',
     // Deepened from #E05252 (3.6:1 on the cream surface).
     error: '#B3271E',
     onError: '#FFFDF5',
     errorContainer: '#FFE8E8',
     onErrorContainer: '#8B1A1A',
-    background: '#FFF8E7',
+    // A shade under the cream card, the same step the slate themes take.
+    background: '#FBF0D4',
     surface: '#FFF9E6',
     surfaceVariant: '#E8F5D6',
     onSurface: '#3D2914',
     onSurfaceVariant: '#6B5344',
     outline: '#8B6914',
     outlineVariant: '#C4A574',
+    onBackground: '#3D2914',
+    surfaceDisabled: 'rgba(61, 41, 20, 0.12)',
+    onSurfaceDisabled: 'rgba(61, 41, 20, 0.38)',
+    inverseSurface: '#3D2914',
+    inverseOnSurface: '#FFF9E6',
+    inversePrimary: '#A5D68C',
+    backdrop: 'rgba(61, 41, 20, 0.4)',
     elevation: {
       ...MD3LightTheme.colors.elevation,
       level0: '#FFF9E6',

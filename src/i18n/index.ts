@@ -20,6 +20,7 @@ import frJournal from './locales/fr/journal.json';
 import frNotifications from './locales/fr/notifications.json';
 import frNutrition from './locales/fr/nutrition.json';
 import frSettings from './locales/fr/settings.json';
+import frTodos from './locales/fr/todos.json';
 import frTrackers from './locales/fr/trackers.json';
 
 import { RESOLVED_LANGUAGES, type AppLanguage, type ResolvedLanguage } from './types';
@@ -37,8 +38,6 @@ export const resources = {
     insights: enInsights,
     notifications: enNotifications,
     nutrition: enNutrition,
-    // English only for now; `fallbackLng: 'en'` serves French readers the
-    // same strings rather than raw keys.
     todos: enTodos,
   },
   fr: {
@@ -51,6 +50,7 @@ export const resources = {
     insights: frInsights,
     notifications: frNotifications,
     nutrition: frNutrition,
+    todos: frTodos,
   },
 } as const;
 

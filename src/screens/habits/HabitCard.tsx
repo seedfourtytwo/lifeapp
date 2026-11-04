@@ -21,6 +21,8 @@ type Props = {
   onReorderTouchCancel?: (event: GestureResponderEvent) => void;
   delayLongPressReorder?: number;
   reorderHint?: string;
+  /** Offer Undo for something this card just did, e.g. clearing today's time. */
+  onOfferUndo?: (message: string, undo: () => Promise<void>) => void;
 };
 
 export default function HabitCard({
@@ -35,6 +37,7 @@ export default function HabitCard({
   onReorderTouchEnd,
   onReorderTouchCancel,
   reorderHint,
+  onOfferUndo,
 }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
@@ -101,7 +104,11 @@ export default function HabitCard({
         }
       }}
       onResetToday={() =>
-        handleResetToday(habit.id, config).catch((error) => {
+        handleResetToday(habit.id, config)
+          .then((undo) =>
+            onOfferUndo?.(t('undo.timerReset', { name: habit.name }), undo),
+          )
+          .catch((error) => {
           Alert.alert(
             t('habitWidget.couldNotResetTodayTitle'),
             error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),

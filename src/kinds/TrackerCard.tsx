@@ -23,7 +23,7 @@ type Props = {
 
 /**
  * Shared Home tracker card shell.
- * Same outer border for every card; progress is an inner wash/edge glow.
+ * Same outer border for every card; progress is an inner wash.
  */
 export default function TrackerCard({ children, progress = null }: Props) {
   const theme = useTheme();

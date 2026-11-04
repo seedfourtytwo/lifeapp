@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { NoteIconButton } from '../../notes/NoteIconButton';
+import { notebookInk } from '../../notes/notebookInk';
 import type { HomeNotebookChip } from '../../notes/types';
 
 type Props = {
@@ -22,6 +24,7 @@ export default function NotebookButtons({
   onDictateNotebook,
   onEditNotebook,
 }: Props) {
+  const { themeMode } = useAppTheme();
   if (notebooks.length === 0) return null;
 
   return (
@@ -31,7 +34,7 @@ export default function NotebookButtons({
           key={notebook.id}
           hasNote={notebook.hasToday}
           entryCount={notebook.todayCount}
-          accentColor={notebook.color}
+          accentColor={notebookInk(notebook.color, themeMode)}
           icon={notebook.icon}
           onPress={() => onDictateNotebook(notebook.id)}
           onLongPress={() => onEditNotebook(notebook.id)}

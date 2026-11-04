@@ -1,0 +1,66 @@
+{
+  "add": {
+    "placeholder": "Ajouter une tâche",
+    "action": "Ajouter",
+    "dictationTruncated": "C'était trop long pour un titre de tâche — la fin a été coupée."
+  },
+  "sections": {
+    "overdue": "En retard",
+    "today": "Aujourd'hui",
+    "later": "Plus tard",
+    "undated": "Sans date"
+  },
+  "list": {
+    "empty": "Rien à faire.",
+    "emptyHint": "Ajoutez quelque chose ci-dessus, ça s'affichera ici.",
+    "reorderHint": "Appui long pour réordonner",
+    "historyA11y": "Tâches terminées",
+    "loadFailed": "Impossible de charger vos tâches.",
+    "retry": "Réessayer"
+  },
+  "row": {
+    "doneA11y": "Marquer {{title}} comme fait",
+    "undoneA11y": "Marquer {{title}} comme pas fait",
+    "openA11y": "Modifier {{title}}",
+    "hasNote": "A une note",
+    "dueToday": "Aujourd'hui",
+    "overdueBy_one": "{{count}} jour de retard",
+    "overdueBy_other": "{{count}} jours de retard"
+  },
+  "undo": {
+    "done": "Fait — {{title}}",
+    "deleted": "Supprimé — {{title}}",
+    "action": "Annuler"
+  },
+  "editor": {
+    "newTitle": "Nouvelle tâche",
+    "editTitle": "Modifier la tâche",
+    "titleLabel": "Titre",
+    "noteLabel": "Note",
+    "notePlaceholder": "Ce que vous voulez retenir à ce sujet",
+    "deadlineLabel": "Échéance",
+    "deadlineNone": "Sans date",
+    "dueToday": "Aujourd'hui",
+    "dueTomorrow": "Demain",
+    "dueWeekend": "Ce week-end",
+    "dueNextWeek": "Semaine pro",
+    "dueOther": "Autre jour",
+    "deadlinePlaceholder": "AAAA-MM-JJ",
+    "deadlineInvalid": "Écrivez AAAA-MM-JJ, ou choisissez Sans date",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "titleRequired": "Donnez-lui d'abord un titre",
+    "noteDictationTruncated": "La note est pleine — une partie de la dictée a été coupée."
+  },
+  "history": {
+    "title": "Terminées",
+    "searchPlaceholder": "Chercher dans les tâches terminées",
+    "dateFilter": "Aller à un jour",
+    "dateClear": "Tout afficher",
+    "empty": "Rien de terminé pour l'instant.",
+    "emptySearch": "Aucune tâche terminée ne correspond.",
+    "completedAt": "Fait {{time}}",
+    "loadFailed": "Impossible de charger l'historique."
+  }
+}

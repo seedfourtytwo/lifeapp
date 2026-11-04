@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
   Checkbox,
-  Divider,
   Modal,
   Portal,
   Text,
@@ -19,6 +18,7 @@ import {
   type ClearAppDataOptions,
 } from '../db/clearDataPlan';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { space } from '../theme/spacing';
 
 type PeriodChoice = 'all' | 'keep7' | 'keep30' | 'before';
 
@@ -259,7 +259,7 @@ export default function ClearDataSheet({
             </View>
           ) : null}
 
-          <Divider style={styles.divider} />
+          <View style={styles.sectionGap} />
 
           <ScopeRow
             label={t('clearData.calendar.label')}
@@ -420,8 +420,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  divider: {
-    marginVertical: 4,
+  sectionGap: {
+    height: space.sm,
   },
   summary: {
     padding: 12,

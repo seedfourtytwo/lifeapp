@@ -8,6 +8,7 @@ import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
 import type { DailyJournal, JournalNotebook } from '../../protocol';
+import { notebookInk } from '../../notes/notebookInk';
 import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
 
@@ -54,7 +55,7 @@ export default function JournalDayPanel({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
   const entriesForSelected = journals.filter((journal) => journal.date === selectedDate);
   const grouped = notebooks
     .map((notebook) => ({
@@ -78,41 +79,39 @@ export default function JournalDayPanel({
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
           borderRadius: deco.radius.md,
-          borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+          borderWidth: deco.cardBorderWidth,
         },
       ]}
       elevation={0}
     >
       <Text variant="titleMedium">{title}</Text>
 
-      {grouped.map(({ notebook, entries }, index) => (
+      {grouped.map(({ notebook, entries }) => (
         <View
           key={notebook.id}
-          style={[
-            styles.group,
-            index > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.outlineVariant,
-            },
-          ]}
+          style={styles.group}
         >
           <View style={styles.groupHeader}>
             <View
               style={[
                 styles.well,
                 {
-                  backgroundColor: `${notebook.color}33`,
+                  backgroundColor: `${notebookInk(notebook.color, themeMode)}33`,
                   borderRadius: isCartoon ? deco.radius.sm : 12,
                 },
               ]}
             >
               {notebook.icon ? (
-                <TrackerIcon name={notebook.icon} size={22} color={notebook.color} />
+                <TrackerIcon
+                  name={notebook.icon}
+                  size={22}
+                  color={notebookInk(notebook.color, themeMode)}
+                />
               ) : (
                 <MaterialCommunityIcons
                   name="notebook-outline"
                   size={22}
-                  color={notebook.color}
+                  color={notebookInk(notebook.color, themeMode)}
                 />
               )}
             </View>
@@ -211,13 +210,7 @@ export default function JournalDayPanel({
 
       {showTrackerNotes && trackerNotes.length > 0 ? (
         <View
-          style={[
-            styles.trackerBlock,
-            grouped.length > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.outlineVariant,
-            },
-          ]}
+          style={styles.trackerBlock}
         >
           <Text
             variant="labelMedium"

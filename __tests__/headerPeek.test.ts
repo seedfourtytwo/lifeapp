@@ -180,9 +180,14 @@ describe('calendar peek sheet', () => {
     });
 
     expect(joined).toContain('Calendar');
-    // Nothing seeded, so it is the empty state — not a crash and not a blank.
-    expect(joined).toContain('Nothing needing attention right now.');
-    expect(joined).toContain('Open calendar');
+    // Nothing seeded, so it is the empty state — said once, not as a subtitle
+    // and again as a body.
+    expect(joined.match(/No upcoming events in the next two weeks\./g)).toHaveLength(1);
+    expect(joined).not.toContain('Nothing needing attention');
+    // One way to the full screen, the same with or without a list — not a
+    // big button in the body as well as one in the footer.
+    expect(joined.match(/Full calendar/g)).toHaveLength(1);
+    expect(joined).not.toContain('Open calendar');
   });
 });
 

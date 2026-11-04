@@ -29,6 +29,7 @@ jest.mock('@react-navigation/native', () => ({
     useEffect(effect, [effect]);
   },
   useNavigation: () => ({ navigate: () => {} }),
+  useIsFocused: () => true,
 }));
 
 jest.mock('../src/db/client', () => ({

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Chip, Divider, IconButton, Menu, Text, useTheme } from 'react-native-paper';
+import { Chip, IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { FOOD_GROUPS, type FoodGroup } from '../../protocol';
 import {
@@ -10,6 +10,7 @@ import {
   type FoodFilterState,
   type FoodSortKey,
 } from '../../nutrition/foodFilters';
+import Rule from '../../components/Rule';
 
 type Props = {
   filter: FoodFilterState;
@@ -67,7 +68,7 @@ export default function FoodListControls({
                 setGroupMenu(false);
               }}
             />
-            <Divider />
+            <Rule />
             {FOOD_GROUPS.map((group: FoodGroup) => (
               <Menu.Item
                 key={group}

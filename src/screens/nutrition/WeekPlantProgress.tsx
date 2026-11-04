@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ProgressBar, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import { clamp01 } from '../../utils/clamp01';
 import type { WeekDiversity } from '../../nutrition/weekDiversity';
 
 type Props = {
@@ -12,7 +14,7 @@ type Props = {
 /** Headline for the Mon–Sun week: distinct plants against the target. */
 export default function WeekPlantProgress({ diversity }: Props) {
   const theme = useTheme();
-  const { decorations: deco } = useAppTheme();
+  const { decorations: deco, palette } = useAppTheme();
   const { t } = useTranslation('nutrition');
   const met = diversity.remaining === 0;
 
@@ -21,7 +23,7 @@ export default function WeekPlantProgress({ diversity }: Props) {
       style={[
         styles.card,
         {
-          backgroundColor: theme.colors.surfaceVariant,
+          backgroundColor: theme.colors.surface,
           borderRadius: deco.radius.lg,
         },
       ]}
@@ -40,11 +42,22 @@ export default function WeekPlantProgress({ diversity }: Props) {
         </Text>
       </View>
 
-      <ProgressBar
-        progress={diversity.progress}
-        color={met ? theme.colors.primary : theme.colors.secondary}
-        style={styles.bar}
-      />
+      {/*
+        Drawn by hand: Paper's ProgressBar sizes its web wrapper to 100% height,
+        which spread it over the weekday strip below. The track has its own
+        token so the target reads before any plant is logged.
+      */}
+      <View style={[styles.bar, { backgroundColor: palette.track }]}>
+        <View
+          style={[
+            styles.barFill,
+            {
+              width: `${clamp01(diversity.progress) * 100}%`,
+              backgroundColor: met ? theme.colors.primary : theme.colors.secondary,
+            },
+          ]}
+        />
+      </View>
 
       <View style={styles.footerRow}>
         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
@@ -65,24 +78,33 @@ export default function WeekPlantProgress({ diversity }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: 14,
-    gap: 10,
-    marginBottom: 12,
+    padding: space.md,
+    gap: space.sm,
+    marginBottom: space.md,
   },
+  // Both rows wrap: at large text the two halves stack instead of colliding.
   headingRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    gap: 8,
+    columnGap: space.sm,
   },
+  /** Capsule: the radius is half the height. */
   bar: {
     height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
     borderRadius: 4,
   },
   footerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    columnGap: space.sm,
   },
 });

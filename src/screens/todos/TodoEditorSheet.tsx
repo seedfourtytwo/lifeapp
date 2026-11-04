@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button, Dialog, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import ChoiceChip from '../../components/ChoiceChip';
 import QuietText from '../../components/QuietText';
 import { TODO_NOTE_MAX_LENGTH, TODO_TITLE_MAX_LENGTH, type Todo } from '../../protocol';
 import { dictationMicIcon } from '../../dictation/dictationField';
 import { livePreviewText } from '../../dictation/livePreview';
 import { useDictationField } from '../../dictation/useDictationField';
+import { space } from '../../theme/spacing';
+import { dueChipDates, matchDueChip, type DueChip } from './dueChips';
+import { useDialogKeyboardLift } from '../../hooks/useDialogKeyboardLift';
 
 export interface TodoDraft {
   title: string;
@@ -16,11 +20,24 @@ export interface TodoDraft {
 
 type Props = {
   visible: boolean;
+  /** The app's calendar date; the deadline chips count from it. */
+  today: string;
   /** Null while adding; a todo while editing. */
   todo: Todo | null;
   onDismiss: () => void;
   onSave: (draft: TodoDraft) => Promise<void> | void;
-  onDelete?: (todo: Todo) => Promise<void> | void;
+  /** Deletes at once — the list offers Undo, so there is no confirm step. */
+  onDelete?: (todo: Todo) => void;
+};
+
+const QUICK_CHIPS = ['none', 'today', 'tomorrow', 'weekend', 'nextWeek'] as const;
+const CHIP_LABEL_KEY: Record<DueChip, string> = {
+  none: 'editor.deadlineNone',
+  today: 'editor.dueToday',
+  tomorrow: 'editor.dueTomorrow',
+  weekend: 'editor.dueWeekend',
+  nextWeek: 'editor.dueNextWeek',
+  custom: 'editor.dueOther',
 };
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,14 +49,24 @@ function isRealDate(value: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDelete }: Props) {
+export default function TodoEditorSheet({
+  visible,
+  today,
+  todo,
+  onDismiss,
+  onSave,
+  onDelete,
+}: Props) {
   const theme = useTheme();
   const { t } = useTranslation('todos');
   const { t: tCommon } = useTranslation('common');
+  const keyboardLift = useDialogKeyboardLift(visible);
 
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [dueDate, setDueDate] = useState('');
+  /** "Other day" was picked, or the saved deadline matches no chip. */
+  const [customDate, setCustomDate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,9 +102,24 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
     setTitle(todo?.title ?? '');
     setNote(todo?.note ?? '');
     setDueDate(todo?.dueDate ?? '');
+    setCustomDate(matchDueChip(todo?.dueDate ?? null, today) === 'custom');
     setError(null);
     setSaving(false);
+    // `today` only matters at the moment the sheet opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, todo]);
+
+  const chipDates = dueChipDates(today);
+  const selectedChip: DueChip = customDate ? 'custom' : matchDueChip(dueDate || null, today);
+  const pickChip = (chip: DueChip) => {
+    setError(null);
+    if (chip === 'custom') {
+      setCustomDate(true);
+      return;
+    }
+    setCustomDate(false);
+    setDueDate(chip === 'none' ? '' : chipDates[chip]);
+  };
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -110,24 +152,15 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
 
   const handleDelete = () => {
     if (!todo || !onDelete) return;
-    Alert.alert(t('editor.deleteConfirmTitle'), t('editor.deleteConfirmBody'), [
-      { text: tCommon('actions.cancel'), style: 'cancel' },
-      {
-        text: t('editor.deleteConfirmAction'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            await onDelete(todo);
-            onDismiss();
-          })();
-        },
-      },
-    ]);
+    onDelete(todo);
+    onDismiss();
   };
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={locked ? () => {} : onDismiss}>
+      <Dialog visible={visible} onDismiss={locked ? () => {} : onDismiss}
+        style={keyboardLift > 0 ? { marginBottom: keyboardLift } : undefined}
+      >
         <Dialog.Title>{todo ? t('editor.editTitle') : t('editor.newTitle')}</Dialog.Title>
         <Dialog.Content style={styles.content}>
           <TextInput
@@ -143,29 +176,37 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
             returnKeyType="done"
           />
 
-          <TextInput
-            mode="outlined"
-            label={t('editor.deadlineLabel')}
-            placeholder={t('editor.deadlinePlaceholder')}
-            value={dueDate}
-            onChangeText={(next) => {
-              setDueDate(next);
-              setError(null);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="numbers-and-punctuation"
-            maxLength={10}
-            right={
-              dueDate.length > 0 ? (
-                <TextInput.Icon
-                  icon="close"
-                  onPress={() => setDueDate('')}
-                  accessibilityLabel={t('editor.deadlineClear')}
-                />
-              ) : undefined
-            }
-          />
+          <View
+            style={styles.chips}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('editor.deadlineLabel')}
+          >
+            {[...QUICK_CHIPS, 'custom' as const].map((chip) => (
+              <ChoiceChip
+                key={chip}
+                label={t(CHIP_LABEL_KEY[chip])}
+                selected={selectedChip === chip}
+                onPress={() => pickChip(chip)}
+              />
+            ))}
+          </View>
+
+          {customDate ? (
+            <TextInput
+              mode="outlined"
+              label={t('editor.deadlineLabel')}
+              placeholder={t('editor.deadlinePlaceholder')}
+              value={dueDate}
+              onChangeText={(next) => {
+                setDueDate(next);
+                setError(null);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+            />
+          ) : null}
 
           <TextInput
             mode="outlined"
@@ -248,7 +289,12 @@ export default function TodoEditorSheet({ visible, todo, onDismiss, onSave, onDe
 
 const styles = StyleSheet.create({
   content: {
-    gap: 12,
+    gap: space.md,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
   },
   /** Capped so a long note cannot push the actions off a short screen. */
   note: {

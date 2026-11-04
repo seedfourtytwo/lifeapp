@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import {
   Button,
-  Divider,
   IconButton,
   Modal,
   Portal,
@@ -221,8 +220,6 @@ export default function TrackerEditorDialog({
                 />
               ) : null}
             </ScrollView>
-
-            <Divider />
 
             <View style={styles.footer}>
               {editingId && onDelete ? (

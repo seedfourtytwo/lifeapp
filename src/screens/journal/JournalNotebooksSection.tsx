@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, Divider, Menu, Surface, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, Menu, Surface, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import IconPickerField from '../../components/trackerEditor/IconPickerField';
 import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
@@ -21,6 +21,7 @@ import {
   suggestedNotebookColor,
   updateJournalNotebook,
 } from '../../notes/journalNotebooks';
+import { notebookInk } from '../../notes/notebookInk';
 
 type Props = {
   notebooks: JournalNotebook[];
@@ -35,21 +36,22 @@ type Draft = {
 };
 
 function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 'icon'> }) {
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
+  const ink = notebookInk(notebook.color, themeMode);
   return (
     <View
       style={[
         styles.well,
         {
-          backgroundColor: `${notebook.color}33`,
+          backgroundColor: `${ink}33`,
           borderRadius: isCartoon ? deco.radius.sm : 12,
         },
       ]}
     >
       {notebook.icon ? (
-        <TrackerIcon name={notebook.icon} size={22} color={notebook.color} />
+        <TrackerIcon name={notebook.icon} size={22} color={ink} />
       ) : (
-        <MaterialCommunityIcons name="notebook-outline" size={22} color={notebook.color} />
+        <MaterialCommunityIcons name="notebook-outline" size={22} color={ink} />
       )}
     </View>
   );
@@ -58,7 +60,7 @@ function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 
 export default function JournalNotebooksSection({ notebooks, onChanged }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outlineVariant,
             borderRadius: deco.radius.md,
-            borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+            borderWidth: deco.cardBorderWidth,
           },
         ]}
         elevation={0}
@@ -183,7 +185,6 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
 
         {notebooks.map((notebook, index) => (
           <React.Fragment key={notebook.id}>
-            <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
             <View style={styles.row}>
               <Pressable
                 onPress={() => startEdit(notebook)}
@@ -249,7 +250,6 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
 
         {draft ? (
           <>
-            <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
             <View style={styles.editor}>
               <TextInput
                 mode="outlined"

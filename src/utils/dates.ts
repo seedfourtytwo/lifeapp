@@ -30,6 +30,16 @@ export function formatChartLabel(dateStr: string): string {
   return d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: 'numeric' });
 }
 
+/**
+ * One axis label: a short weekday when a week fits, the day of the month when
+ * the range is denser. Short on purpose — the full date is in the day panel.
+ */
+export function formatAxisLabel(dateStr: string, style: 'weekday' | 'day'): string {
+  const d = parseLocalDate(dateStr);
+  if (style === 'day') return String(d.getDate());
+  return d.toLocaleDateString(getDateLocale(), { weekday: 'short' }).replace(/\.$/, '');
+}
+
 export function formatFullDate(dateStr: string): string {
   const d = parseLocalDate(dateStr);
   return d.toLocaleDateString(getDateLocale(), {

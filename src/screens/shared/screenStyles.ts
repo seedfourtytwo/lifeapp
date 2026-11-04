@@ -27,8 +27,4 @@ export const homeTabScreenStyles = StyleSheet.create({
   error: {
     marginBottom: space.sm,
   },
-  /** A tracker outside its time window: inactive, not merely secondary. */
-  dimmedCard: {
-    opacity: 0.62,
-  },
 });

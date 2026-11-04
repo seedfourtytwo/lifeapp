@@ -18,6 +18,7 @@ import {
   type FoodGroup,
 } from '../../protocol';
 import type { FoodItemInput } from '../../nutrition/foodCatalog';
+import { useDialogKeyboardLift } from '../../hooks/useDialogKeyboardLift';
 
 type Props = {
   visible: boolean;
@@ -34,6 +35,7 @@ type Props = {
  * food and no risk of a partial form silently dropping fields it cannot show.
  */
 export default function FoodEditorDialog({ visible, initialName, onDismiss, onSave }: Props) {
+  const keyboardLift = useDialogKeyboardLift(visible);
   const theme = useTheme();
   const { t } = useTranslation('nutrition');
   const { t: tCommon } = useTranslation('common');
@@ -81,7 +83,9 @@ export default function FoodEditorDialog({ visible, initialName, onDismiss, onSa
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={onDismiss}>
+      <Dialog visible={visible} onDismiss={onDismiss}
+        style={keyboardLift > 0 ? { marginBottom: keyboardLift } : undefined}
+      >
         <Dialog.Title>{t('editor.addTitle')}</Dialog.Title>
         <Dialog.Content style={styles.content}>
           <TextInput

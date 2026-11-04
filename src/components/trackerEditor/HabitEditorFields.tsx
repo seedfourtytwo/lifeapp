@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Button, Chip, Divider, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
+import { Button, Chip, SegmentedButtons, Switch, Text, TextInput } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { getDateLocale } from '../../i18n';
@@ -131,7 +131,7 @@ function HabitEditorFields({ state, onChange }: Props) {
         )}
       </FormSection>
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <FormSection
         title={t('habitFields.streakSectionTitle')}
@@ -153,7 +153,7 @@ function HabitEditorFields({ state, onChange }: Props) {
         </View>
       </FormSection>
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <FormSection
         title={t('habitFields.repeatSectionTitle')}
@@ -266,7 +266,7 @@ function HabitEditorFields({ state, onChange }: Props) {
         ) : null}
       </FormSection>
 
-      <Divider style={styles.divider} />
+      <View style={styles.sectionGap} />
 
       <FormSection
         title={t('habitFields.timeWindowSectionTitle')}

@@ -1,7 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Divider, Surface, Text, useTheme } from 'react-native-paper';
+import { Surface, Text, useTheme } from 'react-native-paper';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import Rule from '../Rule';
+import { settingsRowStyles } from './SettingsRow';
 
 type Props = {
   title?: string;
@@ -11,7 +14,7 @@ type Props = {
 
 export default function SettingsGroup({ title, caption, children }: Props) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const items = React.Children.toArray(children).filter(Boolean);
 
   return (
@@ -32,7 +35,7 @@ export default function SettingsGroup({ title, caption, children }: Props) {
               backgroundColor: theme.colors.surface,
               borderColor: theme.colors.outlineVariant,
               borderRadius: deco.radius.md,
-              borderWidth: isCartoon ? deco.cardBorderWidth : StyleSheet.hairlineWidth,
+              borderWidth: deco.cardBorderWidth,
             },
           ]}
           elevation={0}
@@ -40,7 +43,7 @@ export default function SettingsGroup({ title, caption, children }: Props) {
           {items.map((child, index) => (
             <React.Fragment key={index}>
               {index > 0 ? (
-                <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                <Rule style={styles.separator} />
               ) : null}
               {child}
             </React.Fragment>
@@ -61,16 +64,20 @@ export default function SettingsGroup({ title, caption, children }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 8,
+    gap: space.sm,
   },
   title: {
-    paddingHorizontal: 8,
+    paddingHorizontal: space.sm,
   },
   surface: {
     overflow: 'hidden',
   },
+  /** Inset to where the row's title starts, so glyphs read as one column. */
+  separator: {
+    marginLeft: space.lg + settingsRowStyles.iconSlot.width + space.lg,
+  },
   caption: {
-    paddingHorizontal: 8,
+    paddingHorizontal: space.sm,
     lineHeight: 18,
   },
 });

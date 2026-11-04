@@ -121,9 +121,7 @@ export function NoteEditorPreview({
           ? { minHeight: minHeight ?? undefined, maxHeight: maxHeight ?? undefined }
           : null,
         {
-          borderColor: theme.colors.outline,
-          borderWidth: StyleSheet.hairlineWidth,
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.surfaceVariant,
         },
       ]}
     >

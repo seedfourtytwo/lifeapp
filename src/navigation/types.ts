@@ -7,7 +7,8 @@ export type SettingsStackParamList = {
 
 export type RootStackParamList = {
   Home: undefined;
-  Trackers: undefined;
+  /** `add` opens the new-tracker editor straight away; closing it returns. */
+  Trackers: { add?: 'habit' | 'counter' } | undefined;
   Ingredients: undefined;
   IngredientEditor: { foodId?: string };
   AppSettings: NavigatorScreenParams<SettingsStackParamList> | undefined;

@@ -2,6 +2,7 @@ import { useColorScheme } from 'react-native';
 import { resolveThemeMode, type ResolvedTheme } from '../protocol/appSettings';
 import { useSettingsStore } from '../store/settingsStore';
 import { getThemeDecorations, type ThemeDecorations } from '../theme/decorations';
+import { getAppPalette, type AppPalette } from '../theme/palette';
 
 export interface AppThemeContext {
   /**
@@ -10,6 +11,8 @@ export interface AppThemeContext {
    */
   themeMode: ResolvedTheme;
   decorations: ThemeDecorations;
+  /** Theme colours that are not Paper roles — accent, amber, series, track. */
+  palette: AppPalette;
   isCartoon: boolean;
 }
 
@@ -27,6 +30,7 @@ export function useAppTheme(): AppThemeContext {
   return {
     themeMode,
     decorations: getThemeDecorations(themeMode),
+    palette: getAppPalette(themeMode),
     isCartoon: themeMode === 'cartoon',
   };
 }

@@ -25,7 +25,6 @@ const CONTAINER_STATE_KEYS = new Set([
   'disabled',
   'disabledRow',
   'scopeRow',
-  'dimmedCard',
   // Decorative fills behind content — no text takes its colour from these.
   'aura',
   'wash',
@@ -90,6 +89,26 @@ describe('no text is dimmed with opacity', () => {
   }
 
   it('has no opacity outside the container-state allowlist', () => {
+    expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * A finished item is the reward, not an inactive one: fading a whole row because
+ * it is done dims its text exactly as `opacity` on the text would (a done habit
+ * measured 2.43:1). Done-ness is shown by the tick and the fill, never by a fade.
+ */
+describe('finished items are not faded', () => {
+  const FADE_PROP = /\b(dimmed|faded|muted|quiet)=\{[^}]*\b(isDone|done|completed|isCompleted)\b/;
+
+  it('passes no done flag into a dimming prop', () => {
+    const offenders = sourceFiles(SRC).flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => FADE_PROP.test(line))
+        .map(({ line, index }) => `${file.replace(`${SRC}/`, 'src/')}:${index + 1}  ${line.trim()}`),
+    );
     expect(offenders).toEqual([]);
   });
 });

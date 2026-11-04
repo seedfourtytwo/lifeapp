@@ -170,7 +170,7 @@ export default function IngredientsScreen() {
         <SettingsRow
           icon={row.archived ? 'archive-outline' : FOOD_GROUP_ICONS[item.group]}
           iconColor={
-            !row.archived && isPlantFood(item) ? theme.colors.onPrimaryContainer : undefined
+            !row.archived && isPlantFood(item) ? theme.colors.primary : undefined
           }
           title={name}
           description={summarize(item, t)}
