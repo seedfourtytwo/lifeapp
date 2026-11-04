@@ -53,6 +53,9 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
     ['label on error', c.onError, c.error],
     // Paper's SegmentedButtons paints the selected segment with these two.
     ['label on secondaryContainer', c.onSecondaryContainer, c.secondaryContainer],
+    // The undo bar is the one inverse surface: its line and its Undo action.
+    ['undo line on inverseSurface', c.inverseOnSurface, c.inverseSurface],
+    ['undo action on inverseSurface', c.inversePrimary, c.inverseSurface],
   ];
 
   it.each(textPairs)('%s clears AA', (_label, fg, bg) => {

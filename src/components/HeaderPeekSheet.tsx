@@ -89,11 +89,13 @@ export default function HeaderPeekSheet({
         contentContainerStyle={styles.contentContainer}
       >
         <Animated.View
+          testID="peek-sheet"
           style={[
             styles.sheet,
+            deco.sheetShadow,
             {
               maxHeight: Math.round(windowHeight * maxHeightRatio),
-              paddingBottom: space.lg + insets.bottom,
+              paddingBottom: space.xl + insets.bottom,
               backgroundColor: theme.colors.surface,
               borderTopLeftRadius: deco.radius.xl,
               borderTopRightRadius: deco.radius.xl,
@@ -101,6 +103,11 @@ export default function HeaderPeekSheet({
             },
           ]}
         >
+          <View
+            testID="peek-grabber"
+            style={[styles.grabber, { backgroundColor: theme.colors.outlineVariant }]}
+          />
+
           <View style={styles.headingRow}>
             <Text
               style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
@@ -138,8 +145,17 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
+    paddingHorizontal: space.xl,
+    paddingTop: space.md,
+  },
+  /** The handle every sheet in the app carries: a sheet, not a pop-up. */
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    // Geometric: half the height is what makes it a capsule.
+    borderRadius: 2,
+    marginBottom: space.lg,
   },
   headingRow: {
     flexDirection: 'row',
@@ -159,7 +175,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: space.md,
-    minHeight: 40,
+    marginTop: space.lg,
+    minHeight: 48,
   },
 });
