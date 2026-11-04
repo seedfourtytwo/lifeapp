@@ -70,7 +70,7 @@ export function InteractiveDailyChart({
   dense = false,
 }: InteractiveDailyChartProps) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const [width, setWidth] = React.useState(0);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -154,7 +154,7 @@ export function InteractiveDailyChart({
                       y={y}
                       width={barW}
                       height={barH}
-                      rx={isCartoon ? deco.radius.sm : 3}
+                      rx={deco.radius.xs}
                       fill={fill}
                       opacity={selected ? 1 : completed ? 0.85 : 0.45}
                       stroke={selected ? theme.colors.onSurface : 'transparent'}

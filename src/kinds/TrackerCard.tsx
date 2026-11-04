@@ -2,7 +2,6 @@ import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { getTrackerCardChrome } from '../utils/trackerCardChrome';
 import { trackerCardStyles as styles } from './trackerCardStyles';
 import { TrackerCardProgressFill } from './TrackerCardProgressFill';
 
@@ -22,17 +21,13 @@ type Props = {
 };
 
 /**
- * Shared Home tracker card shell.
- * Same outer border for every card; progress is an inner wash.
+ * Shared Home tracker card shell: a tile on the stepped page, no outline.
+ * Progress is an inner wash.
  */
 export default function TrackerCard({ children, progress = null }: Props) {
   const theme = useTheme();
   const { decorations: deco } = useAppTheme();
-  const chrome = getTrackerCardChrome({
-    decorations: deco,
-    fillColor: theme.colors.surface,
-    outlineColor: theme.colors.outline,
-  });
+  const chrome = { borderRadius: deco.radius.lg, backgroundColor: theme.colors.surface };
 
   return (
     <View style={[styles.card, chrome]}>
@@ -40,7 +35,7 @@ export default function TrackerCard({ children, progress = null }: Props) {
         <TrackerCardProgressFill
           progress={progress.value}
           color={progress.color}
-          borderRadius={deco.radius.md}
+          borderRadius={deco.radius.lg}
         />
       ) : null}
       <View style={styles.cardContent}>{children}</View>

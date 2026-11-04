@@ -59,7 +59,7 @@ export function CounterWidget({
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
   const { width } = useWindowDimensions();
-  const { themeMode, decorations: deco, isCartoon } = useAppTheme();
+  const { themeMode, decorations: deco } = useAppTheme();
   const [editVisible, setEditVisible] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -83,11 +83,7 @@ export function CounterWidget({
 
   const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
 
-  const metaColor = isComplete
-    ? theme.colors.primary
-    : isCartoon
-      ? theme.colors.onSecondaryContainer
-      : theme.colors.onSurfaceVariant;
+  const metaColor = isComplete ? theme.colors.primary : theme.colors.onSurfaceVariant;
 
   const closeEdit = () => {
     if (saving) return;
@@ -126,8 +122,8 @@ export function CounterWidget({
   };
 
   // Tonal, not a solid slab: the +1 is the row's action, not its loudest thing.
-  const primaryBg = isCartoon ? theme.colors.primary : theme.colors.primaryContainer;
-  const primaryFg = isCartoon ? theme.colors.onPrimary : theme.colors.onPrimaryContainer;
+  const primaryBg = theme.colors.primaryContainer;
+  const primaryFg = theme.colors.onPrimaryContainer;
 
   const bubbles = [
     ...extraIncrements.map((increment) => ({
@@ -257,10 +253,6 @@ export function CounterWidget({
                 {
                   backgroundColor: theme.colors.surface,
                   borderRadius: deco.radius.lg,
-                  ...(isCartoon && {
-                    borderWidth: deco.cardBorderWidth,
-                    borderColor: theme.colors.outline,
-                  }),
                 },
               ]}
             >
@@ -306,7 +298,6 @@ export function CounterWidget({
                   onPress={() => void saveEdit()}
                   loading={saving}
                   disabled={saving}
-                  buttonColor={isCartoon ? theme.colors.primary : undefined}
                   style={{ borderRadius: deco.buttonRadius }}
                 >
                   {tCommon('actions.save')}

@@ -3,15 +3,12 @@ jest.mock('../src/hooks/useAppTheme', () => ({
   useAppTheme: () => ({
     themeMode: 'light',
     decorations: {
-      borderWidth: 1,
-      cardBorderWidth: 1,
-      radius: { sm: 8, md: 12, lg: 16 },
-      tabRadius: 12,
-      progressHeight: 3,
-      buttonRadius: 8,
-      headerBorderWidth: 1,
+      borderWidth: 1.5,
+      radius: { sm: 8, md: 14, lg: 20 },
+      tabRadius: 14,
+      progressHeight: 4,
+      buttonRadius: 999,
     },
-    isCartoon: false,
   }),
 }));
 

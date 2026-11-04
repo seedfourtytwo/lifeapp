@@ -95,6 +95,7 @@ export {
   THEME_MODES,
   WEATHER_LOCATION_MODES,
   isThemeMode,
+  parseThemeMode,
   isWeatherLocationMode,
   parseEveningCheckInTime,
 } from './appSettings';

@@ -54,7 +54,7 @@ interface DayRow {
 export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
   const { t } = useTranslation(['insights', 'common']);
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const { elementId } = route.params;
   const [element, setElement] = useState<ElementDefinition | null>(null);
   const [days, setDays] = useState<DayRow[]>([]);
@@ -328,17 +328,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        <Card
-          style={[
-            styles.card,
-            isCartoon && {
-              borderWidth: deco.cardBorderWidth,
-              borderColor: theme.colors.outline,
-              borderRadius: deco.radius.md,
-              backgroundColor: theme.colors.surface,
-            },
-          ]}
-        >
+        <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleMedium">{t('history.lastNDays', { count: rangeDays })}</Text>
             <InteractiveDailyChart
@@ -346,7 +336,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               series={[
                 {
                   id: elementId,
-                  color: isCartoon ? theme.colors.secondary : theme.colors.primary,
+                  color: theme.colors.primary,
                   values: chartModel.plotValues,
                   completed: chartModel.completedFlags,
                 },
@@ -383,8 +373,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               styles.dayPanel,
               {
                 borderColor: theme.colors.outlineVariant,
-                borderWidth: isCartoon ? deco.borderWidth : 0,
-                borderRadius: isCartoon ? deco.radius.md : 8,
+                borderRadius: deco.radius.sm,
                 backgroundColor: theme.colors.surface,
               },
             ]}

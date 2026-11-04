@@ -45,9 +45,7 @@ export default function TrackersCollapsibleSection({
         styles.section,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.outlineVariant,
-          borderRadius: deco.radius.md,
-          borderWidth: deco.cardBorderWidth,
+          borderRadius: deco.radius.lg,
         },
       ]}
       elevation={0}

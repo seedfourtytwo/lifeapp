@@ -5,18 +5,15 @@ export interface TrackerKindAccent {
   color: string;
 }
 
+/** Habits wear the moss, counters the notebook amber: two hues, both from the palette. */
 const TRACKER_KIND_ACCENTS: Record<ResolvedTheme, Record<ElementKind, TrackerKindAccent>> = {
   light: {
-    counter: { color: '#EA580C' },
-    habit: { color: '#0D9488' },
+    counter: { color: '#9A5B00' },
+    habit: { color: '#2E6A4E' },
   },
   dark: {
-    counter: { color: '#FB923C' },
-    habit: { color: '#2DD4BF' },
-  },
-  cartoon: {
-    counter: { color: '#C2410C' },
-    habit: { color: '#5B9BD5' },
+    counter: { color: '#F0B85A' },
+    habit: { color: '#86C9A3' },
   },
 };
 

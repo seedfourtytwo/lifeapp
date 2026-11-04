@@ -3,7 +3,7 @@ import {
   APP_SETTING_KEYS,
   DEFAULT_EVENING_CHECK_IN_TIME,
   isAppLanguage,
-  isThemeMode,
+  parseThemeMode,
   isWeatherLocationMode,
   parseEveningCheckInTime,
   type AppSettings,
@@ -52,8 +52,9 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
 
   const settings: AppSettings = {};
 
-  if (themeMode && isThemeMode(themeMode)) {
-    settings.themeMode = themeMode;
+  const parsedThemeMode = parseThemeMode(themeMode);
+  if (parsedThemeMode) {
+    settings.themeMode = parsedThemeMode;
   }
   if (appLanguage && isAppLanguage(appLanguage)) {
     settings.appLanguage = appLanguage;

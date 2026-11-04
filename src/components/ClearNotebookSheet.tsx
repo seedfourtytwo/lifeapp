@@ -23,7 +23,7 @@ export default function ClearNotebookSheet({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('settings');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const [clearingId, setClearingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,10 +58,6 @@ export default function ClearNotebookSheet({
           {
             backgroundColor: theme.colors.surface,
             borderRadius: deco.radius.lg,
-            ...(isCartoon && {
-              borderWidth: deco.cardBorderWidth,
-              borderColor: theme.colors.outline,
-            }),
           },
         ]}
       >

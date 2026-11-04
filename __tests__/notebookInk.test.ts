@@ -7,7 +7,7 @@
  */
 import { JOURNAL_NOTEBOOK_COLORS } from '../src/protocol';
 import { notebookInk } from '../src/notes/notebookInk';
-import { appCartoonTheme, appDarkTheme, appLightTheme } from '../src/theme/themes';
+import { appDarkTheme, appLightTheme } from '../src/theme/themes';
 
 const GRAPHIC_FLOOR = 3;
 const WELL_ALPHA = 0x33 / 255;
@@ -38,10 +38,10 @@ function wash(fg: string, bg: string): string {
     .join('')}`;
 }
 
-const themes = { light: appLightTheme, dark: appDarkTheme, cartoon: appCartoonTheme } as const;
+const themes = { light: appLightTheme, dark: appDarkTheme } as const;
 
 describe('notebookInk', () => {
-  for (const name of ['light', 'dark', 'cartoon'] as const) {
+  for (const name of ['light', 'dark'] as const) {
     const theme = themes[name];
     for (const color of JOURNAL_NOTEBOOK_COLORS) {
       it(`${color} clears 3:1 in the ${name} theme, on the page and in its well`, () => {
@@ -56,6 +56,5 @@ describe('notebookInk', () => {
 
   it('keeps every hue that already reads', () => {
     expect(notebookInk('#2563EB', 'light')).toBe('#2563EB');
-    expect(notebookInk('#9333EA', 'cartoon')).toBe('#9333EA');
   });
 });

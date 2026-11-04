@@ -14,7 +14,6 @@ import type { TextStyle } from 'react-native';
  *  - `data` — IBM Plex Mono, for anything that is a quantity: streaks, timers,
  *    counts, temperatures, dates in a row. Its figures are the same width, so
  *    a running timer stops jittering and columns line up.
- *  - `meta` — the same mono, small, for the quiet status line under a heading.
  *
  * Nothing here sets `letterSpacing` or `textTransform`. Both were doing the same
  * job — making a line look like a label rather than reading as one — and on a
@@ -32,26 +31,49 @@ export const fontFamily = {
 /**
  * The roles these faces play. Sizes are unitless `sp` and scale with the system
  * font — nothing here caps a multiplier; the two places that must are marked at
- * their call sites.
+ * their call sites. Roles without a `fontFamily` are the phone's own face.
  */
 export const typeScale = {
   /** The date a Home tab is showing. One per screen. */
   dayTitle: {
     fontFamily: fontFamily.display,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 34,
+    lineHeight: 40,
   },
-  /** A screen or sheet title where the display face still earns its place. */
+  /** A screen or sheet title. */
   screenTitle: {
     fontFamily: fontFamily.displayMedium,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 24,
+    lineHeight: 30,
   },
-  /** Quiet status under a title: "0 of 9 done". */
+  /** A habit, counter or settings row's name. */
+  rowName: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  /** Body copy and what is typed into a field. */
+  body: {
+    fontSize: 17,
+    lineHeight: 24,
+  },
+  /** The line under a row's name: "4 days in a row". */
+  secondary: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  /** Field labels, group headings, captions. */
+  caption: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  /**
+   * Quiet status under the day title: "2 of 6 done". Words, so the phone's
+   * face; mono is kept for numbers that tick.
+   */
   meta: {
-    fontFamily: fontFamily.data,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 18,
   },
   /** A number the eye returns to: today's total, a streak, a temperature. */
   data: {
@@ -63,5 +85,13 @@ export const typeScale = {
     fontFamily: fontFamily.dataMedium,
     fontVariant: ['tabular-nums'],
     fontSize: 15,
+    lineHeight: 20,
+  },
+  /** The headline figure on a history screen. */
+  bigStat: {
+    fontFamily: fontFamily.dataMedium,
+    fontVariant: ['tabular-nums'],
+    fontSize: 26,
+    lineHeight: 30,
   },
 } satisfies Record<string, TextStyle>;

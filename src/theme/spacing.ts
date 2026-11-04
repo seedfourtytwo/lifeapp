@@ -24,3 +24,19 @@ export const space = {
 } as const;
 
 export type Space = (typeof space)[keyof typeof space];
+
+/**
+ * The screen's rhythm, built from the scale above. A 20dp gutter and 72dp rows
+ * are what give a list room to breathe at arm's length; 16 and a row sized by
+ * its contents read as a settings page.
+ */
+export const layout = {
+  /** Left and right edge of every screen. */
+  gutter: 20,
+  /** A habit, counter or settings row. */
+  rowHeight: 72,
+  /** Between rows in a list. */
+  rowGap: space.sm,
+  /** Between sections of a screen. */
+  sectionGap: space.xl,
+} as const;

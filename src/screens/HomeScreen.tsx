@@ -81,7 +81,7 @@ function HomePagerPage({
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation('home');
-  const { decorations: deco, isCartoon, palette } = useAppTheme();
+  const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: pageWidth } = useWindowDimensions();
   const pagerRef = useRef<ScrollView>(null);
@@ -395,10 +395,8 @@ export default function HomeScreen() {
           {
             paddingBottom: Math.max(insets.bottom, 8),
             // The dock is part of the page, not a bar laid over it: same ground,
-            // no rule above. Cartoon keeps its drawn border, as it does everywhere.
-            backgroundColor: isCartoon ? theme.colors.surface : theme.colors.background,
-            borderTopColor: theme.colors.outline,
-            borderTopWidth: isCartoon ? deco.headerBorderWidth : 0,
+            // no rule above.
+            backgroundColor: theme.colors.background,
           },
         ]}
       >

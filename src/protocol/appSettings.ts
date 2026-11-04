@@ -13,17 +13,32 @@ export function isAppLanguage(value: string): value is AppLanguage {
  * What the person chose. `system` is a preference, not a look — it says "ask
  * the phone" and resolves to one of `RESOLVED_THEMES` at paint time.
  */
-export const THEME_MODES = ['system', 'light', 'dark', 'cartoon'] as const;
+export const THEME_MODES = ['system', 'light', 'dark'] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 
 /** What can actually be painted. `getAppTheme` takes one of these, never a preference. */
-export const RESOLVED_THEMES = ['light', 'dark', 'cartoon'] as const;
+export const RESOLVED_THEMES = ['light', 'dark'] as const;
 
 export type ResolvedTheme = (typeof RESOLVED_THEMES)[number];
 
 export function isThemeMode(value: string): value is ThemeMode {
   return (THEME_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * Themes that existed once and were retired. A phone or a backup may still
+ * say one, so it reads back as `system` instead of failing the read.
+ * Cartoon went in 1.6.0.
+ */
+const RETIRED_THEME_MODES: readonly string[] = ['cartoon'];
+
+/** A stored or imported theme value, made safe to use. Unknown values give undefined. */
+export function parseThemeMode(value: string | null | undefined): ThemeMode | undefined {
+  if (value == null) return undefined;
+  if (isThemeMode(value)) return value;
+  if (RETIRED_THEME_MODES.includes(value)) return 'system';
+  return undefined;
 }
 
 /**
@@ -65,7 +80,12 @@ const EveningCheckInTimeSchema = z
   .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Expected HH:mm');
 
 const AppSettingsObjectSchema = z.object({
-  themeMode: z.enum(THEME_MODES).optional(),
+  themeMode: z
+    .preprocess(
+      (value) => (typeof value === 'string' ? (parseThemeMode(value) ?? value) : value),
+      z.enum(THEME_MODES),
+    )
+    .optional(),
   appLanguage: z.enum(APP_LANGUAGES).optional(),
   /** Parked — no Settings UI or scheduler. Kept for backup import. */
   eveningCheckInEnabled: z.boolean().optional(),

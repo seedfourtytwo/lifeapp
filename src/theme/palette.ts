@@ -8,45 +8,36 @@ import type { ResolvedTheme } from '../protocol/appSettings';
  * one of them to the body-text floor on both the card and the page.
  */
 export interface AppPalette {
-  /**
-   * The highlight for peeks, pickers and history marks. The brand colour in
-   * the slate themes; in cartoon a deep honey, because its bright gold
-   * `secondary` (#E8A317) is a fill and reads at 2:1 as a line or a glyph.
-   */
+  /** The highlight for peeks, pickers and history marks: the moss itself. */
   accent: string;
-  /** The notebook amber. The old #CA8A04 sat at 2.8:1 on white. */
+  /**
+   * The notebook amber, for the small colour dot a notebook carries. Deep
+   * enough to read as a mark on the page; the old #CA8A04 sat at 2.8:1.
+   */
   amber: string;
-  /** One colour per compared series in Insights, in order. */
+  /** One colour per compared series in Insights, in order. Moss leads. */
   series: readonly [string, string, string, string, string];
-  /** The empty part of a progress bar: one step darker than the card it is in. */
+  /** The empty part of a progress bar or strip: visible on a tile and in a well. */
   track: string;
 }
 
 const LIGHT: AppPalette = {
-  accent: '#0F766E',
-  amber: '#B45309',
-  series: ['#0F766E', '#1D4ED8', '#B45309', '#BE185D', '#6D28D9'],
-  track: '#CBD5E1',
+  accent: '#2E6A4E',
+  amber: '#9A5B00',
+  series: ['#2E6A4E', '#1D4ED8', '#9A5B00', '#BE185D', '#5B4BB0'],
+  track: '#BCC4BD',
 };
 
 const DARK: AppPalette = {
-  accent: '#2DD4BF',
-  amber: '#FBBF24',
-  series: ['#2DD4BF', '#60A5FA', '#FBBF24', '#F472B6', '#A78BFA'],
-  track: '#526175',
-};
-
-const CARTOON: AppPalette = {
-  accent: '#7E5F10',
-  amber: '#9A5B00',
-  series: ['#367A2E', '#1D4ED8', '#9A5B00', '#BE185D', '#6D28D9'],
-  track: '#BCD495',
+  accent: '#86C9A3',
+  amber: '#F0B85A',
+  series: ['#86C9A3', '#93B4F5', '#F0B85A', '#F28AB8', '#B9A9F0'],
+  track: '#3D4640',
 };
 
 const PALETTES: Record<ResolvedTheme, AppPalette> = {
   light: LIGHT,
   dark: DARK,
-  cartoon: CARTOON,
 };
 
 export function getAppPalette(mode: ResolvedTheme): AppPalette {

@@ -36,7 +36,7 @@ type Draft = {
 };
 
 function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 'icon'> }) {
-  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
+  const { decorations: deco, themeMode } = useAppTheme();
   const ink = notebookInk(notebook.color, themeMode);
   return (
     <View
@@ -44,7 +44,7 @@ function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 
         styles.well,
         {
           backgroundColor: `${ink}33`,
-          borderRadius: isCartoon ? deco.radius.sm : 12,
+          borderRadius: deco.radius.pill,
         },
       ]}
     >
@@ -154,9 +154,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
           styles.surface,
           {
             backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.outlineVariant,
-            borderRadius: deco.radius.md,
-            borderWidth: deco.cardBorderWidth,
+            borderRadius: deco.radius.lg,
           },
         ]}
         elevation={0}

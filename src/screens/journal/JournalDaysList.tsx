@@ -32,7 +32,7 @@ export default function JournalDaysList({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
 
   const journalDates = (() => {
     const seen = new Set<string>();
@@ -104,9 +104,7 @@ export default function JournalDaysList({
           styles.surface,
           {
             backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.outlineVariant,
-            borderRadius: deco.radius.md,
-            borderWidth: deco.cardBorderWidth,
+            borderRadius: deco.radius.lg,
           },
         ]}
         elevation={0}
@@ -131,7 +129,7 @@ export default function JournalDaysList({
                     styles.accent,
                     {
                       backgroundColor: selected ? theme.colors.primary : 'transparent',
-                      borderRadius: isCartoon ? 3 : 2,
+                      borderRadius: deco.radius.xs,
                     },
                   ]}
                 />

@@ -1,32 +1,31 @@
+import type { ViewStyle } from 'react-native';
 import type { ResolvedTheme } from '../protocol/appSettings';
 
 /**
- * Border widths, corner radii, and sizes that vary by theme.
+ * Border widths, corner radii, and depth.
  *
  * Nothing here is a hairline. `StyleSheet.hairlineWidth` is a sub-pixel line —
- * 0.38dp on a modern phone — and it renders as a grey haze rather than an edge,
- * so a card outlined that way looked unfinished rather than quiet. Light and
- * dark now separate a card from the page by fill; cartoon keeps its heavy
- * outline, which is the point of that theme. `noHairlines.test.ts` keeps it so.
+ * 0.38dp on a modern phone — and it renders as a grey haze rather than an edge.
+ * A tile separates from the page by its own fill, so there is no card border at
+ * all; `noHairlines.test.ts` keeps it so.
  *
- * The radius scale is what makes the cartoon theme feel like a different app
- * rather than a recoloured one, so it has to cover what components actually
- * need. A scale of three did not: twenty-nine literal radii had grown up around
- * it, and every one stayed at its light-theme roundness whichever theme was on.
- * The steps below are named for what they wrap.
+ * The radius steps are named for what they wrap, and step up with the size of
+ * the thing: an input is rounder than a tag, a tile rounder than an input, a
+ * sheet rounder than a tile. One radius on everything is what made the old
+ * screens look stamped out.
  */
 export interface RadiusScale {
   /** Hairline chips: a progress bar cap, a slash, a tick. */
   xs: number;
   /** Small inline things: tags, badges, segment ends. */
   sm: number;
-  /** The default for a control — buttons, inputs, wells. */
+  /** Inputs, wells and segmented controls. */
   md: number;
-  /** Cards and rows. */
+  /** Tiles and rows. */
   lg: number;
-  /** Sheets and panels. */
+  /** Sheet tops and confirm dialogs. */
   xl: number;
-  /** Fully round, for anything circular. Never varies by theme. */
+  /** Fully round: buttons, chips, discs. */
   pill: number;
 }
 
@@ -36,39 +35,48 @@ export interface ThemeDecorations {
    * a control. Wide enough to read as drawn rather than as an artefact.
    */
   borderWidth: number;
-  /**
-   * The edge of a card. Zero everywhere except cartoon, where the outline is
-   * the theme's whole idea: a card separates from the page by its own fill, and
-   * a hairline around it only ever read as a smudge.
-   */
-  cardBorderWidth: number;
   radius: RadiusScale;
   tabRadius: number;
   progressHeight: number;
   buttonRadius: number;
-  headerBorderWidth: number;
+  /**
+   * The one shadow in the app: sheets and the undo bar float on it. Tiles have
+   * none — the page being one step darker is enough.
+   */
+  sheetShadow: Pick<
+    ViewStyle,
+    'shadowColor' | 'shadowOffset' | 'shadowOpacity' | 'shadowRadius' | 'elevation'
+  >;
+  /** What dims the screen behind a sheet. */
+  scrim: string;
 }
 
-const PLAIN_DECORATIONS: ThemeDecorations = {
+const SHARED = {
   borderWidth: 1.5,
-  cardBorderWidth: 0,
-  radius: { xs: 2, sm: 8, md: 12, lg: 16, xl: 24, pill: 999 },
-  tabRadius: 12,
-  progressHeight: 3,
-  buttonRadius: 8,
-  headerBorderWidth: 0,
+  radius: { xs: 2, sm: 8, md: 14, lg: 20, xl: 28, pill: 999 },
+  tabRadius: 14,
+  progressHeight: 4,
+  buttonRadius: 999,
+} as const;
+
+const LIGHT: ThemeDecorations = {
+  ...SHARED,
+  sheetShadow: {
+    shadowColor: '#18201C',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  scrim: 'rgba(24, 32, 28, 0.36)',
 };
 
-const CARTOON_DECORATIONS: ThemeDecorations = {
-  borderWidth: 2,
-  cardBorderWidth: 3,
-  radius: { xs: 4, sm: 14, md: 18, lg: 22, xl: 28, pill: 999 },
-  tabRadius: 18,
-  progressHeight: 8,
-  buttonRadius: 14,
-  headerBorderWidth: 3,
+const DARK: ThemeDecorations = {
+  ...SHARED,
+  sheetShadow: { ...LIGHT.sheetShadow, shadowColor: '#000000' },
+  scrim: 'rgba(0, 0, 0, 0.5)',
 };
 
 export function getThemeDecorations(mode: ResolvedTheme): ThemeDecorations {
-  return mode === 'cartoon' ? CARTOON_DECORATIONS : PLAIN_DECORATIONS;
+  return mode === 'dark' ? DARK : LIGHT;
 }

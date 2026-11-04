@@ -3,24 +3,25 @@
  *
  * `themeMode` is what the person chose, and one of those choices is "follow the
  * phone". Everything that paints — Paper's theme, the decorations, the status
- * bar — needs the *resolved* answer instead, which is only ever light, dark, or
- * cartoon. Keeping the two types apart is what stops `getAppTheme('system')`
+ * bar — needs the *resolved* answer instead, which is only ever light or dark. Keeping the two types apart is what stops `getAppTheme('system')`
  * from quietly falling through to light.
  */
 import {
+  AppSettingsSchema,
   RESOLVED_THEMES,
   THEME_MODES,
   isThemeMode,
+  parseThemeMode,
   resolveThemeMode,
 } from '../src/protocol/appSettings';
 
 describe('theme preference', () => {
-  it('offers system alongside the three painted themes', () => {
-    expect(THEME_MODES).toEqual(['system', 'light', 'dark', 'cartoon']);
+  it('offers system alongside the two painted themes', () => {
+    expect(THEME_MODES).toEqual(['system', 'light', 'dark']);
   });
 
   it('resolves to something paintable, never to the preference itself', () => {
-    expect(RESOLVED_THEMES).toEqual(['light', 'dark', 'cartoon']);
+    expect(RESOLVED_THEMES).toEqual(['light', 'dark']);
     expect(RESOLVED_THEMES).not.toContain('system');
   });
 
@@ -29,6 +30,31 @@ describe('theme preference', () => {
       expect(isThemeMode(mode)).toBe(true);
     }
     expect(isThemeMode('midnight')).toBe(false);
+  });
+});
+
+/**
+ * Cartoon was retired in 1.6.0. A phone that had it chosen, or a backup made
+ * while it was, must still load: the preference falls back to following the
+ * phone rather than failing the read or the whole import.
+ */
+describe('the retired cartoon theme', () => {
+  it('is no longer a mode', () => {
+    expect(isThemeMode('cartoon')).toBe(false);
+  });
+
+  it('reads back as system', () => {
+    expect(parseThemeMode('cartoon')).toBe('system');
+  });
+
+  it('reads current modes as themselves and nonsense as nothing', () => {
+    expect(parseThemeMode('dark')).toBe('dark');
+    expect(parseThemeMode('midnight')).toBeUndefined();
+    expect(parseThemeMode(null)).toBeUndefined();
+  });
+
+  it('does not fail a backup import that carries it', () => {
+    expect(AppSettingsSchema.parse({ themeMode: 'cartoon' })).toEqual({ themeMode: 'system' });
   });
 });
 
@@ -51,6 +77,5 @@ describe('resolveThemeMode', () => {
   it('ignores the phone when a theme was chosen explicitly', () => {
     expect(resolveThemeMode('light', 'dark')).toBe('light');
     expect(resolveThemeMode('dark', 'light')).toBe('dark');
-    expect(resolveThemeMode('cartoon', 'dark')).toBe('cartoon');
   });
 });

@@ -57,7 +57,7 @@ export default function NoteEditorChapterPicker({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
 
   const picked = new Set(selected);
   const withText = chapters.filter((chapter) => chapter.body.trim().length > 0);
@@ -73,11 +73,7 @@ export default function NoteEditorChapterPicker({
   const statusColor = (status: NoteShareStatus) =>
     noteShareActionColor(status, {
       current: theme.colors.primary,
-      stale: isCartoon
-        ? theme.colors.secondary
-        : theme.dark
-          ? NOTE_SHARE_STALE_DARK
-          : NOTE_SHARE_STALE_LIGHT,
+      stale: theme.dark ? NOTE_SHARE_STALE_DARK : NOTE_SHARE_STALE_LIGHT,
       idle: theme.colors.onSurfaceVariant,
     });
 
@@ -94,10 +90,6 @@ export default function NoteEditorChapterPicker({
             marginHorizontal: PICKER_GUTTER,
             backgroundColor: theme.colors.surface,
             borderRadius: deco.radius.lg,
-            ...(isCartoon && {
-              borderWidth: deco.cardBorderWidth,
-              borderColor: theme.colors.outline,
-            }),
           },
         ]}
       >

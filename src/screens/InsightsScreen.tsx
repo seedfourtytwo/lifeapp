@@ -53,7 +53,7 @@ function isHistoryRangeDays(value: number): value is HistoryRangeDays {
 export default function InsightsScreen() {
   const theme = useTheme();
   const { t } = useTranslation('insights');
-  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
+  const { decorations: deco, themeMode } = useAppTheme();
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [rangeDays, setRangeDays] = useState<HistoryRangeDays>(DEFAULT_HISTORY_RANGE);
@@ -280,10 +280,8 @@ export default function InsightsScreen() {
   const editorHost = <NoteEditorHost session={noteEditor} />;
   const surfaceStyle = {
     backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.outlineVariant,
-    borderRadius: deco.radius.md,
-    // Light and dark cards stand off the page by fill; only cartoon draws an outline.
-    borderWidth: deco.cardBorderWidth,
+    // A tile stands off the page by fill alone.
+    borderRadius: deco.radius.lg,
   };
 
   if (loading && elements.length === 0) {
@@ -375,8 +373,8 @@ export default function InsightsScreen() {
                     {
                       backgroundColor: selected ? color + '22' : theme.colors.surfaceVariant,
                       borderColor: selected ? color : 'transparent',
-                      borderRadius: isCartoon ? deco.radius.sm : 16,
-                      borderWidth: selected ? (isCartoon ? deco.borderWidth : 1.5) : 0,
+                      borderRadius: deco.radius.pill,
+                      borderWidth: selected ? deco.borderWidth : 0,
                       opacity: disabled ? 0.45 : 1,
                     },
                     pressed && !disabled && styles.pressed,

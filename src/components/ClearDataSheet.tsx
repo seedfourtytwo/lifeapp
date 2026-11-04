@@ -60,7 +60,7 @@ export default function ClearDataSheet({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('settings');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const [options, setOptions] = useState<ClearAppDataOptions>(DEFAULT_CLEAR_OPTIONS);
   const [beforeDate, setBeforeDate] = useState('');
 
@@ -155,17 +155,13 @@ export default function ClearDataSheet({
           {
             backgroundColor: theme.colors.surface,
             borderRadius: deco.radius.lg,
-            ...(isCartoon && {
-              borderWidth: deco.cardBorderWidth,
-              borderColor: theme.colors.outline,
-            }),
           },
         ]}
       >
         <ScrollView keyboardShouldPersistTaps="handled">
           <Text
             variant="titleMedium"
-            style={[styles.title, isCartoon && { color: theme.colors.onSurface }]}
+            style={styles.title}
           >
             {t('clearData.title')}
           </Text>
@@ -211,7 +207,7 @@ export default function ClearDataSheet({
                       style={[
                         styles.chip,
                         {
-                          borderWidth: isCartoon ? deco.borderWidth : 1,
+                          borderWidth: 1,
                           borderRadius: deco.buttonRadius,
                           borderColor: selected
                             ? theme.colors.primary
@@ -294,10 +290,6 @@ export default function ClearDataSheet({
                 {
                   backgroundColor: theme.colors.errorContainer,
                   borderRadius: deco.radius.sm,
-                  ...(isCartoon && {
-                    borderWidth: deco.borderWidth,
-                    borderColor: theme.colors.error,
-                  }),
                 },
               ]}
             >

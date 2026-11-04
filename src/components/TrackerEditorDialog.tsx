@@ -75,7 +75,7 @@ export default function TrackerEditorDialog({
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const { width, height } = useWindowDimensions();
   const sheetWidth = Math.min(width - 24, 480);
   const sheetMaxHeight = Math.min(height * 0.9, 720);
@@ -160,17 +160,13 @@ export default function TrackerEditorDialog({
               {
                 backgroundColor: theme.colors.surface,
                 borderRadius: deco.radius.lg,
-                ...(isCartoon && {
-                  borderWidth: deco.cardBorderWidth,
-                  borderColor: theme.colors.outline,
-                }),
               },
             ]}
           >
             <View style={styles.header}>
               <Text
                 variant="titleLarge"
-                style={[styles.headerTitle, isCartoon && { color: theme.colors.onSurface }]}
+                style={styles.headerTitle}
               >
                 {title}
               </Text>
@@ -250,7 +246,6 @@ export default function TrackerEditorDialog({
                   loading={saving}
                   onPress={handleSave}
                   disabled={!name.trim() || saving || deleting}
-                  buttonColor={isCartoon ? theme.colors.primary : undefined}
                   style={{ borderRadius: deco.buttonRadius }}
                 >
                   {t('editor.save')}

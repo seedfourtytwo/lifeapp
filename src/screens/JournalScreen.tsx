@@ -25,7 +25,7 @@ type DayFilter = 'all' | 'trackers' | string;
 export default function JournalScreen() {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
+  const { decorations: deco, themeMode } = useAppTheme();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const notebooks = useJournalNotebookStore((s) => s.notebooks);
@@ -192,9 +192,9 @@ export default function JournalScreen() {
           styles.filterWell,
           {
             backgroundColor: bg,
-            borderRadius: isCartoon ? deco.radius.sm : 12,
+            borderRadius: deco.radius.md,
             borderColor: selected ? (tint ?? theme.colors.primary) : 'transparent',
-            borderWidth: selected ? (isCartoon ? deco.borderWidth : 1.5) : 0,
+            borderWidth: selected ? deco.borderWidth : 0,
           },
         ]}
         accessibilityRole="button"

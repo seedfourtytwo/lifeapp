@@ -127,7 +127,7 @@ export default function NoteEditorSheet({
 }: NoteEditorSheetProps) {
   const theme = useTheme();
   const { t, i18n } = useTranslation('common');
-  const { decorations: deco, isCartoon } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const keyboardLift = useDialogKeyboardLift(visible);
@@ -259,11 +259,7 @@ export default function NoteEditorSheet({
         : t('note.shareStatusNeverA11y');
   const shareTextColor = noteShareActionColor(shareStatus, {
     current: theme.colors.primary,
-    stale: isCartoon
-      ? theme.colors.secondary
-      : theme.dark
-        ? NOTE_SHARE_STALE_DARK
-        : NOTE_SHARE_STALE_LIGHT,
+    stale: theme.dark ? NOTE_SHARE_STALE_DARK : NOTE_SHARE_STALE_LIGHT,
     idle: theme.colors.onSurface,
   });
 
@@ -345,10 +341,6 @@ export default function NoteEditorSheet({
               backgroundColor: theme.colors.surface,
               borderRadius: deco.radius.lg,
               ...(Platform.OS === 'android' ? { elevation: 6 } : {}),
-              ...(isCartoon && {
-                borderWidth: deco.cardBorderWidth,
-                borderColor: theme.colors.outline,
-              }),
             },
           ]}
         >

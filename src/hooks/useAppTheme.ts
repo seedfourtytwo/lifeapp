@@ -13,7 +13,6 @@ export interface AppThemeContext {
   decorations: ThemeDecorations;
   /** Theme colours that are not Paper roles — accent, amber, series, track. */
   palette: AppPalette;
-  isCartoon: boolean;
 }
 
 /**
@@ -31,6 +30,5 @@ export function useAppTheme(): AppThemeContext {
     themeMode,
     decorations: getThemeDecorations(themeMode),
     palette: getAppPalette(themeMode),
-    isCartoon: themeMode === 'cartoon',
   };
 }

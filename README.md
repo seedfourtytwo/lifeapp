@@ -60,14 +60,17 @@ days had anything logged. Beside the date sit two glyphs — the weather chip
 
 ## Appearance
 
-Four themes' worth of choice from three looks: **System** follows the phone,
-plus **Light**, **Dark** and **Cartoon**. `ThemeMode` is what was chosen and can
-be `system`; `ResolvedTheme` is what gets painted and never is.
+Stone-grey ground, ink type and one moss green for what is done or can be done
+(`src/theme/themes.ts`). **System** follows the phone, or pick **Light** or
+**Dark**. `ThemeMode` is what was chosen and can be `system`; `ResolvedTheme` is
+what gets painted and never is. The Cartoon look was retired in 1.6.0; a phone
+or backup still set to it opens on System.
 
 Colour comes from theme tokens only, and every pair the app renders is held to
 WCAG AA by `__tests__/themeContrast.test.ts` — text is muted by choosing the
-muted token, never by lowering opacity over it. Spacing comes from
-`src/theme/spacing.ts` and corners from `deco.radius`.
+muted token, never by lowering opacity over it. Spacing and the screen rhythm
+(20dp gutter, 72dp rows) come from `src/theme/spacing.ts`, corners from
+`deco.radius` (input 14, tile 20, sheet 28, pills round).
 
 Two faces load at boot: Newsreader for what a screen is about, IBM Plex Mono for
 quantities. Body text stays on the system font deliberately. Animation asks

@@ -124,7 +124,7 @@ describe('protocol backup settings', () => {
       dashboard: [],
       events: [],
       settings: {
-        themeMode: 'cartoon',
+        themeMode: 'dark',
         eveningCheckInEnabled: true,
         eveningCheckInTime: '21:30',
       },
@@ -132,7 +132,7 @@ describe('protocol backup settings', () => {
 
     expect(parseProtocolBundle(bundle)).toEqual(bundle);
     expect(JSON.parse(serializeBundle(bundle)).settings).toEqual({
-      themeMode: 'cartoon',
+      themeMode: 'dark',
       eveningCheckInEnabled: true,
       eveningCheckInTime: '21:30',
     });
@@ -155,6 +155,21 @@ describe('protocol backup settings', () => {
       themeMode: 'light',
       eveningCheckInEnabled: true,
     });
+  });
+
+  it('imports a backup made under the retired cartoon theme as system', () => {
+    const legacy = {
+      protocolVersion: PROTOCOL_VERSION,
+      exportedAt: '2025-01-01T00:00:00.000Z',
+      elements: [habitElement],
+      dashboard: [],
+      events: [],
+      settings: { themeMode: 'cartoon' },
+    };
+
+    const parsed = parseProtocolBundle(legacy);
+    expect(parsed.settings).toEqual({ themeMode: 'system' });
+    expect(parsed.elements).toHaveLength(1);
   });
 
   it('strips unknown legacy settings keys', () => {
@@ -228,6 +243,15 @@ describe('protocol backup settings', () => {
       themeMode: 'dark',
       eveningCheckInEnabled: true,
     });
+  });
+
+  it('reads a phone still set to the retired cartoon theme as system', async () => {
+    (settingsRepo.getSettings as jest.Mock).mockImplementation(
+      async (_db: unknown, keys: readonly string[]) =>
+        new Map(keys.map((key) => [key, key === 'theme_mode' ? 'cartoon' : null])),
+    );
+
+    await expect(readAppSettings(db as never)).resolves.toEqual({ themeMode: 'system' });
   });
 
   it('writes settings during import', async () => {

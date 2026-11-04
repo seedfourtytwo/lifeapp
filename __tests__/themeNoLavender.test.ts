@@ -4,7 +4,7 @@
  * paints one control lavender in an app that has no lavender (the search bar
  * did, through `elevation.level3`). Every colour a theme carries is checked.
  */
-import { appCartoonTheme, appDarkTheme, appLightTheme } from '../src/theme/themes';
+import { appDarkTheme, appLightTheme } from '../src/theme/themes';
 
 function rgbOf(value: string): [number, number, number] | null {
   const rgba = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
@@ -43,7 +43,6 @@ function flatten(obj: object, prefix = ''): [string, string][] {
 describe.each([
   ['light', appLightTheme],
   ['dark', appDarkTheme],
-  ['cartoon', appCartoonTheme],
 ] as const)('%s theme', (_name, theme) => {
   it.each(flatten(theme.colors))('%s is not Material purple', (_key, value) => {
     const rgb = rgbOf(value);

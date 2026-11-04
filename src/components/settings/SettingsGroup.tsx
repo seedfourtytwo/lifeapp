@@ -33,9 +33,7 @@ export default function SettingsGroup({ title, caption, children }: Props) {
             styles.surface,
             {
               backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outlineVariant,
-              borderRadius: deco.radius.md,
-              borderWidth: deco.cardBorderWidth,
+              borderRadius: deco.radius.lg,
             },
           ]}
           elevation={0}

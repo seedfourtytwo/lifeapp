@@ -11,10 +11,11 @@ import {
   isAppLanguage,
   isWeatherLocationMode,
   parseEveningCheckInTime,
+  parseThemeMode,
   type AppLanguage,
   type WeatherLocationMode,
 } from '../protocol/appSettings';
-import { isThemeMode, type ThemeMode } from '../theme/types';
+import type { ThemeMode } from '../theme/types';
 
 const LEGACY_DARK_MODE_KEY = 'dark_mode';
 
@@ -120,8 +121,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         const storedLon = stored.get(APP_SETTING_KEYS.weatherLon) ?? null;
 
         let themeMode: ThemeMode = 'light';
-        if (storedMode && isThemeMode(storedMode)) {
-          themeMode = storedMode;
+        const parsedMode = parseThemeMode(storedMode);
+        if (parsedMode) {
+          themeMode = parsedMode;
         } else {
           const legacyDark = stored.get(LEGACY_DARK_MODE_KEY) ?? null;
           themeMode = legacyDark === 'true' ? 'dark' : 'light';

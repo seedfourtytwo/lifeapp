@@ -27,10 +27,10 @@ export interface CounterProgressBarColors {
   complete: string;
 }
 
+/** A counter fills in a light moss while it climbs and the full moss once it is met. */
 const COUNTER_PROGRESS_BAR: Record<ResolvedTheme, CounterProgressBarColors> = {
-  light: { active: '#F97316', complete: '#10B981' },
-  dark: { active: '#F97316', complete: '#10B981' },
-  cartoon: { active: '#E8A317', complete: '#4A9E3F' },
+  light: { active: '#7FA893', complete: '#2E6A4E' },
+  dark: { active: '#4F7A63', complete: '#86C9A3' },
 };
 
 export function getCounterProgressBarColors(mode: ResolvedTheme): CounterProgressBarColors {

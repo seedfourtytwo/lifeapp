@@ -1,32 +1,22 @@
 /**
  * A hairline (`StyleSheet.hairlineWidth`, ~0.38dp on a modern phone) renders
- * as a grey haze rather than an edge. Light and dark separate a card from the
- * page by fill — a page one step darker than the card — and only cartoon keeps
- * its drawn outline, which is that theme's whole idea.
+ * as a grey haze rather than an edge. A card separates from the page by fill —
+ * a page one step darker than the card — and has no outline at all.
  */
 import { getThemeDecorations } from '../src/theme/decorations';
 import { appDarkTheme, appLightTheme } from '../src/theme/themes';
 import { contrastRatio } from './support/contrast';
 
-describe.each(['light', 'dark', 'cartoon'] as const)('%s decorations', (mode) => {
-  const deco = getThemeDecorations(mode);
-  it.each([
-    ['borderWidth', deco.borderWidth],
-    ['cardBorderWidth', deco.cardBorderWidth],
-    ['headerBorderWidth', deco.headerBorderWidth],
-  ])('%s is either nothing or a drawn stroke', (_key, width) => {
-    expect(width === 0 || width >= 1).toBe(true);
+describe.each(['light', 'dark'] as const)('%s decorations', (mode) => {
+  it('draw a meaningful stroke, never a hairline', () => {
+    expect(getThemeDecorations(mode).borderWidth).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe.each([
   ['light', appLightTheme],
   ['dark', appDarkTheme],
-] as const)('%s cards', (mode, theme) => {
-  it('have no outline', () => {
-    expect(getThemeDecorations(mode).cardBorderWidth).toBe(0);
-    expect(getThemeDecorations(mode).headerBorderWidth).toBe(0);
-  });
+] as const)('%s cards', (_mode, theme) => {
   it('stand off the page by fill alone', () => {
     // Visible but quiet: one step, not a frame.
     const step = contrastRatio(theme.colors.surface, theme.colors.background);

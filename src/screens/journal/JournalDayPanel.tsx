@@ -55,7 +55,7 @@ export default function JournalDayPanel({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, isCartoon, themeMode } = useAppTheme();
+  const { decorations: deco, themeMode } = useAppTheme();
   const entriesForSelected = journals.filter((journal) => journal.date === selectedDate);
   const grouped = notebooks
     .map((notebook) => ({
@@ -77,9 +77,7 @@ export default function JournalDayPanel({
         styles.panel,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.outlineVariant,
-          borderRadius: deco.radius.md,
-          borderWidth: deco.cardBorderWidth,
+          borderRadius: deco.radius.lg,
         },
       ]}
       elevation={0}
@@ -97,7 +95,7 @@ export default function JournalDayPanel({
                 styles.well,
                 {
                   backgroundColor: `${notebookInk(notebook.color, themeMode)}33`,
-                  borderRadius: isCartoon ? deco.radius.sm : 12,
+                  borderRadius: deco.radius.pill,
                 },
               ]}
             >
@@ -156,7 +154,7 @@ export default function JournalDayPanel({
                   styles.chapter,
                   {
                     backgroundColor: theme.colors.surfaceVariant,
-                    borderRadius: isCartoon ? deco.radius.sm : 12,
+                    borderRadius: deco.radius.md,
                   },
                   pressed && styles.pressed,
                 ]}
@@ -189,7 +187,7 @@ export default function JournalDayPanel({
               styles.well,
               {
                 backgroundColor: theme.colors.primaryContainer,
-                borderRadius: isCartoon ? deco.radius.sm : 12,
+                borderRadius: deco.radius.pill,
               },
             ]}
           >

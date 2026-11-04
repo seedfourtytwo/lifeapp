@@ -34,9 +34,7 @@ interface Props {
  */
 export default function WeatherForecastStrip({ days }: Props) {
   const theme = useTheme();
-  const { decorations: deco, isCartoon } = useAppTheme();
-  const outlineColor = isCartoon ? theme.colors.outline : theme.colors.outlineVariant;
-  const outlineWidth = isCartoon ? deco.borderWidth : 0;
+  const { decorations: deco } = useAppTheme();
 
   return (
     <View
@@ -45,26 +43,15 @@ export default function WeatherForecastStrip({ days }: Props) {
         {
           borderRadius: deco.radius.lg,
           backgroundColor: theme.colors.surfaceVariant,
-          borderColor: outlineColor,
-          borderWidth: outlineWidth,
         },
       ]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {days.map((day, index) => {
+      {days.map((day) => {
         const rainNotable = day.precipProbabilityPct >= RAIN_NOTABLE_PCT;
         return (
           <View key={day.date} style={forecastStripStyles.dayCol}>
-            {isCartoon && index > 0 ? (
-              <View
-                pointerEvents="none"
-                style={[
-                  forecastStripStyles.dayDivider,
-                  { backgroundColor: outlineColor },
-                ]}
-              />
-            ) : null}
             <Text
               numberOfLines={1}
               style={[
@@ -157,13 +144,6 @@ export const forecastStripStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: space.xxs,
     paddingVertical: space.sm,
-  },
-  dayDivider: {
-    position: 'absolute',
-    left: 0,
-    top: space.md,
-    bottom: space.md,
-    width: 1,
   },
   weekday: {
     fontSize: 10,

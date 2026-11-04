@@ -98,10 +98,6 @@ export default function HeaderPeekSheet({
               borderTopLeftRadius: deco.radius.xl,
               borderTopRightRadius: deco.radius.xl,
               transform: [{ translateY }],
-              ...(deco.headerBorderWidth > 0 && {
-                borderTopWidth: deco.headerBorderWidth,
-                borderColor: theme.colors.outline,
-              }),
             },
           ]}
         >

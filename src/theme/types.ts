@@ -7,8 +7,7 @@ export interface ThemeModeOption {
   labelKey:
     | 'appearance.themeSystem'
     | 'appearance.themeLight'
-    | 'appearance.themeDark'
-    | 'appearance.themeCartoon';
+    | 'appearance.themeDark';
   icon: string;
 }
 
@@ -27,11 +26,6 @@ export const THEME_MODE_OPTIONS: ThemeModeOption[] = [
     value: 'dark',
     labelKey: 'appearance.themeDark',
     icon: 'weather-night',
-  },
-  {
-    value: 'cartoon',
-    labelKey: 'appearance.themeCartoon',
-    icon: 'gamepad-variant-outline',
   },
 ];
 

@@ -1,4 +1,4 @@
-export { brand, appLightTheme, appDarkTheme, appCartoonTheme, getAppTheme } from './themes';
+export { appLightTheme, appDarkTheme, getAppTheme } from './themes';
 export { getThemeDecorations, type ThemeDecorations } from './decorations';
 export { getAppPalette, type AppPalette } from './palette';
 export {

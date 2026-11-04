@@ -77,10 +77,9 @@ function FoodRow({
       onLongPress={() => onLongPress(item)}
       style={[
         styles.row,
-        { borderRadius: deco.radius.md, borderWidth: deco.cardBorderWidth },
         {
+          borderRadius: deco.radius.lg,
           backgroundColor: logged ? theme.colors.secondaryContainer : theme.colors.surface,
-          borderColor: theme.colors.outlineVariant,
         },
       ]}
       accessibilityRole="checkbox"

@@ -16,7 +16,7 @@
  * reach them. `secondary` and `tertiary` are likewise fill colours, checked
  * against their own `on*` pair rather than against a surface.
  */
-import { appCartoonTheme, appDarkTheme, appLightTheme } from '../src/theme/themes';
+import { appDarkTheme, appLightTheme } from '../src/theme/themes';
 import { getAppPalette } from '../src/theme/palette';
 import { compositeOver, contrastRatio } from './support/contrast';
 
@@ -27,7 +27,6 @@ export { contrastRatio, compositeOver } from './support/contrast';
 const THEMES = [
   { name: 'light', theme: appLightTheme },
   { name: 'dark', theme: appDarkTheme },
-  { name: 'cartoon', theme: appCartoonTheme },
 ] as const;
 
 describe.each(THEMES)('$name theme', ({ theme }) => {
@@ -86,7 +85,7 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
 
 /**
  * Colours that are not Paper roles but still paint words and marks: the
- * cartoon theme's accent, the Insights series, the notebook amber. Each sits on
+ * accent, the Insights series, the notebook amber. Each sits on
  * the same grounds as body text and is held to the same floor, because each of
  * them colours a label somewhere (a chip, a peek title, a notebook name).
  */
