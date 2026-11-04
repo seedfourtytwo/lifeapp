@@ -34,7 +34,7 @@ export default function NotebookButtons({
           key={notebook.id}
           hasNote={notebook.hasToday}
           entryCount={notebook.todayCount}
-          accentColor={notebookInk(notebook.color, themeMode)}
+          dotColor={notebookInk(notebook.color, themeMode)}
           icon={notebook.icon}
           onPress={() => onDictateNotebook(notebook.id)}
           onLongPress={() => onEditNotebook(notebook.id)}

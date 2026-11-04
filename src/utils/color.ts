@@ -46,3 +46,25 @@ export function withHexAlpha(hex: string, alpha: number): string {
     .padStart(2, '0');
   return `#${normalized}${a}`;
 }
+
+const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const RGB_RE = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)$/i;
+
+/**
+ * The same colour at `alpha` (0–1), whatever form the theme hands it over in:
+ * `#RGB`, `#RRGGBB`, `#RRGGBBAA` or `rgb()`/`rgba()`. A colour it cannot read
+ * comes back unchanged rather than as a string React Native would reject.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  const a = clamp01(alpha);
+  const hex = HEX_RE.exec(color)?.[1];
+  if (hex) {
+    const rgb = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex.slice(0, 6);
+    return `#${rgb}${Math.round(a * 255)
+      .toString(16)
+      .padStart(2, '0')}`;
+  }
+  const rgb = RGB_RE.exec(color);
+  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${a})`;
+  return color;
+}

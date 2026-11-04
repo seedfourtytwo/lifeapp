@@ -400,7 +400,7 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {HOME_DOCK_ITEMS.map(({ value, labelKey, icon }) => {
+        {HOME_DOCK_ITEMS.map(({ value, labelKey, icon, activeIcon }) => {
           const active = tab === value;
           const color = active ? activeColor : quietColor;
           const label = t(labelKey);
@@ -413,7 +413,7 @@ export default function HomeScreen() {
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
             >
-              <MaterialCommunityIcons name={icon} size={24} color={color} />
+              <MaterialCommunityIcons name={active ? activeIcon : icon} size={24} color={color} />
               <View
                 style={[styles.dockDot, { backgroundColor: active ? activeColor : 'transparent' }]}
               />

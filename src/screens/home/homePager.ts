@@ -30,16 +30,44 @@ export type HomeDockItem = {
   value: HomeTab;
   /** Key in the `home` namespace. */
   labelKey: DockLabelKey;
+  /** At rest: the outline glyph, in the quiet ink. */
   icon: DockIconName;
+  /** The current page: the same glyph filled in, in moss. */
+  activeIcon: DockIconName;
 };
 
 /** The bottom dock, one item per page and in page order. */
 export const HOME_DOCK_ITEMS: readonly HomeDockItem[] = [
-  { value: 'habits', labelKey: 'dock.habitsTab', icon: 'calendar-check' },
-  { value: 'counters', labelKey: 'dock.countersTab', icon: 'counter' },
-  { value: 'nutrition', labelKey: 'dock.nutritionTab', icon: 'silverware-fork-knife' },
-  { value: 'todos', labelKey: 'dock.todosTab', icon: 'format-list-checks' },
-  { value: 'more', labelKey: 'dock.more', icon: 'dots-horizontal' },
+  {
+    value: 'habits',
+    labelKey: 'dock.habitsTab',
+    icon: 'calendar-check-outline',
+    activeIcon: 'calendar-check',
+  },
+  {
+    value: 'counters',
+    labelKey: 'dock.countersTab',
+    icon: 'numeric-1-box-outline',
+    activeIcon: 'numeric-1-box',
+  },
+  {
+    value: 'nutrition',
+    labelKey: 'dock.nutritionTab',
+    icon: 'food-apple-outline',
+    activeIcon: 'food-apple',
+  },
+  {
+    value: 'todos',
+    labelKey: 'dock.todosTab',
+    icon: 'clipboard-check-outline',
+    activeIcon: 'clipboard-check',
+  },
+  {
+    value: 'more',
+    labelKey: 'dock.more',
+    icon: 'dots-horizontal-circle-outline',
+    activeIcon: 'dots-horizontal-circle',
+  },
 ];
 
 /** Where a page sits in the pager, in page widths from the left. */

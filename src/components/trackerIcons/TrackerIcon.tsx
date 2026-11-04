@@ -7,6 +7,7 @@ import {
   type TrackerIconId,
 } from '../../protocol';
 import { PullUpIcon, PushUpIcon } from './customTrackerIcons';
+import { trackerGlyphName } from './trackerGlyph';
 
 type CustomIconProps = {
   size?: number;
@@ -23,24 +24,23 @@ const CUSTOM_ICON_RENDERERS: Record<
 
 type Props = {
   name: TrackerIconId;
+  /** 22 inside a disc, 24 on its own. */
   size?: number;
   color: string;
+  /** The filled glyph, for a done state. At rest a tracker draws its outline twin. */
+  filled?: boolean;
 };
 
 /**
  * Renders a curated tracker icon (MCI glyph or local SVG for custom ids).
  */
-export function TrackerIcon({ name, size = 22, color }: Props) {
+export function TrackerIcon({ name, size = 22, color, filled = false }: Props) {
   if (isCustomTrackerIconId(name)) {
     const CustomIcon = CUSTOM_ICON_RENDERERS[name];
     return <CustomIcon size={size} color={color} />;
   }
 
   return (
-    <MaterialCommunityIcons
-      name={name as keyof typeof MaterialCommunityIcons.glyphMap}
-      size={size}
-      color={color}
-    />
+    <MaterialCommunityIcons name={trackerGlyphName(name, filled)} size={size} color={color} />
   );
 }
