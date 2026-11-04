@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Line, Polyline, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Polyline, Rect } from 'react-native-svg';
 import { Text, useTheme } from 'react-native-paper';
 import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
+import { roundedTopBarPath } from './history/roundedTopBar';
 import { AXIS_LABEL_SLOT, chartAxisTicks } from '../utils/chartAxis';
 import { formatAxisLabel } from '../utils/dates';
 
@@ -54,10 +56,14 @@ export interface InteractiveDailyChartProps {
   dense?: boolean;
 }
 
-const CHART_HEIGHT = 168;
+const CHART_HEIGHT = 176;
 const PAD_TOP = 12;
-const PAD_BOTTOM = 4;
+/** Room under the bars for the selected day's dot. */
+const PAD_BOTTOM = 12;
 const LANE_GAP = space.sm;
+/** An empty day is a short stub on the axis, so the run of days stays legible. */
+const STUB_HEIGHT = 4;
+const SELECTED_DOT_RADIUS = 3;
 
 export function InteractiveDailyChart({
   days,
@@ -70,7 +76,7 @@ export function InteractiveDailyChart({
   dense = false,
 }: InteractiveDailyChartProps) {
   const theme = useTheme();
-  const { decorations: deco } = useAppTheme();
+  const { decorations: deco, palette } = useAppTheme();
   const [width, setWidth] = React.useState(0);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -139,26 +145,15 @@ export function InteractiveDailyChart({
               ? primary.values.map((value, i) => {
                   const completed = primary.completed?.[i] ?? value > 0;
                   const barH =
-                    value <= 0 ? 2 : Math.max(2, (value / yMax) * plotHeight);
-                  const x = colW * i + colW * 0.18;
-                  const barW = colW * 0.64;
+                    value <= 0 ? STUB_HEIGHT : Math.max(STUB_HEIGHT, (value / yMax) * plotHeight);
+                  const barW = colW * 0.6;
+                  const x = colW * i + (colW - barW) / 2;
                   const y = CHART_HEIGHT - PAD_BOTTOM - barH;
-                  const selected = days[i]?.date === selectedDate;
-                  const fill = completed
-                    ? primary.color
-                    : theme.colors.surfaceVariant;
                   return (
-                    <Rect
+                    <Path
                       key={`bar-${primary.id}-${days[i]?.date ?? i}`}
-                      x={x}
-                      y={y}
-                      width={barW}
-                      height={barH}
-                      rx={deco.radius.xs}
-                      fill={fill}
-                      opacity={selected ? 1 : completed ? 0.85 : 0.45}
-                      stroke={selected ? theme.colors.onSurface : 'transparent'}
-                      strokeWidth={selected ? 2 : 0}
+                      d={roundedTopBarPath(x, y, barW, barH, deco.radius.sm)}
+                      fill={completed ? primary.color : palette.track}
                     />
                   );
                 })
@@ -180,7 +175,7 @@ export function InteractiveDailyChart({
                           cx={cx}
                           cy={laneTop + laneH / 2}
                           r={1.5}
-                          fill={theme.colors.outline}
+                          fill={palette.track}
                         />
                       );
                     }
@@ -201,13 +196,9 @@ export function InteractiveDailyChart({
                     const barW = Math.min(colW * 0.5, 10);
                     const barH = Math.max(2, v * laneH);
                     return (
-                      <Rect
+                      <Path
                         key={key}
-                        x={cx - barW / 2}
-                        y={laneBottom - barH}
-                        width={barW}
-                        height={barH}
-                        rx={Math.min(deco.radius.sm, barW / 4)}
+                        d={roundedTopBarPath(cx - barW / 2, laneBottom - barH, barW, barH, deco.radius.sm)}
                         fill={s.color}
                       />
                     );
@@ -219,10 +210,9 @@ export function InteractiveDailyChart({
               <Polyline
                 points={maPoints}
                 fill="none"
-                stroke={theme.colors.tertiary}
+                stroke={theme.colors.onSurfaceVariant}
                 strokeWidth={1.5}
                 strokeDasharray="4 3"
-                opacity={0.75}
               />
             ) : null}
 
@@ -241,16 +231,14 @@ export function InteractiveDailyChart({
               ? (() => {
                   const idx = days.findIndex((d) => d.date === selectedDate);
                   if (idx < 0) return null;
-                  const x = colW * idx + colW / 2;
+                  // The selected day: one ink dot under its column, not a ring
+                  // around the bar, so every bar keeps its own colour.
                   return (
-                    <Line
-                      x1={x}
-                      y1={PAD_TOP}
-                      x2={x}
-                      y2={CHART_HEIGHT - PAD_BOTTOM}
-                      stroke={theme.colors.primary}
-                      strokeWidth={1}
-                      opacity={0.35}
+                    <Circle
+                      cx={colW * idx + colW / 2}
+                      cy={CHART_HEIGHT - PAD_BOTTOM / 2}
+                      r={SELECTED_DOT_RADIUS}
+                      fill={theme.colors.onSurface}
                     />
                   );
                 })()
@@ -275,7 +263,6 @@ export function InteractiveDailyChart({
               >
                 {showBarLabels ? (
                   <QuietText
-                    variant="labelSmall"
                     style={styles.valueLabel}
                     maxFontSizeMultiplier={CHART_LABEL_MAX_SCALE}
                   >
@@ -303,8 +290,8 @@ export function InteractiveDailyChart({
           return (
             <Text
               key={`lbl-${day.date}`}
-              variant="labelSmall"
               style={[
+                typeScale.caption,
                 styles.dayLabel,
                 { left, color: selected ? theme.colors.onSurface : theme.colors.onSurfaceVariant },
                 selected && styles.dayLabelSelected,
@@ -320,7 +307,7 @@ export function InteractiveDailyChart({
       </View>
 
       {footer ? (
-        <QuietText variant="bodySmall" style={styles.footer}>
+        <QuietText style={[typeScale.caption, styles.footer]}>
           {footer}
         </QuietText>
       ) : null}
@@ -351,14 +338,15 @@ const styles = StyleSheet.create({
   },
   valueLabel: {
     minHeight: 14,
-    fontSize: 9,
+    fontSize: 11,
+    lineHeight: 14,
   },
   valueLabelSpacer: {
     height: space.xs,
   },
   labelRow: {
     marginTop: space.xs,
-    minHeight: 18,
+    minHeight: 20,
   },
   dayLabel: {
     position: 'absolute',
@@ -368,10 +356,9 @@ const styles = StyleSheet.create({
   },
   /** Selection reads as weight and a stronger token, not as less dimming. */
   dayLabelSelected: {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   footer: {
-    textAlign: 'center',
-    marginTop: space.sm,
+    marginTop: space.md,
   },
 });

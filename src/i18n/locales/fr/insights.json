@@ -1,6 +1,5 @@
 {
   "screen": {
-    "emptyTitle": "Pas encore de suivi",
     "emptyBody": "Ajoutez des habitudes ou des compteurs, puis comparez-les ici.",
     "trackersLabel": "Comparer",
     "capHint": "Max. {{count}}",
@@ -15,25 +14,27 @@
     "highTempCondition": "{{temp}} max · {{condition}}",
     "rainChanceSuffix": " · {{percent}}% de pluie",
     "noWeatherForDay": "Pas de météo pour ce jour",
-    "dayRangeChip": "{{count}}j",
     "couldNotLoadFallback": "Impossible de charger les statistiques"
   },
   "history": {
-    "lastNDays": "{{count}} derniers jours",
-    "dayRangeChip": "{{count}}j",
-    "streakLabel": "Série {{count}}j",
-    "missedLabel": "Manqué {{count}}j",
-    "bestLabel": "Record {{count}}j",
-    "topLabel": "Max {{duration}}",
-    "avgLabel": "Moy. {{duration}}",
-    "bestValueLabel": "Record {{value}}",
-    "avgValueLabel": "Moy. {{value}} {{unit}}",
-    "chartFooter": "Total quotidien ({{unit}}) · pointillés = moyenne sur {{window}} jours",
+    "chartFooter": "Pointillés : moyenne sur {{window}} jours",
     "editNoteForA11y": "{{date}}, {{value}}, modifier la note",
     "addNoteForA11y": "{{date}}, {{value}}, ajouter une note",
     "tapToAddNote": "Appuyez pour ajouter une note",
     "tapDayHint": "Appuyez sur un jour du graphique pour l'examiner.",
     "trackerNotFound": "Suivi introuvable.",
-    "couldNotLoadFallback": "Impossible de charger l'historique"
+    "couldNotLoadFallback": "Impossible de charger l'historique",
+    "rangeOption_one": "{{count}} jour",
+    "rangeOption_other": "{{count}} jours",
+    "statDaysDone_one": "jour fait",
+    "statDaysDone_other": "jours faits",
+    "statInARow_one": "jour d'affilée",
+    "statInARow_other": "jours d'affilée",
+    "statAverage": "moyenne",
+    "statBestDay": "meilleur jour, {{unit}}",
+    "statAverageUnit": "{{unit}} par jour en moyenne",
+    "statDaysLogged_one": "jour noté",
+    "statDaysLogged_other": "jours notés",
+    "statBestRun": "meilleure série"
   }
 }

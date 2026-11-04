@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  ActivityIndicator,
-  SegmentedButtons,
-  Surface,
-  Switch,
-  Text,
-  useTheme,
-} from 'react-native-paper';
+import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import EmptyState from '../components/EmptyState';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
+import QuietText from '../components/QuietText';
+import HistoryRangeControl from '../components/history/HistoryRangeControl';
+import SeriesChip from '../components/history/SeriesChip';
+import { SettingsSwitch } from '../components/settings';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
@@ -28,7 +26,6 @@ import {
 } from '../protocol';
 import {
   DEFAULT_HISTORY_RANGE,
-  HISTORY_RANGES,
   INSIGHTS_MAX_SERIES,
   normalizeSeriesToUnit,
   type HistoryRangeDays,
@@ -45,10 +42,8 @@ import { ensureWeatherDailyRange } from '../weather/ensureWeatherDailyRange';
 import type { WeatherDailySnapshot } from '../weather/types';
 import { conditionLabel } from '../weather/codes';
 import Rule from '../components/Rule';
-
-function isHistoryRangeDays(value: number): value is HistoryRangeDays {
-  return (HISTORY_RANGES as readonly number[]).includes(value);
-}
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 
 export default function InsightsScreen() {
   const theme = useTheme();
@@ -278,11 +273,8 @@ export default function InsightsScreen() {
   };
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
-  const surfaceStyle = {
-    backgroundColor: theme.colors.surface,
-    // A tile stands off the page by fill alone.
-    borderRadius: deco.radius.lg,
-  };
+  // A tile stands off the page by fill alone.
+  const tile = { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg };
 
   if (loading && elements.length === 0) {
     return (
@@ -299,9 +291,7 @@ export default function InsightsScreen() {
     return (
       <>
         <View style={styles.centered}>
-          <Text variant="bodyLarge" style={{ color: theme.colors.error }}>
-            {error}
-          </Text>
+          <Text style={[typeScale.body, { color: theme.colors.error }]}>{error}</Text>
         </View>
         {editorHost}
       </>
@@ -311,13 +301,8 @@ export default function InsightsScreen() {
   if (elements.length === 0) {
     return (
       <>
-        <View style={styles.centered}>
-          <Text variant="titleMedium" style={styles.emptyTitle}>
-            {t('screen.emptyTitle')}
-          </Text>
-          <Text variant="bodyMedium" style={[styles.emptyBody, { color: theme.colors.onSurfaceVariant }]}>
-            {t('screen.emptyBody')}
-          </Text>
+        <View style={styles.container}>
+          <EmptyState message={t('screen.emptyBody')} />
         </View>
         {editorHost}
       </>
@@ -330,67 +315,29 @@ export default function InsightsScreen() {
   return (
     <>
       <ScrollView contentContainerStyle={styles.container}>
-        <SegmentedButtons
-          value={String(rangeDays)}
-          onValueChange={(value) => {
-            const n = Number(value);
-            if (isHistoryRangeDays(n)) setRangeDays(n);
-          }}
-          buttons={HISTORY_RANGES.map((n) => ({
-            value: String(n),
-            label: t('screen.dayRangeChip', { count: n }),
-            accessibilityLabel: t('screen.dayRangeChip', { count: n }),
-          }))}
-        />
+        <HistoryRangeControl value={rangeDays} onChange={setRangeDays} />
 
         <View style={styles.seriesBlock}>
           <View style={styles.seriesHeader}>
-            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t('screen.trackersLabel')}
-            </Text>
+            <QuietText style={typeScale.meta}>{t('screen.trackersLabel')}</QuietText>
             {atCap ? (
-              <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              <QuietText style={typeScale.caption}>
                 {t('screen.capHint', { count: INSIGHTS_MAX_SERIES })}
-              </Text>
+              </QuietText>
             ) : null}
           </View>
           <View style={styles.seriesWrap}>
             {elements.map((el) => {
               const selected = selectedIds.includes(el.id);
-              const colorIndex = selectedIds.indexOf(el.id);
-              const color = selected ? seriesColorAt(themeMode, colorIndex) : theme.colors.onSurfaceVariant;
-              const disabled = atCap && !selected;
               return (
-                <Pressable
+                <SeriesChip
                   key={el.id}
+                  label={el.name}
+                  selected={selected}
+                  color={selected ? seriesColorAt(themeMode, selectedIds.indexOf(el.id)) : undefined}
+                  disabled={atCap && !selected}
                   onPress={() => toggleSeries(el.id)}
-                  disabled={disabled}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected, disabled }}
-                  accessibilityLabel={el.name}
-                  style={({ pressed }) => [
-                    styles.seriesChip,
-                    {
-                      backgroundColor: selected ? color + '22' : theme.colors.surfaceVariant,
-                      borderColor: selected ? color : 'transparent',
-                      borderRadius: deco.radius.pill,
-                      borderWidth: selected ? deco.borderWidth : 0,
-                      opacity: disabled ? 0.45 : 1,
-                    },
-                    pressed && !disabled && styles.pressed,
-                  ]}
-                >
-                  {selected ? (
-                    <View style={[styles.seriesDot, { backgroundColor: color }]} />
-                  ) : null}
-                  <Text
-                    variant="labelLarge"
-                    numberOfLines={1}
-                    style={{ color: selected ? color : theme.colors.onSurface }}
-                  >
-                    {el.name}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -400,26 +347,26 @@ export default function InsightsScreen() {
           onPress={() => setShowWeather((v) => !v)}
           accessibilityRole="switch"
           accessibilityState={{ checked: showWeather }}
-          style={styles.weatherToggle}
+          style={[styles.weatherToggle, tile]}
         >
           <MaterialCommunityIcons
             name="weather-partly-cloudy"
-            size={20}
+            size={24}
             color={theme.colors.onSurfaceVariant}
           />
-          <Text variant="bodyMedium" style={styles.weatherLabel}>
+          <Text style={[typeScale.body, styles.flexText, { color: theme.colors.onSurface }]}>
             {t('screen.weatherLabel')}
           </Text>
           <View pointerEvents="none">
-            <Switch value={showWeather} onValueChange={setShowWeather} accessible={false} />
+            <SettingsSwitch value={showWeather} accessible={false} />
           </View>
         </Pressable>
 
-        <Surface style={[styles.chartCard, surfaceStyle]} elevation={0}>
+        <View style={[styles.tile, tile]}>
           {selectedElements.length === 0 ? (
-            <Text variant="bodyMedium" style={[styles.emptyChart, { color: theme.colors.onSurfaceVariant }]}>
+            <QuietText style={[typeScale.secondary, styles.emptyChart]}>
               {t('screen.tickToPlot')}
-            </Text>
+            </QuietText>
           ) : (
             <InteractiveDailyChart
               days={dates.map((date) => ({
@@ -433,11 +380,13 @@ export default function InsightsScreen() {
               dense={rangeDays > 14}
             />
           )}
-        </Surface>
+        </View>
 
         {selectedDate ? (
-          <Surface style={[styles.dayPanel, surfaceStyle]} elevation={0}>
-            <Text variant="titleMedium">{formatFullDate(selectedDate)}</Text>
+          <View style={[styles.tile, styles.dayPanel, tile]}>
+            <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>
+              {formatFullDate(selectedDate)}
+            </Text>
 
             <Pressable
               onPress={() => openJournal(selectedDate)}
@@ -456,26 +405,22 @@ export default function InsightsScreen() {
               ]}
             >
               <MaterialCommunityIcons
-                name={journalBody ? 'notebook' : 'notebook-outline'}
-                size={20}
+                name="notebook-outline"
+                size={22}
                 color={journalBody ? theme.colors.primary : theme.colors.onSurfaceVariant}
               />
               <View style={styles.flexText}>
-                <Text variant="labelLarge">{t('screen.journalLabel')}</Text>
-                <Text
-                  variant="bodySmall"
-                  numberOfLines={2}
-                  style={{ color: theme.colors.onSurfaceVariant }}
-                >
-                  {journalBody ? truncateNotePreview(journalBody, 120) : t('screen.addJournal')}
+                <Text style={[typeScale.body, { color: theme.colors.onSurface }]}>
+                  {t('screen.journalLabel')}
                 </Text>
+                <QuietText numberOfLines={2} style={typeScale.secondary}>
+                  {journalBody ? truncateNotePreview(journalBody, 120) : t('screen.addJournal')}
+                </QuietText>
               </View>
             </Pressable>
 
             {selectedElements.length === 0 ? (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {t('screen.tickToCompare')}
-              </Text>
+              <QuietText style={typeScale.secondary}>{t('screen.tickToCompare')}</QuietText>
             ) : (
               selectedElements.map((el, i) => {
                 const total = totalsByElement.get(el.id)?.get(selectedDate) ?? 0;
@@ -486,19 +431,18 @@ export default function InsightsScreen() {
                     <View style={styles.seriesDayTop}>
                       <View style={styles.seriesNameRow}>
                         <View
-                          style={[
-                            styles.swatch,
-                            {
-                              backgroundColor: seriesColorAt(themeMode, i),
-                              borderRadius: deco.radius.xs,
-                            },
-                          ]}
+                          style={[styles.swatch, { backgroundColor: seriesColorAt(themeMode, i) }]}
                         />
-                        <Text variant="bodyMedium" style={styles.flexText} numberOfLines={1}>
+                        <Text
+                          style={[typeScale.body, styles.flexText, { color: theme.colors.onSurface }]}
+                          numberOfLines={1}
+                        >
                           {el.name}
                         </Text>
                       </View>
-                      <Text variant="titleSmall">{formatTrackerHistoryDayValue(el, total)}</Text>
+                      <QuietText style={typeScale.data}>
+                        {formatTrackerHistoryDayValue(el, total)}
+                      </QuietText>
                     </View>
                     <Pressable
                       onPress={() => openTrackerNote(el, selectedDate)}
@@ -507,16 +451,12 @@ export default function InsightsScreen() {
                     >
                       <MaterialCommunityIcons
                         name={note ? 'note-text-outline' : 'note-plus-outline'}
-                        size={16}
+                        size={18}
                         color={note ? theme.colors.primary : theme.colors.onSurfaceVariant}
                       />
-                      <Text
-                        variant="bodySmall"
-                        numberOfLines={2}
-                        style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}
-                      >
+                      <QuietText numberOfLines={2} style={[typeScale.secondary, styles.flexText]}>
                         {note ? truncateNotePreview(note, 100) : t('screen.addNote')}
-                      </Text>
+                      </QuietText>
                     </Pressable>
                   </View>
                 );
@@ -532,7 +472,7 @@ export default function InsightsScreen() {
                     size={18}
                     color={theme.colors.onSurfaceVariant}
                   />
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}>
+                  <QuietText style={[typeScale.secondary, styles.flexText]}>
                     {weatherForDay
                       ? t('screen.highTempCondition', {
                           temp: formatTempC(weatherForDay.tempMaxC),
@@ -544,11 +484,11 @@ export default function InsightsScreen() {
                             })
                           : '')
                       : t('screen.noWeatherForDay')}
-                  </Text>
+                  </QuietText>
                 </View>
               </>
             ) : null}
-          </Surface>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -559,80 +499,55 @@ export default function InsightsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.lg,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    gap: 8,
-  },
-  emptyTitle: {
-    fontWeight: '600',
-  },
-  emptyBody: {
-    textAlign: 'center',
+    padding: layout.gutter,
   },
   seriesBlock: {
-    gap: 8,
+    gap: space.sm,
   },
   seriesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    paddingHorizontal: 4,
+    gap: space.sm,
+    paddingHorizontal: space.xs,
   },
   seriesWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  seriesChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    maxWidth: '100%',
-  },
-  seriesDot: {
-    width: 8,
-    height: 8,
-    // Geometric: half the size is what makes it round.
-    borderRadius: 4,
+    gap: space.sm,
   },
   weatherToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    minHeight: 44,
-    paddingHorizontal: 4,
+    gap: space.md,
+    minHeight: 56,
+    paddingHorizontal: layout.gutter,
   },
-  weatherLabel: {
-    flex: 1,
-  },
-  chartCard: {
-    padding: 12,
+  tile: {
+    padding: layout.gutter,
     overflow: 'hidden',
   },
   emptyChart: {
-    paddingVertical: 24,
+    paddingVertical: space.xl,
     textAlign: 'center',
   },
   dayPanel: {
-    padding: 16,
-    gap: 10,
-    overflow: 'hidden',
+    gap: space.md,
   },
   journalRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    paddingVertical: 4,
+    gap: space.md,
+    paddingVertical: space.xs,
   },
   flexText: {
     flex: 1,
@@ -642,32 +557,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
-    paddingTop: 10,
+    gap: space.sm,
+    paddingTop: space.md,
   },
   seriesNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 8,
+    gap: space.sm,
     minWidth: 0,
   },
   swatch: {
     width: 10,
     height: 10,
+    // Geometric: half the size is what makes it round.
+    borderRadius: 5,
   },
   noteRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 6,
-    paddingTop: 4,
-    paddingBottom: 8,
+    gap: space.sm,
+    paddingTop: space.xs,
+    paddingBottom: space.sm,
   },
   weatherDay: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingTop: 4,
+    gap: space.sm,
+    paddingTop: space.xs,
   },
   pressed: {
     opacity: 0.7,

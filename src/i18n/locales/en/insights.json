@@ -1,6 +1,5 @@
 {
   "screen": {
-    "emptyTitle": "No trackers yet",
     "emptyBody": "Add habits or counters, then compare them here.",
     "trackersLabel": "Compare",
     "capHint": "Max {{count}}",
@@ -15,25 +14,27 @@
     "highTempCondition": "{{temp}} high · {{condition}}",
     "rainChanceSuffix": " · {{percent}}% rain",
     "noWeatherForDay": "No weather for this day",
-    "dayRangeChip": "{{count}}d",
     "couldNotLoadFallback": "Could not load insights"
   },
   "history": {
-    "lastNDays": "Last {{count}} days",
-    "dayRangeChip": "{{count}}d",
-    "streakLabel": "Streak {{count}}d",
-    "missedLabel": "Missed {{count}}d",
-    "bestLabel": "Best {{count}}d",
-    "topLabel": "Top {{duration}}",
-    "avgLabel": "Avg {{duration}}",
-    "bestValueLabel": "Best {{value}}",
-    "avgValueLabel": "Avg {{value}} {{unit}}",
-    "chartFooter": "Daily total ({{unit}}) · dashed = {{window}}-day avg",
+    "chartFooter": "Dashed line: {{window}}-day average",
     "editNoteForA11y": "{{date}}, {{value}}, edit note",
     "addNoteForA11y": "{{date}}, {{value}}, add note",
     "tapToAddNote": "Tap to add a note",
     "tapDayHint": "Tap a day on the chart to inspect it.",
     "trackerNotFound": "Tracker not found.",
-    "couldNotLoadFallback": "Could not load history"
+    "couldNotLoadFallback": "Could not load history",
+    "rangeOption_one": "{{count}} day",
+    "rangeOption_other": "{{count}} days",
+    "statDaysDone_one": "day done",
+    "statDaysDone_other": "days done",
+    "statInARow_one": "day in a row",
+    "statInARow_other": "days in a row",
+    "statAverage": "average",
+    "statBestDay": "best day, {{unit}}",
+    "statAverageUnit": "{{unit}} a day on average",
+    "statDaysLogged_one": "day logged",
+    "statDaysLogged_other": "days logged",
+    "statBestRun": "best run"
   }
 }

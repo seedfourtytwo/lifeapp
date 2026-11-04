@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ActivityIndicator, Button, Card, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import ChoiceChip from '../components/ChoiceChip';
 import QuietText from '../components/QuietText';
+import HistoryRangeControl from '../components/history/HistoryRangeControl';
+import HistoryStatRow from '../components/history/HistoryStatRow';
+import { historyStats } from '../components/history/historyStats';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
@@ -27,7 +29,6 @@ import {
 } from '../protocol';
 import {
   DEFAULT_HISTORY_RANGE,
-  HISTORY_RANGES,
   MOVING_AVERAGE_WINDOW,
   computeActivityStats,
   computePersonalBestStreak,
@@ -36,6 +37,8 @@ import {
 } from '../utils/chartStats';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
 import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } from '../utils/dates';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { playChartSelectHaptic } from '../utils/habitHaptics';
 import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
 import {
@@ -61,7 +64,6 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [rangeDays, setRangeDays] = useState<HistoryRangeDays>(DEFAULT_HISTORY_RANGE);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
-  const [failureStreak, setFailureStreak] = useState(0);
   const [personalBest, setPersonalBest] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +99,6 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setDays([]);
         setNotesByDate(new Map());
         setStreak(0);
-        setFailureStreak(0);
         setPersonalBest(0);
         return true;
       }
@@ -134,17 +135,19 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         );
         if (generation !== loadGenerationRef.current) return false;
         const createdOn = createdOnLocalDate(loaded.createdAt);
-        const { streak: currentStreak, failureStreak: currentFailureStreak } =
-          computeHabitStreaksFromEvents(yearRows, config, undefined, createdOn);
+        const { streak: currentStreak } = computeHabitStreaksFromEvents(
+          yearRows,
+          config,
+          undefined,
+          createdOn,
+        );
         setStreak(currentStreak);
-        setFailureStreak(currentFailureStreak);
         const completed = completedDatesFromHabitEvents(yearRows, config);
         setPersonalBest(
           computePersonalBestStreak(completed, (date) => isHabitScheduledOnDate(config, date)),
         );
       } else {
         setStreak(0);
-        setFailureStreak(0);
         setPersonalBest(0);
       }
       return true;
@@ -240,10 +243,10 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     return (
       <>
         <View style={styles.centered}>
-          <Text variant="bodyLarge" style={{ color: theme.colors.error, marginBottom: 12 }}>
+          <Text style={[typeScale.body, styles.errorText, { color: theme.colors.error }]}>
             {error}
           </Text>
-          <Button mode="outlined" onPress={() => void load()}>
+          <Button mode="text" onPress={() => void load()}>
             {t('common:actions.retry')}
           </Button>
         </View>
@@ -256,7 +259,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     return (
       <>
         <View style={styles.centered}>
-          <Text variant="bodyLarge">{t('history.trackerNotFound')}</Text>
+          <QuietText style={typeScale.body}>{t('history.trackerNotFound')}</QuietText>
         </View>
         {editorHost}
       </>
@@ -269,89 +272,50 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     ? formatTrackerHistoryDayValue(element, selected.total)
     : '—';
 
-  let metricLine: string | null = null;
-  if (chartModel.isHabit) {
-    const streakBits = [
-      streak > 0 ? t('history.streakLabel', { count: streak }) : null,
-      failureStreak > 0 ? t('history.missedLabel', { count: failureStreak }) : null,
-      personalBest > 0 ? t('history.bestLabel', { count: personalBest }) : null,
-    ].filter(Boolean);
-    if (chartModel.isTimerHabit && chartModel.activity.activeDays > 0) {
-      const bestDay = days.find((d) => d.date === chartModel.activity.bestDate);
-      if (bestDay) {
-        streakBits.push(
-          t('history.topLabel', { duration: formatHabitTimerDuration(bestDay.total) }),
-        );
-      }
-      streakBits.push(
-        t('history.avgLabel', {
-          duration: formatHabitTimerDuration(Math.round(chartModel.activity.averageActive * 60)),
-        }),
-      );
-    }
-    metricLine = streakBits.length > 0 ? streakBits.join(' · ') : null;
-  } else if (chartModel.activity.activeDays > 0) {
-    const bestDay = days.find((d) => d.date === chartModel.activity.bestDate);
-    metricLine = [
-      bestDay
-        ? t('history.bestValueLabel', {
-            value: formatTrackerHistoryDayValue(element, bestDay.total),
-          })
-        : null,
-      t('history.avgValueLabel', {
-        value: Math.round(chartModel.activity.averageActive * 10) / 10,
+  const stats = chartModel.isHabit
+    ? historyStats({
+        kind: 'habit',
+        daysDone: chartModel.completedFlags.filter(Boolean).length,
+        streak,
+        bestRun: personalBest,
+        averageLabel:
+          chartModel.isTimerHabit && chartModel.activity.activeDays > 0
+            ? formatHabitTimerDuration(Math.round(chartModel.activity.averageActive * 60))
+            : undefined,
+      })
+    : historyStats({
+        kind: 'counter',
+        bestValue: chartModel.activity.bestValue,
+        average: chartModel.activity.averageActive,
+        daysLogged: chartModel.activity.activeDays,
         unit: chartModel.chartUnit,
-      }),
-    ]
-      .filter(Boolean)
-      .join(' · ');
-  }
+      });
+  const tile = { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg };
 
   return (
     <>
       <ScrollView contentContainerStyle={styles.container}>
-        {metricLine ? (
-          <QuietText variant="bodyMedium" style={styles.metrics}>
-            {metricLine}
-          </QuietText>
-        ) : null}
+        <HistoryRangeControl value={rangeDays} onChange={setRangeDays} />
 
-        <View style={styles.rangeRow}>
-          {HISTORY_RANGES.map((n) => (
-            <ChoiceChip
-              key={n}
-              label={t('history.dayRangeChip', { count: n })}
-              selected={rangeDays === n}
-              onPress={() => setRangeDays(n)}
-              style={styles.rangeChip}
-            />
-          ))}
+        <View style={[styles.tile, tile]}>
+          <HistoryStatRow stats={stats} />
+          <InteractiveDailyChart
+            days={days.map((d) => ({ date: d.date, label: d.label }))}
+            series={[
+              {
+                id: elementId,
+                color: theme.colors.primary,
+                values: chartModel.plotValues,
+                completed: chartModel.completedFlags,
+              },
+            ]}
+            selectedDate={selectedDate}
+            onSelectDay={handleSelectDay}
+            movingAverage={chartModel.ma}
+            dense={rangeDays > 14}
+            footer={t('history.chartFooter', { window: MOVING_AVERAGE_WINDOW })}
+          />
         </View>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium">{t('history.lastNDays', { count: rangeDays })}</Text>
-            <InteractiveDailyChart
-              days={days.map((d) => ({ date: d.date, label: d.label }))}
-              series={[
-                {
-                  id: elementId,
-                  color: theme.colors.primary,
-                  values: chartModel.plotValues,
-                  completed: chartModel.completedFlags,
-                },
-              ]}
-              selectedDate={selectedDate}
-              onSelectDay={handleSelectDay}
-              movingAverage={chartModel.ma}
-              dense={rangeDays > 14}
-              footer={t('history.chartFooter', {
-                unit: chartModel.chartUnit,
-                window: MOVING_AVERAGE_WINDOW,
-              })}
-            />
-          </Card.Content>
-        </Card>
 
         {selected ? (
           <Pressable
@@ -368,44 +332,30 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
                     value: selectedValueLabel,
                   })
             }
-            android_ripple={{ color: theme.colors.primaryContainer }}
-            style={[
-              styles.dayPanel,
-              {
-                borderColor: theme.colors.outlineVariant,
-                borderRadius: deco.radius.sm,
-                backgroundColor: theme.colors.surface,
-              },
-            ]}
+            android_ripple={{ color: theme.colors.surfaceVariant }}
+            style={[styles.tile, tile]}
           >
             <View style={styles.dayPanelTop}>
-              <Text variant="titleSmall">{formatFullDate(selected.date)}</Text>
-              <Text variant="titleSmall" style={styles.dayPanelValue}>
-                {selectedValueLabel}
+              <Text style={[typeScale.rowName, styles.flexText, { color: theme.colors.onSurface }]}>
+                {formatFullDate(selected.date)}
               </Text>
+              <QuietText style={typeScale.data}>{selectedValueLabel}</QuietText>
             </View>
             <View style={styles.noteRow}>
               <MaterialCommunityIcons
                 name={selectedNote ? 'note-text-outline' : 'note-plus-outline'}
-                size={16}
+                size={18}
                 color={selectedNote ? theme.colors.primary : theme.colors.onSurfaceVariant}
-                style={styles.noteIcon}
               />
-              <Text
-                variant="bodySmall"
-                numberOfLines={2}
-                style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}
-              >
+              <QuietText numberOfLines={2} style={[typeScale.secondary, styles.flexText]}>
                 {selectedNote
                   ? truncateNotePreview(selectedNote, 120)
                   : t('history.tapToAddNote')}
-              </Text>
+              </QuietText>
             </View>
           </Pressable>
         ) : (
-          <QuietText variant="bodySmall" style={styles.emptyHint}>
-            {t('history.tapDayHint')}
-          </QuietText>
+          <QuietText style={typeScale.secondary}>{t('history.tapDayHint')}</QuietText>
         )}
       </ScrollView>
 
@@ -416,48 +366,39 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.lg,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: layout.gutter,
   },
-  metrics: {
-    marginBottom: 12,
-    fontWeight: '600',
+  errorText: {
+    marginBottom: space.md,
+    textAlign: 'center',
   },
-  rangeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  rangeChip: {
-    marginRight: 0,
-  },
-  card: {
-    marginBottom: 16,
-  },
-  dayPanel: {
-    padding: 14,
+  tile: {
+    padding: layout.gutter,
+    overflow: 'hidden',
   },
   dayPanelTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: space.md,
+    marginBottom: space.sm,
   },
-  dayPanelValue: {
-    fontWeight: '700',
+  flexText: {
+    flex: 1,
+    minWidth: 0,
   },
   noteRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: space.sm,
   },
-  noteIcon: {
-    marginRight: 6,
-    marginTop: 1,
-  },
-  emptyHint: {},
 });
