@@ -1,12 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SegmentedButtons } from 'react-native-paper';
 import { space } from '../../theme/spacing';
+import SegmentedControl from '../SegmentedControl';
 
 export type SettingsSegmentedButton = {
   value: string;
   label: string;
-  icon?: string;
 };
 
 type Props = {
@@ -15,28 +14,11 @@ type Props = {
   buttons: SettingsSegmentedButton[];
 };
 
-/**
- * Past three segments an icon and a label stop fitting side by side on a phone,
- * and Paper truncates the label rather than the icon. The word is the part that
- * says what the option is, so the icon is what goes.
- */
-const MAX_SEGMENTS_WITH_ICONS = 3;
-
+/** A segmented control set inside a settings group, padded to the rows' edges. */
 export default function SettingsSegmented({ value, onChange, buttons }: Props) {
-  const showIcons = buttons.length <= MAX_SEGMENTS_WITH_ICONS;
-
   return (
     <View style={styles.wrap}>
-      <SegmentedButtons
-        value={value}
-        onValueChange={onChange}
-        buttons={buttons.map((button) => ({
-          value: button.value,
-          label: button.label,
-          icon: showIcons ? button.icon : undefined,
-          accessibilityLabel: button.label,
-        }))}
-      />
+      <SegmentedControl options={buttons} value={value} onChange={onChange} />
     </View>
   );
 }

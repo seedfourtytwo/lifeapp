@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import Rule from '../Rule';
 import { settingsRowStyles } from './SettingsRow';
 
@@ -20,10 +21,7 @@ export default function SettingsGroup({ title, caption, children }: Props) {
   return (
     <View style={styles.wrap}>
       {title ? (
-        <Text
-          variant="labelLarge"
-          style={[styles.title, { color: theme.colors.onSurfaceVariant }]}
-        >
+        <Text style={[styles.title, { color: theme.colors.onSurfaceVariant }]}>
           {title}
         </Text>
       ) : null}
@@ -49,10 +47,7 @@ export default function SettingsGroup({ title, caption, children }: Props) {
         </Surface>
       ) : null}
       {caption ? (
-        <Text
-          variant="bodySmall"
-          style={[styles.caption, { color: theme.colors.onSurfaceVariant }]}
-        >
+        <Text style={[styles.caption, { color: theme.colors.onSurfaceVariant }]}>
           {caption}
         </Text>
       ) : null}
@@ -65,7 +60,9 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   title: {
-    paddingHorizontal: space.sm,
+    ...typeScale.caption,
+    fontSize: 14,
+    paddingHorizontal: space.xs,
   },
   surface: {
     overflow: 'hidden',
@@ -75,7 +72,7 @@ const styles = StyleSheet.create({
     marginLeft: space.lg + settingsRowStyles.iconSlot.width + space.lg,
   },
   caption: {
-    paddingHorizontal: space.sm,
-    lineHeight: 18,
+    ...typeScale.caption,
+    paddingHorizontal: space.xs,
   },
 });

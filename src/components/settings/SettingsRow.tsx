@@ -1,8 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Switch, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
+import SettingsSwitch from './SettingsSwitch';
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -78,7 +80,10 @@ export default function SettingsRow({
       accessibilityHint={accessibilityHint}
       style={({ pressed }) => [
         styles.row,
-        interactive && pressed && !disabled && !busy ? styles.pressed : null,
+        // A wash of the well under the whole row, not a fade of its words.
+        interactive && pressed && !disabled && !busy
+          ? { backgroundColor: theme.colors.surfaceVariant }
+          : null,
         disabled || busy ? styles.disabled : null,
       ]}
     >
@@ -88,14 +93,19 @@ export default function SettingsRow({
         </View>
       )}
       <View style={styles.text}>
-        <Text variant="titleMedium" numberOfLines={1} style={styles.title}>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.title,
+            { color: destructive ? theme.colors.error : theme.colors.onSurface },
+          ]}
+        >
           {title}
         </Text>
         {description ? (
           <Text
-            variant="bodySmall"
             numberOfLines={2}
-            style={{ color: theme.colors.onSurfaceVariant }}
+            style={[styles.description, { color: theme.colors.onSurfaceVariant }]}
           >
             {description}
           </Text>
@@ -103,7 +113,6 @@ export default function SettingsRow({
       </View>
       {trailingValue ? (
         <Text
-          variant="bodyMedium"
           numberOfLines={1}
           style={[styles.trailingValue, { color: theme.colors.onSurfaceVariant }]}
         >
@@ -117,7 +126,7 @@ export default function SettingsRow({
         <ActivityIndicator size={20} color={theme.colors.primary} />
       ) : isSwitch ? (
         <View pointerEvents="none">
-          <Switch value={switchValue} onValueChange={onSwitch} accessible={false} />
+          <SettingsSwitch value={switchValue} onValueChange={onSwitch} accessible={false} />
         </View>
       ) : selected ? (
         <MaterialCommunityIcons name="check" size={22} color={theme.colors.primary} />
@@ -143,15 +152,12 @@ export const settingsRowStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 52,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
     gap: space.lg,
-  },
-  pressed: {
-    opacity: 0.7,
   },
   disabled: {
     opacity: 0.5,
@@ -163,9 +169,13 @@ const styles = StyleSheet.create({
     gap: space.xxs,
   },
   title: {
-    marginBottom: 0,
+    ...typeScale.body,
+  },
+  description: {
+    ...typeScale.secondary,
   },
   trailingValue: {
+    ...typeScale.secondary,
     flexShrink: 1,
     maxWidth: 120,
     textAlign: 'right',
