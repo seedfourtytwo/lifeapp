@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { journalChapterPreview, type JournalChapter } from './journalChapters';
 
 type Props = {
@@ -84,16 +85,19 @@ export default function NoteEditorChapterBar({
             style={[
               styles.jump,
               {
-                backgroundColor: theme.colors.surfaceVariant,
-                borderRadius: deco.radius.sm,
+                backgroundColor: theme.colors.background,
+                borderRadius: deco.radius.md,
               },
             ]}
           >
             <View style={styles.jumpInner}>
-              <Text variant="labelMedium" numberOfLines={1} style={styles.jumpLabel}>
+              <Text
+                numberOfLines={1}
+                style={[typeScale.secondary, styles.jumpLabel, { color: theme.colors.onSurface }]}
+              >
                 {label}
               </Text>
-              <QuietText variant="labelSmall">{t('chapters.of', { count: total })}</QuietText>
+              <QuietText style={typeScale.caption}>{t('chapters.of', { count: total })}</QuietText>
             </View>
           </TouchableRipple>
         }
@@ -165,7 +169,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     minHeight: TOUCH_TARGET,
     justifyContent: 'center',
-    paddingHorizontal: space.sm,
+    paddingHorizontal: space.md,
   },
   jumpInner: {
     flexDirection: 'row',

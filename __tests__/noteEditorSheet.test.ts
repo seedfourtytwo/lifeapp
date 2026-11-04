@@ -14,7 +14,8 @@ import { Keyboard, StyleSheet } from 'react-native';
 import { IconButton, Modal, PaperProvider, TouchableRipple } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../src/i18n';
-import { dialogKeyboardLift } from '../src/hooks/keyboardInset';
+import { sheetBottomPadding } from '../src/components/sheet/sheetGesture';
+import { getThemeDecorations } from '../src/theme/decorations';
 
 const mockFocus = { current: true };
 jest.mock('@react-navigation/native', () => ({
@@ -122,19 +123,47 @@ function emit(names: string[], height: number) {
   });
 }
 
-function modalPaddingBottom(tree: ReactTestRenderer): number {
-  const style = StyleSheet.flatten(tree.root.findByType(Modal).props.style) as { paddingBottom?: number };
-  return style.paddingBottom ?? 0;
+type SheetBox = {
+  paddingBottom?: number;
+  borderTopLeftRadius?: number;
+  borderTopRightRadius?: number;
+};
+
+function sheetStyle(tree: ReactTestRenderer): SheetBox {
+  return StyleSheet.flatten(tree.root.findByType(Modal).props.contentContainerStyle) as SheetBox;
 }
 
+/** The safe-area bottom inset `wrap` gives every render. */
+const SAFE_BOTTOM = 48;
+
 describe('note sheet and the keyboard', () => {
-  it('lifts itself clear of the keyboard, and settles back when it hides', () => {
+  it('pads itself over the keyboard, and settles back on the nav bar when it hides', () => {
     const { tree } = renderSheet();
-    expect(modalPaddingBottom(tree)).toBe(0);
+    const resting = sheetBottomPadding({ keyboardHeight: 0, safeBottom: SAFE_BOTTOM });
+    expect(sheetStyle(tree).paddingBottom).toBe(resting);
     emit(['keyboardWillShow', 'keyboardDidShow'], 300);
-    expect(modalPaddingBottom(tree)).toBe(dialogKeyboardLift(300));
+    expect(sheetStyle(tree).paddingBottom).toBe(
+      sheetBottomPadding({ keyboardHeight: 300, safeBottom: SAFE_BOTTOM }),
+    );
     emit(['keyboardWillHide', 'keyboardDidHide'], 0);
-    expect(modalPaddingBottom(tree)).toBe(0);
+    expect(sheetStyle(tree).paddingBottom).toBe(resting);
+  });
+});
+
+describe('note sheet frame', () => {
+  it('rises from the bottom edge like every other sheet: grabber, sheet radius', () => {
+    const { tree } = renderSheet();
+    const radius = getThemeDecorations('light').radius.xl;
+    expect(sheetStyle(tree)).toMatchObject({
+      borderTopLeftRadius: radius,
+      borderTopRightRadius: radius,
+    });
+    const grabber = tree.root.findAll((node) => node.props.testID === 'note-sheet-grabber')[0];
+    expect(StyleSheet.flatten(grabber.props.style)).toMatchObject({ width: 36, height: 4 });
+    const wrap = StyleSheet.flatten(tree.root.findByType(Modal).props.style) as {
+      justifyContent?: string;
+    };
+    expect(wrap.justifyContent).toBe('flex-end');
   });
 });
 

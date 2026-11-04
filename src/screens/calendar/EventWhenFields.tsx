@@ -1,9 +1,15 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { List, Text, TextInput, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { parseDateOnlyLocal } from '../../calendar/dates';
 import { formatTime } from '../../calendar/format';
+import Rule from '../../components/Rule';
+import { SettingsRow, settingsRowStyles } from '../../components/settings';
+import { FilledField } from '../../components/sheet';
+import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import {
   applyTime,
   formatFriendlyDate,
@@ -25,7 +31,35 @@ interface Props {
   onEndTimeChange: (next: TimeParts) => void;
 }
 
-/** Inline start/end date (and optional time) fields for the event editor. */
+/** A small pill that nudges the date by a day: the common edit, one tap. */
+function DayNudge({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.nudge,
+        {
+          backgroundColor: pressed ? theme.colors.surfaceVariant : theme.colors.background,
+          borderRadius: deco.radius.pill,
+        },
+      ]}
+    >
+      <Text style={[typeScale.secondary, styles.nudgeLabel, { color: theme.colors.primary }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Start and end rows for the event editor. Tapping one opens its date (and
+ * time) fields right under it, so the common case — a whole-day event today —
+ * never shows a field at all.
+ */
 export default function EventWhenFields({
   allDay,
   startDate,
@@ -39,7 +73,6 @@ export default function EventWhenFields({
   onStartTimeChange,
   onEndTimeChange,
 }: Props) {
-  const theme = useTheme();
   const { t } = useTranslation('calendar');
 
   const startSummary = allDay
@@ -49,132 +82,111 @@ export default function EventWhenFields({
     ? formatFriendlyDate(endDate)
     : `${formatFriendlyDate(endDate)} · ${formatTime(applyTime(parseDateOnlyLocal(endDate), endTime.hour, endTime.minute))}`;
 
+  const timeFields = (time: TimeParts, onChange: (next: TimeParts) => void) =>
+    allDay ? null : (
+      <View style={styles.timeRow}>
+        <FilledField
+          label={t('editor.hourLabel')}
+          value={time.hour}
+          onChangeText={(hour) => onChange({ ...time, hour })}
+          keyboardType="number-pad"
+          style={styles.flex}
+        />
+        <FilledField
+          label={t('editor.minuteLabel')}
+          value={time.minute}
+          onChangeText={(minute) => onChange({ ...time, minute })}
+          keyboardType="number-pad"
+          style={styles.flex}
+        />
+      </View>
+    );
+
   return (
-    <>
-      <List.Item
+    <View>
+      <SettingsRow
+        icon="clock-start"
         title={t('editor.starts')}
         description={startSummary}
-        left={(props) => <List.Icon {...props} icon="clock-start" />}
         onPress={() => onToggleEditing('start')}
       />
       {editingWhen === 'start' ? (
         <View style={styles.inlineEditor}>
           <View style={styles.dateShiftRow}>
-            <Pressable
-              onPress={() => {
-                const next = shiftDateString(startDate, -1);
-                onStartDateChange(next);
-              }}
-              style={styles.chip}
-            >
-              <Text style={{ color: theme.colors.primary }}>{t('editor.minusOneDay')}</Text>
-            </Pressable>
-            <TextInput
+            <DayNudge
+              label={t('editor.minusOneDay')}
+              onPress={() => onStartDateChange(shiftDateString(startDate, -1))}
+            />
+            <FilledField
               label={t('editor.dateLabel')}
               value={startDate}
               onChangeText={onStartDateChange}
-              mode="outlined"
-              dense
-              style={styles.flex}
               placeholder="YYYY-MM-DD"
+              style={styles.flex}
             />
-            <Pressable
-              onPress={() => {
-                const next = shiftDateString(startDate, 1);
-                onStartDateChange(next);
-              }}
-              style={styles.chip}
-            >
-              <Text style={{ color: theme.colors.primary }}>{t('editor.plusOneDay')}</Text>
-            </Pressable>
+            <DayNudge
+              label={t('editor.plusOneDay')}
+              onPress={() => onStartDateChange(shiftDateString(startDate, 1))}
+            />
           </View>
-          {!allDay ? (
-            <View style={styles.timeRow}>
-              <TextInput
-                label={t('editor.hourLabel')}
-                value={startTime.hour}
-                onChangeText={(hour) => onStartTimeChange({ ...startTime, hour })}
-                mode="outlined"
-                dense
-                keyboardType="number-pad"
-                style={styles.flex}
-              />
-              <TextInput
-                label={t('editor.minuteLabel')}
-                value={startTime.minute}
-                onChangeText={(minute) => onStartTimeChange({ ...startTime, minute })}
-                mode="outlined"
-                dense
-                keyboardType="number-pad"
-                style={styles.flex}
-              />
-            </View>
-          ) : null}
+          {timeFields(startTime, onStartTimeChange)}
         </View>
       ) : null}
 
-      <List.Item
+      <Rule style={styles.rule} />
+
+      <SettingsRow
+        icon="clock-end"
         title={t('editor.ends')}
         description={endSummary}
-        left={(props) => <List.Icon {...props} icon="clock-end" />}
         onPress={() => onToggleEditing('end')}
       />
       {editingWhen === 'end' ? (
         <View style={styles.inlineEditor}>
-          <TextInput
+          <FilledField
             label={t('editor.dateLabel')}
             value={endDate}
             onChangeText={onEndDateChange}
-            mode="outlined"
-            dense
             placeholder="YYYY-MM-DD"
           />
-          {!allDay ? (
-            <View style={styles.timeRow}>
-              <TextInput
-                label={t('editor.hourLabel')}
-                value={endTime.hour}
-                onChangeText={(hour) => onEndTimeChange({ ...endTime, hour })}
-                mode="outlined"
-                dense
-                keyboardType="number-pad"
-                style={styles.flex}
-              />
-              <TextInput
-                label={t('editor.minuteLabel')}
-                value={endTime.minute}
-                onChangeText={(minute) => onEndTimeChange({ ...endTime, minute })}
-                mode="outlined"
-                dense
-                keyboardType="number-pad"
-                style={styles.flex}
-              />
-            </View>
-          ) : null}
+          {timeFields(endTime, onEndTimeChange)}
         </View>
       ) : null}
-    </>
+    </View>
   );
 }
 
+/** Where a row's title starts, so the fields and rules line up under it. */
+const TEXT_INSET = space.lg + settingsRowStyles.iconSlot.width + space.lg;
+
 const styles = StyleSheet.create({
   inlineEditor: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingLeft: TEXT_INSET,
+    paddingRight: space.lg,
+    paddingBottom: space.lg,
+    gap: space.md,
   },
   dateShiftRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-end',
+    gap: space.sm,
   },
   timeRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: space.sm,
   },
   flex: { flex: 1 },
-  chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 10,
+  nudge: {
+    minHeight: 56,
+    minWidth: 48,
+    paddingHorizontal: space.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nudgeLabel: {
+    fontWeight: '500',
+  },
+  rule: {
+    marginLeft: TEXT_INSET,
   },
 });

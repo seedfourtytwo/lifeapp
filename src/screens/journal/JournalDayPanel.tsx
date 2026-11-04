@@ -4,11 +4,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { IconButton, Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
-import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import type { DailyJournal, JournalNotebook } from '../../protocol';
-import { notebookInk } from '../../notes/notebookInk';
+import NotebookMark from './NotebookMark';
 import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
 
@@ -55,7 +55,7 @@ export default function JournalDayPanel({
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, themeMode } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const entriesForSelected = journals.filter((journal) => journal.date === selectedDate);
   const grouped = notebooks
     .map((notebook) => ({
@@ -82,7 +82,9 @@ export default function JournalDayPanel({
       ]}
       elevation={0}
     >
-      <Text variant="titleMedium">{title}</Text>
+      <Text style={[typeScale.screenTitle, { color: theme.colors.onSurface }]} accessibilityRole="header">
+        {title}
+      </Text>
 
       {grouped.map(({ notebook, entries }) => (
         <View
@@ -93,32 +95,18 @@ export default function JournalDayPanel({
             <View
               style={[
                 styles.well,
-                {
-                  backgroundColor: `${notebookInk(notebook.color, themeMode)}33`,
-                  borderRadius: deco.radius.pill,
-                },
+                { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.pill },
               ]}
             >
-              {notebook.icon ? (
-                <TrackerIcon
-                  name={notebook.icon}
-                  size={22}
-                  color={notebookInk(notebook.color, themeMode)}
-                />
-              ) : (
-                <MaterialCommunityIcons
-                  name="notebook-outline"
-                  size={22}
-                  color={notebookInk(notebook.color, themeMode)}
-                />
-              )}
+              <NotebookMark notebook={notebook} ringColor={theme.colors.surfaceVariant} />
             </View>
-            <Text variant="labelLarge" style={styles.groupName}>
+            <Text style={[typeScale.rowName, styles.groupName, { color: theme.colors.onSurface }]}>
               {notebook.name}
             </Text>
             <IconButton
               icon="plus"
-              size={18}
+              size={22}
+              iconColor={theme.colors.onSurfaceVariant}
               onPress={() => onAddChapter(notebook.id, selectedDate)}
               accessibilityLabel={t('screen.addChapterA11y', {
                 name: notebook.name,
@@ -135,9 +123,15 @@ export default function JournalDayPanel({
               accessibilityLabel={t('screen.addJournalForA11y', {
                 date: formatFullDate(selectedDate),
               })}
-              style={({ pressed }) => [styles.chapter, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.chapter,
+                {
+                  backgroundColor: pressed ? theme.colors.surfaceVariant : theme.colors.background,
+                  borderRadius: deco.radius.md,
+                },
+              ]}
             >
-              <QuietText variant="bodyMedium">{t('screen.writeHint')}</QuietText>
+              <QuietText style={typeScale.secondary}>{t('screen.writeHint')}</QuietText>
             </Pressable>
           ) : (
             entries.map((entry, position) => (
@@ -153,18 +147,17 @@ export default function JournalDayPanel({
                 style={({ pressed }) => [
                   styles.chapter,
                   {
-                    backgroundColor: theme.colors.surfaceVariant,
+                    backgroundColor: pressed ? theme.colors.surfaceVariant : theme.colors.background,
                     borderRadius: deco.radius.md,
                   },
-                  pressed && styles.pressed,
                 ]}
               >
                 {entries.length > 1 ? (
-                  <QuietText variant="labelSmall">
+                  <QuietText style={typeScale.caption}>
                     {t('screen.chapterHeading', { number: position + 1 })}
                   </QuietText>
                 ) : null}
-                <Text variant="bodyMedium" numberOfLines={8}>
+                <Text style={[typeScale.body, { color: theme.colors.onSurface }]} numberOfLines={8}>
                   {truncateNotePreview(entry.body, 400)}
                 </Text>
               </Pressable>
@@ -180,28 +173,28 @@ export default function JournalDayPanel({
           accessibilityLabel={t('screen.addJournalForA11y', {
             date: formatFullDate(selectedDate),
           })}
-          style={({ pressed }) => [styles.entry, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.entry,
+            pressed && { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.md },
+          ]}
         >
           <View
             style={[
               styles.well,
-              {
-                backgroundColor: theme.colors.primaryContainer,
-                borderRadius: deco.radius.pill,
-              },
+              { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.pill },
             ]}
           >
             <MaterialCommunityIcons
               name="notebook-outline"
               size={22}
-              color={theme.colors.onPrimaryContainer}
+              color={theme.colors.onSurfaceVariant}
             />
           </View>
           <View style={styles.entryText}>
-            <Text variant="labelLarge">{t('screen.journalLabel')}</Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t('screen.writeHint')}
+            <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>
+              {t('screen.journalLabel')}
             </Text>
+            <QuietText style={typeScale.secondary}>{t('screen.writeHint')}</QuietText>
           </View>
         </Pressable>
       ) : null}
@@ -210,10 +203,7 @@ export default function JournalDayPanel({
         <View
           style={styles.trackerBlock}
         >
-          <Text
-            variant="labelMedium"
-            style={[styles.trackerLabel, { color: theme.colors.onSurfaceVariant }]}
-          >
+          <Text style={[typeScale.caption, styles.trackerLabel, { color: theme.colors.onSurfaceVariant }]}>
             {t('screen.trackerNotesLabel')}
           </Text>
           {trackerNotes.map((row) => (
@@ -222,23 +212,22 @@ export default function JournalDayPanel({
               onPress={() => onOpenTrackerNote(row, selectedDate)}
               accessibilityRole="button"
               accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
-              style={({ pressed }) => [styles.trackerRow, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.trackerRow,
+                pressed && { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.md },
+              ]}
             >
               <MaterialCommunityIcons
                 name="note-text-outline"
-                size={18}
-                color={theme.colors.primary}
+                size={22}
+                color={theme.colors.onSurfaceVariant}
                 style={styles.trackerIcon}
               />
               <View style={styles.entryText}>
-                <Text variant="bodyMedium">{row.name}</Text>
-                <Text
-                  variant="bodySmall"
-                  numberOfLines={2}
-                  style={{ color: theme.colors.onSurfaceVariant }}
-                >
+                <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>{row.name}</Text>
+                <QuietText style={typeScale.secondary} numberOfLines={2}>
                   {truncateNotePreview(row.body, 120)}
-                </Text>
+                </QuietText>
               </View>
             </Pressable>
           ))}
@@ -246,9 +235,9 @@ export default function JournalDayPanel({
       ) : null}
 
       {showEmptyTrackerNotes ? (
-        <Text variant="bodySmall" style={[styles.emptyTrackers, { color: theme.colors.onSurfaceVariant }]}>
+        <QuietText style={[typeScale.secondary, styles.emptyTrackers]}>
           {t('screen.noTrackerNotes')}
-        </Text>
+        </QuietText>
       ) : null}
     </Surface>
   );
@@ -256,15 +245,17 @@ export default function JournalDayPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    padding: 16,
-    gap: 4,
+    padding: space.xl,
+    gap: space.xs,
     overflow: 'hidden',
   },
   entry: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 12,
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.sm,
+    marginHorizontal: -space.sm,
   },
   group: {
     paddingVertical: space.md,
@@ -281,13 +272,15 @@ const styles = StyleSheet.create({
   },
   addChapter: {
     margin: 0,
+    width: 48,
+    height: 48,
   },
   chapter: {
-    padding: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
     gap: space.xs,
-    minHeight: 44,
+    minHeight: 48,
   },
-  pressed: { opacity: 0.7 },
   well: {
     width: 40,
     height: 40,
@@ -297,25 +290,27 @@ const styles = StyleSheet.create({
   entryText: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: space.xxs,
   },
   trackerBlock: {
-    paddingTop: 8,
-    gap: 4,
+    paddingTop: space.sm,
+    gap: space.xs,
   },
   trackerLabel: {
-    marginBottom: 4,
+    marginBottom: space.xs,
   },
   trackerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    paddingVertical: 8,
+    gap: space.md,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
+    marginHorizontal: -space.sm,
   },
   trackerIcon: {
-    marginTop: 2,
+    marginTop: space.xxs,
   },
   emptyTrackers: {
-    paddingTop: 8,
+    paddingTop: space.sm,
   },
 });

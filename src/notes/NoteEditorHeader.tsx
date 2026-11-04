@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
+import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import type { TrackerIconId } from '../protocol';
 
 type Props = {
@@ -74,16 +76,19 @@ export default function NoteEditorHeader({
       <View style={styles.headerText}>
         <View style={styles.headerTitleRow}>
           {titleIcon ? (
-            <TrackerIcon name={titleIcon} size={20} color={theme.colors.onSurface} />
+            <TrackerIcon name={titleIcon} size={22} color={theme.colors.onSurfaceVariant} />
           ) : null}
-          <Text variant="titleMedium" numberOfLines={1} style={styles.headerTitle}>
+          <Text
+            numberOfLines={1}
+            accessibilityRole="header"
+            style={[typeScale.screenTitle, styles.headerTitle, { color: theme.colors.onSurface }]}
+          >
             {heading}
           </Text>
         </View>
         {subtitle ? (
           <Text
-            variant="bodySmall"
-            style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}
+            style={[typeScale.secondary, styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
           >
             {subtitle}
           </Text>
@@ -91,7 +96,7 @@ export default function NoteEditorHeader({
       </View>
       {showShare ? (
         <IconButton
-          icon="share-variant"
+          icon="share-variant-outline"
           onPress={onShare}
           disabled={sharing}
           iconColor={shareColor}
@@ -107,6 +112,7 @@ export default function NoteEditorHeader({
           anchor={
             <IconButton
               icon="dots-vertical"
+              iconColor={theme.colors.onSurfaceVariant}
               onPress={() => onMenuOpenChange(!menuOpen)}
               disabled={menuDisabled}
               accessibilityLabel={t('note.moreActions')}
@@ -134,6 +140,7 @@ export default function NoteEditorHeader({
       ) : null}
       <IconButton
         icon="close"
+        iconColor={theme.colors.onSurfaceVariant}
         onPress={onClose}
         accessibilityLabel={
           isJournal ? t('note.closeJournalAccessible') : t('note.closeNoteAccessible')
@@ -148,18 +155,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: space.md,
     overflow: 'visible',
   },
   headerText: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: space.sm,
     minWidth: 0,
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: space.sm,
+  },
+  subtitle: {
+    marginTop: space.xxs,
   },
   headerTitle: {
     flex: 1,

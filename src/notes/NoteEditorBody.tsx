@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { TextInput } from 'react-native-paper';
+import { TextInput, useTheme } from 'react-native-paper';
+import { useAppTheme } from '../hooks/useAppTheme';
 import type { DictationLivePreview } from '../dictation/livePreview';
 import { NoteEditorPreview } from './NoteEditorPreview';
 import { NOTE_BODY_MAX_LENGTH, clampNoteBody } from './noteBodyLimits';
@@ -57,16 +58,23 @@ export default function NoteEditorBody({
   onChangeText,
   onEdit,
 }: Props) {
+  const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   if (textEditing && !dictationBusy) {
     return (
       <TextInput
         key={fieldKey}
         mode="outlined"
+        // The same filled well as the preview it replaces: no outline, so tapping
+        // in to type does not swap the page for a stock form field.
+        outlineColor="transparent"
+        activeOutlineColor="transparent"
+        outlineStyle={{ borderRadius: deco.radius.md }}
         multiline
         numberOfLines={isJournal ? 8 : 6}
         defaultValue={fieldSeed}
         onChangeText={(next) => onChangeText(clampNoteBody(next))}
-        style={[styles.input, { minHeight, maxHeight }]}
+        style={[styles.input, { minHeight, maxHeight, backgroundColor: theme.colors.background }]}
         contentStyle={styles.inputContent}
         disabled={saving}
         autoFocus

@@ -21,6 +21,7 @@
     "notificationsSectionTitle": "Notifications",
     "noneReminderHint": "None — you'll only see this on the calendar",
     "addNotification": "Add notification",
+    "removeNotificationA11y": "Remove the {{label}} notification",
     "notesLabel": "Notes",
     "save": "Save",
     "deleteEvent": "Delete event",

@@ -22,6 +22,8 @@
   "notebooks": {
     "title": "Carnets",
     "add": "Ajouter un carnet",
+    "newTitle": "Nouveau carnet",
+    "editTitle": "Modifier le carnet",
     "maxReached": "Max. {{count}} carnets",
     "nameLabel": "Nom",
     "colorLabel": "Couleur",

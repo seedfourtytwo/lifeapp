@@ -1,13 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button,
-  List,
-  Menu,
-  Switch,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { Button, IconButton, Menu, useTheme } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +30,12 @@ import {
   parseTimeParts,
   type TimeParts,
 } from './calendar/eventEditorHelpers';
-import { space } from '../theme/spacing';
+import { FilledField } from '../components/sheet';
+import { SettingsGroup, SettingsRow } from '../components/settings';
+import { sheetBottomPadding } from '../components/sheet/sheetGesture';
+import { useAppTheme } from '../hooks/useAppTheme';
+import { useKeyboardHeight } from '../hooks/useDialogKeyboardLift';
+import { layout, space } from '../theme/spacing';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CalendarEventEditor'>;
 
@@ -48,6 +47,9 @@ const NO_REMINDERS: CalendarReminder[] = [];
  */
 export default function CalendarEventEditorScreen({ navigation, route }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight(true);
   const { t } = useTranslation('calendar');
   const eventId = route.params?.eventId;
   const seedDate = route.params?.seedDate;
@@ -249,122 +251,181 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
       : recurrenceLabel({ freq, interval: 1, byWeekDays: [] });
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <TextInput
-        placeholder={t('editor.titlePlaceholder')}
-        value={title}
-        onChangeText={setTitle}
-        mode="flat"
-        style={[styles.titleInput, { backgroundColor: 'transparent' }]}
-        contentStyle={{ fontSize: 22 }}
-        autoFocus={!eventId}
-      />
-
-      <View style={styles.sectionGap} />
-
-      <List.Item
-        title={t('editor.allDay')}
-        left={(props) => <List.Icon {...props} icon="calendar-blank" />}
-        right={() => <Switch value={allDay} onValueChange={onAllDayChange} />}
-      />
-
-      <EventWhenFields
-        allDay={allDay}
-        startDate={startDate}
-        endDate={endDate}
-        startTime={startTime}
-        endTime={endTime}
-        editingWhen={editingWhen}
-        onToggleEditing={(which) => setEditingWhen(editingWhen === which ? null : which)}
-        onStartDateChange={onStartDateChange}
-        onEndDateChange={setEndDate}
-        onStartTimeChange={setStartTime}
-        onEndTimeChange={setEndTime}
-      />
-
-      <View style={styles.sectionGap} />
-
-      <Menu
-        visible={repeatMenuOpen}
-        onDismiss={() => setRepeatMenuOpen(false)}
-        anchor={
-          <List.Item
-            title={t('editor.repeat')}
-            description={repeatLabel}
-            left={(props) => <List.Icon {...props} icon="repeat" />}
-            right={(props) => <List.Icon {...props} icon="chevron-down" />}
-            onPress={() => setRepeatMenuOpen(true)}
-          />
-        }
+    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        {REPEAT_OPTIONS.map((option) => (
-          <Menu.Item
-            key={option.freq}
-            onPress={() => setRepeat(option.freq)}
-            title={t(option.labelKey)}
-            leadingIcon={freq === option.freq ? 'check' : undefined}
+        <View
+          style={[
+            styles.tile,
+            { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg },
+          ]}
+        >
+          <FilledField
+            placeholder={t('editor.titlePlaceholder')}
+            value={title}
+            onChangeText={setTitle}
+            autoFocus={!eventId}
           />
-        ))}
-      </Menu>
+        </View>
 
-      <View style={styles.sectionGap} />
+        <SettingsGroup>
+          <SettingsRow
+            icon="calendar-blank-outline"
+            title={t('editor.allDay')}
+            switchValue={allDay}
+            onSwitch={onAllDayChange}
+          />
+          <EventWhenFields
+            allDay={allDay}
+            startDate={startDate}
+            endDate={endDate}
+            startTime={startTime}
+            endTime={endTime}
+            editingWhen={editingWhen}
+            onToggleEditing={(which) => setEditingWhen(editingWhen === which ? null : which)}
+            onStartDateChange={onStartDateChange}
+            onEndDateChange={setEndDate}
+            onStartTimeChange={setStartTime}
+            onEndTimeChange={setEndTime}
+          />
+        </SettingsGroup>
 
-      <EventRemindersSection
-        reminderOffsets={reminderOffsets}
-        addReminderOpen={addReminderOpen}
-        onOpenAdd={() => setAddReminderOpen(true)}
-        onCloseAdd={() => setAddReminderOpen(false)}
-        onAdd={(offset) => {
-          setReminderOffsets((prev) =>
-            prev.includes(offset) ? prev : [...prev, offset].sort((a, b) => b - a),
-          );
-          setAddReminderOpen(false);
-        }}
-        onRemove={(offset) => setReminderOffsets((prev) => prev.filter((o) => o !== offset))}
-      />
+        <SettingsGroup>
+          <Menu
+            visible={repeatMenuOpen}
+            onDismiss={() => setRepeatMenuOpen(false)}
+            anchor={
+              <SettingsRow
+                icon="repeat"
+                title={t('editor.repeat')}
+                trailingValue={repeatLabel}
+                chevron
+                onPress={() => setRepeatMenuOpen(true)}
+              />
+            }
+          >
+            {REPEAT_OPTIONS.map((option) => (
+              <Menu.Item
+                key={option.freq}
+                onPress={() => setRepeat(option.freq)}
+                title={t(option.labelKey)}
+                leadingIcon={freq === option.freq ? 'check' : undefined}
+              />
+            ))}
+          </Menu>
+        </SettingsGroup>
 
-      <View style={styles.sectionGap} />
+        <EventRemindersSection
+          reminderOffsets={reminderOffsets}
+          addReminderOpen={addReminderOpen}
+          onOpenAdd={() => setAddReminderOpen(true)}
+          onCloseAdd={() => setAddReminderOpen(false)}
+          onAdd={(offset) => {
+            setReminderOffsets((prev) =>
+              prev.includes(offset) ? prev : [...prev, offset].sort((a, b) => b - a),
+            );
+            setAddReminderOpen(false);
+          }}
+          onRemove={(offset) => setReminderOffsets((prev) => prev.filter((o) => o !== offset))}
+        />
 
-      <TextInput
-        label={t('editor.notesLabel')}
-        value={notes}
-        onChangeText={setNotes}
-        mode="outlined"
-        multiline
-        style={styles.notes}
-      />
+        <View
+          style={[
+            styles.tile,
+            { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg },
+          ]}
+        >
+          <FilledField
+            placeholder={t('editor.notesLabel')}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+        </View>
+      </ScrollView>
 
-      <View style={styles.actions}>
-        <Button mode="contained" onPress={() => void handleSave()} loading={saving} disabled={saving}>
+      <View
+        testID="event-editor-footer"
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            paddingBottom: sheetBottomPadding({ keyboardHeight, safeBottom: insets.bottom }),
+          },
+        ]}
+      >
+        {eventId ? (
+          <IconButton
+            icon="trash-can-outline"
+            iconColor={theme.colors.error}
+            size={24}
+            onPress={handleDelete}
+            accessibilityLabel={t('editor.deleteEvent')}
+            style={styles.delete}
+          />
+        ) : (
+          <View />
+        )}
+        <Button
+          mode="contained"
+          onPress={() => void handleSave()}
+          loading={saving}
+          disabled={saving}
+          style={[styles.save, { borderRadius: deco.radius.pill }]}
+          contentStyle={styles.saveContent}
+          labelStyle={styles.saveLabel}
+        >
           {t('editor.save')}
         </Button>
-        {eventId ? (
-          <Button mode="text" textColor={theme.colors.error} onPress={handleDelete}>
-            {t('editor.deleteEvent')}
-          </Button>
-        ) : null}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
+/** The footer's Save matches the editor sheet's: a moss pill you can hit without looking. */
+const SAVE_MIN_WIDTH = 132;
+const SAVE_MIN_HEIGHT = 52;
+
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
   container: {
-    paddingBottom: 40,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
+    gap: layout.sectionGap,
   },
-  titleInput: {
-    marginHorizontal: 8,
-    marginTop: 4,
+  tile: {
+    padding: space.md,
   },
-  sectionGap: {
-    height: space.sm,
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.md,
   },
-  notes: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+  delete: {
+    margin: 0,
+    marginLeft: -space.sm,
   },
-  actions: {
-    paddingHorizontal: 16,
-    gap: 8,
+  save: {
+    minWidth: SAVE_MIN_WIDTH,
+  },
+  saveContent: {
+    minHeight: SAVE_MIN_HEIGHT,
+    paddingHorizontal: space.md,
+  },
+  saveLabel: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '600',
   },
 });

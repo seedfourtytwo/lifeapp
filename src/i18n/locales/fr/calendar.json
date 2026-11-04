@@ -21,6 +21,7 @@
     "notificationsSectionTitle": "Notifications",
     "noneReminderHint": "Aucune — visible seulement dans le calendrier",
     "addNotification": "Ajouter une notification",
+    "removeNotificationA11y": "Retirer la notification {{label}}",
     "notesLabel": "Notes",
     "save": "Enregistrer",
     "deleteEvent": "Supprimer l'événement",

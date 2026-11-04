@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, Menu, Surface, Text, TextInput, useTheme } from 'react-native-paper';
+import { Menu, Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import Rule from '../../components/Rule';
+import { EditorSheet, FilledField } from '../../components/sheet';
 import IconPickerField from '../../components/trackerEditor/IconPickerField';
-import { TrackerIcon } from '../../components/trackerIcons/TrackerIcon';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
 import {
   JOURNAL_NOTEBOOK_COLORS,
   JOURNAL_NOTEBOOK_MAX,
@@ -21,7 +24,7 @@ import {
   suggestedNotebookColor,
   updateJournalNotebook,
 } from '../../notes/journalNotebooks';
-import { notebookInk } from '../../notes/notebookInk';
+import NotebookMark from './NotebookMark';
 
 type Props = {
   notebooks: JournalNotebook[];
@@ -35,24 +38,22 @@ type Draft = {
   icon?: TrackerIconId;
 };
 
+/** A swatch in the colour picker, and the ring that marks the picked one. */
+const SWATCH = 32;
+const SWATCH_TARGET = 44;
+const SWATCH_RING = 2;
+
 function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 'icon'> }) {
-  const { decorations: deco, themeMode } = useAppTheme();
-  const ink = notebookInk(notebook.color, themeMode);
+  const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   return (
     <View
       style={[
         styles.well,
-        {
-          backgroundColor: `${ink}33`,
-          borderRadius: deco.radius.pill,
-        },
+        { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.pill },
       ]}
     >
-      {notebook.icon ? (
-        <TrackerIcon name={notebook.icon} size={22} color={ink} />
-      ) : (
-        <MaterialCommunityIcons name="notebook-outline" size={22} color={ink} />
-      )}
+      <NotebookMark notebook={notebook} ringColor={theme.colors.surfaceVariant} />
     </View>
   );
 }
@@ -146,7 +147,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
 
   return (
     <View style={styles.wrap}>
-      <Text variant="labelLarge" style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
+      <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
         {t('notebooks.title')}
       </Text>
       <Surface
@@ -161,7 +162,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
       >
         <View style={styles.header}>
           {!canAdd ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, flex: 1 }}>
+            <Text style={[typeScale.secondary, { color: theme.colors.onSurfaceVariant, flex: 1 }]}>
               {t('notebooks.maxReached', { count: JOURNAL_NOTEBOOK_MAX })}
             </Text>
           ) : (
@@ -183,6 +184,7 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
 
         {notebooks.map((notebook, index) => (
           <React.Fragment key={notebook.id}>
+            <Rule style={styles.rule} />
             <View style={styles.row}>
               <Pressable
                 onPress={() => startEdit(notebook)}
@@ -191,7 +193,10 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
                 accessibilityLabel={t('notebooks.editA11y', { name: notebook.name })}
               >
                 <NotebookWell notebook={notebook} />
-                <Text variant="titleMedium" style={styles.rowName} numberOfLines={1}>
+                <Text
+                  style={[typeScale.rowName, styles.rowName, { color: theme.colors.onSurface }]}
+                  numberOfLines={1}
+                >
                   {notebook.name}
                 </Text>
               </Pressable>
@@ -246,19 +251,31 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
           </React.Fragment>
         ))}
 
+      </Surface>
+
+      <EditorSheet
+        visible={draft != null}
+        onDismiss={() => setDraft(null)}
+        dismissable={!busy}
+        title={draft?.id === 'new' ? t('notebooks.newTitle') : t('notebooks.editTitle')}
+        primaryAction={{
+          label: t('editorSheet.save'),
+          onPress: () => void save(),
+          loading: busy,
+          disabled: busy,
+        }}
+      >
         {draft ? (
           <>
-            <View style={styles.editor}>
-              <TextInput
-                mode="outlined"
-                label={t('notebooks.nameLabel')}
-                value={draft.name}
-                onChangeText={(name) => setDraft({ ...draft, name })}
-                maxLength={JOURNAL_NOTEBOOK_NAME_MAX}
-                autoFocus={draft.id === 'new'}
-                dense
-              />
-              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            <FilledField
+              placeholder={t('notebooks.nameLabel')}
+              value={draft.name}
+              onChangeText={(name) => setDraft({ ...draft, name })}
+              maxLength={JOURNAL_NOTEBOOK_NAME_MAX}
+              autoFocus={draft.id === 'new'}
+            />
+            <View style={styles.colorBlock}>
+              <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
                 {t('notebooks.colorLabel')}
               </Text>
               <View style={styles.colors}>
@@ -269,72 +286,77 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
                       key={color}
                       onPress={() => setDraft({ ...draft, color })}
                       style={[
-                        styles.colorDot,
-                        { backgroundColor: color },
-                        selected && { borderColor: theme.colors.onSurface },
+                        styles.swatchTarget,
+                        {
+                          borderRadius: deco.radius.pill,
+                          borderColor: selected ? theme.colors.onSurface : 'transparent',
+                        },
                       ]}
-                      accessibilityRole="button"
+                      accessibilityRole="radio"
                       accessibilityState={{ selected }}
                       accessibilityLabel={t('notebooks.colorA11y', { color })}
-                    />
+                    >
+                      <View
+                        style={[
+                          styles.swatch,
+                          { backgroundColor: color, borderRadius: deco.radius.pill },
+                        ]}
+                      />
+                    </Pressable>
                   );
                 })}
               </View>
-              <IconPickerField
-                value={draft.icon ?? null}
-                onChange={(icon) => setDraft({ ...draft, icon: icon ?? undefined })}
-              />
-              <View style={styles.editorActions}>
-                <Button mode="text" onPress={() => setDraft(null)} disabled={busy}>
-                  {t('editorSheet.cancel')}
-                </Button>
-                <Button mode="contained" onPress={() => void save()} loading={busy} disabled={busy}>
-                  {t('editorSheet.save')}
-                </Button>
-              </View>
             </View>
+            <IconPickerField
+              value={draft.icon ?? null}
+              onChange={(icon) => setDraft({ ...draft, icon: icon ?? undefined })}
+            />
           </>
         ) : null}
-      </Surface>
+      </EditorSheet>
     </View>
   );
 }
 
+/** Where a row's name starts: the gutter, the 40dp well and its gap. */
+const NAME_INSET = space.lg + 40 + space.md;
+
 const styles = StyleSheet.create({
-  wrap: { gap: 8 },
-  sectionTitle: { paddingHorizontal: 8 },
+  wrap: { gap: space.sm },
+  sectionTitle: { ...typeScale.caption, fontSize: 14, paddingHorizontal: space.xs },
   surface: { overflow: 'hidden' },
   header: {
-    minHeight: 44,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: space.lg,
+    paddingRight: space.xs,
   },
   headerSpacer: {
     flex: 1,
   },
   headerAction: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rule: { marginLeft: NAME_INSET },
   row: {
-    minHeight: 52,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 8,
-    gap: 4,
+    paddingLeft: space.lg,
+    paddingRight: space.xs,
+    gap: space.xs,
   },
   rowMain: {
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
+    gap: space.md,
+    paddingVertical: space.sm,
   },
   well: {
     width: 40,
@@ -343,28 +365,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowName: { flex: 1, minWidth: 0 },
-  editor: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: 8,
-    gap: 8,
+  colorBlock: {
+    gap: space.sm,
   },
   colors: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: space.xs,
   },
-  colorDot: {
-    width: 32,
-    height: 32,
-    // Geometric: half the size is what makes it round.
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
+  swatchTarget: {
+    width: SWATCH_TARGET,
+    height: SWATCH_TARGET,
+    borderWidth: SWATCH_RING,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  editorActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
+  swatch: {
+    width: SWATCH,
+    height: SWATCH,
   },
 });

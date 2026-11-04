@@ -22,6 +22,8 @@
   "notebooks": {
     "title": "Notebooks",
     "add": "Add notebook",
+    "newTitle": "New notebook",
+    "editTitle": "Edit notebook",
     "maxReached": "Max {{count}} notebooks",
     "nameLabel": "Name",
     "colorLabel": "Color",

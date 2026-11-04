@@ -1,12 +1,13 @@
 import React from 'react';
-import { Keyboard, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Keyboard, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Modal, Portal, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { useDialogKeyboardLift } from '../hooks/useDialogKeyboardLift';
+import { useKeyboardHeight } from '../hooks/useDialogKeyboardLift';
+import { sheetBottomPadding } from '../components/sheet/sheetGesture';
 import { space } from '../theme/spacing';
 import { NOTE_BODY_APPROACHING_REMAINING, NOTE_BODY_MAX_LENGTH } from './noteBodyLimits';
 import { NoteEditorActions } from './NoteEditorActions';
@@ -77,8 +78,9 @@ export type NoteEditorSheetProps = {
 const EMPTY_CHAPTER_FINGERPRINTS: Readonly<Record<string, string>> = Object.freeze({});
 
 const DICTATION_WAKE_TAG = 'lifeapp-note-dictation';
-const SHEET_MAX_WIDTH = 400;
-const SHEET_GUTTER = 24;
+/** Widest the sheet grows on a tablet or a phone on its side — the editor sheet's limit. */
+const SHEET_MAX_WIDTH = 640;
+const GRABBER = { width: 36, height: 4 };
 
 function DictationKeepAwake() {
   useKeepAwake(DICTATION_WAKE_TAG);
@@ -129,10 +131,9 @@ export default function NoteEditorSheet({
   const { t, i18n } = useTranslation('common');
   const { decorations: deco } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const keyboardLift = useDialogKeyboardLift(visible);
+  const { height: windowHeight } = useWindowDimensions();
+  const keyboardHeight = useKeyboardHeight(visible);
   const focused = useIsFocused();
-  const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.max(280, windowWidth - SHEET_GUTTER * 2));
   const previewMaxHeight = Math.round(Math.min(windowHeight * 0.52, windowHeight - 320));
   const previewMinHeight = Math.round(Math.min(windowHeight * 0.28, previewMaxHeight));
 
@@ -332,18 +333,32 @@ export default function NoteEditorSheet({
         <Modal
           visible={visible}
           onDismiss={requestDismiss}
-          style={[styles.modalWrap, { paddingBottom: keyboardLift }]}
+          // The same scrim every sheet dims the screen with.
+          theme={{ colors: { backdrop: deco.scrim } }}
+          style={styles.modalWrap}
           contentContainerStyle={[
-            styles.modal,
+            styles.sheet,
+            deco.sheetShadow,
             {
-              width: sheetWidth,
-              maxHeight: windowHeight - insets.top - insets.bottom - 32 - keyboardLift,
+              maxHeight: windowHeight - insets.top - space.xl,
               backgroundColor: theme.colors.surface,
-              borderRadius: deco.radius.lg,
-              ...(Platform.OS === 'android' ? { elevation: 6 } : {}),
+              borderTopLeftRadius: deco.radius.xl,
+              borderTopRightRadius: deco.radius.xl,
+              // Android draws edge to edge, so the window does not shrink for the
+              // keyboard: the sheet pads itself over it, like the editor sheet.
+              paddingBottom: sheetBottomPadding({ keyboardHeight, safeBottom: insets.bottom }),
             },
           ]}
         >
+          <View
+            testID="note-sheet-grabber"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              styles.grabber,
+              { backgroundColor: theme.colors.outlineVariant, borderRadius: deco.radius.pill },
+            ]}
+          />
           <View style={styles.body}>
             <NoteEditorHeader
               heading={
@@ -517,23 +532,22 @@ export default function NoteEditorSheet({
 
 const styles = StyleSheet.create({
   modalWrap: {
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    // Paper keeps a modal clear of the navigation bar; a sheet sits on the edge
+    // and pads that inset itself, so it reads as part of the bottom of the phone.
+    marginBottom: 0,
   },
-  modal: {
+  sheet: {
+    width: '100%',
+    maxWidth: SHEET_MAX_WIDTH,
     alignSelf: 'center',
-    marginVertical: 24,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-      },
-      default: {},
-    }),
+    paddingHorizontal: space.xl,
+    paddingTop: 10,
+  },
+  grabber: {
+    ...GRABBER,
+    alignSelf: 'center',
+    marginBottom: space.lg,
   },
   body: {
     flexGrow: 0,

@@ -4,14 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
 import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { NoteEditorHost, notebookInk, useNoteEditorSession } from '../notes';
+import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -19,13 +18,16 @@ import { newId } from '../utils/id';
 import JournalDayPanel, { type TrackerNoteRow } from './journal/JournalDayPanel';
 import JournalDaysList from './journal/JournalDaysList';
 import JournalNotebooksSection from './journal/JournalNotebooksSection';
+import NotebookMark from './journal/NotebookMark';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 
 type DayFilter = 'all' | 'trackers' | string;
 
 export default function JournalScreen() {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco, themeMode } = useAppTheme();
+  const { decorations: deco } = useAppTheme();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const notebooks = useJournalNotebookStore((s) => s.notebooks);
@@ -172,36 +174,25 @@ export default function JournalScreen() {
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
 
+  /** The picked filter takes the quiet moss fill; the rest sit as tiles on the page. */
   const renderFilterWell = (
     id: DayFilter,
     label: string,
-    icon: React.ReactNode,
-    tint?: string,
+    icon: (glyphColor: string, ringColor: string) => React.ReactNode,
   ) => {
     const selected = filter === id;
-    const bg = selected
-      ? tint
-        ? `${tint}33`
-        : theme.colors.primaryContainer
-      : theme.colors.surfaceVariant;
+    const fill = selected ? theme.colors.primaryContainer : theme.colors.surface;
+    const glyph = selected ? theme.colors.primary : theme.colors.onSurfaceVariant;
     return (
       <Pressable
         key={id}
         onPress={() => setFilter(id)}
-        style={[
-          styles.filterWell,
-          {
-            backgroundColor: bg,
-            borderRadius: deco.radius.md,
-            borderColor: selected ? (tint ?? theme.colors.primary) : 'transparent',
-            borderWidth: selected ? deco.borderWidth : 0,
-          },
-        ]}
+        style={[styles.filterWell, { backgroundColor: fill, borderRadius: deco.radius.md }]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={label}
       >
-        {icon}
+        {icon(glyph, fill)}
       </Pressable>
     );
   };
@@ -222,8 +213,8 @@ export default function JournalScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={{ color: theme.colors.error }}>{error}</Text>
-            <Button mode="outlined" onPress={() => void reload()}>
+            <Text style={[typeScale.secondary, { color: theme.colors.error }]}>{error}</Text>
+            <Button mode="text" compact onPress={() => void reload()} style={styles.retry}>
               {t('screen.retry')}
             </Button>
           </View>
@@ -236,39 +227,17 @@ export default function JournalScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}
         >
-          {renderFilterWell(
-            'all',
-            t('screen.filterAll'),
-            <MaterialCommunityIcons
-              name="view-grid-outline"
-              size={22}
-              color={filter === 'all' ? theme.colors.primary : theme.colors.onSurfaceVariant}
-            />,
+          {renderFilterWell('all', t('screen.filterAll'), (color) => (
+            <MaterialCommunityIcons name="view-grid-outline" size={22} color={color} />
+          ))}
+          {notebooks.map((notebook) =>
+            renderFilterWell(notebook.id, notebook.name, (color, ring) => (
+              <NotebookMark notebook={notebook} glyphColor={color} ringColor={ring} />
+            )),
           )}
-          {notebooks.map((notebook) => {
-            const ink = notebookInk(notebook.color, themeMode);
-            return renderFilterWell(
-              notebook.id,
-              notebook.name,
-              notebook.icon ? (
-                <TrackerIcon name={notebook.icon} size={22} color={ink} />
-              ) : (
-                <MaterialCommunityIcons name="notebook-outline" size={22} color={ink} />
-              ),
-              ink,
-            );
-          })}
-          {renderFilterWell(
-            'trackers',
-            t('screen.trackerNotesLabel'),
-            <MaterialCommunityIcons
-              name="note-text-outline"
-              size={22}
-              color={
-                filter === 'trackers' ? theme.colors.primary : theme.colors.onSurfaceVariant
-              }
-            />,
-          )}
+          {renderFilterWell('trackers', t('screen.trackerNotesLabel'), (color) => (
+            <MaterialCommunityIcons name="note-text-outline" size={22} color={color} />
+          ))}
         </ScrollView>
 
         <JournalDayPanel
@@ -302,9 +271,10 @@ export default function JournalScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.lg,
+    paddingBottom: space.xxl,
+    gap: layout.sectionGap,
     flexGrow: 1,
   },
   centered: {
@@ -313,15 +283,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorBox: {
-    gap: 8,
+    gap: space.xs,
+  },
+  retry: {
+    alignSelf: 'flex-start',
+    marginLeft: -space.sm,
   },
   filterRow: {
-    gap: 8,
+    gap: space.sm,
     alignItems: 'center',
   },
   filterWell: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },

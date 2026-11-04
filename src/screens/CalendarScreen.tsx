@@ -7,7 +7,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addLocalDays, monthGridRange, startOfLocalDay, toDateString } from '../calendar/dates';
+import EmptyState from '../components/EmptyState';
+import QuietText from '../components/QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { layout, space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { formatDayHeading, formatOccurrenceTime, formatMonthTitle } from '../calendar/format';
 import { occurrencesOnDay } from '../calendar/occurrences';
 import type { RootStackParamList } from '../navigation/types';
@@ -77,16 +81,29 @@ export default function CalendarScreen() {
             accessibilityLabel={t('calendar:screen.previousMonth')}
             style={styles.monthNav}
           >
-            <MaterialCommunityIcons name="chevron-left" size={28} color={theme.colors.primary} />
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={24}
+              color={theme.colors.onSurfaceVariant}
+            />
           </Pressable>
-          <Text variant="titleMedium">{formatMonthTitle(year, monthIndex)}</Text>
+          <Text
+            style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
+            accessibilityRole="header"
+          >
+            {formatMonthTitle(year, monthIndex)}
+          </Text>
           <Pressable
             onPress={() => setCursor(new Date(year, monthIndex + 1, 1))}
             accessibilityRole="button"
             accessibilityLabel={t('calendar:screen.nextMonth')}
             style={styles.monthNav}
           >
-            <MaterialCommunityIcons name="chevron-right" size={28} color={theme.colors.primary} />
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={theme.colors.onSurfaceVariant}
+            />
           </Pressable>
         </View>
 
@@ -94,8 +111,7 @@ export default function CalendarScreen() {
           {WEEKDAY_ORDER.map((key) => (
             <Text
               key={key}
-              variant="labelSmall"
-              style={[styles.weekLabel, { color: theme.colors.onSurfaceVariant }]}
+              style={[typeScale.caption, styles.weekLabel, { color: theme.colors.onSurfaceVariant }]}
             >
               {t(`common:weekdaysShort.${key}`)}
             </Text>
@@ -116,7 +132,7 @@ export default function CalendarScreen() {
                 style={[
                   styles.dayCell,
                   { borderRadius: deco.radius.md },
-                  selected && { backgroundColor: theme.colors.primaryContainer },
+                  selected && { backgroundColor: theme.colors.primary },
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -124,15 +140,20 @@ export default function CalendarScreen() {
                 }
               >
                 <Text
-                  variant="bodyMedium"
-                  style={{
-                    color: !inMonth
-                      ? theme.colors.outline
-                      : selected
-                        ? theme.colors.onPrimaryContainer
-                        : theme.colors.onSurface,
-                    fontWeight: isToday || selected ? '700' : '400',
-                  }}
+                  style={[
+                    typeScale.body,
+                    styles.dayNumber,
+                    {
+                      color: selected
+                        ? theme.colors.onPrimary
+                        : !inMonth
+                          ? theme.colors.onSurfaceVariant
+                          : isToday
+                            ? theme.colors.primary
+                            : theme.colors.onSurface,
+                      fontWeight: isToday || selected ? '600' : '400',
+                    },
+                  ]}
                 >
                   {day.getDate()}
                 </Text>
@@ -141,9 +162,7 @@ export default function CalendarScreen() {
                     style={[
                       styles.dot,
                       {
-                        backgroundColor: selected
-                          ? theme.colors.onPrimaryContainer
-                          : theme.colors.primary,
+                        backgroundColor: selected ? theme.colors.onPrimary : theme.colors.primary,
                       },
                     ]}
                   />
@@ -156,13 +175,19 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.daySection}>
-          <Text variant="titleSmall" style={{ marginBottom: 8 }}>
+          <Text style={[styles.dayHeading, { color: theme.colors.onSurfaceVariant }]}>
             {formatDayHeading(selectedDay)}
           </Text>
           {dayOccurrences.length === 0 ? (
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t('calendar:screen.noEvents')}
-            </Text>
+            <EmptyState
+              message={t('calendar:screen.noEvents')}
+              actionLabel={t('calendar:screen.addEvent')}
+              onAction={() =>
+                navigation.navigate('CalendarEventEditor', {
+                  seedDate: toDateString(selectedDay),
+                })
+              }
+            />
           ) : (
             dayOccurrences.map((occ) => {
               const cleared = clearedByKey[occ.occurrenceKey] != null;
@@ -171,8 +196,7 @@ export default function CalendarScreen() {
                   key={occ.occurrenceKey}
                   style={[
                     styles.eventRow,
-                    { borderRadius: deco.radius.md },
-                    { backgroundColor: theme.colors.surface },
+                    { borderRadius: deco.radius.lg, backgroundColor: theme.colors.surface },
                   ]}
                 >
                   <Pressable
@@ -202,9 +226,9 @@ export default function CalendarScreen() {
                     style={styles.checkHit}
                   >
                     <MaterialCommunityIcons
-                      name={cleared ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-                      size={26}
-                      color={cleared ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                      name={cleared ? 'check-circle' : 'circle-outline'}
+                      size={28}
+                      color={cleared ? theme.colors.primary : theme.colors.outline}
                     />
                   </Pressable>
                   <Pressable
@@ -213,21 +237,28 @@ export default function CalendarScreen() {
                     }
                     style={styles.eventPress}
                   >
-                    <View style={[styles.colorBar, { backgroundColor: occ.color }]} />
+                    <View
+                      style={[
+                        styles.colorBar,
+                        { backgroundColor: occ.color, borderRadius: deco.radius.pill },
+                      ]}
+                    />
                     <View style={styles.eventBody}>
                       <Text
-                        variant="bodyLarge"
-                        style={{
-                          fontWeight: '600',
-                          textDecorationLine: cleared ? 'line-through' : 'none',
-                        }}
+                        style={[
+                          typeScale.rowName,
+                          {
+                            color: theme.colors.onSurface,
+                            textDecorationLine: cleared ? 'line-through' : 'none',
+                          },
+                        ]}
                       >
                         {occ.title}
                       </Text>
-                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      <QuietText style={typeScale.secondary}>
                         {cleared ? t('calendar:screen.doneLabel') : ''}
                         {formatOccurrenceTime(occ)}
-                      </Text>
+                      </QuietText>
                     </View>
                     <MaterialCommunityIcons
                       name="chevron-right"
@@ -239,24 +270,33 @@ export default function CalendarScreen() {
               );
             })
           )}
-          <Button
-            mode="text"
-            icon="plus"
-            onPress={() =>
-              navigation.navigate('CalendarEventEditor', {
-                seedDate: toDateString(selectedDay),
-              })
-            }
-            style={{ alignSelf: 'flex-start', marginTop: 4 }}
-          >
-            {t('calendar:screen.addEvent')}
-          </Button>
+          {dayOccurrences.length > 0 ? (
+            <Button
+              mode="text"
+              icon="plus"
+              onPress={() =>
+                navigation.navigate('CalendarEventEditor', {
+                  seedDate: toDateString(selectedDay),
+                })
+              }
+              style={styles.addEvent}
+            >
+              {t('calendar:screen.addEvent')}
+            </Button>
+          ) : null}
         </View>
       </ScrollView>
 
       <FAB
         icon="plus"
-        style={[styles.fab, { bottom: 16 + insets.bottom, backgroundColor: theme.colors.primary }]}
+        style={[
+          styles.fab,
+          {
+            bottom: space.lg + insets.bottom,
+            backgroundColor: theme.colors.primary,
+            borderRadius: deco.radius.pill,
+          },
+        ]}
         color={theme.colors.onPrimary}
         onPress={() =>
           navigation.navigate('CalendarEventEditor', {
@@ -269,20 +309,28 @@ export default function CalendarScreen() {
   );
 }
 
+/** The month's grid sits inside the gutter, less the cells' own breathing room. */
+const GRID_INSET = layout.gutter - space.xs;
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingHorizontal: GRID_INSET,
+    paddingTop: space.sm,
   },
-  monthNav: { padding: 8 },
+  monthNav: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   weekRow: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    marginTop: 8,
+    paddingHorizontal: GRID_INSET,
+    marginTop: space.md,
   },
   weekLabel: {
     flex: 1,
@@ -291,13 +339,16 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 8,
-    marginTop: 4,
+    paddingHorizontal: GRID_INSET,
+    marginTop: space.xs,
   },
   dayCell: {
     width: '14.28%',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: space.sm,
+  },
+  dayNumber: {
+    textAlign: 'center',
   },
   dot: {
     width: 5,
@@ -309,36 +360,47 @@ const styles = StyleSheet.create({
     height: 8,
   },
   daySection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: layout.gutter,
+    paddingTop: layout.sectionGap,
+  },
+  dayHeading: {
+    ...typeScale.caption,
+    fontSize: 14,
+    paddingHorizontal: space.xs,
+    marginBottom: space.sm,
   },
   eventRow: {
+    minHeight: layout.rowHeight,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    marginBottom: 8,
-    gap: 4,
+    paddingHorizontal: space.xs,
+    marginBottom: layout.rowGap,
   },
   checkHit: {
-    padding: 6,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eventPress: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 4,
-    paddingRight: 4,
+    gap: space.md,
+    paddingVertical: space.md,
+    paddingRight: space.md,
   },
   colorBar: {
     width: 4,
     alignSelf: 'stretch',
-    borderRadius: 2,
   },
-  eventBody: { flex: 1 },
+  eventBody: { flex: 1, gap: space.xxs },
+  addEvent: {
+    alignSelf: 'flex-start',
+    marginTop: space.xs,
+  },
   fab: {
     position: 'absolute',
-    right: 16,
+    right: layout.gutter,
   },
 });

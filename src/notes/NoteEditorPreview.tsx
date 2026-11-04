@@ -16,10 +16,12 @@ import {
   DICTATION_PRESENCE_COLOR_DARK,
 } from '../components/dictation/DictationPresence';
 import type { DictationLivePreview } from '../dictation/livePreview';
+import { useAppTheme } from '../hooks/useAppTheme';
 
 const FOLLOW_BOTTOM_PX = 48;
-const REVIEW_ADDED_WASH = 'rgba(91, 75, 138, 0.10)';
-const REVIEW_ADDED_WASH_DARK = 'rgba(155, 139, 196, 0.18)';
+/** The just-dictated words sit on a faint wash of moss, the app's one accent. */
+const REVIEW_ADDED_WASH = 'rgba(46, 106, 78, 0.12)';
+const REVIEW_ADDED_WASH_DARK = 'rgba(134, 201, 163, 0.18)';
 
 function joinCommittedDraft(draft: string, liveCommitted: string): string {
   if (!liveCommitted) return draft;
@@ -63,6 +65,7 @@ export function NoteEditorPreview({
   onEdit,
 }: Props) {
   const theme = useTheme();
+  const { decorations: deco } = useAppTheme();
   const { t } = useTranslation('common');
   const scrollRef = useRef<ScrollView>(null);
   const followRef = useRef(true);
@@ -113,7 +116,7 @@ export function NoteEditorPreview({
     <DictationStageGlow
       active={capturing && listening}
       color={ink}
-      borderRadius={12}
+      borderRadius={deco.radius.md}
       style={[
         styles.preview,
         isJournal && styles.journalPreview,
@@ -121,7 +124,8 @@ export function NoteEditorPreview({
           ? { minHeight: minHeight ?? undefined, maxHeight: maxHeight ?? undefined }
           : null,
         {
-          backgroundColor: theme.colors.surfaceVariant,
+          backgroundColor: theme.colors.background,
+          borderRadius: deco.radius.md,
         },
       ]}
     >
