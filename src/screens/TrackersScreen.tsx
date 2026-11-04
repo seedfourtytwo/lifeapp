@@ -16,7 +16,6 @@ import {
   type TrackerEditorSaveData,
   type TrackerEditorSession,
 } from '../components/trackerEditor';
-import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from '../navigation/types';
 import {
   CounterConfigSchema,
@@ -25,7 +24,6 @@ import {
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { counterMetaLines, habitMetaLines } from '../utils/trackerMetaLines';
-import { getTrackerKindAccent } from '../utils/trackerKindAccent';
 import { isElementArchived } from '../utils/dashboardElements';
 import { parseTrackerEditorSave } from '../utils/parseTrackerEditorSave';
 
@@ -46,9 +44,6 @@ export default function TrackersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
-  const { themeMode } = useAppTheme();
-  const counterAccent = getTrackerKindAccent(themeMode, 'counter').color;
-  const habitAccent = getTrackerKindAccent(themeMode, 'habit').color;
 
   const elements = useElementStore((s) => s.elements);
   const isLoading = useElementStore((s) => s.isLoading);
@@ -163,7 +158,6 @@ export default function TrackersScreen() {
   const renderElementCard = useCallback(
     (element: ElementDefinition, archived: boolean) => {
       const kindLabel = t(element.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit');
-      const accentColor = element.kind === 'counter' ? counterAccent : habitAccent;
 
       if (element.kind === 'counter') {
         const parsed = CounterConfigSchema.safeParse(element.config);
@@ -172,7 +166,6 @@ export default function TrackersScreen() {
         return (
           <TrackerLibraryCard
             key={element.id}
-            accentColor={accentColor}
             name={element.name}
             icon={config.icon}
             description={counterMetaLines(config)[0]}
@@ -207,7 +200,6 @@ export default function TrackersScreen() {
       return (
         <TrackerLibraryCard
           key={element.id}
-          accentColor={accentColor}
           name={element.name}
           icon={config.icon}
           description={[
@@ -241,8 +233,6 @@ export default function TrackersScreen() {
     [
       archiveWithUndo,
       confirmDelete,
-      counterAccent,
-      habitAccent,
       navigation,
       restoreElement,
       t,
@@ -294,7 +284,6 @@ export default function TrackersScreen() {
         <TrackersCollapsibleSection
           title={t('screen.countersTitle')}
           icon="counter"
-          accentColor={counterAccent}
           count={activeCounters.length}
           addLabel={t('screen.countersAddLabel')}
           onAdd={() => setEditorSession(newEditorSession({ mode: 'counter' }))}
@@ -306,7 +295,6 @@ export default function TrackersScreen() {
         <TrackersCollapsibleSection
           title={t('screen.habitsTitle')}
           icon="checkbox-marked-circle-outline"
-          accentColor={habitAccent}
           count={activeHabits.length}
           addLabel={t('screen.habitsAddLabel')}
           onAdd={() => setEditorSession(newEditorSession({ mode: 'habit' }))}
@@ -318,7 +306,6 @@ export default function TrackersScreen() {
         <TrackersCollapsibleSection
           title={t('screen.archiveTitle')}
           icon="archive-outline"
-          accentColor="#64748B"
           count={archivedElements.length}
           showAddButton={false}
           defaultCollapsed={archivedElements.length === 0}

@@ -9,7 +9,6 @@ import SettingsRow from './settings/SettingsRow';
 import { settingsRowStyles } from './settings/SettingsRow';
 
 type Props = {
-  accentColor: string;
   name: string;
   icon?: TrackerIconId | null;
   description?: string;
@@ -22,7 +21,6 @@ type Props = {
 };
 
 export default function TrackerLibraryCard({
-  accentColor,
   name,
   icon = null,
   description,
@@ -40,9 +38,9 @@ export default function TrackerLibraryCard({
   const well = (
     <View style={settingsRowStyles.iconSlot}>
       {icon ? (
-        <TrackerIcon name={icon} size={24} color={accentColor} />
+        <TrackerIcon name={icon} size={24} color={theme.colors.onSurfaceVariant} />
       ) : (
-        <Text variant="titleSmall" style={{ color: accentColor }}>
+        <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant }}>
           {name.trim().charAt(0).toUpperCase() || '·'}
         </Text>
       )}

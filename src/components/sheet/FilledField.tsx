@@ -101,6 +101,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: space.lg,
     paddingVertical: space.lg,
+    // The filled well already shows where you type; the browser's focus ring
+    // drew a heavy frame around it on web.
+    outlineWidth: 0,
   },
   accessory: {
     alignSelf: 'center',

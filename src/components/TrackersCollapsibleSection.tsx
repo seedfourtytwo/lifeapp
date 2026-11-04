@@ -10,7 +10,6 @@ import Rule from './Rule';
 type Props = {
   title: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  accentColor: string;
   count: number;
   addLabel?: string;
   showAddButton?: boolean;
@@ -23,7 +22,6 @@ type Props = {
 export default function TrackersCollapsibleSection({
   title,
   icon,
-  accentColor,
   count,
   addLabel,
   showAddButton = true,
@@ -61,12 +59,12 @@ export default function TrackersCollapsibleSection({
           style={[
             styles.iconWrap,
             {
-              backgroundColor: `${accentColor}22`,
+              backgroundColor: theme.colors.surfaceVariant,
               borderRadius: deco.radius.md,
             },
           ]}
         >
-          <MaterialCommunityIcons name={icon} size={22} color={accentColor} />
+          <MaterialCommunityIcons name={icon} size={22} color={theme.colors.onSurfaceVariant} />
         </View>
         <Text variant="titleMedium" style={styles.title}>
           {title}
@@ -85,7 +83,7 @@ export default function TrackersCollapsibleSection({
               hitSlop={8}
               style={styles.addHit}
             >
-              <MaterialCommunityIcons name="plus" size={22} color={accentColor} />
+              <MaterialCommunityIcons name="plus" size={22} color={theme.colors.primary} />
             </Pressable>
           </View>
         ) : null}

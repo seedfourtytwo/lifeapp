@@ -24,14 +24,14 @@ export interface AppPalette {
 const LIGHT: AppPalette = {
   accent: '#2E6A4E',
   amber: '#9A5B00',
-  series: ['#2E6A4E', '#1D4ED8', '#9A5B00', '#BE185D', '#5B4BB0'],
+  series: ['#2E6A4E', '#3E5C76', '#9A5B00', '#A2452E', '#6B4C7A'],
   track: '#BCC4BD',
 };
 
 const DARK: AppPalette = {
   accent: '#86C9A3',
   amber: '#F0B85A',
-  series: ['#86C9A3', '#93B4F5', '#F0B85A', '#F28AB8', '#B9A9F0'],
+  series: ['#86C9A3', '#9DB8D3', '#F0B85A', '#E59A85', '#C3A8D1'],
   track: '#3D4640',
 };
 
