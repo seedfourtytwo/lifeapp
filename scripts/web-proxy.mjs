@@ -65,6 +65,10 @@ server.on('upgrade', (req, socket, head) => {
           .join('\r\n') +
         '\r\n\r\n',
     );
+    // A browser closing its tab resets the socket; without these handlers that
+    // ECONNRESET is an unhandled 'error' event and takes the whole dev server down.
+    proxySocket.on('error', () => socket.destroy());
+    socket.on('error', () => proxySocket.destroy());
     proxySocket.pipe(socket);
     socket.pipe(proxySocket);
     proxySocket.write(proxyHead);
