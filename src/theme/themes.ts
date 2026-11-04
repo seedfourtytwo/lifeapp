@@ -26,16 +26,20 @@ const LIGHT = {
   danger: '#B3261E',
 } as const;
 
-/** Green-black, not navy: the old slate read as "web app". Moss lightens so done states glow. */
+/**
+ * Green-black, not navy: the old slate read as "web app". Moss lightens so done states glow.
+ * The ground sits near black and the tile a clear step above it, so rows read as
+ * separate objects by tone alone, with no outline drawn round them.
+ */
 const DARK = {
-  ground: '#111513',
-  surface: '#1A1F1C',
-  well: '#252B27',
+  ground: '#0B0E0C',
+  surface: '#1C2220',
+  well: '#2A312D',
   ink: '#E6EBE7',
   ink2: '#9AA59E',
-  line: '#2E3530',
+  line: '#353D38',
   moss: '#86C9A3',
-  mossTint: '#203328',
+  mossTint: '#253B2F',
   onMossTint: '#BFE3CD',
   onMoss: '#0E1A13',
   danger: '#F2B8B5',
@@ -131,7 +135,7 @@ export const appDarkTheme: MD3Theme = {
     onSurface: DARK.ink,
     surfaceVariant: DARK.well,
     onSurfaceVariant: DARK.ink2,
-    outline: '#4A544D',
+    outline: '#56615A',
     outlineVariant: DARK.line,
     inverseSurface: DARK.ink,
     inverseOnSurface: DARK.surface,

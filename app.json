@@ -2,7 +2,7 @@
   "expo": {
     "name": "Life",
     "slug": "lifeapp",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -34,14 +34,14 @@
         "backgroundColor": "#ECEEEA",
         "dark": {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#111513"
+          "backgroundColor": "#0B0E0C"
         }
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "allowBackup": false,
       "package": "com.lifeapp.dashboard",
-      "versionCode": 28,
+      "versionCode": 29,
       "permissions": [
         "WAKE_LOCK",
         "ACCESS_COARSE_LOCATION",

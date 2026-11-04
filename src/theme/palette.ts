@@ -32,7 +32,7 @@ const DARK: AppPalette = {
   accent: '#86C9A3',
   amber: '#F0B85A',
   series: ['#86C9A3', '#9DB8D3', '#F0B85A', '#E59A85', '#C3A8D1'],
-  track: '#3D4640',
+  track: '#4A544D',
 };
 
 const PALETTES: Record<ResolvedTheme, AppPalette> = {
