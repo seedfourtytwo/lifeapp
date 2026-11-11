@@ -15,6 +15,7 @@ import {
 } from '../../calendar/types';
 import { DEFAULT_CALENDAR_COLOR, DEFAULT_CALENDAR_NAME } from '../../calendar/defaults';
 import { newId } from '../../utils/id';
+import { readableRows } from './readableRows';
 
 interface CalendarRow {
   id: string;
@@ -82,7 +83,7 @@ export async function getAllCalendars(db: SQLiteDatabase): Promise<Calendar[]> {
   const rows = await db.getAllAsync<CalendarRow>(
     'SELECT id, name, color, source FROM calendars ORDER BY name COLLATE NOCASE',
   );
-  return rows.map(rowToCalendar);
+  return readableRows('calendars', rows, rowToCalendar);
 }
 
 export async function insertCalendar(db: SQLiteDatabase, calendar: Calendar): Promise<void> {
@@ -117,7 +118,7 @@ export async function getAllEvents(db: SQLiteDatabase): Promise<CalendarEvent[]>
      FROM calendar_events
      ORDER BY start_at ASC`,
   );
-  return rows.map(rowToEvent);
+  return readableRows('calendar_events', rows, rowToEvent);
 }
 
 export async function insertEvent(db: SQLiteDatabase, event: CalendarEvent): Promise<void> {
@@ -170,7 +171,7 @@ export async function getAllReminders(db: SQLiteDatabase): Promise<CalendarRemin
   const rows = await db.getAllAsync<ReminderRow>(
     'SELECT id, event_id, offset_minutes, enabled FROM calendar_reminders',
   );
-  return rows.map(rowToReminder);
+  return readableRows('calendar_reminders', rows, rowToReminder);
 }
 
 async function insertReminder(
@@ -239,7 +240,7 @@ export async function getAllOccurrenceClears(
     event_id: string;
     cleared_at: string;
   }>('SELECT occurrence_key, event_id, cleared_at FROM calendar_occurrence_clears');
-  return rows.map((row) =>
+  return readableRows('calendar_occurrence_clears', rows, (row) =>
     CalendarOccurrenceClearSchema.parse({
       occurrenceKey: row.occurrence_key,
       eventId: row.event_id,

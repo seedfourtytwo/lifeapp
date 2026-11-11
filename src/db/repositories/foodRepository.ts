@@ -8,6 +8,7 @@ import {
   type FoodNutrientsInput,
 } from '../../protocol';
 import { newId } from '../../utils/id';
+import { readableRows } from './readableRows';
 
 interface FoodItemRow {
   id: string;
@@ -238,12 +239,12 @@ export async function getFoodLogForDates(
     `SELECT * FROM food_log WHERE date IN (${placeholders}) ORDER BY logged_at ASC`,
     ...dates,
   );
-  return rows.map(rowToLogEntry);
+  return readableRows('food_log', rows, rowToLogEntry);
 }
 
 export async function getAllFoodLog(db: SQLiteDatabase): Promise<FoodLogEntry[]> {
   const rows = await db.getAllAsync<FoodLogRow>('SELECT * FROM food_log ORDER BY date ASC');
-  return rows.map(rowToLogEntry);
+  return readableRows('food_log', rows, rowToLogEntry);
 }
 
 /** Idempotent: logging the same food twice on one day is a no-op, not a duplicate. */
