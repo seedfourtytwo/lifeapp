@@ -90,7 +90,7 @@ jest.mock('../src/db/repositories/dashboardRepository', () => ({
 
 jest.mock('../src/db/repositories/eventRepository', () => ({
   getDailyTotalsForElementsOnDate: jest.fn(async () => new Map()),
-  getEventsForElementsOnDate: jest.fn(async () => new Map()),
+  getDayFactsForElementsOnDate: jest.fn(async () => new Map()),
 }));
 
 jest.mock('../src/db/repositories/activeTimerRepository', () => ({

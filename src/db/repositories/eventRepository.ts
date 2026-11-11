@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { DayFacts, LifeEvent } from '../../protocol';
-import { EventSchema, PROTOCOL_VERSION } from '../../protocol';
+import { EventSchema, factsFromTotal, PROTOCOL_VERSION } from '../../protocol';
 
 /** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
 
@@ -81,87 +81,9 @@ export async function getEventsForElementOnDate(
   return mapRowsToEvents(rows);
 }
 
-export async function getEventsForElementSince(
-  db: SQLiteDatabase,
-  elementId: string,
-  sinceDate: string,
-): Promise<LifeEvent[]> {
-  const rows = await db.getAllAsync<EventRow>(
-    'SELECT * FROM events WHERE element_id = ? AND date >= ? ORDER BY date ASC, timestamp ASC',
-    elementId,
-    sinceDate,
-  );
-  return mapRowsToEvents(rows);
-}
-
 /** `?, ?, ?` for an `IN (...)` clause. Ids are always bound, never interpolated. */
 function placeholdersFor(ids: readonly string[]): string {
   return ids.map(() => '?').join(', ');
-}
-
-/**
- * Group rows by element, seeding every requested id so callers can read the
- * map without a `?? []` at each use.
- */
-function groupEventsByElement(
-  rows: EventRow[],
-  elementIds: readonly string[],
-): Map<string, LifeEvent[]> {
-  const byElement = new Map<string, LifeEvent[]>();
-  for (const id of elementIds) {
-    byElement.set(id, []);
-  }
-  for (const event of mapRowsToEvents(rows)) {
-    byElement.get(event.elementId)?.push(event);
-  }
-  return byElement;
-}
-
-export async function getEventsForElementsOnDate(
-  db: SQLiteDatabase,
-  elementIds: string[],
-  date: string,
-): Promise<Map<string, LifeEvent[]>> {
-  if (elementIds.length === 0) return new Map();
-
-  const rows = await db.getAllAsync<EventRow>(
-    `SELECT * FROM events WHERE date = ? AND element_id IN (${placeholdersFor(elementIds)}) ORDER BY timestamp ASC`,
-    date,
-    ...elementIds,
-  );
-  return groupEventsByElement(rows, elementIds);
-}
-
-export async function getEventsForElementsSince(
-  db: SQLiteDatabase,
-  elementIds: string[],
-  sinceDate: string,
-): Promise<Map<string, LifeEvent[]>> {
-  if (elementIds.length === 0) return new Map();
-
-  const rows = await db.getAllAsync<EventRow>(
-    `SELECT * FROM events WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)}) ORDER BY date ASC, timestamp ASC`,
-    sinceDate,
-    ...elementIds,
-  );
-  return groupEventsByElement(rows, elementIds);
-}
-
-export async function getDailyTotalsByElement(
-  db: SQLiteDatabase,
-  elementId: string,
-  sinceDate: string,
-): Promise<{ date: string; total: number }[]> {
-  const rows = await db.getAllAsync<{ date: string; total: number }>(
-    `SELECT date, COALESCE(SUM(value), 0) as total
-     FROM events
-     WHERE element_id = ? AND date >= ?
-     GROUP BY date
-     ORDER BY date ASC`,
-    elementId,
-    sinceDate,
-  );
-  return rows;
 }
 
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
@@ -303,15 +225,13 @@ function rowToDayFacts(row: DayFactsRow): DayFacts {
   };
 }
 
-const EMPTY_DAY_FACTS: DayFacts = { total: 0, trackCompleted: false, markedComplete: false };
-
 export async function getDayFactsForElementsOnDate(
   db: SQLiteDatabase,
   elementIds: readonly string[],
   date: string,
 ): Promise<Map<string, DayFacts>> {
   const byElement = new Map<string, DayFacts>();
-  for (const id of elementIds) byElement.set(id, EMPTY_DAY_FACTS);
+  for (const id of elementIds) byElement.set(id, factsFromTotal(0));
   if (elementIds.length === 0) return byElement;
 
   const rows = await db.getAllAsync<DayFactsRow>(
