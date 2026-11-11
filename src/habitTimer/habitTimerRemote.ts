@@ -49,7 +49,7 @@ async function startOrToggleFocusedHabit(): Promise<void> {
   if (config.trackingMode === 'timer') {
     const session = useEventStore.getState().activeTimerSessions[element.id];
     if (!session) {
-      startHabitTimerSession(element.id, config);
+      void startHabitTimerSession(element.id, config);
       return;
     }
     if (isActiveTimerPaused(session)) {

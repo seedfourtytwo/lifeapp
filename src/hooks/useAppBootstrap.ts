@@ -16,6 +16,7 @@ import {
 } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
+import { drainPendingWidgetActions } from '../widget/pendingWidgetActions';
 import { installWidgetSnapshotWriter } from '../widget/widgetSnapshotWriter';
 
 /**
@@ -127,6 +128,8 @@ export function useAppBootstrap(): void {
         didReleaseTimersReadyRef.current = true;
         releaseActiveTimersReady();
       }
-    })().catch(warnStartupFailure('timer restore and day state'));
+      // Taps the widget queued while the app was not running.
+      await drainPendingWidgetActions();
+    })().catch(warnStartupFailure('timer restore, day state and widget actions'));
   }, [elementsLoaded, elementsLoading, hydrateActiveTimerSessions, settingsLoaded]);
 }

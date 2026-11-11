@@ -149,8 +149,9 @@ export async function unmarkHabitTimerDone(elementId: string, config: HabitConfi
   }
 }
 
-export function startHabitTimerSession(elementId: string, config: HabitConfig): void {
-  void enqueueTimerStart(async () => {
+/** Resolves once the start has been taken (or found already running). */
+export function startHabitTimerSession(elementId: string, config: HabitConfig): Promise<void> {
+  return enqueueTimerStart(async () => {
     try {
       // Wait for persisted-session hydrate + day totals so starts/finishes are consistent.
       await whenActiveTimersReady();
@@ -182,6 +183,14 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
       );
     }
   });
+}
+
+/** Stop a timer and throw its session away: nothing is logged. */
+export async function discardHabitTimerSession(elementId: string): Promise<void> {
+  if (!useEventStore.getState().activeTimerSessions[elementId]) return;
+  stopHabitTimerLockScreenTicker();
+  await stopHabitSound();
+  useEventStore.getState().discardHabitTimer(elementId);
 }
 
 export function pauseHabitTimerSession(elementId: string, _config: HabitConfig): void {
@@ -232,7 +241,7 @@ export function pressHabitTimer(elementId: string, config: HabitConfig): void {
   const session: ActiveTimerSession | undefined =
     useEventStore.getState().activeTimerSessions[elementId];
   if (!session) {
-    startHabitTimerSession(elementId, config);
+    void startHabitTimerSession(elementId, config);
     return;
   }
   if (isActiveTimerPaused(session)) {

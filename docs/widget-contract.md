@@ -110,4 +110,78 @@ The app may not run after midnight. Compute "today" at render time from the phon
 
 ## Pending actions
 
-Specified in the next stage of this document (`src/protocol/widgetActions.ts`).
+`src/protocol/widgetActions.ts` (`WidgetActionSchema`). The widget appends one line per tap to `widget/pending-actions.jsonl`; JavaScript drains it on start, on every `refreshFromDb()` (each return to the app) and, from stage 6, on the widget's broadcast. Each action goes through the same store command a tap in the app uses, with all its rules: a habit tap only ever completes, never un-ticks; writes are abandoned if an import or clear replaced the data; a timer stopped after midnight gives each day its own seconds and records the goal in force.
+
+### Line format
+
+One JSON object per line, UTF-8, ending in `\n` (0x0A), no other newlines inside. At most 1 KB a line.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `v` | `1` | Format version. Other versions are skipped. |
+| `id` | UUID | New for each tap (`UUID.randomUUID()`). The same id is never applied twice. |
+| `at` | instant | When the tap happened, UTC. |
+| `day` | local date | The app day on the phone at the tap (local calendar date in the phone's zone then). |
+| `type` | string | One of the types below. |
+| `trackerId` | UUID | A tracker `id` from the snapshot. |
+| `amount` | number | `counter_add` only: positive, at most 10000, usually one of `quickIncrements`. |
+
+| `type` | Tracker | Effect |
+|---|---|---|
+| `habit_complete` | check-off habit | Marks `day` done if it is not already; never un-ticks. A timer habit is finished with `timer_done`. |
+| `counter_add` | counter | Adds `amount` at `at`, on `day`. |
+| `timer_start` | timer habit | Starts a session now (stopping any other running timer, as the app does), or resumes a paused one. |
+| `timer_pause` | timer habit | Pauses the running session. |
+| `timer_resume` | timer habit | Resumes the paused session. |
+| `timer_done` | timer habit | Stops the session, logs its seconds and marks the day done even short of the goal. With no session, marks the day done. |
+| `timer_discard` | timer habit | Stops the session and logs nothing. |
+
+Example:
+
+```
+{"v":1,"id":"6f1c2a9e-8d3b-4c55-9a1e-2b7d4e0f9c11","at":"2026-03-10T08:12:03.418Z","day":"2026-03-10","type":"counter_add","trackerId":"550e8400-e29b-41d4-a716-446655441008","amount":1}
+```
+
+### Appending (native)
+
+For each tap:
+
+1. `fd = Os.open(path, O_WRONLY | O_CREAT | O_APPEND, 0600)` on `files/widget/pending-actions.jsonl`. Open it for this one line; never keep it open.
+2. Write the whole line, newline included, in one `write` call.
+3. `Os.fstat(fd).st_ino` and `Os.stat(path).st_ino`, then close.
+4. If `stat` failed or the two inode numbers differ, JavaScript renamed the file while this tap was being written, and the line may have landed in a queue that was already read. Go back to step 1 with **the same line, same id**. A line that did arrive twice is applied once.
+
+Append only. Never rewrite, truncate, rename or delete either queue file.
+
+### Draining (JavaScript)
+
+1. If `pending-actions.draining.jsonl` exists, a drain died part-way: apply it first (step 3).
+2. Otherwise, if `pending-actions.jsonl` exists, rename it to `pending-actions.draining.jsonl`. New taps from here on create a fresh `pending-actions.jsonl`.
+3. Read the whole file. Text after the last newline is a line still being written or cut off; it is skipped (and counted), and the widget's step 4 writes it again if it was in flight. Each complete line that is not valid JSON, not version 1, not a known `type` or fails validation is skipped and counted; one bad line never stops the rest.
+4. Apply each action in file order, unless its id is in the applied log (the `widget_action_log` setting in SQLite, entries kept 30 days). Every action read ends up in the log, applied or dropped with its reason.
+5. Delete `pending-actions.draining.jsonl`, then go back to step 1 once, for taps that arrived meanwhile.
+
+Each action is applied at most once, by its id:
+
+- `counter_add` becomes an event whose id is the action's id; inserting it again finds it already there. It is logged after it is applied.
+- `habit_complete` is a no-op on a day already done. It is logged after it is applied.
+- Timer actions are not safe to repeat (a second `timer_start` after `timer_done` would start a new session), so they are logged **before** they are applied.
+
+If the app dies:
+
+- after the rename, before any action: the next drain finds the draining file and applies it all.
+- part-way through: actions already logged are skipped; a counter tap applied but not yet logged is found by its event id; a timer tap logged but not yet applied is lost (at most one tap, never applied twice).
+- after the last action, before the delete: every action is in the log; the next drain skips them all and deletes the file.
+
+### Dropped actions
+
+Read, logged with the reason, and not applied:
+
+| Reason | When |
+|---|---|
+| `tracker_missing` | No tracker with that id (deleted). |
+| `tracker_archived` | The tracker is archived. |
+| `wrong_kind` | A counter action for a habit, a habit action for a counter, or `habit_complete` for a timer habit. |
+| `not_a_timer` | A timer action for a check-off habit. |
+| `day_ended` | A timer action whose `day` is before today: a session runs on today's clock, so the tap means nothing now. `habit_complete` and `counter_add` for an ended day are applied to that day. |
+| `future_day` | `day` is after today on the phone (clock or zone changed). |

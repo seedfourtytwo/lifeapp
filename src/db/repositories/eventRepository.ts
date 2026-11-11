@@ -104,6 +104,10 @@ function placeholdersFor(ids: readonly string[]): string {
   return ids.map(() => '?').join(', ');
 }
 
+export async function eventExists(db: SQLiteDatabase, id: string): Promise<boolean> {
+  return (await db.getFirstAsync('SELECT 1 FROM events WHERE id = ?', id)) !== null;
+}
+
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
   EventSchema.parse(event);
 

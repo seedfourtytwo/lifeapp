@@ -299,17 +299,19 @@ export function createEventCommands(set: SetEventState, get: GetEventState): Eve
       }
     },
 
-    logEvent: (elementId, value, meta) =>
+    logEvent: (elementId, value, meta, logged) =>
       enqueueCounterWrite(elementId, async () => {
         try {
           const inserted = await withGuardedWrite('protocol', async () => {
+            const db = await getDatabase();
+            if (logged && (await eventRepo.eventExists(db, logged.id))) return logged.id;
             const now = new Date();
-            const id = newId();
-            await eventRepo.insertEvent(await getDatabase(), {
+            const id = logged?.id ?? newId();
+            await eventRepo.insertEvent(db, {
               id,
               elementId,
-              timestamp: now.toISOString(),
-              date: toDateString(now),
+              timestamp: logged?.timestamp ?? now.toISOString(),
+              date: logged?.date ?? toDateString(now),
               value,
               meta,
               protocolVersion: PROTOCOL_VERSION,
@@ -354,8 +356,8 @@ export function createEventCommands(set: SetEventState, get: GetEventState): Eve
     toggleHabit: (elementId, config, date = todayDate()) =>
       writeHabitDay('toggle', elementId, config, date, set, get),
 
-    completeHabit: (elementId, config) =>
-      writeHabitDay('complete', elementId, config, todayDate(), set, get),
+    completeHabit: (elementId, config, date = todayDate()) =>
+      writeHabitDay('complete', elementId, config, date, set, get),
 
     markHabitDone: async (elementId, config) => {
       const session = get().activeTimerSessions[elementId];

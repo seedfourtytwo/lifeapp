@@ -4,6 +4,16 @@ import type { CounterStreakInput } from '../counterStreakFetch';
 import type { HabitStreakInput } from '../habitStreakFetch';
 import type { ResettableMirror } from '../mirrorReset';
 
+/**
+ * A tap made somewhere else (the widget) and applied later: it keeps its own
+ * id, so applying it twice inserts once, and the moment and day it happened.
+ */
+export interface LoggedElsewhere {
+  id: string;
+  timestamp: string;
+  date: string;
+}
+
 export interface HabitTimerStopOptions {
   trackCompleted?: boolean;
   playChime?: boolean;
@@ -71,13 +81,14 @@ export interface EventState extends ResettableMirror {
     elementId: string,
     value: number,
     meta?: Record<string, unknown>,
+    logged?: LoggedElsewhere,
   ) => Promise<string | null>;
   /** Undo for counter taps: deletes exactly the events `logEvent` returned. */
   deleteCounterEvents: (elementId: string, eventIds: readonly string[]) => Promise<void>;
   setDailyTotal: (elementId: string, total: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
-  /** Tick today unless SQLite says it is already done — never un-ticks. */
-  completeHabit: (elementId: string, config: HabitConfig) => Promise<void>;
+  /** Tick the day (today by default) unless SQLite says it is already done — never un-ticks. */
+  completeHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
   startHabitTimer: (elementId: string, config: HabitConfig) => void;
   pauseHabitTimer: (elementId: string) => void;
   resumeHabitTimer: (elementId: string, config: HabitConfig) => void;
