@@ -45,3 +45,77 @@ it('is the one availability check both reminder modules use', () => {
   expect(habit.isNotificationsNativeAvailable).toBe(bootstrap.isNotificationsNativeAvailable);
   expect(calendar.isNotificationsNativeAvailable).toBe(bootstrap.isNotificationsNativeAvailable);
 });
+
+describe('reminders channel', () => {
+  it('creates a high-importance Reminders channel before any permission prompt', async () => {
+    fake.state.permission = require('./support/fakeNotifications').permission('undetermined');
+
+    await bootstrap.requestNotificationPermissions();
+
+    expect(fake.channels.get(bootstrap.REMINDERS_CHANNEL_ID)).toEqual(
+      expect.objectContaining({ name: 'Reminders', importance: fake.AndroidImportance.HIGH }),
+    );
+    const created = fake.setNotificationChannelAsync.mock.invocationCallOrder[0];
+    const asked = fake.requestPermissionsAsync.mock.invocationCallOrder[0];
+    expect(created).toBeLessThan(asked!);
+  });
+
+  it('creates the channel once per process', async () => {
+    await bootstrap.getNotifications();
+    await bootstrap.getNotifications();
+
+    expect(fake.setNotificationChannelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends every habit, evening and calendar reminder on that channel', async () => {
+    const habit = require('../src/notifications/habitReminders.native');
+    const calendar = require('../src/notifications/calendarReminders.native');
+    await habit.syncHabitReminders(
+      [
+        {
+          id: 'h1',
+          kind: 'habit',
+          name: 'Meditate',
+          protocolVersion: 1,
+          createdAt: '2025-01-01T00:00:00.000Z',
+          config: {
+            schedule: { type: 'daily' },
+            timeRange: { start: '07:00', end: '08:00' },
+            remindMinutesBefore: 10,
+          },
+        },
+      ],
+      true,
+    );
+    await habit.scheduleEndOfDayReminder(true, '20:00');
+    const eventId = '550e8400-e29b-41d4-a716-446655440701';
+    const calendarId = '550e8400-e29b-41d4-a716-446655440702';
+    const start = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    await calendar.syncCalendarReminders({
+      events: [
+        {
+          id: eventId,
+          calendarId,
+          uid: 'uid-1',
+          title: 'Dentist',
+          notes: null,
+          eventType: 'general',
+          allDay: false,
+          startAt: start.toISOString(),
+          endAt: new Date(start.getTime() + 3600_000).toISOString(),
+          timezone: 'Europe/Paris',
+          rrule: null,
+        },
+      ],
+      calendars: [{ id: calendarId, name: 'Personal', color: '#3D7EA6', source: 'local' }],
+      reminders: [{ id: '550e8400-e29b-41d4-a716-446655440703', eventId, offsetMinutes: 10, enabled: true }],
+    });
+
+    const prefixes = fake.scheduledList().map((r) => r.identifier.split('-')[0]);
+    expect(new Set(prefixes)).toEqual(new Set(['habit', 'cal']));
+    expect(fake.scheduledList().some((r) => r.identifier === 'habit-reminder-eod')).toBe(true);
+    for (const request of fake.scheduledList()) {
+      expect(request.trigger.channelId).toBe(bootstrap.REMINDERS_CHANNEL_ID);
+    }
+  });
+});

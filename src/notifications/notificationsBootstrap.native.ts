@@ -1,4 +1,5 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
+import { i18n } from '../i18n';
 
 /**
  * The one way into expo-notifications for every reminder module: the
@@ -7,6 +8,9 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
  */
 
 export type NotificationsModule = typeof import('expo-notifications');
+
+/** Android channel every reminder is posted on. */
+export const REMINDERS_CHANNEL_ID = 'reminders';
 
 let notificationsModule: NotificationsModule | null = null;
 let notificationsUnavailable = false;
@@ -37,6 +41,14 @@ export async function getNotifications(): Promise<NotificationsModule | null> {
         shouldShowBanner: true,
         shouldShowList: true,
       }),
+    });
+    // Android 13+ only shows the permission prompt once a channel exists, and a
+    // notification naming a missing channel is dropped — so this comes first.
+    // Re-setting an existing channel only updates its name; importance stays
+    // whatever the user last chose in system settings.
+    await loaded.setNotificationChannelAsync(REMINDERS_CHANNEL_ID, {
+      name: i18n.t('notifications:channel.remindersName'),
+      importance: loaded.AndroidImportance.HIGH,
     });
     notificationsModule = loaded;
     return loaded;

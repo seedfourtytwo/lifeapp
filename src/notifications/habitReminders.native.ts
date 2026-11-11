@@ -10,6 +10,7 @@ import {
   getNotifications,
   isNotificationsNativeAvailable,
   requestNotificationPermissions,
+  REMINDERS_CHANNEL_ID,
   type NotificationsModule,
 } from './notificationsBootstrap.native';
 
@@ -75,6 +76,7 @@ async function scheduleStartRemindersForHabit(
         trigger: {
           type: notifications.SchedulableTriggerInputTypes.DATE,
           date: fire.when,
+          channelId: REMINDERS_CHANNEL_ID,
         },
       }),
     ),
@@ -178,6 +180,7 @@ export async function scheduleEndOfDayReminder(
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
+        channelId: REMINDERS_CHANNEL_ID,
       },
     });
   });

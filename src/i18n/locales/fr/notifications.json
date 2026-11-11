@@ -1,4 +1,7 @@
 {
+  "channel": {
+    "remindersName": "Rappels"
+  },
   "habitReminder": {
     "title": "Rappel d'habitude",
     "body": "C'est l'heure pour {{name}}"

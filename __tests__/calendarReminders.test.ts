@@ -22,6 +22,8 @@ const mockSetNotificationHandler = jest.fn();
 
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: mockSetNotificationHandler,
+  setNotificationChannelAsync: jest.fn(async () => null),
+  AndroidImportance: { HIGH: 6 },
   scheduleNotificationAsync: mockScheduleNotificationAsync,
   cancelScheduledNotificationAsync: mockCancelScheduledNotificationAsync,
   getAllScheduledNotificationsAsync: mockGetAllScheduledNotificationsAsync,

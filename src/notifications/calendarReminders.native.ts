@@ -6,6 +6,7 @@ import {
   getNotifications,
   isNotificationsNativeAvailable,
   requestNotificationPermissions,
+  REMINDERS_CHANNEL_ID,
   type NotificationsModule,
 } from './notificationsBootstrap.native';
 
@@ -131,6 +132,7 @@ export async function syncCalendarReminders(input: {
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: fire.when,
+          channelId: REMINDERS_CHANNEL_ID,
         },
       });
       // Cancel immediately if a newer sync started while we were scheduling.

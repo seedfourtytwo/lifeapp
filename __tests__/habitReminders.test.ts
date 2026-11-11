@@ -21,6 +21,8 @@ const mockSetNotificationHandler = jest.fn();
 
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: mockSetNotificationHandler,
+  setNotificationChannelAsync: jest.fn(async () => null),
+  AndroidImportance: { HIGH: 6 },
   scheduleNotificationAsync: mockScheduleNotificationAsync,
   cancelScheduledNotificationAsync: mockCancelScheduledNotificationAsync,
   getAllScheduledNotificationsAsync: mockGetAllScheduledNotificationsAsync,
@@ -187,7 +189,12 @@ describe('habitReminders.native', () => {
       expect(mockScheduleNotificationAsync).toHaveBeenCalledTimes(1);
       const [call] = mockScheduleNotificationAsync.mock.calls;
       expect(call[0].identifier).toBe('habit-reminder-eod');
-      expect(call[0].trigger).toEqual({ type: 'daily', hour: 20, minute: 30 });
+      expect(call[0].trigger).toEqual({
+        type: 'daily',
+        hour: 20,
+        minute: 30,
+        channelId: 'reminders',
+      });
     });
 
     it('only cancels and does not reschedule when disabled', async () => {
