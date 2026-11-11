@@ -99,6 +99,14 @@ Build note: a worktree needs `npm install` to link `life-moonshine-dictation` be
 - Settings gets a Notifications section: evening check-in on/off and time, reminders on/off.
 - Verify on the phone: `dumpsys alarm` shows the alarms; one reminder actually arrives with the screen off.
 
+**Stage 2 status (2026-11-11):** implemented by Opus on `clean-slate-stage-2` (ends 940e656), reviewed by Fable; 137 suites / 1620 tests, type-check and lint green. Pending budget is habits 200, calendar 64, evening 1, timer 1; a re-sync with nothing changed schedules and cancels nothing.
+
+Device check (dev build from this branch): a "reminders" channel exists at high importance; adding one reminder time queued 14 daily alarms plus the evening check-in (30 alarms in `dumpsys alarm`); the 18:34 alarm fired on time with the phone locked. Still owed: ticking a habit removes today's remaining reminder; archive removes alarms; timer-target notification with the phone locked; permission-denied line in Settings.
+
+Found on the phone, not yet fixed: the release app leaves stale "Meditation" media-session notifications behind (five were sitting in the list, days old, channel `expo_audio_channel`). The native timer service in stage 6 replaces that path; until then, dismiss the media notification when a timer session ends.
+
+Known limit: reminders are queued 14 days ahead and topped up when the app comes to the front; two weeks without opening it and they run out. The native core can top up from a daily alarm.
+
 ### Stage 3 — One rule for "done", then early-complete
 
 - New pure `protocol/dayOutcome.ts`: `dayFactsFromEvents`, `dayOutcome(tracker, facts) → {total, done, reason, target?}`, `habitTimerGoal(config)`. Tests first: target boundaries, empty day, play-once, counter without target (decision: not done, reason `no_target`).
