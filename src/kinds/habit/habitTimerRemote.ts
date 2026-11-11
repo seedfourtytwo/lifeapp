@@ -118,9 +118,11 @@ async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
  *
  * - Play / Pause: start, pause, or resume the focused habit
  * - Seek forward / back: next / previous habit (finishes a running timer first)
+ * - Playback progress: the running timer's heartbeat
  */
 export function installHabitTimerRemoteControls(): void {
   setHabitTimerRemoteHandlers({
+    onPlaybackProgress: () => useEventStore.getState().recordTimerHeartbeat(),
     onPlayingChange: (playing) => {
       void (async () => {
         // A locked phone may have slept through midnight; act on today's maps.

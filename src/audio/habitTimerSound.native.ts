@@ -36,6 +36,7 @@ let playbackEpoch = 0;
 /** When true, status updates are from our own pause/play — ignore for remote sync. */
 let ignoreRemoteStatus = false;
 let onRemotePlayingChange: ((playing: boolean) => void) | null = null;
+let onPlaybackProgress: (() => void) | null = null;
 let onRemoteSkip: ((direction: 'next' | 'prev') => void) | null = null;
 let onTrackEnded: (() => void) | null = null;
 const preloadedSourceKeys = new Set<string>();
@@ -156,6 +157,7 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
     }
 
     if (!status.isLoaded) return;
+    onPlaybackProgress?.();
 
     const nowMs = Date.now();
     const wallDeltaMs = nowMs - seekBaselineAtMs;
@@ -250,13 +252,17 @@ async function withLocalControl(work: () => void | Promise<void>): Promise<void>
  * Register callbacks for lock-screen / headset transport.
  * `onPlayingChange` fires when the OS pauses or resumes playback (not when we do).
  * `onSkip` fires when seek ±10s buttons are used (mapped to next/prev habit).
+ * `onPlaybackProgress` fires on every status update of a loaded player — about
+ * once a second, and also while the phone is locked, when JS timers do not run.
  */
 export function setHabitTimerRemoteHandlers(handlers: {
   onPlayingChange?: ((playing: boolean) => void) | null;
   onSkip?: ((direction: 'next' | 'prev') => void) | null;
+  onPlaybackProgress?: (() => void) | null;
 }): void {
   onRemotePlayingChange = handlers.onPlayingChange ?? null;
   onRemoteSkip = handlers.onSkip ?? null;
+  onPlaybackProgress = handlers.onPlaybackProgress ?? null;
 }
 
 export function updateHabitTimerLockScreen(metadata: HabitTimerLockScreenMeta): void {

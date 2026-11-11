@@ -7,6 +7,12 @@ export const ActiveTimerSessionSchema = z.object({
   pauseOffsetMs: z.number().int().nonnegative().default(0),
   /** Local calendar day the session belongs to (captured at start for midnight-safe finalize). */
   calendarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /**
+   * Last moment this process was known to be running the timer. After the
+   * process dies, a restart counts the session up to here and not beyond.
+   * Absent on sessions saved before heartbeats existed.
+   */
+  heartbeatAt: z.string().datetime().optional(),
 });
 
 export type ActiveTimerSession = z.infer<typeof ActiveTimerSessionSchema>;

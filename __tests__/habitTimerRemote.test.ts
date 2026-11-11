@@ -13,7 +13,10 @@ jest.mock('../src/db/client', () => ({
 }));
 jest.mock('../src/audio/habitTimerSound');
 
-type RemoteHandlers = { onPlayingChange?: ((playing: boolean) => void) | null };
+type RemoteHandlers = {
+  onPlayingChange?: ((playing: boolean) => void) | null;
+  onPlaybackProgress?: (() => void) | null;
+};
 
 const HABIT_A = '550e8400-e29b-41d4-a716-446655440801';
 const HABIT_B = '550e8400-e29b-41d4-a716-446655440802';
@@ -114,4 +117,16 @@ it('acts on today, not yesterday\'s maps, on the first press after midnight', as
   expect(await eventsOn(HABIT_B, TODAY)).toHaveLength(0);
   expect(await eventsOn(HABIT_A, YESTERDAY)).toHaveLength(1);
   expect(eventStore().getState().habitDoneToday).toEqual({ [HABIT_A]: true, [HABIT_B]: false });
+});
+
+/**
+ * Playback status keeps arriving while the phone is locked, when JS timers
+ * do not run. It is what tells a later restart how long the session really ran.
+ */
+it('records a timer heartbeat on every playback status update', () => {
+  const heartbeat = jest.spyOn(eventStore().getState(), 'recordTimerHeartbeat');
+
+  handlers.onPlaybackProgress?.();
+
+  expect(heartbeat).toHaveBeenCalledTimes(1);
 });

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { newId } from '../utils/id';
 import {
-  buildTimerSessionPayloadFromSession,
+  buildTimerSessionPayloadFromDuration,
   createActiveTimerSession,
   activeTimerElapsedMs,
   dayFactsFromEvents,
@@ -49,6 +49,13 @@ import {
 import { withDbWriteLock } from '../db/writeLock';
 import type { ResettableMirror } from './mirrorReset';
 import { getDataGeneration } from '../db/dataGeneration';
+import {
+  pauseAtLastHeartbeat,
+  TIMER_HEARTBEAT_MS,
+  timerSessionFromMidnight,
+  timerSessionParts,
+  type TimerSessionPart,
+} from '../protocol/timerSessionDays';
 
 export type { HabitStreakInput, CounterStreakInput };
 
@@ -112,6 +119,18 @@ interface EventState extends ResettableMirror {
   counterTotalsReady: boolean;
   /** Restore in-progress timers after process death (call once at bootstrap). */
   hydrateActiveTimerSessions: () => Promise<void>;
+  /**
+   * Note that this process is still running its timers. Called often (every
+   * playback status update, foreground or locked); saves at most every
+   * TIMER_HEARTBEAT_MS so a restart can tell where a dead session stopped.
+   */
+  recordTimerHeartbeat: () => void;
+  /**
+   * The day changed under a running session: log its seconds before midnight
+   * onto the days they happened and keep it running for today. A session
+   * paused before midnight is simply finished. Today's sessions are left alone.
+   */
+  rollHabitTimerOver: (elementId: string, config: HabitConfig) => Promise<void>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
@@ -196,6 +215,38 @@ function habitEvent(
     meta: HabitEventMetaSchema.parse(meta),
     protocolVersion: PROTOCOL_VERSION,
   };
+}
+
+/**
+ * One timer_session event per day the session ran on, each carrying the goal
+ * in force. The session's own start opens the first and the stop closes the
+ * last; the parts in between end on the stroke of midnight.
+ */
+function timerPartEvents(
+  elementId: string,
+  config: HabitConfig,
+  session: ActiveTimerSession,
+  parts: readonly TimerSessionPart[],
+  endedAt: Date,
+  trackCompletedOnLast: boolean,
+): LifeEvent[] {
+  const goal = habitTimerGoal(config);
+  return parts.map((part, index) => {
+    const isFirst = index === 0;
+    const isLast = index === parts.length - 1;
+    const partStart = isFirst ? new Date(session.startedAt) : new Date(part.startMs);
+    const partEnd = isLast ? endedAt : new Date(part.endMs - 1);
+    const { meta } = buildTimerSessionPayloadFromDuration(partStart, partEnd, part.seconds, {
+      trackCompleted: isLast && trackCompletedOnLast,
+      ...(goal.type === 'seconds' ? { goalSeconds: goal.seconds } : {}),
+    });
+    return habitEvent(elementId, part.date, part.seconds, meta, partEnd.toISOString());
+  });
+}
+
+function startOfToday(): number {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 }
 
 interface HabitTimerStopOptions {
@@ -605,9 +656,12 @@ export const useEventStore = create<EventState>((set, get) => ({
     const elements = useElementStore.getState().elements;
     const habitsById = new Map(elements.filter(isHabitElement).map((el) => [el.id, el]));
     const today = todayDate();
+    const nowMs = Date.now();
     const kept: Record<string, ActiveTimerSession> = {};
 
-    for (const [id, session] of Object.entries(sessions)) {
+    for (const [id, saved] of Object.entries(sessions)) {
+      // The process that ran it is gone: nothing after its last heartbeat counts.
+      const session = pauseAtLastHeartbeat(saved, nowMs);
       const element = habitsById.get(id);
       if (!element) {
         // Habit gone — drop orphaned persistence without inventing an event.
@@ -616,7 +670,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       }
 
       if (session.calendarDate !== today) {
-        // Cold start after midnight — finalize onto the day the timer belonged to.
+        // Cold start after midnight — finalize, each day getting its own seconds.
         set({
           activeTimerSessions: {
             ...get().activeTimerSessions,
@@ -667,6 +721,67 @@ export const useEventStore = create<EventState>((set, get) => ({
     schedulePersistActiveTimers(activeTimerSessions);
     const firstHabit = firstId ? habitsById.get(firstId) : undefined;
     if (firstHabit) armTargetCrossing(firstHabit.id, firstHabit.config, set, get);
+  },
+
+  recordTimerHeartbeat: () => {
+    const nowMs = Date.now();
+    const sessions = get().activeTimerSessions;
+    let changed = false;
+    const next: Record<string, ActiveTimerSession> = {};
+    for (const [id, session] of Object.entries(sessions)) {
+      const due =
+        !session.pausedAt &&
+        (!session.heartbeatAt || nowMs - new Date(session.heartbeatAt).getTime() >= TIMER_HEARTBEAT_MS);
+      next[id] = due ? { ...session, heartbeatAt: new Date(nowMs).toISOString() } : session;
+      changed ||= due;
+    }
+    if (!changed) return;
+    set({ activeTimerSessions: next });
+    schedulePersistActiveTimers(next);
+  },
+
+  rollHabitTimerOver: async (elementId, config) => {
+    await habitTimerStopPromises.get(elementId);
+    const session = get().activeTimerSessions[elementId];
+    const today = todayDate();
+    if (!session || session.calendarDate === today) return;
+    const midnightMs = startOfToday();
+    if (session.pausedAt && new Date(session.pausedAt).getTime() < midnightMs) {
+      await get().stopHabitTimer(elementId, config);
+      return;
+    }
+
+    const dataEpochAtStart = getDataGeneration('protocol');
+    const nowMs = Date.now();
+    const past = timerSessionParts(session, nowMs).filter((part) => part.date < today);
+    const rolled = timerSessionFromMidnight(session, nowMs);
+    const swap = (from: ActiveTimerSession, to: ActiveTimerSession) => {
+      if (get().activeTimerSessions[elementId] !== from) return;
+      const nextSessions = { ...get().activeTimerSessions, [elementId]: to };
+      set({ activeTimerSessions: nextSessions });
+      schedulePersistActiveTimers(nextSessions);
+      armTargetCrossing(elementId, config, set, get);
+    };
+
+    swap(session, rolled);
+    if (past.length === 0) return;
+    try {
+      await withDbWriteLock(async () => {
+        if (dataEpochAtStart !== getDataGeneration('protocol')) return;
+        const lastMoment = new Date(midnightMs - 1);
+        const events = timerPartEvents(elementId, config, session, past, lastMoment, false);
+        const db = await getDatabase();
+        await db.withTransactionAsync(async () => {
+          for (const event of events) {
+            await eventRepo.insertEvent(db, event);
+          }
+        });
+      });
+    } catch (error) {
+      // Nothing was logged: put the whole session back so no second is lost.
+      swap(rolled, session);
+      throw error;
+    }
   },
 
   loadCounterTotals: async (elementIds) => {
@@ -888,7 +1003,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (get().activeTimerSessions[elementId]) return;
     const activeTimerSessions = {
       ...get().activeTimerSessions,
-      [elementId]: createActiveTimerSession(),
+      [elementId]: { ...createActiveTimerSession(), heartbeatAt: new Date().toISOString() },
     };
     set({ activeTimerSessions });
     schedulePersistActiveTimers(activeTimerSessions);
@@ -924,6 +1039,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         ...session,
         pausedAt: null,
         pauseOffsetMs: session.pauseOffsetMs + pausedMs,
+        heartbeatAt: new Date().toISOString(),
       },
     };
     set({ activeTimerSessions });
@@ -951,13 +1067,16 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (!session) return;
 
       const dataEpochAtStart = getDataGeneration('protocol');
-      // Persist onto the day the timer started — not the day Done/rollover ran.
-      const persistDate = session.calendarDate;
       const ourWriteEpoch = bumpWriteEpoch(elementId);
 
       const endedAt = new Date();
+      // Each day the session ran on gets the seconds that happened on it. The
+      // day it ended carries the mark, the track-completed flag and the mirror.
       // Options only change the meta; the seconds are fixed at the moment of the stop.
-      const { value } = buildTimerSessionPayloadFromSession(session, endedAt);
+      const parts = timerSessionParts(session, endedAt.getTime());
+      const lastPart = parts[parts.length - 1]!;
+      const persistDate = lastPart.date;
+      const value = lastPart.seconds;
       const mirrorTotal = get().dailyTotals[elementId] ?? 0;
 
       // Clear session immediately so double-taps can't double-insert.
@@ -979,11 +1098,15 @@ export const useEventStore = create<EventState>((set, get) => ({
           // Read now, not at the start: a stop that joined while this one waited
           // (a play-once track ending after Done) may have added trackCompleted.
           const stopOpts = habitTimerStopOptions.get(elementId);
-          const goal = habitTimerGoal(config);
-          const { meta } = buildTimerSessionPayloadFromSession(session, endedAt, {
-            trackCompleted: stopOpts?.trackCompleted,
-            ...(goal.type === 'seconds' ? { goalSeconds: goal.seconds } : {}),
-          });
+          const partEvents = timerPartEvents(
+            elementId,
+            config,
+            session,
+            parts,
+            endedAt,
+            stopOpts?.trackCompleted === true,
+          );
+          const sessionEvent = partEvents[partEvents.length - 1]!;
           const db = await getDatabase();
           const existingEvents = await eventRepo.getEventsForElementOnDate(
             db,
@@ -993,7 +1116,6 @@ export const useEventStore = create<EventState>((set, get) => ({
           // The mirror may not hold this day yet (cold start) — SQLite does.
           const previousTotal = sumEventValues(existingEvents);
           const nextTotal = previousTotal + value;
-          const sessionEvent = habitEvent(elementId, persistDate, value, meta, endedAt.toISOString());
           const withSession = [...existingEvents, sessionEvent];
           // Done before the goal: the same write marks the day.
           const mark =
@@ -1009,7 +1131,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           }
 
           await db.withTransactionAsync(async () => {
-            for (const event of nextEvents.slice(existingEvents.length)) {
+            for (const event of [...partEvents.slice(0, -1), ...nextEvents.slice(existingEvents.length)]) {
               await eventRepo.insertEvent(db, event);
             }
           });

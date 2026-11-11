@@ -44,6 +44,7 @@ export async function stopHabitSound(): Promise<void> {}
 export function setHabitTimerRemoteHandlers(_handlers: {
   onPlayingChange?: ((playing: boolean) => void) | null;
   onSkip?: ((direction: 'next' | 'prev') => void) | null;
+  onPlaybackProgress?: (() => void) | null;
 }): void {}
 
 export function updateHabitTimerLockScreen(_metadata: HabitTimerLockScreenMeta): void {}

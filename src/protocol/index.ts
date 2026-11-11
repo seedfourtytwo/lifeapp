@@ -199,7 +199,6 @@ export {
   timerSessionDurationSeconds,
   buildTimerSessionPayload,
   buildTimerSessionPayloadFromDuration,
-  buildTimerSessionPayloadFromSession,
   liveTimerTotalSeconds,
   isHabitScheduledOnDate,
   isHabitStartingSoon,

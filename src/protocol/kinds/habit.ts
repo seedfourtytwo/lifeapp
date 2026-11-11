@@ -287,16 +287,6 @@ export function buildTimerSessionPayloadFromDuration(
   };
 }
 
-export function buildTimerSessionPayloadFromSession(
-  session: ActiveTimerSession,
-  endedAt = new Date(),
-  options?: TimerSessionOptions,
-): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
-  const startedAt = new Date(session.startedAt);
-  const durationSeconds = Math.max(1, activeTimerElapsedSeconds(session, endedAt.getTime()));
-  return buildTimerSessionPayloadFromDuration(startedAt, endedAt, durationSeconds, options);
-}
-
 export function liveTimerTotalSeconds(
   loggedTotalSeconds: number,
   activeSession: ActiveTimerSession | null | undefined,
