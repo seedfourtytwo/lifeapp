@@ -1,12 +1,16 @@
 /**
  * How many notifications each reminder family may keep pending at once.
- * Together they stay well under the ~60 the platforms tolerate (iOS keeps 64;
- * Android has no small cap, but every pending one is an alarm and a stored
- * request). A family that would exceed its share schedules less far ahead.
+ *
+ * expo-notifications sets one AlarmManager alarm per pending notification,
+ * and Android refuses an app more than 500 concurrent alarms (AOSP
+ * AlarmManagerService, max_alarms_per_uid, default 500; it throws once that is
+ * reached). The shares add up to 266, leaving room for whatever else the app
+ * or a future widget sets. A family that would exceed its share schedules
+ * fewer days ahead rather than leaving an item out.
  */
 export const NOTIFICATION_BUDGET = {
-  habitReminders: 36,
-  calendarReminders: 12,
+  habitReminders: 200,
+  calendarReminders: 64,
   eveningCheckIn: 1,
   habitTimer: 1,
 } as const;

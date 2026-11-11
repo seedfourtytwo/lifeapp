@@ -196,10 +196,23 @@ it('still schedules the before-the-window reminder, and once when a time matches
   ]);
 });
 
-it('shortens the horizon to stay inside its share instead of dropping a habit', async () => {
-  const busy = [1, 2, 3, 4].map((n) =>
-    habit(`550e8400-e29b-41d4-a716-44665544091${n}`, `Habit ${n}`, {
+it('keeps a full two weeks for a dozen reminders a day', async () => {
+  const dozen = [1, 2, 3, 4].map((n) =>
+    habit(`550e8400-e29b-41d4-a716-44665544092${n}`, `Habit ${n}`, {
       reminderTimes: ['08:00', '12:00', '18:00'],
+    }),
+  );
+
+  await reminders.syncHabitReminders(dozen, true, {}, new Date(2026, 10, 11, 7, 0));
+
+  expect(fake.pending.size).toBe(12 * 14);
+  expect(local(fake.scheduledList().at(-1)!)).toBe('2026-11-24 18:00');
+});
+
+it('shortens the horizon to stay inside its share instead of dropping a habit', async () => {
+  const busy = [1, 2, 3, 4, 5].map((n) =>
+    habit(`550e8400-e29b-41d4-a716-44665544091${n}`, `Habit ${n}`, {
+      reminderTimes: ['08:00', '12:00', '16:00', '20:00'],
     }),
   );
   const { NOTIFICATION_BUDGET } = require('../src/notifications/notificationBudget');
@@ -212,21 +225,19 @@ it('shortens the horizon to stay inside its share instead of dropping a habit', 
   for (const h of busy) {
     expect(firesFor(h.id).length).toBeGreaterThan(0);
   }
-  const lastDay = local(pending.at(-1)!).slice(0, 10);
-  expect(lastDay < '2026-11-24').toBe(true);
-  // 12 a day: three whole days fit in 36.
-  expect(pending).toHaveLength(36);
-  expect(lastDay).toBe('2026-11-13');
+  // 20 a day over 14 days is 280; ten whole days fit in 200, the far four go.
+  expect(pending).toHaveLength(200);
+  expect(local(pending.at(-1)!)).toBe('2026-11-20 20:00');
 });
 
-it('keeps all shares together well under sixty pending notifications', () => {
+it('keeps all shares together well under Android\'s 500 alarms per app', () => {
   const { NOTIFICATION_BUDGET } = require('../src/notifications/notificationBudget');
   const total = Object.values(NOTIFICATION_BUDGET as Record<string, number>).reduce(
     (sum, n) => sum + n,
     0,
   );
 
-  expect(total).toBeLessThanOrEqual(50);
+  expect(total).toBeLessThanOrEqual(300);
 });
 
 it('re-syncs to the same pending set without cancelling anything', async () => {
