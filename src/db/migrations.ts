@@ -188,6 +188,8 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   12: async (db) => {
     // Destructive clean schema: remove unused columns and start fresh.
     // User opted out of preserving on-device / backup continuity.
+    // The step runs inside a transaction, where the foreign_keys PRAGMAs are
+    // no-ops; dropping children before parents is what keeps the keys satisfied.
     await db.execAsync(`
       PRAGMA foreign_keys = OFF;
       DROP TABLE IF EXISTS daily_journals;
@@ -239,6 +241,25 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   },
 };
 
+/**
+ * Run `work` and its `schema_version` write as one unit. A throw — or the
+ * process dying — anywhere inside leaves both exactly as they were, so the next
+ * start sees the old version and runs the same step again from scratch.
+ *
+ * IMMEDIATE takes the write lock up front rather than on the first write, so a
+ * step never fails half way because another connection got there first.
+ */
+async function inTransaction(db: SQLiteDatabase, work: () => Promise<void>): Promise<void> {
+  await db.execAsync('BEGIN IMMEDIATE');
+  try {
+    await work();
+    await db.execAsync('COMMIT');
+  } catch (error) {
+    await db.execAsync('ROLLBACK');
+    throw error;
+  }
+}
+
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(SCHEMA_SQL);
 
@@ -247,28 +268,24 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   );
 
   if (!row) {
-    await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', CURRENT_SCHEMA_VERSION);
-    await ensureSchemaIntegrity(db);
+    await inTransaction(db, async () => {
+      await ensureSchemaIntegrity(db);
+      await db.runAsync('INSERT INTO schema_version (version) VALUES (?)', CURRENT_SCHEMA_VERSION);
+    });
     return;
-  }
-
-  let version = row.version;
-  const needsRepair = version < CURRENT_SCHEMA_VERSION;
-  while (version < CURRENT_SCHEMA_VERSION) {
-    const next = version + 1;
-    const migrate = MIGRATIONS[next];
-    if (migrate) {
-      await migrate(db);
-    }
-    version = next;
-    await db.runAsync('UPDATE schema_version SET version = ?', version);
   }
 
   // Steady-state boots already match CURRENT_SCHEMA_VERSION — skip PRAGMA/DDL repair.
-  // Repair runs after applying migrations (and on first insert above).
-  if (!needsRepair) {
-    return;
+  for (let next = row.version + 1; next <= CURRENT_SCHEMA_VERSION; next += 1) {
+    await inTransaction(db, async () => {
+      await MIGRATIONS[next]?.(db);
+      // The repair pass belongs to the last step: were it committed on its own,
+      // a failure after the final bump would leave a current version that
+      // never gets repaired, because steady-state boots skip the pass.
+      if (next === CURRENT_SCHEMA_VERSION) {
+        await ensureSchemaIntegrity(db);
+      }
+      await db.runAsync('UPDATE schema_version SET version = ?', next);
+    });
   }
-
-  await ensureSchemaIntegrity(db);
 }

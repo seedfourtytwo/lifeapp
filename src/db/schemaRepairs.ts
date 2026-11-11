@@ -109,6 +109,8 @@ async function rebuildDailyJournalsToNotebooks(db: SQLiteDatabase): Promise<void
   if (columns.size === 0 || columns.has('notebook_id')) return;
 
   const notebookId = await seedDefaultJournalNotebook(db);
+  // A crashed earlier run may have left it half filled; it holds nothing the source table lacks.
+  await db.execAsync('DROP TABLE IF EXISTS daily_journals_v16');
   await db.execAsync(`
     CREATE TABLE daily_journals_v16 (
       id TEXT PRIMARY KEY NOT NULL,
@@ -145,6 +147,8 @@ async function rebuildDailyJournalsToChapters(db: SQLiteDatabase): Promise<void>
   const columns = await tableColumns(db, 'daily_journals');
   if (columns.size === 0 || columns.has('sort_order')) return;
 
+  // A crashed earlier run may have left it half filled; it holds nothing the source table lacks.
+  await db.execAsync('DROP TABLE IF EXISTS daily_journals_v22');
   await db.execAsync(`
     CREATE TABLE daily_journals_v22 (
       id TEXT PRIMARY KEY NOT NULL,
@@ -233,6 +237,8 @@ export async function rebuildNoteShareState(db: SQLiteDatabase): Promise<void> {
   const columns = await tableColumns(db, 'note_share_state');
   if (columns.size === 0 || columns.has('entry_id')) return;
 
+  // A crashed earlier run may have left it half filled; it holds nothing the source table lacks.
+  await db.execAsync('DROP TABLE IF EXISTS note_share_state_v16');
   await db.execAsync(`
     CREATE TABLE note_share_state_v16 (
       kind TEXT NOT NULL,
