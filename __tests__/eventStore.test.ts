@@ -528,3 +528,53 @@ describe('a timer running past its goal', () => {
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(false);
   });
 });
+
+describe('the database is the only truth for today', () => {
+  it('shows a tick only once SQLite holds it', async () => {
+    const lock = holdWriteLock();
+    const tick = state().toggleHabit(TICK_HABIT, tickConfig);
+    await flushPromises();
+    expect(state().habitDoneToday[TICK_HABIT]).toBeUndefined();
+
+    lock.release();
+    await Promise.all([lock.held, tick]);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(true);
+  });
+
+  it('shows what SQLite holds after a write an import overtook', async () => {
+    const { bumpDataGeneration } = require('../src/db/dataGeneration') as typeof import('../src/db/dataGeneration');
+    const lock = holdWriteLock();
+    const tick = state().toggleHabit(TICK_HABIT, tickConfig);
+    bumpDataGeneration('protocol');
+
+    lock.release();
+    await Promise.all([lock.held, tick]);
+
+    expect(await eventsToday(TICK_HABIT)).toEqual([]);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(false);
+  });
+
+  it('shows what SQLite holds after a write that failed', async () => {
+    const insert = jest.spyOn(eventRepo, 'insertEvent').mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(state().toggleHabit(TICK_HABIT, tickConfig)).rejects.toThrow('disk full');
+
+    insert.mockRestore();
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(false);
+    expect(state().dailyTotals[TICK_HABIT]).toBe(0);
+  });
+
+  it('a counter tap brings its target streak along', async () => {
+    const withTarget = protocol.CounterConfigSchema.parse({
+      unit: 'glasses',
+      quickIncrements: [1],
+      dailyTarget: 2,
+    });
+    await elementRepo.updateElement(testDb.db, COUNTER, { name: 'Water', config: withTarget }, 'counter');
+
+    await state().logEvent(COUNTER, 1);
+    expect(state().counterStreaks[COUNTER]).toBe(0);
+    await state().logEvent(COUNTER, 1);
+    expect(state().counterStreaks[COUNTER]).toBe(1);
+  });
+});

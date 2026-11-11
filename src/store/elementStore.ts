@@ -22,7 +22,6 @@ import {
   awaitHabitTimerStop,
   useEventStore,
 } from './eventStore';
-import { bumpWriteEpoch, clearWriteEpoch } from './writeEpoch';
 import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 
@@ -323,8 +322,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt != null) return;
 
-    // Invalidate in-flight counter/toggle writes, then drain them before archive.
-    bumpWriteEpoch(elementId);
+    // Let in-flight counter/toggle writes land before the archive.
     await awaitElementEventWrites(elementId);
 
     const archivedAt = new Date().toISOString();
@@ -347,7 +345,6 @@ export const useElementStore = create<ElementState>((set, get) => ({
       abortHabitTimerRestore(elementId);
       useEventStore.getState().discardHabitTimer(elementId);
     }
-    clearWriteEpoch(elementId);
     invalidateElementLoads();
     set({
       elements: get().elements.map((element) =>
@@ -392,7 +389,6 @@ export const useElementStore = create<ElementState>((set, get) => ({
     if (!existing) {
       throw new Error(i18n.t('common:errors.elementNotFound'));
     }
-    bumpWriteEpoch(id);
     await awaitElementEventWrites(id);
     // Finalize/abort timer before CASCADE delete so stop can't rehydrate a ghost.
     await clearHabitRuntime(id);
@@ -400,7 +396,6 @@ export const useElementStore = create<ElementState>((set, get) => ({
       const db = await getDatabase();
       await elementRepo.deleteElement(db, id);
     });
-    clearWriteEpoch(id);
     invalidateElementLoads();
     set({
       elements: get().elements.filter((element) => element.id !== id),
