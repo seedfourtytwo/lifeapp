@@ -3,9 +3,11 @@ import { newId } from '../utils/id';
 import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
+  activeTimerElapsedMs,
   dayFactsFromEvents,
   dayOutcome,
   factsFromTotal,
+  HabitEventMetaSchema,
   habitTimerGoal,
   isCounterElement,
   isHabitElement,
@@ -15,6 +17,7 @@ import {
   type DayEvent,
   type ElementDefinition,
   type HabitConfig,
+  type HabitEventMeta,
   type LifeEvent,
 } from '../protocol';
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
@@ -120,15 +123,23 @@ interface EventState extends ResettableMirror {
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
   /** Tick today unless SQLite says it is already done — never un-ticks. */
   completeHabit: (elementId: string, config: HabitConfig) => Promise<void>;
-  startHabitTimer: (elementId: string) => void;
+  startHabitTimer: (elementId: string, config: HabitConfig) => void;
   pauseHabitTimer: (elementId: string) => void;
-  resumeHabitTimer: (elementId: string) => void;
+  resumeHabitTimer: (elementId: string, config: HabitConfig) => void;
   stopHabitTimer: (
     elementId: string,
     config: HabitConfig,
     date?: string,
-    options?: { trackCompleted?: boolean; playChime?: boolean },
+    options?: HabitTimerStopOptions,
   ) => Promise<void>;
+  /**
+   * Done on a timed habit before its goal: stops a running or paused session
+   * (its seconds kept) and marks the day done, in one write. Resolves true
+   * when the day is now done only because of that mark, so Undo is worth offering.
+   */
+  markHabitDone: (elementId: string, config: HabitConfig) => Promise<boolean>;
+  /** Undo for `markHabitDone`: removes today's mark, keeps every logged second. */
+  unmarkHabitDone: (elementId: string, config: HabitConfig) => Promise<void>;
   /** Drop an in-progress timer without writing an event (archive/delete). */
   discardHabitTimer: (elementId: string) => void;
   /** Clears the day and resolves to the events it removed, so Undo can put them back. */
@@ -150,6 +161,36 @@ function habitDayDone(config: HabitConfig, events: readonly DayEvent[]): boolean
   return dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(events)).done;
 }
 
+function isManualComplete(event: DayEvent): boolean {
+  return event.meta?.source === 'manual_complete';
+}
+
+/** A habit event whose meta the schema has checked, as every habit write must be. */
+function habitEvent(
+  elementId: string,
+  date: string,
+  value: number,
+  meta: HabitEventMeta,
+  timestamp = new Date().toISOString(),
+): LifeEvent {
+  return {
+    id: newId(),
+    elementId,
+    timestamp,
+    date,
+    value,
+    meta: HabitEventMetaSchema.parse(meta),
+    protocolVersion: PROTOCOL_VERSION,
+  };
+}
+
+interface HabitTimerStopOptions {
+  trackCompleted?: boolean;
+  playChime?: boolean;
+  /** Done pressed before the goal: the stop also marks the day done. */
+  markComplete?: boolean;
+}
+
 /** Ignore stale load results if a newer load started. */
 let habitDayLoadGeneration = 0;
 let habitStreakLoadGeneration = 0;
@@ -161,10 +202,7 @@ const counterWriteChains = new Map<string, Promise<void>>();
 /** Joinable stop promises — rollover/Done await the same in-flight stop. */
 const habitTimerStopPromises = new Map<string, Promise<void>>();
 /** Merged options for joiners (e.g. trackCompleted from natural end after Done started). */
-const habitTimerStopOptions = new Map<
-  string,
-  { trackCompleted?: boolean; playChime?: boolean }
->;
+const habitTimerStopOptions = new Map<string, HabitTimerStopOptions>();
 /** Stops that must not restore the session on failure (archive/delete in flight). */
 const habitTimerStopAbortRestore = new Set<string>();
 
@@ -317,11 +355,127 @@ function applyTodayMaps(
 }
 
 /**
- * Tick or un-tick (`toggle`), or tick only if not already done (`complete`, the
- * lock-screen path, which must never un-tick). SQLite decides inside the lock.
+ * When a running timer with a seconds goal reaches it, the day is done — for
+ * the header, the list order, the lock-screen queue and the evening count, not
+ * only the card that ticks every second. Each running session has at most one
+ * pending crossing; pausing, stopping or discarding it cancels the crossing.
  */
-async function writeHabitTick(
-  intent: 'toggle' | 'complete',
+const targetCrossings = new Map<string, ReturnType<typeof setTimeout>>();
+
+function disarmTargetCrossing(elementId: string): void {
+  const pending = targetCrossings.get(elementId);
+  if (pending !== undefined) clearTimeout(pending);
+  targetCrossings.delete(elementId);
+}
+
+function armTargetCrossing(
+  elementId: string,
+  config: HabitConfig,
+  set: (partial: Partial<EventState>) => void,
+  get: () => EventState,
+): void {
+  disarmTargetCrossing(elementId);
+  const session = get().activeTimerSessions[elementId];
+  const goal = habitTimerGoal(config);
+  if (!session || session.pausedAt || config.trackingMode !== 'timer' || goal.type !== 'seconds') {
+    return;
+  }
+  // The running session will record today's goal, so it is judged by it.
+  const logged = session.calendarDate === get().dayMapsDate ? (get().dailyTotals[elementId] ?? 0) : 0;
+  const remainingMs = (goal.seconds - logged) * 1000 - activeTimerElapsedMs(session);
+  const markDone = () =>
+    applyTodayMaps(elementId, session.calendarDate, { habitDone: true }, set, get);
+  if (remainingMs <= 0) {
+    markDone();
+    return;
+  }
+  targetCrossings.set(
+    elementId,
+    setTimeout(() => {
+      targetCrossings.delete(elementId);
+      const current = get().activeTimerSessions[elementId];
+      if (current?.startedAt === session.startedAt && !current.pausedAt) markDone();
+    }, remainingMs),
+  );
+}
+
+type HabitDayIntent =
+  /** Tick, or un-tick a done day (a day done only by Done loses just that mark). */
+  | 'toggle'
+  /** Tick unless done: the lock-screen path, which must never un-tick. */
+  | 'complete'
+  /** Done on a timed habit: mark the day unless it is already done. */
+  | 'mark'
+  /** Undo of `mark`: remove the day's marks, keep its timer sessions. */
+  | 'unmark';
+
+function optimisticDay(
+  intent: HabitDayIntent,
+  mirrorDone: boolean,
+  mirrorTotal: number,
+): { habitDone: boolean; dailyTotal: number } | null {
+  switch (intent) {
+    case 'toggle':
+      return { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 };
+    case 'complete':
+      return mirrorDone ? null : { habitDone: true, dailyTotal: 1 };
+    case 'mark':
+      return { habitDone: true, dailyTotal: mirrorTotal };
+    case 'unmark':
+      return { habitDone: false, dailyTotal: mirrorTotal };
+    default: {
+      const unknown: never = intent;
+      throw new Error(`Unknown habit day intent: ${String(unknown)}`);
+    }
+  }
+}
+
+/** Apply `intent` to the day SQLite holds; resolves to the day's events after it. */
+async function applyHabitDayIntent(
+  intent: HabitDayIntent,
+  elementId: string,
+  config: HabitConfig,
+  date: string,
+): Promise<DayEvent[]> {
+  const db = await getDatabase();
+  // The mirror can be a day old (first lock-screen press after midnight)
+  // or overtaken by a load, so what the day holds is read here.
+  const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+  const outcome = dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(existing));
+  const unmarked = existing.filter((event) => !isManualComplete(event));
+  const add = async (meta: HabitEventMeta, value: number) => {
+    const event = habitEvent(elementId, date, value, meta);
+    await eventRepo.insertEvent(db, event);
+    void playHabitCompleteHaptic();
+    return [...existing, event];
+  };
+
+  switch (intent) {
+    case 'toggle':
+      if (!outcome.done) return add({ source: 'habit_tick' }, 1);
+      if (outcome.reason === 'marked_complete') {
+        await eventRepo.deleteManualCompleteMarkers(db, elementId, date);
+        return unmarked;
+      }
+      await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+      return [];
+    case 'complete':
+      return outcome.done ? existing : add({ source: 'habit_tick' }, 1);
+    case 'mark':
+      return outcome.done ? existing : add({ source: 'manual_complete' }, 0);
+    case 'unmark':
+      await eventRepo.deleteManualCompleteMarkers(db, elementId, date);
+      return unmarked;
+    default: {
+      const unknown: never = intent;
+      throw new Error(`Unknown habit day intent: ${String(unknown)}`);
+    }
+  }
+}
+
+/** One write to a habit's day. SQLite decides inside the lock; the mirror follows. */
+async function writeHabitDay(
+  intent: HabitDayIntent,
   elementId: string,
   config: HabitConfig,
   date: string,
@@ -336,56 +490,28 @@ async function writeHabitTick(
   // Instant feedback from the mirror; SQLite decides below, inside the lock.
   const mirrorDone = get().habitDoneToday[elementId] ?? false;
   const mirrorTotal = get().dailyTotals[elementId] ?? 0;
-  if (intent === 'toggle' || !mirrorDone) {
-    applyTodayMaps(
-      elementId,
-      date,
-      { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 },
-      set,
-      get,
-    );
-  }
+  const optimistic = optimisticDay(intent, mirrorDone, mirrorTotal);
+  if (optimistic) applyTodayMaps(elementId, date, optimistic, set, get);
 
   try {
     await withDbWriteLock(async () => {
       if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         return;
       }
-      const db = await getDatabase();
-      // The mirror can be a day old (first lock-screen press after midnight)
-      // or overtaken by a load, so what the day holds is read here.
-      const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
-      const done = habitDayDone(config, existing);
-      let nextEvents: DayEvent[] = existing;
-      if (done && intent === 'toggle') {
-        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-        nextEvents = [];
-      } else if (!done) {
-        const tick = {
-          id: newId(),
-          elementId,
-          timestamp: new Date().toISOString(),
-          date,
-          value: 1,
-          meta: { source: 'habit_tick' },
-          protocolVersion: PROTOCOL_VERSION,
-        };
-        await eventRepo.insertEvent(db, tick);
-        nextEvents = [...existing, tick];
-        void playHabitCompleteHaptic();
-      }
+      const nextEvents = await applyHabitDayIntent(intent, elementId, config, date);
 
       if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
         return;
       }
-      const nextTotal = sumEventValues(nextEvents);
       applyTodayMaps(
         elementId,
         date,
-        { habitDone: habitDayDone(config, nextEvents), dailyTotal: nextTotal },
+        { habitDone: habitDayDone(config, nextEvents), dailyTotal: sumEventValues(nextEvents) },
         set,
         get,
       );
+      // A running timer already past its goal keeps the day done.
+      armTargetCrossing(elementId, config, set, get);
       const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
       applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
     });
@@ -403,6 +529,17 @@ async function writeHabitTick(
   } finally {
     habitToggleInFlight.delete(elementId);
   }
+}
+
+/** True when the day is done, and only because Done was pressed. */
+async function doneOnlyByMark(
+  elementId: string,
+  config: HabitConfig,
+  date: string,
+): Promise<boolean> {
+  const db = await getDatabase();
+  const events = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+  return dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(events)).reason === 'marked_complete';
 }
 
 export const useEventStore = create<EventState>((set, get) => ({
@@ -503,6 +640,8 @@ export const useEventStore = create<EventState>((set, get) => ({
     const activeTimerSessions = firstId ? { [firstId]: kept[firstId] } : {};
     set({ activeTimerSessions });
     schedulePersistActiveTimers(activeTimerSessions);
+    const firstHabit = firstId ? habitsById.get(firstId) : undefined;
+    if (firstHabit) armTargetCrossing(firstHabit.id, firstHabit.config, set, get);
   },
 
   loadCounterTotals: async (elementIds) => {
@@ -585,6 +724,8 @@ export const useEventStore = create<EventState>((set, get) => ({
       },
       dayStateReady: true,
     });
+    // SQLite has not seen a running session's seconds; one past its goal is done.
+    for (const { id, config } of habits) armTargetCrossing(id, config, set, get);
   },
 
   loadHabitStreaks: async (habits) => {
@@ -691,12 +832,28 @@ export const useEventStore = create<EventState>((set, get) => ({
     }),
 
   toggleHabit: (elementId, config, date = todayDate()) =>
-    writeHabitTick('toggle', elementId, config, date, set, get),
+    writeHabitDay('toggle', elementId, config, date, set, get),
 
   completeHabit: (elementId, config) =>
-    writeHabitTick('complete', elementId, config, todayDate(), set, get),
+    writeHabitDay('complete', elementId, config, todayDate(), set, get),
 
-  startHabitTimer: (elementId) => {
+  markHabitDone: async (elementId, config) => {
+    const session = get().activeTimerSessions[elementId];
+    if (session) {
+      await get().stopHabitTimer(elementId, config, undefined, { markComplete: true });
+      return doneOnlyByMark(elementId, config, session.calendarDate);
+    }
+    // A stop already under way (rollover, a natural end) lands first.
+    await awaitHabitTimerStop(elementId);
+    const date = todayDate();
+    await writeHabitDay('mark', elementId, config, date, set, get);
+    return doneOnlyByMark(elementId, config, date);
+  },
+
+  unmarkHabitDone: (elementId, config) =>
+    writeHabitDay('unmark', elementId, config, todayDate(), set, get),
+
+  startHabitTimer: (elementId, config) => {
     if (get().activeTimerSessions[elementId]) return;
     const activeTimerSessions = {
       ...get().activeTimerSessions,
@@ -704,11 +861,13 @@ export const useEventStore = create<EventState>((set, get) => ({
     };
     set({ activeTimerSessions });
     schedulePersistActiveTimers(activeTimerSessions);
+    armTargetCrossing(elementId, config, set, get);
   },
 
   pauseHabitTimer: (elementId) => {
     const session = get().activeTimerSessions[elementId];
     if (!session || session.pausedAt) return;
+    disarmTargetCrossing(elementId);
 
     const activeTimerSessions = {
       ...get().activeTimerSessions,
@@ -721,7 +880,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     schedulePersistActiveTimers(activeTimerSessions);
   },
 
-  resumeHabitTimer: (elementId) => {
+  resumeHabitTimer: (elementId, config) => {
     const session = get().activeTimerSessions[elementId];
     if (!session?.pausedAt) return;
 
@@ -738,24 +897,23 @@ export const useEventStore = create<EventState>((set, get) => ({
     };
     set({ activeTimerSessions });
     schedulePersistActiveTimers(activeTimerSessions);
+    armTargetCrossing(elementId, config, set, get);
   },
 
   stopHabitTimer: (elementId, config, _date, options) => {
     const existing = habitTimerStopPromises.get(elementId);
-    if (options?.trackCompleted || options?.playChime) {
-      const merged = habitTimerStopOptions.get(elementId) ?? {};
-      habitTimerStopOptions.set(elementId, {
-        ...merged,
-        ...(options.trackCompleted ? { trackCompleted: true } : {}),
-        ...(options.playChime ? { playChime: true } : {}),
-      });
+    if (existing) {
+      // Only ever add to what the running stop will write.
+      const merged = { ...habitTimerStopOptions.get(elementId) };
+      if (options?.trackCompleted) merged.trackCompleted = true;
+      if (options?.playChime) merged.playChime = true;
+      if (options?.markComplete) merged.markComplete = true;
+      habitTimerStopOptions.set(elementId, merged);
+      return existing;
     }
-    if (existing) return existing;
 
-    habitTimerStopOptions.set(elementId, {
-      trackCompleted: options?.trackCompleted,
-      playChime: options?.playChime,
-    });
+    habitTimerStopOptions.set(elementId, { ...options });
+    disarmTargetCrossing(elementId);
 
     const promise = (async () => {
       const session = get().activeTimerSessions[elementId];
@@ -804,7 +962,14 @@ export const useEventStore = create<EventState>((set, get) => ({
           // The mirror may not hold this day yet (cold start) — SQLite does.
           const previousTotal = sumEventValues(existingEvents);
           const nextTotal = previousTotal + value;
-          const nextEvents = [...existingEvents, { value, meta }];
+          const sessionEvent = habitEvent(elementId, persistDate, value, meta, endedAt.toISOString());
+          const withSession = [...existingEvents, sessionEvent];
+          // Done before the goal: the same write marks the day.
+          const mark =
+            stopOpts?.markComplete && !habitDayDone(config, withSession)
+              ? habitEvent(elementId, persistDate, 0, { source: 'manual_complete' }, endedAt.toISOString())
+              : null;
+          const nextEvents = mark ? [...withSession, mark] : withSession;
           const wasComplete = habitDayDone(config, existingEvents);
           const isComplete = habitDayDone(config, nextEvents);
 
@@ -812,14 +977,10 @@ export const useEventStore = create<EventState>((set, get) => ({
             return;
           }
 
-          await eventRepo.insertEvent(db, {
-            id: newId(),
-            elementId,
-            timestamp: endedAt.toISOString(),
-            date: persistDate,
-            value,
-            meta,
-            protocolVersion: PROTOCOL_VERSION,
+          await db.withTransactionAsync(async () => {
+            for (const event of nextEvents.slice(existingEvents.length)) {
+              await eventRepo.insertEvent(db, event);
+            }
           });
 
           if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
@@ -857,6 +1018,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         };
         set({ activeTimerSessions: restored });
         schedulePersistActiveTimers(restored);
+        armTargetCrossing(elementId, config, set, get);
         applyTodayMaps(elementId, persistDate, { dailyTotal: mirrorTotal }, set, get);
         throw error;
       }
@@ -873,6 +1035,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   discardHabitTimer: (elementId) => {
+    disarmTargetCrossing(elementId);
     const nextSessions = { ...get().activeTimerSessions };
     delete nextSessions[elementId];
     set({ activeTimerSessions: nextSessions });

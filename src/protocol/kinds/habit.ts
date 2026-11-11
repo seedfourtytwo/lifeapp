@@ -88,6 +88,11 @@ export const HabitEventMetaSchema = z.discriminatedUnion('source', [
     /** The habit's seconds goal when this session was logged. */
     goalSeconds: z.number().int().positive().optional(),
   }),
+  /**
+   * Done pressed on a timed habit before its goal: value 0, so the day keeps
+   * the seconds actually logged and Undo removes only this event.
+   */
+  z.object({ source: z.literal('manual_complete') }),
 ]);
 
 export type HabitEventMeta = z.infer<typeof HabitEventMetaSchema>;

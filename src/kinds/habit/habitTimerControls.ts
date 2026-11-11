@@ -136,7 +136,7 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
       await finalizeOtherTimers(elementId);
       if (useEventStore.getState().activeTimerSessions[elementId]) return;
       setFocusedHabitId(elementId);
-      useEventStore.getState().startHabitTimer(elementId);
+      useEventStore.getState().startHabitTimer(elementId, config);
       await playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
         void finishHabitTimer(id, cfg, trackCompleted, {
           playChime: trackCompleted === true,
@@ -163,7 +163,7 @@ export function pauseHabitTimerSession(elementId: string, _config: HabitConfig):
 }
 
 export function resumeHabitTimerSession(elementId: string, config: HabitConfig): void {
-  useEventStore.getState().resumeHabitTimer(elementId);
+  useEventStore.getState().resumeHabitTimer(elementId, config);
   const lockScreen = lockScreenMetaFor(elementId, config);
   if (hasHabitTimerSound(config.timerSound)) {
     void resumeHabitSound(config.timerSound, {

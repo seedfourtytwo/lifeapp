@@ -87,7 +87,7 @@ function firesInSeconds(request: FakeRequest): number {
 }
 
 it('schedules one notification for when the target is reached', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
 
   const [request, ...rest] = timerNotifications();
@@ -101,33 +101,33 @@ it('schedules one notification for when the target is reached', async () => {
 it('counts what was already logged today', async () => {
   store.useEventStore.setState({ dailyTotals: { [MEDITATE]: 120 } });
 
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
 
   expect(timerNotifications().map(firesInSeconds)).toEqual([480]);
 });
 
 it('schedules nothing for a timer without a seconds target, or one already past it', async () => {
-  state().startHabitTimer(OPEN_ENDED);
+  state().startHabitTimer(OPEN_ENDED, configs[OPEN_ENDED]!);
   await flush();
   expect(timerNotifications()).toEqual([]);
 
   state().discardHabitTimer(OPEN_ENDED);
   store.useEventStore.setState({ dailyTotals: { [MEDITATE]: 600 } });
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
   expect(timerNotifications()).toEqual([]);
 });
 
 it('cancels on pause and reschedules on resume, later by the time spent paused', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   jest.setSystemTime(MORNING.getTime() + 60_000);
   state().pauseHabitTimer(MEDITATE);
   await flush();
   expect(timerNotifications()).toEqual([]);
 
   jest.setSystemTime(MORNING.getTime() + 5 * 60_000);
-  state().resumeHabitTimer(MEDITATE);
+  state().resumeHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
 
   // 60 s run, 4 min paused, 540 s still to go.
@@ -135,7 +135,7 @@ it('cancels on pause and reschedules on resume, later by the time spent paused',
 });
 
 it('cancels when the timer is finished', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
   jest.setSystemTime(MORNING.getTime() + 60_000);
 
@@ -146,7 +146,7 @@ it('cancels when the timer is finished', async () => {
 });
 
 it('cancels when the day is reset', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
   jest.setSystemTime(MORNING.getTime() + 60_000);
 
@@ -157,7 +157,7 @@ it('cancels when the day is reset', async () => {
 });
 
 it('cancels when the timer is discarded', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
 
   state().discardHabitTimer(MEDITATE);
@@ -167,13 +167,13 @@ it('cancels when the timer is discarded', async () => {
 });
 
 it('follows the timer that takes over', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
   jest.setSystemTime(MORNING.getTime() + 60_000);
 
   // What starting another timer does: finish the running one, then start.
   await state().stopHabitTimer(MEDITATE, configs[MEDITATE]!);
-  state().startHabitTimer(BREATHE);
+  state().startHabitTimer(BREATHE, configs[BREATHE]!);
   await flush();
 
   const pending = timerNotifications();
@@ -182,7 +182,7 @@ it('follows the timer that takes over', async () => {
 });
 
 it('does not reschedule while nothing about the timer changes', async () => {
-  state().startHabitTimer(MEDITATE);
+  state().startHabitTimer(MEDITATE, configs[MEDITATE]!);
   await flush();
   fake.scheduleNotificationAsync.mockClear();
 

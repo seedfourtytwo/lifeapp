@@ -69,6 +69,22 @@ describe('Life Protocol bundle', () => {
     ).toThrow(/unknown element/);
   });
 
+  it('exports and re-imports a timed habit finished early with Done', () => {
+    const marker = {
+      id: '550e8400-e29b-41d4-a716-446655440018',
+      elementId: habitElement.id,
+      timestamp: '2025-01-02T10:00:00.000Z',
+      date: '2025-01-02',
+      value: 0,
+      meta: { source: 'manual_complete' },
+      protocolVersion: PROTOCOL_VERSION,
+    };
+
+    const bundle = createProtocolBundle({ elements: [habitElement], dashboard: [], events: [marker] });
+
+    expect(parseProtocolBundle(JSON.parse(JSON.stringify(bundle))).events).toEqual([marker]);
+  });
+
   /**
    * The editor lets a habit switch between check-off and timer, and its old
    * events stay. A backup must carry that history both ways — an export that

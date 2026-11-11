@@ -42,6 +42,9 @@ function mapRowsToEvents(rows: EventRow[]): LifeEvent[] {
   return events;
 }
 
+/** A row's meta, or NULL when it is not valid JSON — so json_extract never throws on it. */
+const VALID_META = `CASE WHEN json_valid(meta_json) THEN meta_json END`;
+
 export async function deleteEventsForElementOnDate(
   db: SQLiteDatabase,
   elementId: string,
@@ -65,6 +68,21 @@ export async function deleteEventsByIds(
     `DELETE FROM events WHERE element_id = ? AND id IN (${placeholdersFor(ids)})`,
     elementId,
     ...ids,
+  );
+}
+
+/** Undo of Done on a timed habit: the day's markers go, its timer sessions stay. */
+export async function deleteManualCompleteMarkers(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<void> {
+  await db.runAsync(
+    `DELETE FROM events
+     WHERE element_id = ? AND date = ?
+       AND json_extract(${VALID_META}, '$.source') = 'manual_complete'`,
+    elementId,
+    date,
   );
 }
 
@@ -201,7 +219,6 @@ export async function getDailyTotalsForElementsSince(
  * meta that is not valid JSON counts towards the total and nothing else,
  * rather than failing the whole query.
  */
-const VALID_META = `CASE WHEN json_valid(meta_json) THEN meta_json END`;
 const DAY_FACTS_COLUMNS = `
   COALESCE(SUM(value), 0) AS total,
   MAX(json_extract(${VALID_META}, '$.source') = 'timer_session'

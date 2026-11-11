@@ -62,7 +62,7 @@ it('keeps the timer running when its sound fails to start', async () => {
 it('handles a sound that fails on resume', async () => {
   const controls = require('../src/kinds/habit/habitTimerControls') as typeof import('../src/kinds/habit/habitTimerControls');
   const { useEventStore } = require('../src/store/eventStore') as typeof import('../src/store/eventStore');
-  useEventStore.getState().startHabitTimer(HABIT);
+  useEventStore.getState().startHabitTimer(HABIT, config());
   useEventStore.getState().pauseHabitTimer(HABIT);
 
   controls.resumeHabitTimerSession(HABIT, config());
