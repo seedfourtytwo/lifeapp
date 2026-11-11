@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { LifeEvent } from '../../protocol';
+import type { DayFacts, LifeEvent } from '../../protocol';
 import { EventSchema, PROTOCOL_VERSION } from '../../protocol';
 
 /** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
@@ -269,6 +269,84 @@ export async function getDailyTotalsForElementsSince(
   );
   for (const row of rows) {
     byElement.get(row.element_id)?.push({ date: row.date, total: row.total });
+  }
+  return byElement;
+}
+
+/**
+ * The facts `dayOutcome` needs, per element per day, straight from SQL — the
+ * same answer `dayFactsFromEvents` gives, without loading a row per event. A
+ * meta that is not valid JSON counts towards the total and nothing else,
+ * rather than failing the whole query.
+ */
+const VALID_META = `CASE WHEN json_valid(meta_json) THEN meta_json END`;
+const DAY_FACTS_COLUMNS = `
+  COALESCE(SUM(value), 0) AS total,
+  MAX(json_extract(${VALID_META}, '$.source') = 'timer_session'
+      AND json_extract(${VALID_META}, '$.trackCompleted') = 1) AS track_completed,
+  MAX(json_extract(${VALID_META}, '$.source') = 'manual_complete') AS marked_complete`;
+
+interface DayFactsRow {
+  element_id: string;
+  date: string;
+  total: number;
+  /** NULL when no event that day had JSON meta. */
+  track_completed: number | null;
+  marked_complete: number | null;
+}
+
+function rowToDayFacts(row: DayFactsRow): DayFacts {
+  return {
+    total: row.total,
+    trackCompleted: row.track_completed === 1,
+    markedComplete: row.marked_complete === 1,
+  };
+}
+
+const EMPTY_DAY_FACTS: DayFacts = { total: 0, trackCompleted: false, markedComplete: false };
+
+export async function getDayFactsForElementsOnDate(
+  db: SQLiteDatabase,
+  elementIds: readonly string[],
+  date: string,
+): Promise<Map<string, DayFacts>> {
+  const byElement = new Map<string, DayFacts>();
+  for (const id of elementIds) byElement.set(id, EMPTY_DAY_FACTS);
+  if (elementIds.length === 0) return byElement;
+
+  const rows = await db.getAllAsync<DayFactsRow>(
+    `SELECT element_id, date, ${DAY_FACTS_COLUMNS}
+     FROM events
+     WHERE date = ? AND element_id IN (${placeholdersFor(elementIds)})
+     GROUP BY element_id`,
+    date,
+    ...elementIds,
+  );
+  for (const row of rows) byElement.set(row.element_id, rowToDayFacts(row));
+  return byElement;
+}
+
+/** Every logged day from `sinceDate` on, oldest first, per element. */
+export async function getDayFactsForElementsSince(
+  db: SQLiteDatabase,
+  elementIds: readonly string[],
+  sinceDate: string,
+): Promise<Map<string, { date: string; facts: DayFacts }[]>> {
+  const byElement = new Map<string, { date: string; facts: DayFacts }[]>();
+  for (const id of elementIds) byElement.set(id, []);
+  if (elementIds.length === 0) return byElement;
+
+  const rows = await db.getAllAsync<DayFactsRow>(
+    `SELECT element_id, date, ${DAY_FACTS_COLUMNS}
+     FROM events
+     WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)})
+     GROUP BY element_id, date
+     ORDER BY date ASC`,
+    sinceDate,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    byElement.get(row.element_id)?.push({ date: row.date, facts: rowToDayFacts(row) });
   }
   return byElement;
 }
