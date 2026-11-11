@@ -101,6 +101,30 @@ Phone check owed (the list above, plus): the notification and its public version
 
 In-app surface for now, in the existing look and minimal: creating/editing the commitment through the existing tracker editor (name, lock-screen name, own lines, instead habits), a "slip" action behind a confirm, and the commitment shown as a card on Habits with its clock and an Urge button. The full urge screen comes in 6d.
 
+**Stage 6b status (2026-11-12):** implemented by Opus on `clean-slate-stage-6b` (af4e5d1 … this note), not yet reviewed or run on a device. JS 160 suites / 1869 tests, type-check and lint green; the Android JS bundle exports. No Kotlin touched (nothing native reads the snapshot or the urge lines yet), so the shared fixtures are unchanged. Urges: table `urges` (schema v23) through `PERSISTED_CONCEPTS`, `src/protocol/urge.ts`, `urgeRepository`, `useUrgeStore`. Commitment: `src/protocol/kinds/commitment.ts` (config, lamps, own line, instead-habit checks), `CommitmentEditorFields`, `kinds/commitment/CommitmentWidget` and `screens/habits/CommitmentCard`; strips in `src/utils/dayStrip.ts`, clock and lamp labels in `src/utils/commitmentFormat.ts`. Contract v3 (snapshot version 2, queue lines `urge_logged` / `urge_resolved`) in `docs/widget-contract.md`. Snapshot: 6.3 KB for nine trackers (3.7 KB before), 7.8 KB with a commitment and an open ride.
+
+Decisions and differences from the design above:
+- Slips are events on the commitment (value 1, `meta.source: 'slip'`), so they are append-only, cleared, exported and imported with the rest of its history, and the day-facts aggregate already counts them. A slip and the move of `clearSince` are written in one transaction.
+- A day before the commitment (or any tracker) was created counts neither way: `not_counted` in strips, nothing plotted in History and Insights, outside streaks. Days between an earlier chosen `clearSince` and the creation day are not counted either (there is no way to choose one yet: a new commitment is clear from now).
+- Streaks and strips now judge every day in the window, logged or not; for habits and counters nothing changes (an empty day was never done), for a commitment a quiet day is kept. A slip today leaves the run before it standing until tomorrow, like any tracker's not-done today.
+- The ride length comes from the commitment that is not archived; without one, 600 s. It is read when the urge is settled, so changing it (no editor control yet) moves the end of an open ride.
+- An urge resolved keeps its first outcome. A "used" that arrives after JavaScript already rode the urge out changes nothing; `refreshFromDb` drains the queue before it rides anything out, and the card refreshes at the ride's end, so this needs the widget's line to arrive late.
+- "I used" resolves the urge only; it never logs a slip.
+- Queue: `urge_resolved` carries its own line `id` plus `urgeId` (the urge's id is the `urge_logged` line's id, and the applied log is keyed by line id). Every `urge_resolved` is applied after the rest of its file, so one written before its log still lands. `future_day` applies to urge lines too.
+- The commitment is also a tracker in the snapshot (`kind: "commitment"`, `unit: "slips"`, always due), so the widget's "3 / 7" counts it exactly as the app's "N of M" does. Added beyond the design: `commitment.id`, `nextLamp.hours`, `rideSeconds` (an `urge_logged` the widget overlays needs the ride length) and the reasons `clear` / `slipped`.
+- "N of M done" on Habits counts the commitment (done while it holds no slip). The evening check-in never counts it: its wording is "N things still to do", and a commitment's day has nothing left to do; counting a slip there would be the only nag about one. The header's "days in a row" stays the best habit run.
+- One active commitment: creating a second, or restoring an archived one beside it, is refused with "There is already a commitment. Archive it before starting another." The library shows it in its own section, with no add button while one is active.
+- Instead-habits are checked at save (each a timed habit on Home); one deleted, archived or switched to check-off later is left out when read. A habit whose timer is already running is not offered during a ride (pressing it would pause it).
+- The lock-screen name defaults to "Clear" in both languages; the own lines and the lock-screen name are stored as typed. The editor says the current line can appear on the lock screen. The commitment has no icon.
+- Clear data (activity or everything) still deletes urges like any history: "nothing resets the count" holds for slips and edits, not for an explicit wipe.
+
+Missing from the design, left open:
+- The snapshot carries only the current own line. A lamp passed while the app is not running keeps the old line on the widget until the app writes again; carrying all lines would let the widget rotate them itself (a privacy call for Chris, since every line would then sit in the file).
+- Nothing edits `rideSeconds` or an existing `clearSince`; both have defaults only.
+- Undo of a slip: not offered (append-only). A slip logged by mistake stays; History shows it.
+
+Phone check owed (6b): create the commitment in the library (name, lock-screen name, lines, two timed habits); its card on Habits ticks ("2d 14h", next lamp); Urge logs at once and counts down; an instead-habit starts its timer with sound; "I used" ends the ride; a ride left alone shows as ridden out after it ends and after a return to the app; Log a slip resets the clock and leaves the ridden-out count; History shows kept and slipped days; "N of M" includes it; export → import round trip keeps the commitment, its slips and the urges; French strings.
+
 ## 6c — The lock-screen widget
 
 One `AppWidgetProvider` in `life-core`, `widgetCategory="home_screen|keyguard"`. The lock-screen page gives one fixed box of 447 × 298 dp: design for exactly that; on the home screen allow the same size.
@@ -147,7 +171,7 @@ One screen, reached from the Urge button in the app or by opening the app while 
 | Part | Branch | Depends on | Phone check before moving on |
 |---|---|---|---|
 | 6a | `clean-slate-stage-6a` | 5 | play starts sound from the app; lock the phone, sound continues; notification Pause/Done work locked; kill the app from recents mid-timer, reopen: paused at last heartbeat; Done logs minutes; goal chime with screen off; a call pauses it |
-| 6b | `clean-slate-stage-6b` | 6a | create the commitment; urge from the card; slip; export → import round trip |
+| 6b | `clean-slate-stage-6b` | 6a | create the commitment; urge from the card, an instead-habit starts with sound, "I used"; a ride left alone counts as ridden out; slip; History; export → import round trip |
 | 6c | `clean-slate-stage-6c` | 6b | add the widget on the lock-screen page; every button while locked; with the app force-stopped; after midnight without opening the app; neutral labels only |
 | 6d | `clean-slate-stage-6d` | 6c | Urge from widget → unlock → flow; instead-habit starts with sound; "I used" path |
 | 6e | `clean-slate-stage-6e` | 6d | record and play the note locked; reminder text on a locked phone |
