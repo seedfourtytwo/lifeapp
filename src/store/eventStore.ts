@@ -60,6 +60,8 @@ import {
 export type { HabitStreakInput, CounterStreakInput };
 
 let persistTimersChain: Promise<void> = Promise.resolve();
+/** Bumped on every save, so a read of the saved form can tell it was overtaken. */
+let persistTimersSeq = 0;
 
 /** Production waits for bootstrap hydrate; tests start ready so unit tests don't hang. */
 let activeTimersReady = process.env.NODE_ENV === 'test';
@@ -88,6 +90,7 @@ export function releaseActiveTimersReady(): void {
 function schedulePersistActiveTimers(
   sessions: Record<string, ActiveTimerSession>,
 ): void {
+  persistTimersSeq += 1;
   persistTimersChain = persistTimersChain
     .catch(() => undefined)
     .then(async () => persistActiveTimerSessions(await getDatabase(), sessions))
@@ -119,6 +122,12 @@ interface EventState extends ResettableMirror {
   counterTotalsReady: boolean;
   /** Restore in-progress timers after process death (call once at bootstrap). */
   hydrateActiveTimerSessions: () => Promise<void>;
+  /**
+   * Adopt the sessions as saved in SQLite, in a live process: unlike the cold
+   * start hydrate nothing is paused or finished. A save still on its way wins
+   * over what was read, since it is newer.
+   */
+  reloadActiveTimerSessions: () => Promise<void>;
   /**
    * The sound playing for this habit's session is still going. Called on every
    * playback status update, foreground or locked; saves at most every
@@ -730,6 +739,26 @@ export const useEventStore = create<EventState>((set, get) => ({
     schedulePersistActiveTimers(activeTimerSessions);
     const firstHabit = firstId ? habitsById.get(firstId) : undefined;
     if (firstHabit) armTargetCrossing(firstHabit.id, firstHabit.config, set, get);
+  },
+
+  reloadActiveTimerSessions: async () => {
+    // Before the cold-start hydrate, saved sessions may be from a dead process.
+    if (!activeTimersReady) return;
+    await persistTimersChain;
+    const seqAtRead = persistTimersSeq;
+    const saved = await loadPersistedActiveTimerSessions(await getDatabase());
+    if (seqAtRead !== persistTimersSeq || habitTimerStopPromises.size > 0) return;
+    const current = get().activeTimerSessions;
+    if (JSON.stringify(saved) === JSON.stringify(current)) return;
+
+    for (const id of Object.keys(current)) {
+      if (!saved[id]) disarmTargetCrossing(id);
+    }
+    set({ activeTimerSessions: saved });
+    const { useElementStore } = await import('./elementStore');
+    for (const element of useElementStore.getState().elements.filter(isHabitElement)) {
+      if (saved[element.id]) armTargetCrossing(element.id, element.config, set, get);
+    }
   },
 
   recordTimerHeartbeat: (elementId) => {

@@ -22,7 +22,7 @@ import { getDatabase } from '../db/client';
 import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
-import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
+import { useRefreshFromDb } from '../hooks/useRefreshFromDb';
 import { NoteEditorHost, useNoteEditorSession, type HomeNotebookChip } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -163,7 +163,7 @@ export default function HomeScreen() {
     if (tab !== 'more') moreOpenedFrom.current = tab;
   }, [tab]);
 
-  useDayRolloverRefresh();
+  useRefreshFromDb();
 
   useFocusEffect(
     useCallback(() => {

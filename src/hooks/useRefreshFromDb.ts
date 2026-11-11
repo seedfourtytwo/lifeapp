@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import { ensureCurrentDay } from './ensureCurrentDay';
+import { refreshFromDb } from './refreshFromDb';
 import { msUntilNextAppDay } from '../utils/dayRollover';
 
-const ROLLOVER_RETRY_MS = 5_000;
+const REFRESH_RETRY_MS = 5_000;
 
-/** Reload habits and counters when the app calendar day changes or the app returns active. */
-export function useDayRolloverRefresh(): void {
+/**
+ * Catch up with SQLite each time the app comes to the front and at the turn of
+ * the app day, retrying a failed pass after a few seconds.
+ */
+export function useRefreshFromDb(): void {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -18,17 +21,17 @@ export function useDayRolloverRefresh(): void {
       }
     };
 
-    const handlePotentialRollover = async () => {
+    const handleRefresh = async () => {
       try {
-        await ensureCurrentDay();
+        await refreshFromDb();
         clearRetry();
       } catch (error) {
-        console.warn('Day rollover refresh failed; scheduling retry', error);
+        console.warn('Refresh from the database failed; scheduling retry', error);
         clearRetry();
         retryRef.current = setTimeout(() => {
           retryRef.current = null;
-          void handlePotentialRollover();
-        }, ROLLOVER_RETRY_MS);
+          void handleRefresh();
+        }, REFRESH_RETRY_MS);
       }
     };
 
@@ -37,7 +40,7 @@ export function useDayRolloverRefresh(): void {
         clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = setTimeout(() => {
-        void handlePotentialRollover().finally(() => {
+        void handleRefresh().finally(() => {
           scheduleNextDayRefresh();
         });
       }, msUntilNextAppDay());
@@ -47,7 +50,7 @@ export function useDayRolloverRefresh(): void {
 
     const subscription = AppState.addEventListener('change', (state: AppStateStatus) => {
       if (state === 'active') {
-        void handlePotentialRollover();
+        void handleRefresh();
       }
     });
 
