@@ -142,3 +142,47 @@ describe('event store against SQLite', () => {
     expect(await eventsToday(TICK_HABIT)).toHaveLength(1);
   });
 });
+
+describe('toggleHabit', () => {
+  /**
+   * The first lock-screen press after midnight still sees yesterday's map,
+   * where this habit was done. The press must tick today, not "un-tick" an
+   * empty day and leave the habit showing undone.
+   */
+  it('decides from SQLite, not from a stale done map', async () => {
+    store.useEventStore.setState({ habitDoneToday: { [TICK_HABIT]: true } });
+
+    await state().toggleHabit(TICK_HABIT, tickConfig);
+
+    expect(await eventsToday(TICK_HABIT)).toHaveLength(1);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(true);
+  });
+
+  it('un-ticks a day SQLite says is done even if the mirror says it is not', async () => {
+    await state().toggleHabit(TICK_HABIT, tickConfig);
+    store.useEventStore.setState({ habitDoneToday: {} });
+
+    await state().toggleHabit(TICK_HABIT, tickConfig);
+
+    expect(await eventsToday(TICK_HABIT)).toHaveLength(0);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(false);
+  });
+
+  /**
+   * A day-state load that reads SQLite after the tap but before the tick is
+   * written lands last and says "not done". The tick must win.
+   */
+  it('re-applies done after the write when a load overtook it', async () => {
+    const lock = holdWriteLock();
+    const tick = state().toggleHabit(TICK_HABIT, tickConfig);
+    await state().loadHabitDayState([{ id: TICK_HABIT, config: tickConfig }]);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(false);
+
+    lock.release();
+    await Promise.all([lock.held, tick]);
+
+    expect(await eventsToday(TICK_HABIT)).toHaveLength(1);
+    expect(state().habitDoneToday[TICK_HABIT]).toBe(true);
+    expect(state().dailyTotals[TICK_HABIT]).toBe(1);
+  });
+});

@@ -585,18 +585,15 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (habitToggleInFlight.has(elementId)) return;
     habitToggleInFlight.add(elementId);
     const dataEpochAtStart = getDataGeneration('protocol');
-    const writeEpochAtStart = getWriteEpoch(elementId);
-    if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) {
-      habitToggleInFlight.delete(elementId);
-      return;
-    }
     const ourWriteEpoch = bumpWriteEpoch(elementId);
 
-    const done = get().habitDoneToday[elementId] ?? false;
+    // Instant feedback from the mirror; SQLite decides below, inside the lock.
+    const mirrorDone = get().habitDoneToday[elementId] ?? false;
+    const mirrorTotal = get().dailyTotals[elementId] ?? 0;
     applyTodayMaps(
       elementId,
       date,
-      { habitDone: !done, dailyTotal: done ? 0 : 1 },
+      { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 },
       set,
       get,
     );
@@ -607,25 +604,39 @@ export const useEventStore = create<EventState>((set, get) => ({
           return;
         }
         const db = await getDatabase();
+        // The mirror can be a day old (first lock-screen press after midnight)
+        // or overtaken by a load, so what the day holds is read here.
+        const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+        const done = isHabitDayComplete(sumEventValues(existing), config, existing);
+        let nextEvents: Pick<LifeEvent, 'value' | 'meta'>[] = [];
         if (done) {
           await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
         } else {
-          const now = new Date();
-          await eventRepo.insertEvent(db, {
+          const tick = {
             id: newId(),
             elementId,
-            timestamp: now.toISOString(),
+            timestamp: new Date().toISOString(),
             date,
             value: 1,
             meta: { source: 'habit_tick' },
             protocolVersion: PROTOCOL_VERSION,
-          });
+          };
+          await eventRepo.insertEvent(db, tick);
+          nextEvents = [...existing, tick];
           void playHabitCompleteHaptic();
         }
 
         if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
+        const nextTotal = sumEventValues(nextEvents);
+        applyTodayMaps(
+          elementId,
+          date,
+          { habitDone: isHabitDayComplete(nextTotal, config, nextEvents), dailyTotal: nextTotal },
+          set,
+          get,
+        );
         const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
         applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
       });
@@ -634,7 +645,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         applyTodayMaps(
           elementId,
           date,
-          { habitDone: done, dailyTotal: done ? 1 : 0 },
+          { habitDone: mirrorDone, dailyTotal: mirrorTotal },
           set,
           get,
         );
