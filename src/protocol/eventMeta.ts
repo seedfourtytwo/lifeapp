@@ -1,5 +1,5 @@
 import type { ElementDefinition, ElementKind } from './element';
-import { HabitConfigSchema, HabitEventMetaSchema } from './kinds/habit';
+import { HabitEventMetaSchema } from './kinds/habit';
 import { CounterEventMetaSchema } from './kinds/counter';
 import type { LifeEvent } from './event';
 
@@ -26,16 +26,6 @@ export function validateEventForElement(
 
   if (event.meta !== undefined) {
     parseEventMeta(element.kind, event.meta);
-  }
-
-  if (element.kind === 'habit') {
-    const config = HabitConfigSchema.parse(element.config);
-    if (config.trackingMode === 'boolean' && event.meta?.source === 'timer_session') {
-      throw new Error(`Boolean habit ${element.id} cannot have timer_session events`);
-    }
-    if (config.trackingMode === 'timer' && event.meta?.source === 'habit_tick') {
-      throw new Error(`Timer habit ${element.id} cannot have habit_tick events`);
-    }
   }
 
   if (event.value < 0) {

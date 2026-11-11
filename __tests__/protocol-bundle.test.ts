@@ -4,7 +4,6 @@ import {
   HabitConfigSchema,
   parseProtocolBundle,
   PROTOCOL_VERSION,
-  validateEventForElement,
   validateBundleEventLinks,
   chartPlotValue,
   chartUnitLabel,
@@ -71,29 +70,54 @@ describe('Life Protocol bundle', () => {
     ).toThrow(/unknown element/);
   });
 
-  it('rejects timer meta on boolean habits', () => {
-    const booleanHabit = {
+  /**
+   * The editor lets a habit switch between check-off and timer, and its old
+   * events stay. A backup must carry that history both ways — an export that
+   * throws here leaves the user with no backup at all.
+   */
+  it('exports and re-imports a habit whose history mixes ticks and timer sessions', () => {
+    const switchedHabit = {
       ...habitElement,
       id: '550e8400-e29b-41d4-a716-446655440013',
       config: HabitConfigSchema.parse({ timeSlot: 'anytime', trackingMode: 'boolean' }),
     };
+    const timerSession = {
+      id: '550e8400-e29b-41d4-a716-446655440014',
+      elementId: switchedHabit.id,
+      timestamp: '2025-01-02T10:00:00.000Z',
+      date: '2025-01-02',
+      value: 60,
+      meta: {
+        source: 'timer_session',
+        startedAt: '2025-01-02T09:59:00.000Z',
+        endedAt: '2025-01-02T10:00:00.000Z',
+        durationSeconds: 60,
+      },
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const tick = {
+      id: '550e8400-e29b-41d4-a716-446655440015',
+      elementId: switchedHabit.id,
+      timestamp: '2025-01-03T10:00:00.000Z',
+      date: '2025-01-03',
+      value: 1,
+      meta: { source: 'habit_tick' },
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    const timerHabitWithTick = {
+      ...habitElement,
+      id: '550e8400-e29b-41d4-a716-446655440016',
+    };
+    const oldTick = { ...tick, id: '550e8400-e29b-41d4-a716-446655440017', elementId: timerHabitWithTick.id };
 
-    expect(() =>
-      validateEventForElement(booleanHabit, {
-        id: '550e8400-e29b-41d4-a716-446655440014',
-        elementId: booleanHabit.id,
-        timestamp: '2025-01-02T10:00:00.000Z',
-        date: '2025-01-02',
-        value: 60,
-        meta: {
-          source: 'timer_session',
-          startedAt: '2025-01-02T09:45:00.000Z',
-          endedAt: '2025-01-02T10:00:00.000Z',
-          durationSeconds: 60,
-        },
-        protocolVersion: PROTOCOL_VERSION,
-      }),
-    ).toThrow(/timer_session/);
+    const bundle = createProtocolBundle({
+      elements: [switchedHabit, timerHabitWithTick],
+      dashboard: [],
+      events: [timerSession, tick, oldTick],
+    });
+
+    expect(bundle.events).toHaveLength(3);
+    expect(parseProtocolBundle(JSON.parse(JSON.stringify(bundle)))).toEqual(bundle);
   });
 });
 
