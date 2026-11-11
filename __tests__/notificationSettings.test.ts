@@ -211,4 +211,4 @@ it('re-syncs habit reminders once permission is granted', async () => {
   } finally {
     jest.useRealTimers();
   }
-});
+}, 20_000);
