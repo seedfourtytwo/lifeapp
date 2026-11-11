@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -43,6 +43,7 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('todos');
   const { t: tHome } = useTranslation('home');
+  const { t: tCommon } = useTranslation('common');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
@@ -94,20 +95,33 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
     return open === 0 ? tHome('dayHeader.todosClear') : tHome('dayHeader.todosOpen', { count: open });
   }, [shown, tHome]);
 
+  /** A todo write that fails must say so rather than vanish. */
+  const reportFailure = useCallback(
+    (titleKey: string) => (error: unknown) => {
+      Alert.alert(
+        tCommon(titleKey),
+        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+      );
+    },
+    [tCommon],
+  );
+
   const handleQuickAdd = useCallback(() => {
     const title = draftTitle.trim();
     if (title.length === 0) return;
     setDraftTitle('');
-    void create({ title });
-  }, [draftTitle, create]);
+    create({ title }).catch(reportFailure('alerts.couldNotSave'));
+  }, [draftTitle, create, reportFailure]);
 
   /** Ends the current Undo window: a pending delete is written now. */
   const settleUndo = useCallback(() => {
     const pending = undoRef.current;
     undoRef.current = null;
     setUndo(null);
-    if (pending?.kind === 'deleted') void remove(pending.todo.id);
-  }, [remove]);
+    if (pending?.kind === 'deleted') {
+      remove(pending.todo.id).catch(reportFailure('alerts.couldNotDelete'));
+    }
+  }, [remove, reportFailure]);
 
   const offerUndo = useCallback(
     (next: PendingUndo) => {
@@ -124,9 +138,9 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
   const handleToggle = useCallback(
     (todo: Todo) => {
       offerUndo({ kind: 'done', todo });
-      void setCompleted(todo.id, true);
+      setCompleted(todo.id, true).catch(reportFailure('alerts.couldNotUpdate'));
     },
-    [offerUndo, setCompleted],
+    [offerUndo, setCompleted, reportFailure],
   );
 
   const handleDelete = useCallback(
@@ -138,8 +152,10 @@ function TodosScreen({ onTrackerDragActiveChange }: Props) {
     const pending = undoRef.current;
     undoRef.current = null;
     setUndo(null);
-    if (pending?.kind === 'done') void setCompleted(pending.todo.id, false);
-  }, [setCompleted]);
+    if (pending?.kind === 'done') {
+      setCompleted(pending.todo.id, false).catch(reportFailure('alerts.couldNotUpdate'));
+    }
+  }, [setCompleted, reportFailure]);
 
   const handleOpen = useCallback((todo: Todo) => {
     setEditing(todo);
