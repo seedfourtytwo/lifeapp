@@ -32,6 +32,13 @@ function activeHabitBootstrapKey(
     .join('|');
 }
 
+/** Start-up work runs unawaited; a failure is logged and the app carries on without it. */
+function warnStartupFailure(step: string): (error: unknown) => void {
+  return (error) => {
+    console.warn(`Start-up step failed: ${step}`, error);
+  };
+}
+
 /** Loads settings, elements, todos, habit streaks, and warms timer sounds at app start. */
 export function useAppBootstrap(): void {
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
@@ -55,8 +62,8 @@ export function useAppBootstrap(): void {
   useEffect(() => {
     installHabitTimerRemoteControls();
     void loadSettings();
-    void warmupHabitSoundPlayback();
-    void warmupHabitCompleteChime();
+    warmupHabitSoundPlayback().catch(warnStartupFailure('timer sound warm-up'));
+    warmupHabitCompleteChime().catch(warnStartupFailure('chime warm-up'));
   }, [loadSettings]);
 
   useEffect(() => {
@@ -84,8 +91,8 @@ export function useAppBootstrap(): void {
 
     const inputs = habitStreakInputsFromElements(habitElements);
     // Day-state is loaded on Habits focus — avoid a duplicate cold-start query.
-    void loadHabitStreaks(inputs);
-    void preloadConfiguredHabitSounds(habitElements);
+    loadHabitStreaks(inputs).catch(warnStartupFailure('habit streaks'));
+    preloadConfiguredHabitSounds(habitElements).catch(warnStartupFailure('timer sound preload'));
   }, [bootstrapKey, elementsLoading, loadHabitStreaks, settingsLoaded]);
 
   useEffect(() => {
@@ -93,7 +100,7 @@ export function useAppBootstrap(): void {
       return;
     }
     didRestoreTimersRef.current = true;
-    void (async () => {
+    (async () => {
       try {
         await hydrateActiveTimerSessions();
         const sessionsAfterHydrate = {
@@ -117,6 +124,6 @@ export function useAppBootstrap(): void {
         didReleaseTimersReadyRef.current = true;
         releaseActiveTimersReady();
       }
-    })();
+    })().catch(warnStartupFailure('timer restore and day state'));
   }, [elementsLoaded, elementsLoading, hydrateActiveTimerSessions, settingsLoaded]);
 }
