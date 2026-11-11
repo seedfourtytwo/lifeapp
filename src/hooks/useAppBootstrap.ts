@@ -16,6 +16,7 @@ import {
 } from '../store/eventStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
+import { installWidgetSnapshotWriter } from '../widget/widgetSnapshotWriter';
 
 /**
  * Identity of active habits that should reload streaks / warm sounds.
@@ -65,6 +66,8 @@ export function useAppBootstrap(): void {
     warmupHabitSoundPlayback().catch(warnStartupFailure('timer sound warm-up'));
     warmupHabitCompleteChime().catch(warnStartupFailure('chime warm-up'));
   }, [loadSettings]);
+
+  useEffect(() => installWidgetSnapshotWriter(), []);
 
   useEffect(() => {
     if (!settingsLoaded) return;
