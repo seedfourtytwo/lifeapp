@@ -60,6 +60,7 @@
   "undo": {
     "counterAdded": "{{name}} +{{count}}",
     "timerReset": "{{name}}: today’s time cleared",
+    "markedDone": "{{name}} marked done",
     "archived": "{{name}} archived"
   },
   "editor": {

@@ -1,16 +1,21 @@
 import { useCallback } from 'react';
 import type { HabitConfig } from '../protocol';
 import {
-  finishHabitTimer,
+  markHabitTimerDone,
   pressHabitTimer,
   resetHabitTimerToday,
+  unmarkHabitTimerDone,
 } from '../kinds/habit/habitTimerControls';
 
 /** Couples habit timer store actions with bundled sound + lock-screen media controls. */
 export function useHabitTimerControls() {
-  const handleFinishTimer = useCallback(
-    (elementId: string, config: HabitConfig, trackCompleted = false) =>
-      finishHabitTimer(elementId, config, trackCompleted),
+  const handleMarkDone = useCallback(
+    (elementId: string, config: HabitConfig) => markHabitTimerDone(elementId, config),
+    [],
+  );
+
+  const handleUnmarkDone = useCallback(
+    (elementId: string, config: HabitConfig) => unmarkHabitTimerDone(elementId, config),
     [],
   );
 
@@ -25,7 +30,8 @@ export function useHabitTimerControls() {
 
   return {
     handleTimerPress,
-    handleFinishTimer,
+    handleMarkDone,
+    handleUnmarkDone,
     handleResetToday,
   };
 }

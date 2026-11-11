@@ -40,7 +40,8 @@ export default function HabitCard({
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
-  const { handleTimerPress, handleFinishTimer, handleResetToday } = useHabitTimerControls();
+  const { handleTimerPress, handleMarkDone, handleUnmarkDone, handleResetToday } =
+    useHabitTimerControls();
   const {
     todayTotal,
     isDone,
@@ -85,10 +86,14 @@ export default function HabitCard({
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
       onTimerFinish={async () => {
-        // Open-ended Done anytime; seconds-target Done after goal (banks overtime).
-        // play_once natural end sets trackCompleted elsewhere — false here.
+        // Banks a running session; short of the goal it also marks today done.
         try {
-          await handleFinishTimer(habit.id, config, false);
+          const undoable = await handleMarkDone(habit.id, config);
+          if (undoable) {
+            onOfferUndo?.(t('undo.markedDone', { name: habit.name }), () =>
+              handleUnmarkDone(habit.id, config),
+            );
+          }
         } catch (error) {
           Alert.alert(
             t('habitWidget.couldNotFinishTimerTitle'),

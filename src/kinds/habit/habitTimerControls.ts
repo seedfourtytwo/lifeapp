@@ -94,23 +94,16 @@ function enqueueTimerStart(work: () => Promise<void>): Promise<void> {
   return next;
 }
 
-export async function finishHabitTimer(
+/** Silence the timer, run the store write, then move lock-screen focus on. */
+async function endTimerWith<T>(
   elementId: string,
-  config: HabitConfig,
-  trackCompleted = false,
-  options?: { advance?: boolean; playChime?: boolean },
-): Promise<void> {
-  const date = currentAppCalendarDate();
+  write: () => Promise<T>,
+  advance = true,
+): Promise<T> {
   stopHabitTimerLockScreenTicker();
   await stopHabitSound();
-  await useEventStore.getState().stopHabitTimer(elementId, config, date, {
-    trackCompleted,
-    playChime: options?.playChime,
-  });
-
-  if (options?.advance === false) {
-    return;
-  }
+  const result = await write();
+  if (!advance) return result;
 
   const next = peekAdjacentHabit('next');
   if (next && next.element.id !== elementId) {
@@ -119,6 +112,41 @@ export async function finishHabitTimer(
     setFocusedHabitId(elementId);
   }
   await presentFocusedHabitReady();
+  return result;
+}
+
+export function finishHabitTimer(
+  elementId: string,
+  config: HabitConfig,
+  trackCompleted = false,
+  options?: { advance?: boolean; playChime?: boolean },
+): Promise<void> {
+  const date = currentAppCalendarDate();
+  return endTimerWith(
+    elementId,
+    () =>
+      useEventStore.getState().stopHabitTimer(elementId, config, date, {
+        trackCompleted,
+        playChime: options?.playChime,
+      }),
+    options?.advance,
+  );
+}
+
+/**
+ * Done on a timed habit: stops a running or paused timer and marks today
+ * done even short of the goal. Resolves true when Undo is worth offering.
+ */
+export function markHabitTimerDone(elementId: string, config: HabitConfig): Promise<boolean> {
+  return endTimerWith(elementId, () => useEventStore.getState().markHabitDone(elementId, config));
+}
+
+/** Undo for `markHabitTimerDone`: the day keeps its seconds and loses the mark. */
+export async function unmarkHabitTimerDone(elementId: string, config: HabitConfig): Promise<void> {
+  await useEventStore.getState().unmarkHabitDone(elementId, config);
+  if (getFocusedHabitId() === elementId) {
+    await presentFocusedHabitReady();
+  }
 }
 
 export function startHabitTimerSession(elementId: string, config: HabitConfig): void {

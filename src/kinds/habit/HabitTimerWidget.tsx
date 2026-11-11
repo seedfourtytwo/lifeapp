@@ -80,20 +80,17 @@ export function HabitTimerWidget({
   // The store knows what the seconds cannot (a finished track, a manual Done);
   // the live total turns the card done the moment a running timer reaches its goal.
   const live = dayOutcome({ kind: 'habit', config }, factsFromTotal(displayTotal));
-  const isComplete = Boolean(isDone) || live.done;
+  const isComplete = Boolean(isDone) || (isRunning && live.done);
   const effectiveTarget = live.target;
 
   /**
-   * Done banks/stops a session:
-   * - Open-ended: anytime while running
-   * - Seconds target: only after the goal is reached (keep going for overtime,
-   *   then Done to save). Under target: Play/Pause only; Reset clears the day.
-   * - play_once track goal: never — only natural track end completes.
+   * Done is there whenever a timer runs or is paused, and on a day with time
+   * logged that is not done yet. It banks the session's seconds; short of the
+   * goal (or before a play-once track ends) it also marks today done.
    */
   const showManualDone =
-    isRunning &&
-    Boolean(onTimerFinish) &&
-    (goal.type === 'open' || (goal.type === 'seconds' && live.done));
+    Boolean(onTimerFinish) && (isRunning || (displayTotal > 0 && !isComplete));
+  const doneMarksDay = !isComplete;
 
   // The track's own end chimes a play-once habit; a seconds goal chimes here, live.
   useEffect(() => {
@@ -210,7 +207,11 @@ export function HabitTimerWidget({
               icon="check"
               tone="solid"
               onPress={() => void onTimerFinish?.()}
-              accessibilityLabel={t('habitWidget.finishSessionA11y')}
+              accessibilityLabel={
+                doneMarksDay
+                  ? t('habitWidget.markHabitDoneA11y')
+                  : t('habitWidget.finishSessionA11y')
+              }
             />
           ) : null}
 
