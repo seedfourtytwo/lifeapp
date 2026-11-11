@@ -116,6 +116,16 @@ Known limit: reminders are queued 14 days ahead and topped up when the app comes
 - **Early complete:** a zero-value event with `meta.source = 'manual_complete'`. The Done button is always available on a running or paused timer and on a partly-done timed habit; the seconds already logged are kept. Also fixes the play-once timer that cannot finish after the app is killed.
 - A running timer past its target counts as done everywhere (header count, ordering, lock-screen queue), not only on its own card.
 
+**Stage 3 status (2026-11-11):** implemented by Opus on `clean-slate-stage-3` (ends f259d5d), reviewed by Fable; 140 suites / 1675 tests, type-check and lint green. Checked on the phone (Life dev): Done on a running and on a partly-done timer keeps the seconds; snackbar Undo restores; a day done only by the mark shows a tick that takes the mark back after the snackbar has gone.
+
+Decisions made in the build: a counter with no target is never done (streak 0, no done days in History); a manual Done counts for any habit; the marker is written only when the day is not already done; a running session is judged by the current goal.
+
+Follow-ups:
+- "Name on lock screen" is stored and editable but unused. expo-notifications 0.32 cannot set a notification's public version, and a channel's lock-screen setting can only hide, never reveal. The reminder's public text needs `NotificationCompat.Builder.setPublicVersion` in our own native code: moved to stage 6 (native core).
+- Not yet checked on the phone: a lock-screen press after Done (must not un-tick), Done on a play-once timer restored after the app was killed, the French strings.
+- Cosmetic, for the redesign: the Done button and the un-mark tick look alike, and the tick squeezes long names on the card.
+- Dev tooling: `CI=1 expo start` does not watch files; restart Metro after code changes before testing on the phone.
+
 ### Stage 4 — Durability
 
 - Each migration step plus its `schema_version` update in one `BEGIN IMMEDIATE … COMMIT` (`db/migrations.ts:242-274`); `DROP TABLE IF EXISTS` before rebuild temp tables (`db/schemaRepairs.ts:144-169`).
