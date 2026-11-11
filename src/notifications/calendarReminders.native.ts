@@ -1,4 +1,3 @@
-import { NativeModules } from 'react-native';
 import { i18n } from '../i18n';
 import { expandOccurrences } from '../calendar/occurrences';
 import type { Calendar, CalendarEvent, CalendarReminder } from '../calendar/types';
@@ -104,7 +103,7 @@ export async function syncCalendarReminders(input: {
   clearedOccurrenceKeys?: ReadonlySet<string>;
 }): Promise<void> {
   const run = async (): Promise<void> => {
-    if (!NativeModules.ExpoPushTokenManager) return;
+    if (!isNotificationsNativeAvailable()) return;
 
     const Notifications = await getNotifications();
     if (!Notifications) return;

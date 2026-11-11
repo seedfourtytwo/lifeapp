@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { i18n } from '../i18n';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
@@ -26,9 +26,13 @@ type NotificationsModule = typeof import('expo-notifications');
 let notificationsModule: NotificationsModule | null = null;
 let notificationsUnavailable = false;
 
-/** Avoid importing expo-notifications when the native module is missing (old dev client). */
+/**
+ * Avoid importing expo-notifications when its native side is missing (old dev client).
+ * Expo modules are not on React Native's `NativeModules` under the new architecture,
+ * so ask the Expo registry for the scheduler module that local reminders go through.
+ */
 export function isNotificationsNativeAvailable(): boolean {
-  return NativeModules.ExpoPushTokenManager != null;
+  return requireOptionalNativeModule('ExpoNotificationScheduler') != null;
 }
 
 async function getNotifications(): Promise<NotificationsModule | null> {

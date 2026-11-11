@@ -70,16 +70,24 @@ function reminder(
   return { id: uuidFor(label), eventId: uuidFor(eventLabel), offsetMinutes, enabled };
 }
 
+/**
+ * jest-expo registers the same native modules expo-notifications does, so
+ * "available" is the real lookup. "Unavailable" is a dev client built without
+ * expo-notifications: the scheduler module is simply not registered.
+ */
+function hideNotificationScheduler(): void {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
+  const core = require('expo-modules-core') as typeof import('expo-modules-core');
+  const lookup = core.requireOptionalNativeModule;
+  jest
+    .spyOn(core, 'requireOptionalNativeModule')
+    .mockImplementation((name: string) => (name === 'ExpoNotificationScheduler' ? null : lookup(name)));
+}
+
 /** calendarReminders.native.ts has closure-scoped singleton state — reset per test for isolation. */
 function freshModule(available: boolean): typeof import('../src/notifications/calendarReminders.native') {
   jest.resetModules();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
-  const { NativeModules } = require('react-native');
-  if (available) {
-    NativeModules.ExpoPushTokenManager = {};
-  } else {
-    delete NativeModules.ExpoPushTokenManager;
-  }
+  if (!available) hideNotificationScheduler();
   // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
   return require('../src/notifications/calendarReminders.native');
 }

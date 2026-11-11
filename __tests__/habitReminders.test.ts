@@ -48,16 +48,24 @@ function habitElement(overrides: Partial<HabitConfig> = {}, id = 'h1'): ElementD
   };
 }
 
+/**
+ * jest-expo registers the same native modules expo-notifications does, so
+ * "available" is the real lookup. "Unavailable" is a dev client built without
+ * expo-notifications: the scheduler module is simply not registered.
+ */
+function hideNotificationScheduler(): void {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
+  const core = require('expo-modules-core') as typeof import('expo-modules-core');
+  const lookup = core.requireOptionalNativeModule;
+  jest
+    .spyOn(core, 'requireOptionalNativeModule')
+    .mockImplementation((name: string) => (name === 'ExpoNotificationScheduler' ? null : lookup(name)));
+}
+
 /** habitReminders.native.ts has closure-scoped singleton state — reset per test for isolation. */
 function freshModule(available: boolean): typeof import('../src/notifications/habitReminders.native') {
   jest.resetModules();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
-  const { NativeModules } = require('react-native');
-  if (available) {
-    NativeModules.ExpoPushTokenManager = {};
-  } else {
-    delete NativeModules.ExpoPushTokenManager;
-  }
+  if (!available) hideNotificationScheduler();
   // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
   return require('../src/notifications/habitReminders.native');
 }
@@ -71,9 +79,19 @@ describe('habitReminders.native', () => {
   });
 
   describe('isNotificationsNativeAvailable', () => {
-    it('reflects whether the push token native module is present', () => {
+    it('reflects whether the notification scheduler native module is registered', () => {
       expect(freshModule(true).isNotificationsNativeAvailable()).toBe(true);
       expect(freshModule(false).isNotificationsNativeAvailable()).toBe(false);
+    });
+
+    it('finds the scheduler under the new architecture, where NativeModules has no Expo modules', () => {
+      jest.resetModules();
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
+      const { NativeModules } = require('react-native');
+      expect(NativeModules.ExpoPushTokenManager).toBeUndefined();
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- fresh require after resetModules()
+      const mod = require('../src/notifications/habitReminders.native') as typeof import('../src/notifications/habitReminders.native');
+      expect(mod.isNotificationsNativeAvailable()).toBe(true);
     });
   });
 
