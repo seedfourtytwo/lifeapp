@@ -85,7 +85,9 @@ Follow-ups found while implementing, to fold into the stages named:
 - Dashboard rows are exported without validation, so a corrupt one passes export and fails import. (Stage 4.)
 - A write-epoch mismatch still drops a tick in `writeHabitTick`, the same pattern item 6 fixed for timer stops. Goes away with the database-as-only-truth change. (Stage 5.)
 
-Device checks owed before stage 2 builds on this: reminders and the evening check-in now schedule (`dumpsys alarm`), and lock-screen/headset behaviour of items 1–3.
+Device check 2026-11-11 (Pixel 9, dev build 1.6.1-dev from this branch): the evening check-in alarm is scheduled for 20:00 (`dumpsys alarm` shows it for `.dev`; the release app still has none). Tick, timer start, media-key pause/play/pause, and background → foreground all behaved; nothing started or flipped on return. Still owed: that the 20:00 notification arrives, and a lock-screen play press with a done habit focused.
+
+Build note: a worktree needs `npm install` to link `life-moonshine-dictation` before `expo prebuild`, or the bundle fails to resolve it.
 
 ### Stage 2 — Reminders that fire
 
