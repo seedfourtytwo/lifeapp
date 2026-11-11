@@ -79,3 +79,7 @@ export async function ensureFoodSchema(db: SQLiteDatabase): Promise<void> {
 export async function ensureTodoSchema(db: SQLiteDatabase): Promise<void> {
   await repairConcepts(db, ['todos']);
 }
+
+export async function ensureUrgeSchema(db: SQLiteDatabase): Promise<void> {
+  await repairConcepts(db, ['urges']);
+}

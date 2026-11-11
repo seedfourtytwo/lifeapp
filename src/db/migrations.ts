@@ -15,13 +15,14 @@ import {
   ensureElementsSchema,
   ensureFoodSchema,
   ensureTodoSchema,
+  ensureUrgeSchema,
   ensureJournalNotebooksSchema,
   ensureNoteShareStateSchema,
   ensureSchemaIntegrity,
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 22;
+const CURRENT_SCHEMA_VERSION = 23;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -44,6 +45,7 @@ const CURRENT_SCHEMA_VERSION = 22;
  *  Rebuilds daily_journals without UNIQUE (notebook_id, date) — SQLite cannot
  *  drop a table constraint in place — and adds sort_order. Existing rows all
  *  survive; each notebook day's rows are numbered by created_at. */
+/** v23: urges. */
 
 interface HabitElementRow {
   id: string;
@@ -238,6 +240,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
   },
   22: async (db) => {
     await ensureDailyJournalsSchema(db);
+  },
+  23: async (db) => {
+    await ensureUrgeSchema(db);
   },
 };
 

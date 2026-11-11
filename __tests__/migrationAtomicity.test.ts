@@ -60,20 +60,20 @@ it('rolls back a step that throws half way and runs it again on the next start',
   expect(raw.prepare("SELECT value FROM app_settings WHERE key='half'").get()).toBeUndefined();
 
   await runMigrations(db);
-  expect(version(raw)).toBe(22);
+  expect(version(raw)).toBe(23);
   raw.close();
 });
 
 it('rolls back a failed repair pass with the last step, so the next start repairs again', async () => {
-  const raw = dbAtVersion(21);
+  const raw = dbAtVersion(22);
   const db = wrap(raw);
   jest.spyOn(schemaIntegrity, 'ensureSchemaIntegrity').mockRejectedValueOnce(new Error('repair died'));
 
   await expect(runMigrations(db)).rejects.toThrow('repair died');
-  expect(version(raw)).toBe(21);
+  expect(version(raw)).toBe(22);
 
   await runMigrations(db);
-  expect(version(raw)).toBe(22);
+  expect(version(raw)).toBe(23);
   raw.close();
 });
 
@@ -99,7 +99,7 @@ it('does not trip over a temp table left behind by a crashed rebuild', async () 
 
   await runMigrations(db);
 
-  expect(version(raw)).toBe(22);
+  expect(version(raw)).toBe(23);
   expect(hasTable(raw, 'daily_journals_v22')).toBe(false);
   expect(raw.prepare('SELECT body, sort_order FROM daily_journals').all()).toEqual([
     { body: 'Kept', sort_order: 0 },

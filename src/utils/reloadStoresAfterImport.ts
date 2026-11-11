@@ -7,6 +7,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { useFoodStore } from '../store/foodStore';
 import { useTodoStore } from '../store/todoStore';
+import { useUrgeStore } from '../store/urgeStore';
 import {
   counterStreakInputsFromElements,
   habitStreakInputsFromElements,
@@ -56,6 +57,7 @@ export async function reloadStoresAfterImport(
   }
   if (activityCleared) {
     await useEventStore.getState().reset();
+    await useUrgeStore.getState().reset();
   }
 
   if (calendarCleared) {
@@ -97,6 +99,7 @@ export async function reloadStoresAfterImport(
 
     // Open todos survive a definitions-only clear, so refetch rather than blank.
     await useTodoStore.getState().reload();
+    await useUrgeStore.getState().refresh();
   }
 
   if (preferencesCleared || weatherCleared || full) {

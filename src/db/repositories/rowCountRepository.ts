@@ -14,7 +14,8 @@ export type BackedUpTable =
   | 'calendar_occurrence_clears'
   | 'food_items'
   | 'food_log'
-  | 'todos';
+  | 'todos'
+  | 'urges';
 
 export async function countRows(db: SQLiteDatabase, table: BackedUpTable): Promise<number> {
   const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);

@@ -19,6 +19,7 @@ import {
   type FoodLogEntry,
 } from './food';
 import { validateBundleTodos, type Todo } from './todo';
+import { UrgeSchema, type Urge } from './urge';
 import { validateBundleEventLinks } from './eventMeta';
 import { CalendarBackupSchema, type CalendarBackup } from '../calendar/types';
 import type { AppSettings } from './appSettings';
@@ -54,6 +55,8 @@ export const ProtocolBundleSchema = z.object({
   foodLog: z.array(FoodLogEntrySchema).optional(),
   /** Todos, open and completed — optional for older backups. */
   todos: z.array(TodoSchema).optional(),
+  /** Urges, open and resolved — optional for older backups. */
+  urges: z.array(UrgeSchema).optional(),
   settings: AppSettingsSchema.optional(),
   /** Ambient calendar data — optional for older backups. */
   calendar: CalendarBackupSchema.optional(),
@@ -88,6 +91,7 @@ export function createProtocolBundle(input: {
   foodItems?: FoodItem[];
   foodLog?: FoodLogEntry[];
   todos?: Todo[];
+  urges?: Urge[];
   settings?: AppSettings;
   calendar?: CalendarBackup;
 }): ProtocolBundle {
@@ -107,6 +111,7 @@ export function createProtocolBundle(input: {
     ...(input.foodItems && input.foodItems.length > 0 ? { foodItems: input.foodItems } : {}),
     ...(input.foodLog && input.foodLog.length > 0 ? { foodLog: input.foodLog } : {}),
     ...(input.todos && input.todos.length > 0 ? { todos: input.todos } : {}),
+    ...(input.urges && input.urges.length > 0 ? { urges: input.urges } : {}),
     ...(input.settings ? { settings: input.settings } : {}),
     ...(input.calendar ? { calendar: input.calendar } : {}),
   };

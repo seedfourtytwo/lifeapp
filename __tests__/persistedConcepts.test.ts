@@ -32,6 +32,7 @@ import * as foodRepo from '../src/db/repositories/foodRepository';
 import * as noteShareRepo from '../src/db/repositories/noteShareStateRepository';
 import * as settingsRepo from '../src/db/repositories/settingsRepository';
 import * as todoRepo from '../src/db/repositories/todoRepository';
+import * as urgeRepo from '../src/db/repositories/urgeRepository';
 import * as weatherRepo from '../src/db/repositories/weatherRepository';
 import { FoodItemSchema, HabitConfigSchema, PROTOCOL_VERSION } from '../src/protocol';
 
@@ -183,6 +184,16 @@ const SEEDS: Record<
       createdAt: TIME,
       completedAt: TIME,
       protocolVersion: PROTOCOL_VERSION,
+    });
+  },
+  urges: async (db) => {
+    await urgeRepo.insertUrge(db, {
+      id: uuid(9),
+      at: TIME,
+      day: DATE,
+      outcome: null,
+      resolvedAt: null,
+      source: 'widget',
     });
   },
   noteShareState: async (db, ctx) => {

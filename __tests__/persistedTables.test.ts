@@ -26,6 +26,7 @@ import * as foodRepo from '../src/db/repositories/foodRepository';
 import * as noteShareRepo from '../src/db/repositories/noteShareStateRepository';
 import * as settingsRepo from '../src/db/repositories/settingsRepository';
 import * as todoRepo from '../src/db/repositories/todoRepository';
+import * as urgeRepo from '../src/db/repositories/urgeRepository';
 import * as weatherRepo from '../src/db/repositories/weatherRepository';
 import { WEATHER_FORECAST_CACHE_KEY } from '../src/weather/forecastCache';
 import { FoodItemSchema, HabitConfigSchema, PROTOCOL_VERSION } from '../src/protocol';
@@ -68,6 +69,7 @@ const TABLES = [
   'food_items',
   'food_log',
   'todos',
+  'urges',
   'note_share_state',
   'app_settings',
   'weather_daily',
@@ -244,6 +246,20 @@ async function seedEveryTable(db: SQLiteDatabase, notebookId: string): Promise<v
     protocolVersion: PROTOCOL_VERSION,
   });
 
+  for (const [index, [date, time]] of [
+    [OLD_DATE, OLD_TIME],
+    [NEW_DATE, NEW_TIME],
+  ].entries()) {
+    await urgeRepo.insertUrge(db, {
+      id: id(60 + index),
+      at: time as string,
+      day: date as string,
+      outcome: 'rode_out',
+      resolvedAt: time as string,
+      source: 'app',
+    });
+  }
+
   await settingsRepo.setSetting(db, 'theme_mode', 'dark');
   await settingsRepo.setSetting(db, WEATHER_FORECAST_CACHE_KEY, '{}');
 
@@ -307,6 +323,7 @@ const SEEDED: RowCounts = {
   food_items: 1,
   food_log: 2,
   todos: 3,
+  urges: 2,
   note_share_state: 2,
   app_settings: 2,
   weather_daily: 1,
@@ -351,6 +368,7 @@ const CLEAR_CASES: ClearCase[] = [
       note_share_state: 0,
       // Completed todos are activity and go; the one still open is pending work.
       todos: 1,
+      urges: 0,
     },
   },
   {
@@ -364,6 +382,7 @@ const CLEAR_CASES: ClearCase[] = [
       food_log: 0,
       note_share_state: 0,
       todos: 1,
+      urges: 0,
     },
   },
   {
@@ -384,6 +403,7 @@ const CLEAR_CASES: ClearCase[] = [
       note_share_state: 1,
       // Open todo plus the one completed after the cut-off.
       todos: 2,
+      urges: 1,
     },
   },
   {
@@ -429,6 +449,7 @@ const CLEAR_CASES: ClearCase[] = [
       // An import replaces the device, so open todos go too — unlike a
       // definitions clear, which keeps them.
       todos: 0,
+      urges: 0,
       note_share_state: 0,
       app_settings: 0,
       weather_daily: 0,

@@ -8,6 +8,7 @@ import * as eventRepo from './repositories/eventRepository';
 import * as foodRepo from './repositories/foodRepository';
 import * as noteShareRepo from './repositories/noteShareStateRepository';
 import * as todoRepo from './repositories/todoRepository';
+import * as urgeRepo from './repositories/urgeRepository';
 import * as weatherRepo from './repositories/weatherRepository';
 import {
   rebuildDailyJournals,
@@ -375,6 +376,33 @@ CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);`,
       onImport: todoRepo.deleteAllTodos,
     },
     bundleKey: 'todos',
+  },
+  {
+    name: 'urges',
+    tables: ['urges'],
+    // Not tied to a tracker: an urge is logged before anything else is known,
+    // and the count of those ridden out outlives any commitment.
+    ddl: `
+CREATE TABLE IF NOT EXISTS urges (
+  id TEXT PRIMARY KEY NOT NULL,
+  at TEXT NOT NULL,
+  day TEXT NOT NULL,
+  -- NULL while the ride is open; then 'rode_out' or 'used'.
+  outcome TEXT,
+  resolved_at TEXT,
+  source TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_urges_day ON urges(day);
+CREATE INDEX IF NOT EXISTS idx_urges_outcome ON urges(outcome);`,
+    clear: {
+      // Day facts like events: they go with the history, and with definitions,
+      // which always take all history with them.
+      definitions: urgeRepo.deleteAllUrges,
+      activity: urgeRepo.deleteAllUrges,
+      activityBefore: urgeRepo.deleteUrgesBeforeDate,
+    },
+    bundleKey: 'urges',
   },
   {
     name: 'noteShareState',

@@ -27,7 +27,7 @@ function indexNames(raw: DatabaseSync, table: string) {
   return (raw.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=? ORDER BY name").all(table) as {name:string}[]).map(r=>r.name);
 }
 
-it.each([1, 7, 12, 15, 18, 20, 21])('upgrades a v%i database', async (from) => {
+it.each([1, 7, 12, 15, 18, 20, 21, 22])('upgrades a v%i database', async (from) => {
   const raw = new DatabaseSync(':memory:');
   const db = wrap(raw);
   raw.exec('CREATE TABLE schema_version (version INTEGER NOT NULL)');
@@ -35,11 +35,11 @@ it.each([1, 7, 12, 15, 18, 20, 21])('upgrades a v%i database', async (from) => {
   raw.exec('CREATE TABLE app_settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)');
   await runMigrations(db);
   const v = raw.prepare('SELECT version FROM schema_version').get() as {version:number};
-  expect(v.version).toBe(22);
+  expect(v.version).toBe(23);
   expect(tables(raw)).toEqual([
     'app_settings','calendar_events','calendar_occurrence_clears','calendar_reminders','calendars',
     'daily_journals','dashboard_items','day_notes','elements','events','food_items','food_log',
-    'journal_notebooks','note_share_state','schema_version','todos','weather_daily',
+    'journal_notebooks','note_share_state','schema_version','todos','urges','weather_daily',
   ]);
   // v22 traded the one-document-per-day constraint for a chapter ordering column.
   // The old unique index must be gone — left behind it would reject a second chapter.

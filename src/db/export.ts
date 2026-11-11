@@ -11,6 +11,7 @@ import * as journalNotebookRepo from '../db/repositories/journalNotebookReposito
 import * as calendarRepo from '../db/repositories/calendarRepository';
 import * as foodRepo from '../db/repositories/foodRepository';
 import * as todoRepo from '../db/repositories/todoRepository';
+import * as urgeRepo from '../db/repositories/urgeRepository';
 import { countRows, type BackedUpTable } from '../db/repositories/rowCountRepository';
 import { markSeedFoodsApplied } from '../nutrition/seedCatalog';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
@@ -48,6 +49,7 @@ export async function exportProtocolBundle(): Promise<ExportedBundle> {
     const foodItems = await foodRepo.getAllFoodItems(db);
     const foodLog = await foodRepo.getAllFoodLog(db);
     const todos = await todoRepo.getAllTodos(db);
+    const urges = await urgeRepo.getAllUrges(db);
 
     // Reads skip rows that fail validation; a backup must not look complete when it is not.
     const read: [BackedUpTable, number][] = [
@@ -64,6 +66,7 @@ export async function exportProtocolBundle(): Promise<ExportedBundle> {
       ['food_items', foodItems.length],
       ['food_log', foodLog.length],
       ['todos', todos.length],
+      ['urges', urges.length],
     ];
     let skippedRows = 0;
     for (const [table, readCount] of read) {
@@ -86,6 +89,7 @@ export async function exportProtocolBundle(): Promise<ExportedBundle> {
       foodItems,
       foodLog,
       todos,
+      urges,
       settings,
       calendar: {
         schemaVersion: CALENDAR_BACKUP_VERSION,
@@ -176,6 +180,9 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
       }
       for (const todo of bundle.todos ?? []) {
         await todoRepo.insertTodo(db, todo);
+      }
+      for (const urge of bundle.urges ?? []) {
+        await urgeRepo.insertUrge(db, urge);
       }
       if (bundle.foodItems) {
         // The imported catalog is authoritative — do not re-seed starter foods

@@ -1,4 +1,5 @@
 import { useEventStore } from '../store/eventStore';
+import { useUrgeStore } from '../store/urgeStore';
 import { ensureCurrentDay } from './ensureCurrentDay';
 import { refreshAllDailyData } from './refreshAllDailyData';
 import { drainPendingWidgetActions } from '../widget/pendingWidgetActions';
@@ -14,13 +15,16 @@ async function refreshOnce(): Promise<void> {
   await drainPendingWidgetActions().catch((error: unknown) => {
     console.warn('Widget actions not drained', error);
   });
+  // After the drain, so a "used" queued during a ride lands before the ride is called ridden out.
+  await useUrgeStore.getState().refresh();
   await refreshAllDailyData();
   void requestWidgetSnapshot();
 }
 
 /**
  * Bring every store that mirrors today's SQLite rows back in line with them:
- * trackers, today's totals and done state, streaks and timer sessions; then
+ * trackers, today's totals and done state, streaks, timer sessions and
+ * urges (a ride that has ended is counted ridden out here); then
  * the widget's queued taps are applied and its snapshot rewritten. Rows
  * written by anyone — this app, an import, the widget's queue — show after
  * one call.
