@@ -8,7 +8,7 @@ import { HabitScheduleSchema } from './schedule';
  * contract the native side is built against, and must change with this.
  */
 
-export const WIDGET_SNAPSHOT_VERSION = 1;
+export const WIDGET_SNAPSHOT_VERSION = 2;
 
 const IsoInstant = z.string().datetime();
 const LocalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -50,6 +50,13 @@ const RunningSessionSchema = z.object({
   paused: z.boolean(),
 });
 
+/** One day of a short strip, oldest first; `not_counted` is a day before the tracker existed. */
+const StripDaySchema = z.object({
+  date: LocalDate,
+  /** On today, `not_done` means "not yet"; on a commitment, a slip. */
+  state: z.enum(['done', 'not_done', 'not_due', 'not_counted']),
+});
+
 const TrackerBaseSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -68,6 +75,8 @@ const TrackerBaseSchema = z.object({
   schedule: HabitScheduleSchema,
   /** Local HH:mm clock times this tracker reminds at on a due day. */
   reminderTimes: z.array(LocalClockTime),
+  /** The last seven days ending today, oldest first. */
+  sevenDays: z.array(StripDaySchema).length(7),
 });
 
 const HabitTrackerSchema = TrackerBaseSchema.extend({
@@ -92,10 +101,62 @@ const CounterTrackerSchema = TrackerBaseSchema.extend({
   quickIncrements: z.array(z.number().positive()).min(1),
 });
 
+/** Kept on a day with no slip; its `total` is today's slips. Details in the top-level `commitment`. */
+const CommitmentTrackerSchema = TrackerBaseSchema.extend({
+  kind: z.literal('commitment'),
+  /** Always set for a commitment ("Clear" unless chosen). */
+  lockScreenName: z.string().min(1),
+  unit: z.literal('slips'),
+});
+
 export const WidgetSnapshotTrackerSchema = z.discriminatedUnion('kind', [
   HabitTrackerSchema,
   CounterTrackerSchema,
+  CommitmentTrackerSchema,
 ]);
+
+const CommitmentSchema = z.object({
+  /** The commitment's `id` in `trackers`. */
+  id: z.string().uuid(),
+  lockScreenName: z.string().min(1),
+  /** The time clear counts from: the start, or the latest slip. */
+  clearSince: IsoInstant,
+  lampsPassed: z.number().int().nonnegative(),
+  nextLamp: z.object({
+    at: IsoInstant,
+    /** Hours after `clearSince`. */
+    hours: z.number().int().positive(),
+    /** Short, in the app's language: "48h", "5d". */
+    label: z.string().min(1),
+  }),
+  /** His own line for now, or null when he has written none. It may be shown on the lock screen. */
+  ownLine: z.string().nullable(),
+  /** How long an urge's ride lasts; for an `urge_logged` not yet in a snapshot. */
+  rideSeconds: z.number().int().positive(),
+  /** Every urge ever ridden out; nothing resets it. */
+  urgesRiddenOut: z.number().int().nonnegative(),
+  urgesToday: z.number().int().nonnegative(),
+  /** At most two timed habits to start instead, in the order chosen. */
+  insteadHabits: z.array(
+    z.object({
+      id: z.string().uuid(),
+      lockScreenName: z.string().nullable(),
+      icon: z.string().nullable(),
+      /** The seconds goal, or null for a play-once or open timer. */
+      goalSeconds: z.number().int().positive().nullable(),
+    }),
+  ),
+  /** The last fourteen days ending today, oldest first. */
+  days: z
+    .array(z.object({ date: LocalDate, state: z.enum(['done', 'slip', 'not_counted']) }))
+    .length(14),
+});
+
+const RideSchema = z.object({
+  urgeId: z.string().uuid(),
+  startedAt: IsoInstant,
+  endsAt: IsoInstant,
+});
 
 export const WidgetSnapshotSchema = z.object({
   version: z.literal(WIDGET_SNAPSHOT_VERSION),
@@ -112,6 +173,10 @@ export const WidgetSnapshotSchema = z.object({
   }),
   /** Every tracker on Home, in Home's order; `dueToday` says which belong to today. */
   trackers: z.array(WidgetSnapshotTrackerSchema),
+  /** The commitment not archived, or null when there is none. */
+  commitment: CommitmentSchema.nullable(),
+  /** The latest urge's ride while it is still open, or null. */
+  ride: RideSchema.nullable(),
   /** Reminders still to come today for trackers due and not done, earliest first. */
   nextReminders: z.array(
     z.object({ trackerId: z.string().uuid(), time: LocalClockTime, at: IsoInstant }),

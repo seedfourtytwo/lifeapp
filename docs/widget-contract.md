@@ -4,7 +4,7 @@ Contract version 3 (stage 6b). What the JavaScript app writes for the lock-scree
 
 SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
 
-Changes from version 2: two queue lines for urges, `urge_logged` and `urge_resolved`, with the drop reason `urge_missing`; the queue line's `trackerId` belongs to the tracker lines only.
+Changes from version 2: the snapshot is version 2. It gains `commitment` and `ride` at the top, a `sevenDays` strip on every tracker, a third tracker kind `commitment`, and the reasons `clear` and `slipped`. The queue gains two lines for urges, `urge_logged` and `urge_resolved`, with the drop reason `urge_missing`; a queue line's `trackerId` belongs to the tracker lines only.
 
 Changes from version 1: the running timer is owned by native code, so the five timer control lines (`timer_start`, `timer_pause`, `timer_resume`, `timer_done`, `timer_discard`) are gone and a drain skips them as unknown; native appends a `timer_session` line when a session ends; `timer.json` is new. `habit_complete` and `counter_add` are unchanged.
 
@@ -24,11 +24,11 @@ Text is UTF-8 with no byte order mark. Instants are ISO-8601 in UTC with millise
 
 ## Snapshot
 
-`src/protocol/widgetSnapshot.ts` (`WidgetSnapshotSchema`). One JSON object: 3.7 KB for seven habits and two counters.
+`src/protocol/widgetSnapshot.ts` (`WidgetSnapshotSchema`). One JSON object: 6.3 KB for seven habits and two counters, 7.8 KB with a commitment and an open ride.
 
 ### When it is written
 
-After any change to what it shows (a tick, a counter tap, a timer start, pause, resume, stop or Done, an edit, an archive, a delete, a reorder, a day rollover), and after every `refreshFromDb()` (each time the app comes to the front). Changes within 500 ms of the first share one write. A timer's 30-second heartbeat alone does not cause a write: the session fields below let the widget run the clock itself.
+After any change to what it shows (a tick, a counter tap, a timer start, pause, resume, stop or Done, an urge logged or resolved, a slip, an edit, an archive, a delete, a reorder, a day rollover), and after every `refreshFromDb()` (each time the app comes to the front). Changes within 500 ms of the first share one write. A timer's 30-second heartbeat alone does not cause a write: the session fields below let the widget run the clock itself.
 
 ### Atomic replace
 
@@ -38,13 +38,15 @@ The app writes `widget/snapshot.json.tmp`, then renames it over `widget/snapshot
 
 | Field | Type | Meaning |
 |---|---|---|
-| `version` | `1` | Format version. A reader that does not know the version shows nothing. |
+| `version` | `2` | Format version. A reader that does not know the version shows nothing. |
 | `generatedAt` | instant | When the file was built. |
 | `day.date` | local date | The app day described. The app day is the local calendar day; it turns at local midnight. |
 | `day.endsAt` | instant | The next local midnight. From then on the per-day fields below (`done`, `reason`, `total`, `streak`, `nextReminders`) describe yesterday. |
 | `day.timeZone` | string | IANA zone of the phone at `generatedAt` (`Europe/Paris`). |
 | `day.utcOffsetMinutes` | integer | Offset from UTC at `generatedAt`, minutes east (Paris: 60 in winter, 120 in summer). |
-| `trackers` | array | Every tracker on Home (archived ones are left out), in Home's order. |
+| `trackers` | array | Every tracker on Home (archived ones are left out), in Home's order. Today's count ("3 / 7") is the `done` ones among those `dueToday`, the commitment included. |
+| `commitment` | object \| null | The commitment not archived (there is at most one); see below. Null when there is none. |
+| `ride` | object \| null | The latest urge's ride while it is open: `urgeId`, `startedAt`, `endsAt` (instants). Null when no urge is open. At `endsAt` the ride is over even if the app has not run: the urge counts as ridden out from then. |
 | `nextReminders` | array | Reminders still to come today, earliest first; see below. |
 
 Each tracker:
@@ -52,19 +54,20 @@ Each tracker:
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | UUID | The tracker. Use it in pending actions. |
-| `kind` | `"habit"` \| `"counter"` | |
+| `kind` | `"habit"` \| `"counter"` \| `"commitment"` | |
 | `name` | string | The real name. **Never show it on the lock screen.** |
-| `lockScreenName` | string \| null | The neutral name for a locked phone, at most 20 characters. Null: show the icon only. Counters always have null. |
+| `lockScreenName` | string \| null | The neutral name for a locked phone, at most 20 characters. Null: show the icon only. Counters always have null; a commitment always has one ("Clear" unless chosen). |
 | `icon` | string \| null | A MaterialCommunityIcons glyph name (`meditation`, `pill`, `water`…), or one of the app's own: `push-up`, `pull-up`. Null: no icon chosen. |
-| `dueToday` | boolean | Scheduled on `day.date` (see `schedule`). Counters are always due. A habit with a time window is due all day; `visibleOnlyInTimeRange` says whether the app hides it outside the window. |
-| `done` | boolean | The day counts as done. |
-| `reason` | string | Why. One of `checked`, `not_checked` (check-off habit); `target_met`, `under_target` (seconds goal or counter target); `track_finished`, `track_not_finished` (timer that plays a track once); `time_logged`, `nothing_logged` (timer with no goal); `marked_complete` (Done pressed before the goal); `no_target` (counter with no target, never done); `running_past_goal` (a timer still running has passed its seconds goal; its seconds are not logged yet). |
-| `total` | number | Logged today, in `unit`. A running session's seconds are not in it. |
+| `dueToday` | boolean | Scheduled on `day.date` (see `schedule`). Counters and the commitment are always due. A habit with a time window is due all day; `visibleOnlyInTimeRange` says whether the app hides it outside the window. |
+| `done` | boolean | The day counts as done. A commitment's day is done while it holds no slip. |
+| `reason` | string | Why. One of `clear`, `slipped` (commitment); `checked`, `not_checked` (check-off habit); `target_met`, `under_target` (seconds goal or counter target); `track_finished`, `track_not_finished` (timer that plays a track once); `time_logged`, `nothing_logged` (timer with no goal); `marked_complete` (Done pressed before the goal); `no_target` (counter with no target, never done); `running_past_goal` (a timer still running has passed its seconds goal; its seconds are not logged yet). |
+| `total` | number | Logged today, in `unit`. A running session's seconds are not in it. A commitment's is its slips today. |
 | `target` | number \| null | The amount that finishes the day, in `unit`. Null when there is none. |
 | `streak` | integer | Days in a row done, ending today if today is done, else yesterday. |
-| `schedule` | object | See "Working out today without the app". Counters: `{"type":"daily"}`. |
-| `reminderTimes` | array of `HH:mm` | Local times this tracker reminds at on a due day, earliest first. Counters: empty. |
-| `unit` | string | Habits: `"ticks"` (check-off) or `"seconds"` (timer). Counters: their own unit text (`"glasses"`). |
+| `schedule` | object | See "Working out today without the app". Counters and the commitment: `{"type":"daily"}`. |
+| `reminderTimes` | array of `HH:mm` | Local times this tracker reminds at on a due day, earliest first. Counters and the commitment: empty. |
+| `unit` | string | Habits: `"ticks"` (check-off) or `"seconds"` (timer). Counters: their own unit text (`"glasses"`). Commitment: `"slips"`. |
+| `sevenDays` | array of 7 | The last seven days ending on `day.date`, oldest first: `{date, state}`, `state` one of `done`, `not_done` (today: not yet; a commitment: a slip), `not_due` (not scheduled), `not_counted` (before the tracker existed). |
 
 Habits only:
 
@@ -90,6 +93,22 @@ Counters only:
 
 `nextReminders` items: `trackerId` (UUID), `time` (local `HH:mm`), `at` (instant). Only habits due today and not done, only times after `generatedAt`.
 
+### Commitment
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | UUID | Its `id` in `trackers`. |
+| `lockScreenName` | string | The neutral name ("Clear" unless chosen). The only name to show. |
+| `clearSince` | instant | Time clear counts from here: the start, or the latest slip. Show `now - clearSince` ("2d 14h"). |
+| `lampsPassed` | integer | Milestones passed at `generatedAt`. Lamps fall at 24 h, 48 h, 72 h, 120 h, 168 h, 240 h and 336 h after `clearSince`, then every 168 h; a lamp is passed exactly at its hour. |
+| `nextLamp` | object | `at` (instant), `hours` (after `clearSince`) and a short `label` in the app's language (`"48h"`, `"5d"`). Past `at`, the next one is `hours` + the next step above. |
+| `ownLine` | string \| null | His own line for now, in his words, chosen by him to be seen; null when he wrote none. It changes at each lamp; one passed while the app is not running keeps this line until the app writes again. |
+| `rideSeconds` | integer | How long an urge's ride lasts. An `urge_logged` not yet in a snapshot rides until its `at` + this. |
+| `urgesRiddenOut` | integer | Every urge ever ridden out. Nothing resets it, a slip included. |
+| `urgesToday` | integer | Urges logged on `day.date`. |
+| `insteadHabits` | array | At most two timed habits to start instead, in the order chosen: `id` (a tracker in `trackers`), `lockScreenName` (string or null: show the icon), `icon`, `goalSeconds` (or null). Ones deleted, archived or no longer timers are left out. |
+| `days` | array of 14 | The last fourteen days ending on `day.date`, oldest first: `{date, state}`, `state` one of `done` (no slip), `slip`, `not_counted` (before it existed). |
+
 ### A live clock without the app
 
 Active milliseconds at any moment `now`:
@@ -105,7 +124,8 @@ Seconds are `floor(active / 1000)`. Today's progress is `total + seconds`; with 
 
 The app may not run after midnight. Compute "today" at render time from the phone's current clock and zone; if it is not `day.date` (or the clock is past `day.endsAt`), the snapshot is from an earlier day:
 
-- `done` is false, `total` 0 and `reason` the not-done one for every tracker. A session still running keeps running; the app gives its seconds to the days they happened on when it next runs.
+- `done` is false, `total` 0 and `reason` the not-done one for every tracker, except the commitment: its new day is `done`, `reason` `clear`, `total` 0. A session still running keeps running; the app gives its seconds to the days they happened on when it next runs.
+- `sevenDays` and `commitment.days` move on by a day per day passed: the new day is `not_done` (`done` for the commitment), and the snapshot's `day.date` keeps the state it had. `commitment.urgesToday` is 0.
 - `streak`: when `day.date` is yesterday, keep it if yesterday was `done` or was not due; set it to 0 if yesterday was due and not done. When `day.date` is older than yesterday, hide the streak until the app writes again.
 - `dueToday` from `schedule`, for the new date `d`:
   - `{"type":"daily"}`: always.

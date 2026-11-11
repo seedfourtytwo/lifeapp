@@ -2,7 +2,7 @@ import { getDatabase } from '../db/client';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
-import { isCounterElement, isHabitElement } from '../protocol';
+import { isCounterElement, isHabitElement, shiftDateString, type DayFacts } from '../protocol';
 import { WidgetSnapshotSchema } from '../protocol/widgetSnapshot';
 import { loadCounterStreakMaps } from '../store/counterStreakFetch';
 import { useElementStore } from '../store/elementStore';
@@ -12,8 +12,13 @@ import {
   useEventStore,
 } from '../store/eventStore';
 import { loadHabitStreakMaps } from '../store/habitStreakFetch';
-import { getActiveElements } from '../utils/dashboardElements';
+import { useUrgeStore } from '../store/urgeStore';
+import { formatLampLabel } from '../utils/commitmentFormat';
+import { createdOnLocalDate } from '../utils/createdOnLocalDate';
+import { getActiveCommitment, getActiveElements } from '../utils/dashboardElements';
+import { streakHistorySinceDate } from '../utils/dates';
 import { currentAppCalendarDate } from '../utils/dayRollover';
+import { computeTrackerStreaks } from '../utils/trackerStreaks';
 import { buildWidgetSnapshot } from './buildWidgetSnapshot';
 import { replaceWidgetFile, widgetDirectory } from './widgetFiles';
 
@@ -26,17 +31,35 @@ function deviceTimeZone(): string {
 }
 
 async function writeSnapshotNow(): Promise<void> {
+  // Never write "nothing ridden out" for counts not read yet.
+  if (!useUrgeStore.getState().loaded) await useUrgeStore.getState().refresh();
   const db = await getDatabase();
   // Read in sequence: concurrent statements on one expo-sqlite connection can fail.
   const elements = await elementRepo.getAllElements(db);
   const dashboard = await dashboardRepo.getDashboardItems(db);
   const trackers = getActiveElements(elements, dashboard);
   const now = new Date();
-  const factsById = await eventRepo.getDayFactsForElementsOnDate(
-    db,
-    trackers.map((tracker) => tracker.id),
-    currentAppCalendarDate(now),
+  const today = currentAppCalendarDate(now);
+  const ids = trackers.map((tracker) => tracker.id);
+  const factsById = await eventRepo.getDayFactsForElementsOnDate(db, ids, today);
+  const recent = await eventRepo.getDayFactsForElementsSince(db, ids, shiftDateString(today, -13));
+  const recentFacts = new Map(
+    [...recent].map(([id, days]) => [
+      id,
+      new Map<string, DayFacts>(days.map(({ date, facts }) => [date, facts])),
+    ]),
   );
+  const commitment = getActiveCommitment(trackers);
+  const commitmentStreak = commitment
+    ? computeTrackerStreaks(
+        commitment,
+        (
+          await eventRepo.getDayFactsForElementsSince(db, [commitment.id], streakHistorySinceDate())
+        ).get(commitment.id) ?? [],
+        today,
+        createdOnLocalDate(commitment.createdAt),
+      ).streak
+    : 0;
   const { streaks: habitStreaks } = await loadHabitStreakMaps(
     habitStreakInputsFromElements(trackers.filter(isHabitElement)),
   );
@@ -47,9 +70,13 @@ async function writeSnapshotNow(): Promise<void> {
     buildWidgetSnapshot({
       trackers,
       factsById,
+      recentFacts,
       habitStreaks,
       counterStreaks,
+      commitmentStreak,
       sessions: useEventStore.getState().activeTimerSessions,
+      urges: useUrgeStore.getState(),
+      lampLabel: formatLampLabel,
       now,
       timeZone: deviceTimeZone(),
     }),
@@ -107,8 +134,18 @@ export function installWidgetSnapshotWriter(): () => void {
       void requestWidgetSnapshot();
     }
   });
+  const unsubscribeUrges = useUrgeStore.subscribe((next, previous) => {
+    if (
+      next.ride !== previous.ride ||
+      next.urgesToday !== previous.urgesToday ||
+      next.riddenOutTotal !== previous.riddenOutTotal
+    ) {
+      void requestWidgetSnapshot();
+    }
+  });
   return () => {
     unsubscribeEvents();
     unsubscribeElements();
+    unsubscribeUrges();
   };
 }

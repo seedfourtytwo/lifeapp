@@ -223,7 +223,12 @@
   },
   "commitment": {
     "dayClear": "Clear",
-    "daySlip": "Slip"
+    "daySlip": "Slip",
+    "lampHours": "{{count}}h",
+    "lampDays": "{{count}}d",
+    "clearMinutes": "{{minutes}}m",
+    "clearHoursMinutes": "{{hours}}h {{minutes}}m",
+    "clearDaysHours": "{{days}}d {{hours}}h"
   },
   "commitmentFields": {
     "lockScreenSectionDescription": "What a locked phone calls it. Nothing else about it is shown there.",

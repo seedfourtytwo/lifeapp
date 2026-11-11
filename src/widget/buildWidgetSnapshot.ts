@@ -1,16 +1,24 @@
 import {
   activeTimerElapsedSeconds,
+  currentOwnLine,
   dayOutcome,
   factsFromTotal,
   habitTimerGoal,
   isHabitScheduledOnDate,
+  lampsPassed,
+  nextLamp,
   toDateString,
+  usableInsteadHabits,
   type ActiveTimerSession,
+  type CommitmentElement,
   type CounterElement,
   type DayFacts,
   type ElementDefinition,
   type HabitElement,
 } from '../protocol';
+import type { UrgeRide } from '../store/urgeStore';
+import { createdOnLocalDate } from '../utils/createdOnLocalDate';
+import { dayStrip } from '../utils/dayStrip';
 import {
   WIDGET_SNAPSHOT_VERSION,
   type WidgetSnapshot,
@@ -26,11 +34,32 @@ export interface WidgetSnapshotInput {
   trackers: readonly ElementDefinition[];
   /** Today's facts per tracker, as SQLite holds them. */
   factsById: ReadonlyMap<string, DayFacts>;
+  /** Each tracker's facts for at least the last fourteen days, by date; a day missing logged nothing. */
+  recentFacts: ReadonlyMap<string, ReadonlyMap<string, DayFacts>>;
   habitStreaks: Readonly<Record<string, number>>;
   counterStreaks: Readonly<Record<string, number>>;
+  commitmentStreak: number;
   sessions: Readonly<Record<string, ActiveTimerSession>>;
+  urges: { ride: UrgeRide | null; urgesToday: number; riddenOutTotal: number };
+  /** A lamp's short label ("48h", "5d") in the app's language. */
+  lampLabel: (hours: number) => string;
   now: Date;
   timeZone: string;
+}
+
+function strip(
+  tracker: ElementDefinition,
+  input: WidgetSnapshotInput,
+  today: string,
+  length: number,
+) {
+  return dayStrip(
+    tracker,
+    input.recentFacts.get(tracker.id) ?? new Map<string, DayFacts>(),
+    today,
+    createdOnLocalDate(tracker.createdAt),
+    length,
+  );
 }
 
 function nextLocalMidnight(now: Date): Date {
@@ -77,6 +106,7 @@ function habitTracker(
     streak: input.habitStreaks[habit.id] ?? 0,
     schedule: config.schedule,
     reminderTimes: habitReminderClockTimes(config),
+    sevenDays: strip(habit, input, today, 7),
     trackingMode: config.trackingMode,
     unit: isTimer ? 'seconds' : 'ticks',
     timeRange: config.timeRange ?? null,
@@ -85,7 +115,11 @@ function habitTracker(
   };
 }
 
-function counterTracker(counter: CounterElement, input: WidgetSnapshotInput): WidgetSnapshotTracker {
+function counterTracker(
+  counter: CounterElement,
+  input: WidgetSnapshotInput,
+  today: string,
+): WidgetSnapshotTracker {
   const outcome = dayOutcome(counter, input.factsById.get(counter.id) ?? factsFromTotal(0));
   return {
     kind: 'counter',
@@ -101,8 +135,68 @@ function counterTracker(counter: CounterElement, input: WidgetSnapshotInput): Wi
     streak: input.counterStreaks[counter.id] ?? 0,
     schedule: { type: 'daily' },
     reminderTimes: [],
+    sevenDays: strip(counter, input, today, 7),
     unit: counter.config.unit,
     quickIncrements: counter.config.quickIncrements,
+  };
+}
+
+function commitmentTracker(
+  commitment: CommitmentElement,
+  input: WidgetSnapshotInput,
+  today: string,
+): WidgetSnapshotTracker {
+  const outcome = dayOutcome(commitment, input.factsById.get(commitment.id) ?? factsFromTotal(0));
+  return {
+    kind: 'commitment',
+    id: commitment.id,
+    name: commitment.name,
+    lockScreenName: commitment.config.lockScreenName,
+    icon: null,
+    dueToday: true,
+    done: outcome.done,
+    reason: outcome.reason,
+    total: outcome.total,
+    target: null,
+    streak: input.commitmentStreak,
+    schedule: { type: 'daily' },
+    reminderTimes: [],
+    sevenDays: strip(commitment, input, today, 7),
+    unit: 'slips',
+  };
+}
+
+function commitmentBlock(
+  commitment: CommitmentElement,
+  input: WidgetSnapshotInput,
+  today: string,
+): NonNullable<WidgetSnapshot['commitment']> {
+  const { config } = commitment;
+  const { now } = input;
+  const lamp = nextLamp(config.clearSince, now);
+  return {
+    id: commitment.id,
+    lockScreenName: config.lockScreenName,
+    clearSince: config.clearSince,
+    lampsPassed: lampsPassed(config.clearSince, now),
+    nextLamp: { at: lamp.at.toISOString(), hours: lamp.hours, label: input.lampLabel(lamp.hours) },
+    ownLine: currentOwnLine(config, now),
+    rideSeconds: config.rideSeconds,
+    urgesRiddenOut: input.urges.riddenOutTotal,
+    urgesToday: input.urges.urgesToday,
+    insteadHabits: usableInsteadHabits(config, input.trackers).map((habit) => {
+      const goal = habitTimerGoal(habit.config);
+      return {
+        id: habit.id,
+        lockScreenName: habit.config.lockScreenName ?? null,
+        icon: habit.config.icon ?? null,
+        goalSeconds: goal.type === 'seconds' ? goal.seconds : null,
+      };
+    }),
+    days: strip(commitment, input, today, 14).map(({ date, state }) => ({
+      date,
+      state: state === 'not_done' ? 'slip' : state === 'not_counted' ? 'not_counted' : 'done',
+    })),
   };
 }
 
@@ -115,16 +209,19 @@ export function buildWidgetSnapshot(input: WidgetSnapshotInput): WidgetSnapshot 
       case 'habit':
         return [habitTracker(tracker, input, today)];
       case 'counter':
-        return [counterTracker(tracker, input)];
+        return [counterTracker(tracker, input, today)];
       case 'commitment':
-        // Not part of snapshot version 1.
-        return [];
+        return [commitmentTracker(tracker, input, today)];
       default: {
         const unknown: never = tracker;
         throw new Error(`Unknown tracker kind ${JSON.stringify(unknown)}`);
       }
     }
   });
+
+  const commitment = input.trackers.find(
+    (tracker): tracker is CommitmentElement => tracker.kind === 'commitment',
+  );
 
   const nextReminders = input.trackers
     .flatMap((tracker) => {
@@ -149,6 +246,8 @@ export function buildWidgetSnapshot(input: WidgetSnapshotInput): WidgetSnapshot 
       utcOffsetMinutes: -now.getTimezoneOffset(),
     },
     trackers,
+    commitment: commitment ? commitmentBlock(commitment, input, today) : null,
+    ride: input.urges.ride,
     nextReminders,
   };
 }

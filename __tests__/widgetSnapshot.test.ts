@@ -112,7 +112,7 @@ describe('the widget snapshot', () => {
     await settle();
 
     const snapshot = readSnapshot();
-    expect(snapshot.version).toBe(1);
+    expect(snapshot.version).toBe(2);
     // Written when the debounce window closes.
     expect(snapshot.generatedAt).toBe(new Date(2026, 2, 10, 9, 32, 0, 500).toISOString());
     expect(snapshot.day).toEqual({
@@ -134,6 +134,15 @@ describe('the widget snapshot', () => {
       streak: 3,
       unit: 'ticks',
       timer: null,
+      sevenDays: [
+        { date: '2026-03-04', state: 'not_done' },
+        { date: '2026-03-05', state: 'not_done' },
+        { date: '2026-03-06', state: 'not_done' },
+        { date: '2026-03-07', state: 'not_done' },
+        { date: '2026-03-08', state: 'done' },
+        { date: '2026-03-09', state: 'done' },
+        { date: TODAY, state: 'done' },
+      ],
     });
     expect(trackerIn(snapshot, TRACKERS.meditation)).toMatchObject({
       lockScreenName: 'Sit',
@@ -161,6 +170,10 @@ describe('the widget snapshot', () => {
       dueToday: true,
       schedule: { type: 'weekdays', days: [1, 2, 3, 4, 5] },
     });
+    // 7 and 8 March 2026 are the weekend.
+    expect(trackerIn(snapshot, TRACKERS.mobility).sevenDays.map(({ state }) => state)).toEqual([
+      'not_done', 'not_done', 'not_done', 'not_due', 'not_due', 'not_done', 'not_done',
+    ]);
     expect(trackerIn(snapshot, TRACKERS.face)).toMatchObject({
       timeRange: { start: '21:00', end: '23:00' },
       reminderTimes: ['20:45'],
@@ -179,10 +192,12 @@ describe('the widget snapshot', () => {
       { trackerId: TRACKERS.sprouts, time: '20:00', at: new Date(2026, 2, 10, 20, 0).toISOString() },
       { trackerId: TRACKERS.face, time: '20:45', at: new Date(2026, 2, 10, 20, 45).toISOString() },
     ]);
+    expect(snapshot.commitment).toBeNull();
+    expect(snapshot.ride).toBeNull();
     expect(JSON.stringify(snapshot)).not.toMatch(/journal|note/i);
 
-    // 3.7 KB for these nine trackers.
-    expect(fs.statSync(snapshotPath()).size).toBeLessThan(6 * 1024);
+    // 6.3 KB for these nine trackers (3.7 KB before the seven-day strips).
+    expect(fs.statSync(snapshotPath()).size).toBeLessThan(7 * 1024);
   });
 
   it('calls a running timer past its goal done before it is logged', async () => {
@@ -303,5 +318,102 @@ describe('the widget snapshot', () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(fsModule.moveAsync).not.toHaveBeenCalled();
+  });
+
+  it('describes the commitment, its ride and its fortnight, and never a tracker name beside them', async () => {
+    const protocol = require('../src/protocol') as typeof import('../src/protocol');
+    const elementRepo = require('../src/db/repositories/elementRepository') as typeof import('../src/db/repositories/elementRepository');
+    const eventRepo = require('../src/db/repositories/eventRepository') as typeof import('../src/db/repositories/eventRepository');
+    const urgeRepo = require('../src/db/repositories/urgeRepository') as typeof import('../src/db/repositories/urgeRepository');
+    const commitmentId = '550e8400-e29b-41d4-a716-446655441301';
+    const slipAt = new Date(2026, 2, 7, 9, 30);
+    await elementRepo.insertElementWithDashboardItem(
+      testDb.db,
+      {
+        id: commitmentId,
+        kind: 'commitment',
+        name: 'No buying',
+        config: protocol.CommitmentConfigSchema.parse({
+          clearSince: slipAt.toISOString(),
+          ownLines: ['Money for the trip', 'I sleep better'],
+          // Kefir is not a timer and the second id is gone: both are left out.
+          insteadHabitIds: [TRACKERS.meditation, '550e8400-e29b-41d4-a716-446655441399'],
+        }),
+        protocolVersion: protocol.PROTOCOL_VERSION,
+        createdAt: '2026-01-01T08:00:00.000Z',
+        archivedAt: null,
+      },
+      { id: '550e8400-e29b-41d4-a716-446655441302', elementId: commitmentId, sortOrder: 99 },
+    );
+    await eventRepo.insertEvent(testDb.db, {
+      id: '550e8400-e29b-41d4-a716-446655441303',
+      elementId: commitmentId,
+      timestamp: slipAt.toISOString(),
+      date: '2026-03-07',
+      value: 1,
+      meta: { source: 'slip' },
+      protocolVersion: protocol.PROTOCOL_VERSION,
+    });
+    await urgeRepo.insertUrge(testDb.db, {
+      id: '550e8400-e29b-41d4-a716-446655441304',
+      at: new Date(2026, 2, 8, 21, 0).toISOString(),
+      day: '2026-03-08',
+      outcome: null,
+      resolvedAt: null,
+      source: 'widget',
+    });
+    const urgeStore = (require('../src/store/urgeStore') as typeof import('../src/store/urgeStore')).useUrgeStore;
+    await elements().load();
+    await urgeStore.getState().refresh();
+    const open = await urgeStore.getState().logUrge();
+    await settle();
+
+    const snapshot = readSnapshot();
+    expect(trackerIn(snapshot, commitmentId)).toMatchObject({
+      kind: 'commitment',
+      lockScreenName: 'Clear',
+      dueToday: true,
+      done: true,
+      reason: 'clear',
+      total: 0,
+      streak: 3,
+      unit: 'slips',
+    });
+    expect(snapshot.commitment).toEqual({
+      id: commitmentId,
+      lockScreenName: 'Clear',
+      clearSince: slipAt.toISOString(),
+      // Exactly 72 hours: the 3-day lamp is passed.
+      lampsPassed: 3,
+      nextLamp: { at: new Date(2026, 2, 12, 9, 30).toISOString(), hours: 120, label: '5d' },
+      ownLine: 'I sleep better',
+      rideSeconds: 600,
+      urgesRiddenOut: 1,
+      urgesToday: 1,
+      insteadHabits: [{ id: TRACKERS.meditation, lockScreenName: 'Sit', icon: 'meditation', goalSeconds: 900 }],
+      days: [
+        ...Array.from({ length: 10 }, (_, index) => ({
+          date: `2026-0${index < 4 ? '2' : '3'}-${String(index < 4 ? 25 + index : index - 3).padStart(2, '0')}`,
+          state: 'done',
+        })),
+        { date: '2026-03-07', state: 'slip' },
+        { date: '2026-03-08', state: 'done' },
+        { date: '2026-03-09', state: 'done' },
+        { date: TODAY, state: 'done' },
+      ],
+    });
+    expect(snapshot.ride).toEqual({
+      urgeId: open,
+      startedAt: NOW.toISOString(),
+      endsAt: new Date(2026, 2, 10, 9, 40).toISOString(),
+    });
+    // The real name is in the tracker list, marked never for the lock screen; nowhere else.
+    expect(JSON.stringify({ ...snapshot, trackers: [] })).not.toContain('No buying');
+    // 7.8 KB with the commitment, its fortnight and an open ride.
+    expect(fs.statSync(snapshotPath()).size).toBeLessThan(8 * 1024);
+
+    await urgeStore.getState().resolveUrge(open!, 'used');
+    await settle();
+    expect(readSnapshot().ride).toBeNull();
   });
 });

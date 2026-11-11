@@ -223,7 +223,12 @@
   },
   "commitment": {
     "dayClear": "Tenu",
-    "daySlip": "Écart"
+    "daySlip": "Écart",
+    "lampHours": "{{count}} h",
+    "lampDays": "{{count}} j",
+    "clearMinutes": "{{minutes}} min",
+    "clearHoursMinutes": "{{hours}} h {{minutes}}",
+    "clearDaysHours": "{{days}} j {{hours}} h"
   },
   "commitmentFields": {
     "lockScreenSectionDescription": "Le nom affiché sur un téléphone verrouillé. Rien d’autre n’y apparaît.",
