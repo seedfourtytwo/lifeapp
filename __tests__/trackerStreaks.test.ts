@@ -1,5 +1,5 @@
 import { CommitmentConfigSchema, CounterConfigSchema, HabitConfigSchema, type DayFacts } from '../src/protocol';
-import { completedDates, computeTrackerStreaks } from '../src/utils/trackerStreaks';
+import { completedDays, computeTrackerStreaks } from '../src/utils/trackerStreaks';
 
 const facts = (total: number, extra: Partial<DayFacts> = {}): DayFacts => ({
   total,
@@ -21,19 +21,26 @@ const counter = (dailyTarget?: number) => ({
   config: CounterConfigSchema.parse({ unit: 'reps', quickIncrements: [1], dailyTarget }),
 });
 
-describe('completedDates', () => {
-  it('lists only the days the rule calls done', () => {
+describe('completedDays', () => {
+  it('lists only the days the rule calls done, newest first, back to the creation day', () => {
     expect(
-      completedDates(playOnce, [
-        { date: '2026-07-20', facts: facts(1340) },
-        { date: '2026-07-21', facts: facts(40, { trackCompleted: true }) },
-        { date: '2026-07-22', facts: facts(100, { markedComplete: true }) },
-      ]),
-    ).toEqual(['2026-07-21', '2026-07-22']);
+      completedDays(
+        playOnce,
+        [
+          { date: '2026-07-20', facts: facts(1340) },
+          { date: '2026-07-21', facts: facts(40, { trackCompleted: true }) },
+          { date: '2026-07-22', facts: facts(100, { markedComplete: true }) },
+        ],
+        '2026-07-23',
+        '2026-07-15',
+      ),
+    ).toEqual(['2026-07-22', '2026-07-21']);
   });
 
   it('lists nothing for a counter without a target', () => {
-    expect(completedDates(counter(), [{ date: '2026-07-21', facts: facts(99) }])).toEqual([]);
+    expect(
+      completedDays(counter(), [{ date: '2026-07-21', facts: facts(99) }], '2026-07-23', '2026-07-01'),
+    ).toEqual([]);
   });
 });
 

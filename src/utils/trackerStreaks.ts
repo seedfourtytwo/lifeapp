@@ -14,14 +14,6 @@ export interface DatedDayFacts {
   facts: DayFacts;
 }
 
-/** The days `dayOutcome` calls done, in the order given. */
-export function completedDates(
-  tracker: DayOutcomeTracker,
-  days: readonly DatedDayFacts[],
-): string[] {
-  return days.filter(({ facts }) => dayOutcome(tracker, facts).done).map(({ date }) => date);
-}
-
 /** Habits keep their schedule; counters and commitments run every day. */
 export function isTrackerScheduledOn(tracker: DayOutcomeTracker, date: string): boolean {
   switch (tracker.kind) {
@@ -40,10 +32,11 @@ export function isTrackerScheduledOn(tracker: DayOutcomeTracker, date: string): 
 const LOOKBACK_DAYS = 365;
 
 /**
- * Every done day in the streak window, a day with nothing logged included:
- * a commitment's day with no slip is kept although it has no row at all.
+ * Every done day in the streak window, newest first, a day with nothing
+ * logged included: a commitment's day with no slip is kept although it has
+ * no row at all. Days before `createdOn` are not counted.
  */
-function completedInWindow(
+export function completedDays(
   tracker: DayOutcomeTracker,
   days: readonly DatedDayFacts[],
   today: string,
@@ -69,7 +62,7 @@ export function computeTrackerStreaks(
   today = toDateString(new Date()),
   createdOn?: string | null,
 ): { streak: number; failureStreak: number } {
-  const completed = completedInWindow(tracker, days, today, createdOn);
+  const completed = completedDays(tracker, days, today, createdOn);
   const isScheduled = (date: string) => isTrackerScheduledOn(tracker, date);
   return {
     streak: computeStreak(completed, today, isScheduled, LOOKBACK_DAYS, createdOn),

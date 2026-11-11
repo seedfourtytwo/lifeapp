@@ -14,14 +14,13 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
-import { loadTrackerHistory } from '../store/trackerHistoryFetch';
+import { loadTrackerHistory, type TrackerHistoryDay } from '../store/trackerHistoryFetch';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import type { RootStackParamList } from '../navigation/types';
 import {
   chartPlotValue,
   chartUnitLabel,
   formatHabitTimerDuration,
-  type DayFacts,
   type ElementDefinition,
 } from '../protocol';
 import {
@@ -42,10 +41,7 @@ import {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TrackerHistory'>;
 
-interface DayRow {
-  date: string;
-  facts: DayFacts;
-  done: boolean;
+interface DayRow extends TrackerHistoryDay {
   label: string;
 }
 
@@ -166,11 +162,13 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
   const chartModel = useMemo(() => {
     if (!element) return null;
-    const isHabit = element.kind === 'habit';
+    // A habit's stats (days done, the run, the best run) suit a commitment's kept days too.
+    const isHabit = element.kind !== 'counter';
     const habitConfig = element.kind === 'habit' ? element.config : null;
     const isTimerHabit = habitConfig?.trackingMode === 'timer';
 
-    const plotValues = days.map((d) => chartPlotValue(element, d.facts));
+    // A day before the tracker existed plots nothing, whatever the rule would say of it.
+    const plotValues = days.map((d) => (d.counted ? chartPlotValue(element, d.facts) : 0));
     const completedFlags = days.map((d) => d.done);
     const chartUnit = chartUnitLabel(element);
 
@@ -233,7 +231,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
   const selected = days.find((d) => d.date === selectedDate) ?? null;
   const selectedNote = selectedDate ? notesByDate.get(selectedDate) : undefined;
-  const selectedValueLabel = selected
+  const selectedValueLabel = selected?.counted
     ? formatTrackerHistoryDayValue(element, selected.facts)
     : '—';
 

@@ -92,3 +92,48 @@ describe('loadTrackerHistory', () => {
     expect(history.streak).toBe(0);
   });
 });
+
+describe('a commitment in History', () => {
+  const COMMITMENT = '550e8400-e29b-41d4-a716-446655440811';
+
+  it('shows kept and slipped days, counts none before it existed, and keeps its run', async () => {
+    const protocol = await import('../src/protocol');
+    await elementRepo.insertElement(testDb.db, {
+      id: COMMITMENT,
+      kind: 'commitment',
+      name: 'No buying',
+      config: protocol.CommitmentConfigSchema.parse({ clearSince: '2026-03-08T21:00:00.000Z' }),
+      protocolVersion: PROTOCOL_VERSION,
+      createdAt: new Date(2026, 2, 6, 9, 0).toISOString(),
+      archivedAt: null,
+    });
+    await eventRepo.insertEvent(testDb.db, {
+      id: '550e8400-e29b-41d4-a716-446655440812',
+      elementId: COMMITMENT,
+      timestamp: '2026-03-08T21:00:00.000Z',
+      date: '2026-03-08',
+      value: 1,
+      meta: { source: 'slip' },
+      protocolVersion: PROTOCOL_VERSION,
+    });
+    const element = await elementRepo.getElementById(testDb.db, COMMITMENT);
+
+    const history = await loadTrackerHistory(testDb.db, element!, [
+      '2026-03-05',
+      '2026-03-06',
+      '2026-03-07',
+      ...DATES,
+    ]);
+
+    expect(history.days.map(({ date, counted, done }) => [date, counted, done])).toEqual([
+      ['2026-03-05', false, false],
+      ['2026-03-06', true, true],
+      ['2026-03-07', true, true],
+      ['2026-03-08', true, false],
+      ['2026-03-09', true, true],
+      ['2026-03-10', true, true],
+    ]);
+    expect(history.streak).toBe(2);
+    expect(history.personalBest).toBe(2);
+  });
+});

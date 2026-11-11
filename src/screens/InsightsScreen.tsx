@@ -16,6 +16,7 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
+import { createdOnLocalDate } from '../utils/createdOnLocalDate';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import {
@@ -226,9 +227,15 @@ export default function InsightsScreen() {
   );
 
   const chartSeries = useMemo(() => {
-    const raw = selectedElements.map((el) =>
-      dates.map((date) => chartPlotValue(el, factsByElement.get(el.id)?.get(date) ?? NOTHING_LOGGED)),
-    );
+    const raw = selectedElements.map((el) => {
+      // A day before the tracker existed plots nothing, whatever the rule says of it.
+      const createdOn = createdOnLocalDate(el.createdAt) ?? '';
+      return dates.map((date) =>
+        date < createdOn
+          ? 0
+          : chartPlotValue(el, factsByElement.get(el.id)?.get(date) ?? NOTHING_LOGGED),
+      );
+    });
     const normalized = normalizeSeriesToUnit(raw);
     return selectedElements.map((el, i) => ({
       id: el.id,

@@ -13,13 +13,16 @@ import { refreshAllHabitData } from '../hooks/refreshAllDailyData';
 import { useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import { NoteEditorHost } from '../notes';
 import {
+  dayOutcome,
+  factsFromTotal,
   filterHabitsDueToday,
   orderHabitsList,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import { getActiveHabits } from '../utils/dashboardElements';
+import { getActiveCommitment, getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
+import CommitmentCard from './habits/CommitmentCard';
 import HabitCard from './habits/HabitCard';
 import EmptyTabState from './shared/EmptyTabState';
 import DayHeader from './shared/DayHeader';
@@ -58,6 +61,7 @@ export default function HabitsScreen({
   const reorderHabitToOrder = useElementStore((s) => s.reorderHabitToOrder);
   const habitDoneToday = useEventStore((s) => s.habitDoneToday);
   const habitStreaks = useEventStore((s) => s.habitStreaks);
+  const dailyTotals = useEventStore((s) => s.dailyTotals);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const now = useAppCalendarNow();
@@ -93,6 +97,12 @@ export default function HabitsScreen({
     [elements, dashboard],
   );
 
+  const commitment = useMemo(() => getActiveCommitment(elements), [elements]);
+  /** Kept today while it holds no slip; counted in "N of M" like any tracker due today. */
+  const commitmentDone = commitment
+    ? dayOutcome(commitment, factsFromTotal(dailyTotals[commitment.id] ?? 0)).done
+    : false;
+
   const totalHabitCount = useMemo(
     () => elements.filter((e) => e.kind === 'habit').length,
     [elements],
@@ -127,18 +137,21 @@ export default function HabitsScreen({
   /**
    * "3 of 5 done" and "41 days in a row". The run shown is the best one going,
    * because the header answers "how am I doing", not "how is each habit doing".
+   * The commitment counts as one due today, done while it holds no slip.
    */
   const headerMeta = useMemo(
     () =>
       habitHeaderMeta({
-        due: habits.length,
-        done: habits.filter((habit) => habitDoneToday[habit.id] ?? false).length,
+        due: habits.length + (commitment ? 1 : 0),
+        done:
+          habits.filter((habit) => habitDoneToday[habit.id] ?? false).length +
+          (commitmentDone ? 1 : 0),
         bestStreak: habits.reduce(
           (best, habit) => Math.max(best, habitStreaks[habit.id] ?? 0),
           0,
         ),
       }),
-    [habits, habitDoneToday, habitStreaks],
+    [habits, habitDoneToday, habitStreaks, commitment, commitmentDone],
   );
 
   const activityLabel = useMemo(
@@ -246,6 +259,8 @@ export default function HabitsScreen({
           </>
         }
       />
+
+      {commitment ? <CommitmentCard commitment={commitment} /> : null}
 
       {emptyMessage ? (
         emptyWithCta ? (

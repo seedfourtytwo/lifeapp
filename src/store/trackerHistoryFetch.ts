@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   factsFromTotal,
   dayOutcome,
-  isHabitScheduledOnDate,
+  toDateString,
   type DayFacts,
   type ElementDefinition,
 } from '../protocol';
@@ -10,17 +10,19 @@ import * as eventRepo from '../db/repositories/eventRepository';
 import { computePersonalBestStreak } from '../utils/chartStats';
 import { streakHistorySinceDate } from '../utils/dates';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
-import { completedDates, computeTrackerStreaks } from '../utils/trackerStreaks';
+import { completedDays, computeTrackerStreaks, isTrackerScheduledOn } from '../utils/trackerStreaks';
 
 export interface TrackerHistoryDay {
   date: string;
   facts: DayFacts;
+  /** False before the tracker existed: such a day counts neither way. */
+  counted: boolean;
   done: boolean;
 }
 
 export interface TrackerHistory {
   days: TrackerHistoryDay[];
-  /** Habits only; a counter's History shows no streak. */
+  /** Habits and the commitment; a counter's History shows no streak. */
   streak: number;
   personalBest: number;
 }
@@ -36,6 +38,7 @@ export async function loadTrackerHistory(
   dates: readonly string[],
 ): Promise<TrackerHistory> {
   const tracker = element;
+  const createdOn = createdOnLocalDate(element.createdAt);
   const streakSince = streakHistorySinceDate();
   const first = dates[0] ?? streakSince;
   const since = first < streakSince ? first : streakSince;
@@ -45,19 +48,17 @@ export async function loadTrackerHistory(
 
   const days = dates.map((date) => {
     const facts = byDate.get(date) ?? factsFromTotal(0);
-    return { date, facts, done: dayOutcome(tracker, facts).done };
+    const counted = createdOn === null || date >= createdOn;
+    return { date, facts, counted, done: counted && dayOutcome(tracker, facts).done };
   });
-  if (tracker.kind !== 'habit') return { days, streak: 0, personalBest: 0 };
+  if (tracker.kind === 'counter') return { days, streak: 0, personalBest: 0 };
 
   const history = logged.filter(({ date }) => date >= streakSince);
-  const { streak } = computeTrackerStreaks(
-    tracker,
-    history,
-    undefined,
-    createdOnLocalDate(element.createdAt),
-  );
-  const personalBest = computePersonalBestStreak(completedDates(tracker, history), (date) =>
-    isHabitScheduledOnDate(tracker.config, date),
+  const today = toDateString(new Date());
+  const { streak } = computeTrackerStreaks(tracker, history, today, createdOn);
+  const personalBest = computePersonalBestStreak(
+    completedDays(tracker, history, today, createdOn),
+    (date) => isTrackerScheduledOn(tracker, date),
   );
   return { days, streak, personalBest };
 }
