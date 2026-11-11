@@ -2,11 +2,11 @@ import { HabitConfigSchema } from '../src/protocol';
 import {
   filterHabitsDueToday,
   orderHabitsList,
-  type ElementDefinition,
+  type HabitElement,
 } from '../src/protocol';
 
 describe('lock screen habit queue ordering', () => {
-  const habits: ElementDefinition[] = [
+  const habits: HabitElement[] = [
     {
       id: 'a',
       kind: 'habit',

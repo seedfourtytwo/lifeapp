@@ -1,4 +1,11 @@
-import type { DashboardItem, ElementDefinition } from '../protocol';
+import {
+  isCounterElement,
+  isHabitElement,
+  type CounterElement,
+  type DashboardItem,
+  type ElementDefinition,
+  type HabitElement,
+} from '../protocol';
 
 /**
  * Active elements appear on Home. Invariant: active ⇔ `archivedAt == null`
@@ -8,10 +15,10 @@ export function isElementArchived(element: ElementDefinition): boolean {
   return element.archivedAt != null;
 }
 
-function sortActiveElements(
-  elements: ElementDefinition[],
+function sortActiveElements<T extends ElementDefinition>(
+  elements: T[],
   dashboard: DashboardItem[],
-): ElementDefinition[] {
+): T[] {
   const order = new Map(dashboard.map((item, index) => [item.elementId, index]));
   return [...elements].sort((a, b) => {
     const aOrder = order.get(a.id);
@@ -24,10 +31,10 @@ function sortActiveElements(
 }
 
 /** Non-archived elements shown on Home, ordered by dashboard sort_order. */
-export function getActiveElements(
-  elements: ElementDefinition[],
+export function getActiveElements<T extends ElementDefinition>(
+  elements: T[],
   dashboard: DashboardItem[],
-): ElementDefinition[] {
+): T[] {
   return sortActiveElements(
     elements.filter((element) => !isElementArchived(element)),
     dashboard,
@@ -37,19 +44,13 @@ export function getActiveElements(
 export function getActiveHabits(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
-): ElementDefinition[] {
-  return getActiveElements(
-    elements.filter((element) => element.kind === 'habit'),
-    dashboard,
-  );
+): HabitElement[] {
+  return getActiveElements(elements.filter(isHabitElement), dashboard);
 }
 
 export function getActiveCounters(
   elements: ElementDefinition[],
   dashboard: DashboardItem[],
-): ElementDefinition[] {
-  return getActiveElements(
-    elements.filter((element) => element.kind === 'counter'),
-    dashboard,
-  );
+): CounterElement[] {
+  return getActiveElements(elements.filter(isCounterElement), dashboard);
 }

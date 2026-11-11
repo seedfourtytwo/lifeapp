@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { HabitConfig } from '../../protocol';
+import type { HabitElement } from '../../protocol';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
@@ -15,7 +15,6 @@ const NOTE_ICON_SIZE = 24;
 
 export function HabitBooleanWidget({
   element,
-  config,
   isDone,
   onToggle,
   onOpenDetails,
@@ -29,7 +28,8 @@ export function HabitBooleanWidget({
   onReorderTouchEnd,
   onReorderTouchCancel,
   reorderHint,
-}: WidgetProps<HabitConfig>) {
+}: WidgetProps<HabitElement>) {
+  const { config } = element;
   const { t } = useTranslation('trackers');
   const done = Boolean(isDone);
   const streakLabel = formatHabitStreakLabel(config, streak);

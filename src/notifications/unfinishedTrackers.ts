@@ -1,10 +1,8 @@
 import {
-  CounterConfigSchema,
   countTodosNeedingAttention,
   dayOutcome,
   factsFromTotal,
   isHabitDueToday,
-  parseHabitConfig,
   toDateString,
   type ElementDefinition,
   type Todo,
@@ -39,23 +37,24 @@ export function countUnfinishedTrackersToday(args: {
   for (const element of args.elements) {
     if (isElementArchived(element)) continue;
 
-    if (element.kind === 'habit') {
-      const config = parseHabitConfig(element.config);
-      if (!isHabitDueToday(config, { now, today })) continue;
-      if (!(args.habitDoneToday[element.id] ?? false)) {
-        habits += 1;
-      }
-      continue;
-    }
-
-    if (element.kind === 'counter') {
-      const outcome = dayOutcome(
-        { kind: 'counter', config: CounterConfigSchema.parse(element.config) },
-        factsFromTotal(args.dailyTotals[element.id] ?? 0),
-      );
-      // A counter with no daily target is never "unfinished": there is nothing to finish.
-      if (outcome.reason === 'under_target') {
-        counters += 1;
+    switch (element.kind) {
+      case 'habit':
+        if (isHabitDueToday(element.config, { now, today }) && !args.habitDoneToday[element.id]) {
+          habits += 1;
+        }
+        break;
+      case 'counter':
+        // A counter with no daily target is never "unfinished": there is nothing to finish.
+        if (
+          dayOutcome(element, factsFromTotal(args.dailyTotals[element.id] ?? 0)).reason ===
+          'under_target'
+        ) {
+          counters += 1;
+        }
+        break;
+      default: {
+        const unknown: never = element;
+        throw new Error(`Unknown tracker kind: ${JSON.stringify(unknown)}`);
       }
     }
   }

@@ -1,7 +1,6 @@
-import type { ElementDefinition } from './element';
+import type { HabitElement } from './element';
 import type { HabitConfig } from './kinds/habit';
 import {
-  HabitConfigSchema,
   isHabitScheduledOnDate,
   shouldShowHabitOnHabitsPage,
 } from './kinds/habit';
@@ -24,25 +23,22 @@ export function isHabitDueToday(
 
 /** Habits due today, in dashboard sort_order (caller supplies already-sorted active habits). */
 export function filterHabitsDueToday(
-  habits: ElementDefinition[],
+  habits: HabitElement[],
   context: HabitListFilterContext,
-): ElementDefinition[] {
-  return habits.filter((habit) => {
-    const config = HabitConfigSchema.parse(habit.config);
-    return isHabitDueToday(config, context);
-  });
+): HabitElement[] {
+  return habits.filter((habit) => isHabitDueToday(habit.config, context));
 }
 
 /**
  * Habits list order: remaining first (user sort_order), then done (user sort_order).
  * Keeps completed habits visible without a filter.
  */
-export function orderHabitsList(
-  habits: ElementDefinition[],
+export function orderHabitsList<T extends { id: string }>(
+  habits: T[],
   habitDoneToday: Record<string, boolean>,
-): ElementDefinition[] {
-  const remaining: ElementDefinition[] = [];
-  const done: ElementDefinition[] = [];
+): T[] {
+  const remaining: T[] = [];
+  const done: T[] = [];
   for (const habit of habits) {
     if (habitDoneToday[habit.id]) {
       done.push(habit);

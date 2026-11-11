@@ -3,10 +3,7 @@ import {
   factsFromTotal,
   dayOutcome,
   isHabitScheduledOnDate,
-  parseHabitConfig,
-  CounterConfigSchema,
   type DayFacts,
-  type DayOutcomeTracker,
   type ElementDefinition,
 } from '../protocol';
 import * as eventRepo from '../db/repositories/eventRepository';
@@ -28,12 +25,6 @@ export interface TrackerHistory {
   personalBest: number;
 }
 
-function trackerOf(element: ElementDefinition): DayOutcomeTracker {
-  return element.kind === 'habit'
-    ? { kind: 'habit', config: parseHabitConfig(element.config) }
-    : { kind: 'counter', config: CounterConfigSchema.parse(element.config) };
-}
-
 /**
  * One tracker's days for the History screen, plus its streaks. The chart, the
  * "days done" count and the streak all come from the same day facts and the
@@ -44,7 +35,7 @@ export async function loadTrackerHistory(
   element: ElementDefinition,
   dates: readonly string[],
 ): Promise<TrackerHistory> {
-  const tracker = trackerOf(element);
+  const tracker = element;
   const streakSince = streakHistorySinceDate();
   const first = dates[0] ?? streakSince;
   const since = first < streakSince ? first : streakSince;

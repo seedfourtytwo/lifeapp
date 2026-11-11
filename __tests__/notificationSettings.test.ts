@@ -6,6 +6,7 @@
  * against the faked expo-notifications module.
  */
 import type { ReactTestRenderer } from 'react-test-renderer';
+import { habitElement } from './support/elements';
 import type { FakeNotifications } from './support/fakeNotifications';
 
 jest.mock('expo-notifications', () =>
@@ -186,15 +187,12 @@ it('re-syncs habit reminders once permission is granted', async () => {
     require('../src/store/elementStore').useElementStore.setState({
       isLoaded: true,
       elements: [
-        {
+        habitElement({
           id: '550e8400-e29b-41d4-a716-446655440971',
-          kind: 'habit',
           name: 'Burp the kefir',
-          protocolVersion: 1,
           createdAt: '2026-01-01T08:00:00.000Z',
           config: { reminderTimes: ['09:00'] },
-          archivedAt: null,
-        },
+        }),
       ],
     });
     const stop = require('../src/hooks/useHabitReminderSync').watchHabitReminders();

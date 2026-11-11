@@ -2,14 +2,14 @@ import {
   filterHabitsDueToday,
   isHabitDueToday,
   orderHabitsList,
-  type ElementDefinition,
+  type HabitElement,
 } from '../src/protocol';
 import { habitElement } from './support/elements';
 
 const habit = (
   id: string,
   overrides: Record<string, unknown> = {},
-): ElementDefinition =>
+): HabitElement =>
   habitElement({
     id,
     name: `Habit ${id}`,

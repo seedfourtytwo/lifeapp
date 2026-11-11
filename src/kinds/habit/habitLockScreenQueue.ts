@@ -1,9 +1,9 @@
 import {
   filterHabitsDueToday,
+  isHabitElement,
   orderHabitsList,
-  parseHabitConfig,
-  type ElementDefinition,
   type HabitConfig,
+  type HabitElement,
 } from '../../protocol';
 import { getActiveHabits } from '../../utils/dashboardElements';
 import { currentAppCalendarDate } from '../../utils/dayRollover';
@@ -22,7 +22,7 @@ export function setFocusedHabitId(elementId: string | null): void {
 }
 
 /** Today's due habits in Home order (remaining first, then done). */
-export function getLockScreenHabitQueue(): ElementDefinition[] {
+export function getLockScreenHabitQueue(): HabitElement[] {
   const { elements, dashboard } = useElementStore.getState();
   const active = getActiveHabits(elements, dashboard);
   const now = new Date();
@@ -36,18 +36,19 @@ export function getLockScreenHabitQueue(): ElementDefinition[] {
 }
 
 function habitFromStore(elementId: string): {
-  element: ElementDefinition;
+  element: HabitElement;
   config: HabitConfig;
 } | null {
   const element = useElementStore
     .getState()
-    .elements.find((el) => el.id === elementId && el.kind === 'habit');
+    .elements.filter(isHabitElement)
+    .find((el) => el.id === elementId);
   if (!element) return null;
-  return { element, config: parseHabitConfig(element.config) };
+  return { element, config: element.config };
 }
 
 export function resolveFocusedHabit(): {
-  element: ElementDefinition;
+  element: HabitElement;
   config: HabitConfig;
 } | null {
   const queue = getLockScreenHabitQueue();
@@ -59,7 +60,7 @@ export function resolveFocusedHabit(): {
     const fromQueue = queue.find((h) => h.id === activeTimerId);
     if (fromQueue) {
       focusedHabitId = activeTimerId;
-      return { element: fromQueue, config: parseHabitConfig(fromQueue.config) };
+      return { element: fromQueue, config: fromQueue.config };
     }
     const fromStore = habitFromStore(activeTimerId);
     if (fromStore) {
@@ -79,12 +80,12 @@ export function resolveFocusedHabit(): {
 
   const element = queue.find((h) => h.id === focusedHabitId) ?? queue[0];
   focusedHabitId = element.id;
-  return { element, config: parseHabitConfig(element.config) };
+  return { element, config: element.config };
 }
 
 export function peekAdjacentHabit(
   direction: 'next' | 'prev',
-): { element: ElementDefinition; config: HabitConfig } | null {
+): { element: HabitElement; config: HabitConfig } | null {
   const queue = getLockScreenHabitQueue();
   if (queue.length === 0) return null;
 
@@ -95,7 +96,7 @@ export function peekAdjacentHabit(
   // Off-queue focused timer: next → first due habit, prev → last.
   if (index < 0) {
     const element = direction === 'next' ? queue[0] : queue[queue.length - 1];
-    return { element, config: parseHabitConfig(element.config) };
+    return { element, config: element.config };
   }
 
   const nextIndex =
@@ -104,5 +105,5 @@ export function peekAdjacentHabit(
       : (index - 1 + queue.length) % queue.length;
 
   const element = queue[nextIndex];
-  return { element, config: parseHabitConfig(element.config) };
+  return { element, config: element.config };
 }

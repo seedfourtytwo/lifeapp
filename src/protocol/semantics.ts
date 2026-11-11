@@ -1,6 +1,4 @@
 import type { ElementDefinition } from './element';
-import { CounterConfigSchema } from './kinds/counter';
-import { HabitConfigSchema } from './kinds/habit';
 import { dayOutcome, type DayFacts } from './dayOutcome';
 
 /**
@@ -23,36 +21,44 @@ export interface DailyValueSemantics {
   displayUnit: string;
 }
 
-export function getDailyValueSemantics(element: ElementDefinition): DailyValueSemantics {
-  if (element.kind === 'counter') {
-    const config = CounterConfigSchema.parse(element.config);
-    return { unit: 'count', displayUnit: config.unit };
-  }
+function unknownKind(element: never): never {
+  throw new Error(`Unknown tracker kind: ${JSON.stringify(element)}`);
+}
 
-  const config = HabitConfigSchema.parse(element.config);
-  if (config.trackingMode === 'timer') {
-    return { unit: 'seconds', displayUnit: 'seconds' };
+export function getDailyValueSemantics(element: ElementDefinition): DailyValueSemantics {
+  switch (element.kind) {
+    case 'counter':
+      return { unit: 'count', displayUnit: element.config.unit };
+    case 'habit':
+      return element.config.trackingMode === 'timer'
+        ? { unit: 'seconds', displayUnit: 'seconds' }
+        : { unit: 'done', displayUnit: 'done' };
+    default:
+      return unknownKind(element);
   }
-  return { unit: 'done', displayUnit: 'done' };
 }
 
 /** History/Insights chart y-axis unit label — 'min' and 'done' are literal labels, not i18n keys. */
 export function chartUnitLabel(element: ElementDefinition): string {
-  if (element.kind === 'counter') {
-    return CounterConfigSchema.parse(element.config).unit;
+  switch (element.kind) {
+    case 'counter':
+      return element.config.unit;
+    case 'habit':
+      return element.config.trackingMode === 'timer' ? 'min' : 'done';
+    default:
+      return unknownKind(element);
   }
-  const config = HabitConfigSchema.parse(element.config);
-  return config.trackingMode === 'timer' ? 'min' : 'done';
 }
 
 /** A day -> chart plot value (seconds -> minutes for a timer habit, done -> 1 for a check-off). */
 export function chartPlotValue(element: ElementDefinition, facts: DayFacts): number {
-  if (element.kind === 'counter') {
-    return facts.total;
+  switch (element.kind) {
+    case 'counter':
+      return facts.total;
+    case 'habit':
+      if (element.config.trackingMode === 'timer') return Math.round(facts.total / 60);
+      return dayOutcome(element, facts).done ? 1 : 0;
+    default:
+      return unknownKind(element);
   }
-  const config = HabitConfigSchema.parse(element.config);
-  if (config.trackingMode === 'timer') {
-    return Math.round(facts.total / 60);
-  }
-  return dayOutcome({ kind: 'habit', config }, facts).done ? 1 : 0;
 }

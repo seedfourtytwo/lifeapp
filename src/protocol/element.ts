@@ -31,6 +31,14 @@ export type ElementDefinition = z.infer<typeof ElementDefinitionSchema>;
 export type HabitElement = Extract<ElementDefinition, { kind: 'habit' }>;
 export type CounterElement = Extract<ElementDefinition, { kind: 'counter' }>;
 
+export function isHabitElement(element: ElementDefinition): element is HabitElement {
+  return element.kind === 'habit';
+}
+
+export function isCounterElement(element: ElementDefinition): element is CounterElement {
+  return element.kind === 'counter';
+}
+
 const configSchemas: Record<ElementKind, z.ZodType> = {
   counter: CounterConfigSchema,
   habit: HabitConfigSchema,

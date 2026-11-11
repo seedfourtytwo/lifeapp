@@ -4,14 +4,13 @@ import { Alert, type GestureResponderEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
-import { getKindHandler } from '../../kinds/registry';
+import { HabitWidget } from '../../kinds/habit/HabitWidget';
 import type { RootStackParamList } from '../../navigation/types';
-import type { ElementDefinition, HabitConfig } from '../../protocol';
+import type { HabitElement } from '../../protocol';
 import { useEventStore } from '../../store/eventStore';
 
 type Props = {
-  habit: ElementDefinition;
-  config: HabitConfig;
+  habit: HabitElement;
   hasTodayNote?: boolean;
   onDictateNote?: () => void;
   onEditNote?: () => void;
@@ -27,7 +26,6 @@ type Props = {
 
 export default function HabitCard({
   habit,
-  config,
   hasTodayNote,
   onDictateNote,
   onEditNote,
@@ -59,15 +57,11 @@ export default function HabitCard({
     })),
   );
 
-  const habitHandler = getKindHandler('habit');
-  if (!habitHandler) return null;
-
-  const Widget = habitHandler.DashboardWidget;
+  const { config } = habit;
 
   return (
-    <Widget
+    <HabitWidget
       element={habit}
-      config={config}
       todayTotal={todayTotal}
       isDone={isDone}
       streak={streak}

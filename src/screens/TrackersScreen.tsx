@@ -17,11 +17,7 @@ import {
   type TrackerEditorSession,
 } from '../components/trackerEditor';
 import type { RootStackParamList } from '../navigation/types';
-import {
-  CounterConfigSchema,
-  HabitConfigSchema,
-  type ElementDefinition,
-} from '../protocol';
+import type { ElementDefinition } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { counterMetaLines, habitMetaLines } from '../utils/trackerMetaLines';
 import { isElementArchived } from '../utils/dashboardElements';
@@ -160,9 +156,7 @@ export default function TrackersScreen() {
       const kindLabel = t(element.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit');
 
       if (element.kind === 'counter') {
-        const parsed = CounterConfigSchema.safeParse(element.config);
-        if (!parsed.success) return null;
-        const config = parsed.data;
+        const { config } = element;
         return (
           <TrackerLibraryCard
             key={element.id}
@@ -194,9 +188,7 @@ export default function TrackersScreen() {
         );
       }
 
-      const parsed = HabitConfigSchema.safeParse(element.config);
-      if (!parsed.success) return null;
-      const config = parsed.data;
+      const { config } = element;
       return (
         <TrackerLibraryCard
           key={element.id}

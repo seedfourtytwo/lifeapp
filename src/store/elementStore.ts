@@ -4,12 +4,11 @@ import { getDatabase } from '../db/client';
 import { i18n } from '../i18n';
 import { newId } from '../utils/id';
 import type { DashboardItem, ElementDefinition } from '../protocol';
-import { PROTOCOL_VERSION } from '../protocol';
+import { DEFAULT_COUNTER_CONFIG, PROTOCOL_VERSION } from '../protocol';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
-import { buildCounterConfig, type CounterConfig, type CounterInput } from '../protocol/kinds/counter';
+import { buildCounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
-import { counterHandler } from '../kinds/registry';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
 import { stopHabitSound } from '../audio/habitTimerSound';
 import {
@@ -215,7 +214,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
   createCounter: async (input) => {
     await withGuardedElementWrite(async () => {
       const db = await getDatabase();
-      const config = buildCounterConfig(counterHandler.defaultConfig, input);
+      const config = buildCounterConfig(DEFAULT_COUNTER_CONFIG, input);
 
       const element: ElementDefinition = {
         id: newId(),
@@ -244,7 +243,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
         throw new Error(i18n.t('common:errors.counterNotFound'));
       }
 
-      const config = buildCounterConfig(existing.config as Partial<CounterConfig>, input);
+      const config = buildCounterConfig(existing.config, input);
 
       await elementRepo.updateElement(
         db,

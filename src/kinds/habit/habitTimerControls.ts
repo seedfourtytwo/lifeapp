@@ -10,7 +10,6 @@ import {
   habitTimerGoal,
   hasHabitTimerSound,
   isActiveTimerPaused,
-  parseHabitConfig,
   type ActiveTimerSession,
   type HabitConfig,
 } from '../../protocol';
@@ -70,10 +69,10 @@ async function finalizeOtherTimers(exceptElementId: string): Promise<void> {
   const elements = useElementStore.getState().elements;
 
   for (const id of otherIds) {
-    const element = elements.find((item) => item.id === id && item.kind === 'habit');
-    if (element) {
+    const element = elements.find((item) => item.id === id);
+    if (element?.kind === 'habit') {
       try {
-        await stopHabitTimer(id, parseHabitConfig(element.config));
+        await stopHabitTimer(id, element.config);
       } catch (error) {
         console.warn('Failed to finalize previous timer', error);
         discardHabitTimer(id);

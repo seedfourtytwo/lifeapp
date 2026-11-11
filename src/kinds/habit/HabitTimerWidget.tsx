@@ -11,7 +11,7 @@ import {
   habitTimerGoal,
   isActiveTimerPaused,
   liveTimerTotalSeconds,
-  type HabitConfig,
+  type HabitElement,
 } from '../../protocol';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
@@ -27,7 +27,6 @@ const NOTE_ICON_SIZE = 24;
 
 export function HabitTimerWidget({
   element,
-  config,
   todayTotal,
   streak,
   isDone,
@@ -45,7 +44,8 @@ export function HabitTimerWidget({
   onReorderTouchEnd,
   onReorderTouchCancel,
   reorderHint,
-}: WidgetProps<HabitConfig>) {
+}: WidgetProps<HabitElement>) {
+  const { config } = element;
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const [, setTick] = useState(0);

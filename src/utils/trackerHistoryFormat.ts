@@ -1,8 +1,6 @@
 import {
-  CounterConfigSchema,
   dayOutcome,
   formatHabitTimerDuration,
-  parseHabitConfig,
   type DayFacts,
   type ElementDefinition,
 } from '../protocol';
@@ -14,16 +12,19 @@ export function formatTrackerHistoryDayValue(
   const { total } = facts;
   if (!element) return String(total);
 
-  if (element.kind === 'habit') {
-    const config = parseHabitConfig(element.config);
-    if (config.trackingMode === 'timer') {
-      return total > 0 ? formatHabitTimerDuration(total) : '—';
+  switch (element.kind) {
+    case 'habit':
+      if (element.config.trackingMode === 'timer') {
+        return total > 0 ? formatHabitTimerDuration(total) : '—';
+      }
+      return dayOutcome(element, facts).done ? 'Done' : '—';
+    case 'counter':
+      return `${total} ${element.config.unit}`;
+    default: {
+      const unknown: never = element;
+      throw new Error(`Unknown tracker kind: ${JSON.stringify(unknown)}`);
     }
-    return dayOutcome({ kind: 'habit', config }, facts).done ? 'Done' : '—';
   }
-
-  const unit = CounterConfigSchema.parse(element.config).unit;
-  return `${total} ${unit}`;
 }
 
 export function truncateNotePreview(body: string, max = 48): string {

@@ -3,15 +3,16 @@ import { newId } from '../utils/id';
 import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
-  CounterConfigSchema,
   dayFactsFromEvents,
   factsFromTotal,
   dayOutcome,
-  parseHabitConfig,
+  isCounterElement,
+  isHabitElement,
   PROTOCOL_VERSION,
   toDateString,
   type ActiveTimerSession,
   type DayEvent,
+  type ElementDefinition,
   type HabitConfig,
   type LifeEvent,
 } from '../protocol';
@@ -268,14 +269,8 @@ async function refreshCounterStreakAfterWrite(
   try {
     const { useElementStore } = await import('./elementStore');
     const element = useElementStore.getState().elements.find((el) => el.id === elementId);
-    if (!element || element.kind !== 'counter') return;
-    const parsed = CounterConfigSchema.safeParse(element.config);
-    if (!parsed.success || !parsed.data.dailyTarget) return;
-    const streak = await loadCounterStreakForElement(
-      elementId,
-      parsed.data,
-      element.createdAt,
-    );
+    if (element?.kind !== 'counter') return;
+    const streak = await loadCounterStreakForElement(elementId, element.config, element.createdAt);
     // A newer + / set-total may have finished while we were querying history.
     if (getWriteEpoch(elementId) !== writeEpochAtStart) return;
     set({
@@ -445,9 +440,7 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     const { useElementStore } = await import('./elementStore');
     const elements = useElementStore.getState().elements;
-    const habitsById = new Map(
-      elements.filter((el) => el.kind === 'habit').map((el) => [el.id, el]),
-    );
+    const habitsById = new Map(elements.filter(isHabitElement).map((el) => [el.id, el]));
     const today = todayDate();
     const kept: Record<string, ActiveTimerSession> = {};
 
@@ -468,7 +461,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           },
         });
         try {
-          await get().stopHabitTimer(id, parseHabitConfig(element.config));
+          await get().stopHabitTimer(id, element.config);
         } catch (error) {
           console.warn('Failed to finalize stale timer on hydrate', error);
           get().discardHabitTimer(id);
@@ -492,7 +485,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         },
       });
       try {
-        await get().stopHabitTimer(id, parseHabitConfig(element.config));
+        await get().stopHabitTimer(id, element.config);
       } catch (error) {
         console.warn('Failed to finalize extra timer on hydrate', error);
         get().discardHabitTimer(id);
@@ -965,31 +958,18 @@ export const useEventStore = create<EventState>((set, get) => ({
 }));
 
 export function habitStreakInputsFromElements(
-  elements: { id: string; kind: string; config: unknown; createdAt?: string | null }[],
+  elements: readonly ElementDefinition[],
 ): HabitStreakInput[] {
   return elements
-    .filter((e) => e.kind === 'habit')
-    .map((e) => ({
-      id: e.id,
-      config: parseHabitConfig(e.config),
-      createdAt: e.createdAt ?? null,
-    }));
+    .filter(isHabitElement)
+    .map((e) => ({ id: e.id, config: e.config, createdAt: e.createdAt ?? null }));
 }
 
-/** Counters with a daily target — inputs for target-hit streak loads. */
+/** Inputs for target-hit streak loads; a counter without a target has no streak. */
 export function counterStreakInputsFromElements(
-  elements: { id: string; kind: string; config: unknown; createdAt?: string | null }[],
+  elements: readonly ElementDefinition[],
 ): CounterStreakInput[] {
-  const inputs: CounterStreakInput[] = [];
-  for (const e of elements) {
-    if (e.kind !== 'counter') continue;
-    const parsed = CounterConfigSchema.safeParse(e.config);
-    if (!parsed.success || !parsed.data.dailyTarget) continue;
-    inputs.push({
-      id: e.id,
-      config: parsed.data,
-      createdAt: e.createdAt ?? null,
-    });
-  }
-  return inputs;
+  return elements
+    .filter(isCounterElement)
+    .map((e) => ({ id: e.id, config: e.config, createdAt: e.createdAt ?? null }));
 }

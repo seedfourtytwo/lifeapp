@@ -1,6 +1,5 @@
 import { i18n } from '../i18n';
 import type { ElementDefinition } from '../protocol';
-import { HabitConfigSchema } from '../protocol';
 import { DEFAULT_EVENING_CHECK_IN_TIME, parseEveningCheckInTime } from '../protocol/appSettings';
 import { isElementArchived } from '../utils/dashboardElements';
 import {
@@ -67,7 +66,7 @@ function collectHabitReminderFires(
   const fires: HabitReminderFire[] = [];
   for (const element of elements) {
     if (element.kind !== 'habit' || isElementArchived(element)) continue;
-    const config = HabitConfigSchema.parse(element.config);
+    const { config } = element;
     const doneToday = habitDoneToday[element.id] ?? false;
     for (const fire of collectStartReminderFires(config, { now, doneToday })) {
       fires.push({ ...fire, identifier: habitReminderId(element.id, fire), name: element.name });

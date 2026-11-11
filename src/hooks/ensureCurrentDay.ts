@@ -1,6 +1,5 @@
 import { stopHabitSound } from '../audio/habitTimerSound';
 import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
-import { parseHabitConfig } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
@@ -23,7 +22,7 @@ async function finalizeTimersForPreviousDay(previousDate: string): Promise<void>
     if (element?.kind === 'habit') {
       try {
         // Session.calendarDate is the persist day; previousDate is for logging/context.
-        await stopHabitTimer(elementId, parseHabitConfig(element.config), previousDate);
+        await stopHabitTimer(elementId, element.config, previousDate);
       } catch (error) {
         console.warn('Failed to finalize timer on day rollover', error);
         failures.push(elementId);

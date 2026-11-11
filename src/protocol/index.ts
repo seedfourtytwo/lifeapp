@@ -5,6 +5,8 @@ export {
   ElementKindSchema,
   ElementDefinitionSchema,
   assertElementConfig,
+  isCounterElement,
+  isHabitElement,
   parseElementDefinition,
 } from './element';
 export type { CounterElement, ElementDefinition, ElementKind, HabitElement } from './element';
@@ -187,7 +189,6 @@ export {
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
   normalizeReminderTimes,
-  parseHabitConfig,
   shouldShowHabitOnHabitsPage,
   shouldShowHabitStreakOnCard,
   formatHabitDescription,

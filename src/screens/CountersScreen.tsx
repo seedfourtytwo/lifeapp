@@ -5,12 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
-import { CounterConfigSchema, type CounterConfig } from '../protocol';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { ACTIVITY_DAYS, useRecentActivity } from '../hooks/useRecentActivity';
 import { refreshAllCounterData } from '../hooks/refreshAllDailyData';
 import { useRefreshCounterTotalsOnFocus } from '../hooks/useCounterDataRefresh';
-import { getKindHandler } from '../kinds/registry';
+import { CounterWidget } from '../kinds/counter/CounterWidget';
 import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost } from '../notes';
 import { useElementStore } from '../store/elementStore';
@@ -126,14 +125,6 @@ export default function CountersScreen({
     onTrackerNotesOpenChange,
   });
 
-  const counterConfigs = useMemo(() => {
-    const configs = new Map<string, CounterConfig>();
-    for (const element of counters) {
-      configs.set(element.id, CounterConfigSchema.parse(element.config));
-    }
-    return configs;
-  }, [counters]);
-
   const counterById = useMemo(() => {
     const map = new Map(counters.map((element) => [element.id, element]));
     return map;
@@ -237,17 +228,11 @@ export default function CountersScreen({
             renderItem={(id, drag) => {
               const element = counterById.get(id);
               if (!element) return null;
-              const handler = getKindHandler(element.kind);
-              if (!handler) return null;
-              const Widget = handler.DashboardWidget;
-              const config = counterConfigs.get(element.id);
-              if (!config) return null;
               const canReorder = drag.canDrag;
 
               return (
-                <Widget
+                <CounterWidget
                   element={element}
-                  config={config}
                   todayTotal={dailyTotals[element.id] ?? 0}
                   streak={counterStreaks[element.id] ?? 0}
                   onLongPressReorder={canReorder ? drag.onLongPress : undefined}

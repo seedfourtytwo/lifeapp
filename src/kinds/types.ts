@@ -1,10 +1,8 @@
-import type { ComponentType } from 'react';
 import type { GestureResponderEvent } from 'react-native';
-import type { ActiveTimerSession, ElementDefinition, ElementKind, LifeEvent } from '../protocol';
+import type { ActiveTimerSession, ElementDefinition } from '../protocol';
 
-export interface WidgetProps<TConfig = Record<string, unknown>> {
-  element: ElementDefinition;
-  config: TConfig;
+export interface WidgetProps<TElement extends ElementDefinition = ElementDefinition> {
+  element: TElement;
   todayTotal: number;
   onLog?: (value: number, meta?: Record<string, unknown>) => Promise<void>;
   onSetDailyTotal?: (total: number) => Promise<void>;
@@ -30,13 +28,3 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   delayLongPressReorder?: number;
   reorderHint?: string;
 }
-
-export interface KindHandler<TConfig = Record<string, unknown>> {
-  kind: ElementKind;
-  defaultConfig: TConfig;
-  aggregateDaily: (events: LifeEvent[]) => number;
-  DashboardWidget: ComponentType<WidgetProps<TConfig>>;
-}
-
-/** Registry entry type — widgets receive config validated at render time. */
-export type RegisteredKindHandler = KindHandler<Record<string, unknown>>;

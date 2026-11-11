@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { EditorSheet, FilledField } from '../../components/sheet';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
-import { dayOutcome, factsFromTotal, type CounterConfig } from '../../protocol';
+import { dayOutcome, factsFromTotal, type CounterElement } from '../../protocol';
 import { playCounterTapHaptic } from '../../utils/habitHaptics';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { NoteIconButton } from '../../notes/NoteIconButton';
@@ -20,7 +20,6 @@ const NOTE_ICON_SIZE = 24;
 
 export function CounterWidget({
   element,
-  config,
   todayTotal,
   streak,
   onLog,
@@ -35,7 +34,8 @@ export function CounterWidget({
   onReorderTouchEnd,
   onReorderTouchCancel,
   reorderHint,
-}: WidgetProps<CounterConfig>) {
+}: WidgetProps<CounterElement>) {
+  const { config } = element;
   const theme = useTheme();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');

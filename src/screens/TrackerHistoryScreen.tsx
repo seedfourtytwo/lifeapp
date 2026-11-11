@@ -21,7 +21,6 @@ import {
   chartPlotValue,
   chartUnitLabel,
   formatHabitTimerDuration,
-  parseHabitConfig,
   type DayFacts,
   type ElementDefinition,
 } from '../protocol';
@@ -168,7 +167,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const chartModel = useMemo(() => {
     if (!element) return null;
     const isHabit = element.kind === 'habit';
-    const habitConfig = isHabit ? parseHabitConfig(element.config) : null;
+    const habitConfig = element.kind === 'habit' ? element.config : null;
     const isTimerHabit = habitConfig?.trackingMode === 'timer';
 
     const plotValues = days.map((d) => chartPlotValue(element, d.facts));

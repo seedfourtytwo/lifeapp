@@ -111,10 +111,6 @@ export const HABIT_TIME_SLOT_ORDER: HabitTimeSlot[] = [
   'anytime',
 ];
 
-export function parseHabitConfig(config: unknown): HabitConfig {
-  return HabitConfigSchema.parse(config);
-}
-
 export type HabitInput = {
   name: string;
   trackingMode?: HabitTrackingMode;

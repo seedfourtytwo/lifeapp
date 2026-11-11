@@ -15,8 +15,6 @@ import { NoteEditorHost } from '../notes';
 import {
   filterHabitsDueToday,
   orderHabitsList,
-  parseHabitConfig,
-  type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
@@ -94,14 +92,6 @@ export default function HabitsScreen({
     () => getActiveHabits(elements, dashboard),
     [elements, dashboard],
   );
-
-  const habitConfigs = useMemo(() => {
-    const configs = new Map<string, HabitConfig>();
-    for (const habit of allHabits) {
-      configs.set(habit.id, parseHabitConfig(habit.config));
-    }
-    return configs;
-  }, [allHabits]);
 
   const totalHabitCount = useMemo(
     () => elements.filter((e) => e.kind === 'habit').length,
@@ -286,15 +276,13 @@ export default function HabitsScreen({
           }}
           renderItem={(id, drag) => {
             const habit = habitById.get(id);
-            const config = habit ? habitConfigs.get(habit.id) : undefined;
-            if (!habit || !config) return null;
+            if (!habit) return null;
             const isDone = habitDoneToday[habit.id] ?? false;
             const canReorder =
               drag.canDrag && !isDone && reorderPeerIds.includes(habit.id);
             return (
               <HabitCard
                 habit={habit}
-                config={config}
                 onLongPressReorder={canReorder ? drag.onLongPress : undefined}
                 delayLongPressReorder={drag.delayLongPress}
                 onReorderTouchMove={canReorder ? drag.onTouchMove : undefined}

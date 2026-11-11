@@ -1,6 +1,5 @@
 import {
   habitTimerGoal,
-  parseHabitConfig,
   type ActiveTimerSession,
   type ElementDefinition,
 } from '../protocol';
@@ -30,11 +29,10 @@ export function habitTimerTargetFire(
   for (const [elementId, session] of Object.entries(input.sessions)) {
     if (session.pausedAt) continue;
     const element = input.elements.find(
-      (candidate) =>
-        candidate.id === elementId && candidate.kind === 'habit' && !isElementArchived(candidate),
+      (candidate) => candidate.id === elementId && !isElementArchived(candidate),
     );
-    if (!element) continue;
-    const config = parseHabitConfig(element.config);
+    if (element?.kind !== 'habit') continue;
+    const { config } = element;
     const goal = habitTimerGoal(config);
     if (config.trackingMode !== 'timer' || goal.type !== 'seconds') continue;
 

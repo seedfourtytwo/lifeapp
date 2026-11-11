@@ -1,5 +1,5 @@
 import type { ElementDefinition } from '../protocol';
-import { hasHabitTimerSound, parseHabitConfig } from '../protocol';
+import { hasHabitTimerSound } from '../protocol';
 import {
   isHabitSoundCached,
   preloadHabitSound,
@@ -35,10 +35,9 @@ export async function preloadConfiguredHabitSounds(
   for (const element of elements) {
     if (element.kind !== 'habit') continue;
 
-    const parsed = parseHabitConfig(element.config);
-    if (!hasHabitTimerSound(parsed.timerSound)) continue;
+    const { timerSound } = element.config;
+    if (!hasHabitTimerSound(timerSound)) continue;
 
-    const timerSound = parsed.timerSound;
     const trackId = timerSound?.trackId?.trim();
     if (!trackId || seenTrackIds.has(trackId)) continue;
     seenTrackIds.add(trackId);

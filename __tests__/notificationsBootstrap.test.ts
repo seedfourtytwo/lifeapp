@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- each test loads fresh modules after resetModules() */
 import type { FakeNotifications } from './support/fakeNotifications';
+import { habitElement } from './support/elements';
 
 jest.mock('expo-notifications', () =>
   require('./support/fakeNotifications').createFakeNotifications(),
@@ -72,18 +73,15 @@ describe('reminders channel', () => {
     const calendar = require('../src/notifications/calendarReminders.native');
     await habit.syncHabitReminders(
       [
-        {
+        habitElement({
           id: 'h1',
-          kind: 'habit',
           name: 'Meditate',
-          protocolVersion: 1,
-          createdAt: '2025-01-01T00:00:00.000Z',
           config: {
             schedule: { type: 'daily' },
             timeRange: { start: '07:00', end: '08:00' },
             remindMinutesBefore: 10,
           },
-        },
+        }),
       ],
       true,
     );
