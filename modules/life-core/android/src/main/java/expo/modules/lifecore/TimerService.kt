@@ -113,9 +113,14 @@ class TimerService : Service() {
     cancelGoalAlarm()
     if (session == null) {
       player.stop()
+      // A stopped player needs its source again before it can play.
+      loaded = null
+      trackId = null
       if (chimeRinging) stopAfterChime = true else stopNow()
       return
     }
+    // A new session arrived while the last one's chime was still ringing.
+    stopAfterChime = false
     play(session)
     if (!session.isPaused) {
       main.postDelayed(heartbeat, TimerSession.HEARTBEAT_MS)

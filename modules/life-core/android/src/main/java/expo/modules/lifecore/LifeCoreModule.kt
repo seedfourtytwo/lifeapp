@@ -1,6 +1,8 @@
 package expo.modules.lifecore
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -40,7 +42,8 @@ class LifeCoreModule : Module() {
 
     OnDestroy {
       TimerCore.removeListener(onChange)
-      stopPreview()
+      // The preview player belongs to the main thread it was made on.
+      Handler(Looper.getMainLooper()).post(::stopPreview)
     }
 
     AsyncFunction("start") { requestJson: String ->
