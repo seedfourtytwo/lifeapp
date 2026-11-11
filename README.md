@@ -159,6 +159,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
+The release build is signed with a private key from `~/.config/lifeapp/release-signing.properties`
+and fails without it; the debug build needs nothing. One-time setup and the switch-over:
+`docs/release-signing.md`.
+
 On GrapheneOS prefer **Wireless debugging** (`adb pair` / `adb connect`) over USB file transfer.
 
 ```bash

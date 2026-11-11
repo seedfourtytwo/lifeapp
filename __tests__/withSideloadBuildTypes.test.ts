@@ -36,10 +36,67 @@ describe('patchSideloadBuildTypes', () => {
     expect(patchSideloadBuildTypes(PRISTINE_GRADLE)).toContain("applicationIdSuffix '.dev'");
   });
 
-  it('restores release signing, without which a build cannot upgrade an installed app', () => {
-    expect(releaseBlock(patchSideloadBuildTypes(PRISTINE_GRADLE))).toContain(
-      'signingConfig signingConfigs.debug',
+  it('signs the release with the private key, and only with it', () => {
+    const release = releaseBlock(patchSideloadBuildTypes(PRISTINE_GRADLE));
+    expect(release.match(/signingConfig signingConfigs\.\w+/g)).toEqual([
+      'signingConfig signingConfigs.sideloadRelease',
+    ]);
+  });
+
+  it('turns a release the old plugin signed with the public debug key over to the private key', () => {
+    const oldPatched = PRISTINE_GRADLE.replace(
+      'release {\n            signingConfig signingConfigs.release',
+      [
+        'release {',
+        '            // Personal sideload: the debug keystore is deliberate. A stable key',
+        '            // is what lets a new build upgrade the installed app in place',
+        '            // instead of forcing an uninstall, which would take the database',
+        '            // with it. Publishing to Play needs a real keystore here.',
+        '            resValue "string", "app_name", "Life"',
+        '            signingConfig signingConfigs.debug',
+        '            // Caution! In production, you need to generate your own keystore file.',
+        '            // see https://reactnative.dev/docs/signed-apk-android.',
+        '            signingConfig signingConfigs.debug',
+      ].join('\n'),
     );
+    const release = releaseBlock(patchSideloadBuildTypes(oldPatched));
+
+    expect(release).not.toContain('signingConfigs.debug');
+    expect(release).not.toContain('debug keystore is deliberate');
+    expect(release.match(/"app_name", "Life"/g)).toHaveLength(1);
+    expect(release).toContain('signingConfig signingConfigs.sideloadRelease');
+  });
+
+  it('keeps the dev build on the debug key', () => {
+    const patched = patchSideloadBuildTypes(PRISTINE_GRADLE);
+    const debugBuild = patched.slice(patched.indexOf('buildTypes {'), patched.indexOf('release {'));
+    expect(debugBuild).toContain('signingConfig signingConfigs.debug');
+  });
+
+  it('reads the key from a properties file outside the repo, by env var or the documented default', () => {
+    const patched = patchSideloadBuildTypes(PRISTINE_GRADLE);
+    expect(patched).toContain("System.getenv('LIFEAPP_RELEASE_SIGNING_PROPERTIES')");
+    expect(patched).toContain('/.config/lifeapp/release-signing.properties');
+    for (const key of ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']) {
+      expect(patched).toContain(`'${key}'`);
+    }
+    // Before android { }, so the signing config inside it can use what was read.
+    expect(patched.indexOf('lifeReleaseSigningPath')).toBeLessThan(patched.indexOf('android {'));
+  });
+
+  it('fails a release build without the file instead of falling back to the debug key', () => {
+    const patched = patchSideloadBuildTypes(PRISTINE_GRADLE);
+    expect(patched).toContain('gradle.taskGraph.whenReady');
+    expect(patched).toContain('throw new GradleException');
+    expect(patched).toContain("it.name.contains('Release')");
+  });
+
+  it('declares the private signing config beside the debug keystore, leaving that one alone', () => {
+    const patched = patchSideloadBuildTypes(PRISTINE_GRADLE);
+    const signing = patched.slice(patched.indexOf('signingConfigs {'), patched.indexOf('buildTypes {'));
+    expect(signing).toContain('sideloadRelease {');
+    expect(signing).toContain("storeFile file('debug.keystore')");
+    expect(signing).not.toMatch(/storePassword '(?!android)/);
   });
 
   it('names the two builds distinctly so both can sit on one device', () => {
@@ -85,6 +142,8 @@ describe('patchSideloadBuildTypes', () => {
 
     expect(twice).toBe(once);
     expect(twice.match(/applicationIdSuffix '\.dev'/g)).toHaveLength(1);
+    expect(twice.match(/sideloadRelease \{/g)).toHaveLength(1);
+    expect(twice.match(/LIFEAPP_RELEASE_SIGNING_PROPERTIES'\)/g)).toHaveLength(1);
   });
 
   it('leaves an already-edited file alone', () => {

@@ -11,6 +11,9 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
+# The release key and its passwords live in ~/.config/lifeapp (docs/release-signing.md)
+release-signing.properties
 *.p8
 *.p12
 *.key
