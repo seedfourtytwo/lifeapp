@@ -95,7 +95,7 @@ export default function HabitCard({
           );
         })
       }
-      onTimerPress={() => handleTimerPress(habit.id, config)}
+      onTimerPress={() => handleTimerPress(habit.id)}
       onTimerFinish={async () => {
         // Banks a running session; short of the goal it also marks today done.
         try {

@@ -11,7 +11,6 @@ import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
-jest.mock('../src/audio/habitTimerSound');
 
 const TICK_HABIT = '550e8400-e29b-41d4-a716-446655440901';
 const TIMER_HABIT = '550e8400-e29b-41d4-a716-446655440902';
@@ -124,28 +123,33 @@ describe('refreshFromDb', () => {
     expect(elementState().dashboard.map((item) => item.elementId)).toEqual([TICK_HABIT, TIMER_HABIT]);
   });
 
-  it('re-hydrates timer sessions from their saved form', async () => {
+  it('mirrors the session the native core holds, whoever started or ended it', async () => {
     await refreshFromDb();
-    const { persistActiveTimerSessions } = require('../src/db/repositories/activeTimerRepository') as typeof import('../src/db/repositories/activeTimerRepository');
-    const saved = protocol.createActiveTimerSession(new Date(2026, 2, 10, 7, 55));
-    await persistActiveTimerSessions(testDb.db, { [TIMER_HABIT]: saved });
+    const { lifeCore } = require('../src/core/lifeCore') as typeof import('../src/core/lifeCore');
+    await lifeCore.start({
+      trackerId: TIMER_HABIT,
+      name: 'Meditate',
+      lockScreenName: null,
+      iconKey: null,
+      goal: { type: 'seconds', seconds: 600 },
+      trackId: null,
+      loop: true,
+      loggedSeconds: 0,
+    });
 
     await refreshFromDb();
-    expect(eventState().activeTimerSessions).toEqual({ [TIMER_HABIT]: saved });
+    expect(eventState().activeTimerSessions).toEqual({
+      [TIMER_HABIT]: {
+        startedAt: new Date(2026, 2, 10, 8, 0).toISOString(),
+        pausedAt: null,
+        pauseOffsetMs: 0,
+        calendarDate: TODAY,
+      },
+    });
 
-    await persistActiveTimerSessions(testDb.db, {});
+    await lifeCore.discard();
     await refreshFromDb();
     expect(eventState().activeTimerSessions).toEqual({});
-  });
-
-  it('keeps a session started in memory whose save has not landed yet', async () => {
-    await refreshFromDb();
-    eventState().startHabitTimer(TIMER_HABIT, tickConfig);
-    const started = eventState().activeTimerSessions[TIMER_HABIT];
-
-    await refreshFromDb();
-
-    expect(eventState().activeTimerSessions[TIMER_HABIT]).toEqual(started);
   });
 
   it('coalesces a burst of calls into at most one more pass', async () => {

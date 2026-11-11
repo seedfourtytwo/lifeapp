@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { stopHabitSound } from '../audio/habitTimerSound';
+import { lifeCore } from '../core/lifeCore';
 import { EditorSheet, FilledField } from './sheet';
 import CounterEditorFields from './trackerEditor/CounterEditorFields';
 import { newEditorSession } from './trackerEditor/trackerEditorSession';
@@ -93,12 +93,12 @@ export default function TrackerEditorDialog({
   );
 
   const closeEditor = () => {
-    void stopHabitSound();
+    void lifeCore.stopPreview();
     onDismiss();
   };
 
   const handleSave = () => {
-    void stopHabitSound();
+    void lifeCore.stopPreview();
     if (mode === 'counter') {
       onSave({ mode: 'counter', name, icon, increments, dailyTarget, showStreakOnCard });
       return;

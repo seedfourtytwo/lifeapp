@@ -30,7 +30,6 @@ jest.mock('../src/hooks/useAppTheme', () => ({
     },
   }),
 }));
-jest.mock('../src/audio/habitCompleteSound', () => ({ playHabitCompleteChime: jest.fn() }));
 
 const meditate = habitElement({
   id: '550e8400-e29b-41d4-a716-446655440b01',

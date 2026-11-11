@@ -7,13 +7,12 @@ import type { HabitConfig, LifeEvent } from '../src/protocol';
 
 /**
  * Taps the widget queued, drained through the real stores into a real
- * SQLite from a real file. Only the sound is faked.
+ * SQLite from a real file.
  */
 
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
-jest.mock('../src/audio/habitTimerSound');
 let mockFs: FakeFileSystem;
 jest.mock('expo-file-system/legacy', () => mockFs.module);
 
@@ -32,10 +31,6 @@ beforeEach(async () => {
   mockFs = createFakeFileSystem();
   testDb = await createMigratedTestDb();
   (require('../src/db/client').getDatabase as jest.Mock).mockResolvedValue(testDb.db);
-  const sound = require('../src/audio/habitTimerSound') as typeof import('../src/audio/habitTimerSound');
-  for (const fn of [sound.playHabitSound, sound.resumeHabitSound, sound.stopHabitSound, sound.pauseHabitSound]) {
-    (fn as jest.Mock).mockResolvedValue(undefined);
-  }
   const trackers = await seedRealisticTrackers(testDb.db);
   configs = new Map(
     trackers.flatMap((tracker) => (tracker.kind === 'habit' ? [[tracker.id, tracker.config]] : [])),

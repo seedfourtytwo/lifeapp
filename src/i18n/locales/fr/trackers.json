@@ -163,7 +163,7 @@
     "dailyGoalPlaceholder": "ex. 15",
     "soundWhileRunningLabel": "Son pendant l'exécution",
     "soundHint": "Choisissez une piste de méditation ou de concentration intégrée.",
-    "noTracksBundledHint": "Aucune piste intégrée pour le moment. Ajoutez des fichiers MP3 dans assets/sounds/ du projet, puis reconstruisez l'application.",
+    "noTracksBundledHint": "Aucune piste intégrée pour le moment. Ajoutez des fichiers MP3 dans modules/life-core/android/src/main/res/raw/ du projet, puis reconstruisez l'application.",
     "loading": "Chargement…",
     "stopPreview": "Arrêter l'aperçu",
     "previewSound": "Aperçu du son",
@@ -212,13 +212,5 @@
     "streakMany": "{{count}} jours d'affilée",
     "soundLoopsA11y": "Le son tourne en boucle pendant le minuteur",
     "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête"
-  },
-  "lockScreen": {
-    "paused": "En pause",
-    "running": "En cours",
-    "ready": "Prêt",
-    "playToStart": "Lecture pour démarrer",
-    "playToCheckOff": "Lecture pour cocher",
-    "fallbackHabitName": "Habitude"
   }
 }

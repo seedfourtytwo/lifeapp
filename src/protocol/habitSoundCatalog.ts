@@ -7,8 +7,9 @@ export type BundledHabitSound = {
 };
 
 /**
- * Register tracks here after adding audio files under assets/sounds/
- * and mapping them in src/audio/bundledHabitSoundAssets.native.ts.
+ * The tracks the native core plays. To add one: put a 96 kbps MP3 in
+ * `modules/life-core/android/src/main/res/raw/` (lower-case name), map its id
+ * in `HabitSounds.kt` there, list it here, and rebuild the APK.
  */
 export const BUNDLED_HABIT_SOUND_CATALOG: BundledHabitSound[] = [
   { id: 'meditation15min', label: 'Meditation 15 min', durationSeconds: 915 },

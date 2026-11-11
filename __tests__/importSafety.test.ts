@@ -15,8 +15,8 @@ import * as todoRepo from '../src/db/repositories/todoRepository';
 import * as dailyJournalRepo from '../src/db/repositories/dailyJournalRepository';
 import * as calendarRepo from '../src/db/repositories/calendarRepository';
 import { i18n } from '../src/i18n';
-import { createActiveTimerSession, HabitConfigSchema, PROTOCOL_VERSION, type ProtocolBundle } from '../src/protocol';
-import { useEventStore } from '../src/store/eventStore';
+import { HabitConfigSchema, PROTOCOL_VERSION, type ProtocolBundle } from '../src/protocol';
+import { lifeCore } from '../src/core/lifeCore';
 import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
 
 /**
@@ -49,7 +49,7 @@ function oldestFile(bundle: ProtocolBundle): ProtocolBundle {
 beforeEach(async () => {
   testDb = await createMigratedTestDb();
   (getDatabase as jest.Mock).mockResolvedValue(testDb.db);
-  useEventStore.setState({ activeTimerSessions: {} });
+  await lifeCore.discard();
   const { db } = testDb;
   await elementRepo.insertElement(db, {
     id: HABIT,
@@ -111,23 +111,34 @@ describe('a file that lacks a concept', () => {
 });
 
 describe('while a timer runs', () => {
+  const start = () =>
+    lifeCore.start({
+      trackerId: HABIT,
+      name: 'Meditate',
+      lockScreenName: null,
+      iconKey: null,
+      goal: { type: 'seconds', seconds: 600 },
+      trackId: null,
+      loop: true,
+      loggedSeconds: 0,
+    });
+
   it('refuses, says why, and changes nothing', async () => {
     const { bundle } = await exportProtocolBundle();
-    const session = createActiveTimerSession(new Date(AT));
-    useEventStore.setState({ activeTimerSessions: { [HABIT]: session } });
+    const session = await start();
 
     await expect(importProtocolBundle({ ...bundle, elements: [], dashboard: [], events: [] })).rejects.toThrow(
       i18n.t('settings:data.importTimerRunning'),
     );
 
     expect(count('elements')).toBe(1);
-    expect(useEventStore.getState().activeTimerSessions).toEqual({ [HABIT]: session });
+    await expect(lifeCore.getState()).resolves.toEqual(session);
   });
 
   it('refuses while one is paused too, since its seconds are not banked yet', async () => {
     const { bundle } = await exportProtocolBundle();
-    const session = { ...createActiveTimerSession(new Date(AT)), pausedAt: AT };
-    useEventStore.setState({ activeTimerSessions: { [HABIT]: session } });
+    await start();
+    await lifeCore.pause();
 
     await expect(importProtocolBundle(bundle)).rejects.toThrow(i18n.t('settings:data.importTimerRunning'));
   });

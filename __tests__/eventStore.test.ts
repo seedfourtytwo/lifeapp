@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- each test loads a fresh store after resetModules() */
-import type { HabitConfig, LifeEvent } from '../src/protocol';
+import type { ElementDefinition, HabitConfig, LifeEvent } from '../src/protocol';
 import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
+import { timerKit } from './support/timerKit';
 
 /**
  * The real event store against a real SQLite. Only the connection is swapped
@@ -33,6 +34,7 @@ let protocol: Protocol;
 let writeLock: WriteLock;
 let tickConfig: HabitConfig;
 let timerConfig: HabitConfig;
+let timer: ReturnType<typeof timerKit>;
 
 beforeEach(async () => {
   jest.useFakeTimers({ now: MORNING, doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
@@ -52,11 +54,12 @@ beforeEach(async () => {
     dailyTargetSeconds: 600,
   });
   const createdAt = '2026-01-01T08:00:00.000Z';
+  const habits: ElementDefinition[] = [];
   for (const [id, config] of [
     [TICK_HABIT, tickConfig],
     [TIMER_HABIT, timerConfig],
   ] as const) {
-    await elementRepo.insertElement(testDb.db, {
+    const element: ElementDefinition = {
       id,
       kind: 'habit',
       name: id === TICK_HABIT ? 'Stretch' : 'Meditate',
@@ -64,8 +67,11 @@ beforeEach(async () => {
       protocolVersion: protocol.PROTOCOL_VERSION,
       createdAt,
       archivedAt: null,
-    });
+    };
+    await elementRepo.insertElement(testDb.db, element);
+    habits.push(element);
   }
+  timer = timerKit(habits);
   await elementRepo.insertElement(testDb.db, {
     id: COUNTER,
     kind: 'counter',
@@ -114,9 +120,9 @@ describe('event store against SQLite', () => {
   });
 
   it('logs a finished timer session as seconds on the day it ran', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
-    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.stop();
 
     const events = await eventsToday(TIMER_HABIT);
     expect(events.map((e) => e.value)).toEqual([300]);
@@ -205,7 +211,7 @@ function timerSessionEvent(id: string, seconds: number, endedAt: Date): LifeEven
   };
 }
 
-describe('stopHabitTimer', () => {
+describe('a finished session', () => {
   /**
    * Cold start: a stale session is finished before today's totals are loaded,
    * so the mirror holds nothing. The day's real total is in SQLite.
@@ -215,25 +221,24 @@ describe('stopHabitTimer', () => {
       testDb.db,
       timerSessionEvent('550e8400-e29b-41d4-a716-446655440610', 360, new Date(2026, 2, 10, 7, 0)),
     );
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
 
-    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.stop();
 
     expect(state().dailyTotals[TIMER_HABIT]).toBe(660);
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
   });
 
   /**
-   * Another write to the same habit (here an Undo of a reset) bumps the write
-   * epoch while the stop waits for the lock. That must only stop the stop
-   * from patching the mirror — the session's seconds still belong in SQLite.
+   * Another write to the same habit (here an Undo of a reset) lands while
+   * the session waits for the lock. The session's seconds still belong in SQLite.
    */
   it('still logs the session when another write to the habit overtakes it', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
     const lock = holdWriteLock();
-    const stop = state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    const stop = timer.stop();
     const undo = state().restoreHabitDay(TIMER_HABIT, timerConfig, [
       timerSessionEvent('550e8400-e29b-41d4-a716-446655440611', 120, new Date(2026, 2, 10, 7, 0)),
     ]);
@@ -244,43 +249,45 @@ describe('stopHabitTimer', () => {
     expect((await eventsToday(TIMER_HABIT)).map((e) => e.value)).toContain(300);
   });
 
-  /**
-   * Done is tapped, and while that stop waits the play-once track ends
-   * naturally and joins it with trackCompleted. The joined stop writes one
-   * event, and it must carry what the joiner knew.
-   */
-  it('writes options from a stop that joined while the first waited', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
-    advance(5 * 60_000);
-    const lock = holdWriteLock();
-    const done = state().stopHabitTimer(TIMER_HABIT, timerConfig);
-    const naturalEnd = state().stopHabitTimer(TIMER_HABIT, timerConfig, undefined, {
-      trackCompleted: true,
-    });
+  it('starting another habit ends the running one and logs its seconds', async () => {
+    const other = '550e8400-e29b-41d4-a716-446655440604';
+    const otherElement = {
+      id: other,
+      kind: 'habit' as const,
+      name: 'Breathe',
+      config: timerConfig,
+      protocolVersion: protocol.PROTOCOL_VERSION,
+      createdAt: '2026-01-01T08:00:00.000Z',
+      archivedAt: null,
+    };
+    await elementRepo.insertElement(testDb.db, otherElement);
+    timer = timerKit([...require('../src/store/elementStore').useElementStore.getState().elements, otherElement]);
+    await timer.press(TIMER_HABIT);
+    advance(4 * 60_000);
 
-    lock.release();
-    await Promise.all([lock.held, done, naturalEnd]);
+    await timer.press(other);
 
-    const events = await eventsToday(TIMER_HABIT);
-    expect(events).toHaveLength(1);
-    expect(events[0].meta).toMatchObject({ trackCompleted: true });
+    expect((await eventsToday(TIMER_HABIT)).map((e) => e.value)).toEqual([240]);
+    expect(Object.keys(state().activeTimerSessions)).toEqual([other]);
   });
 });
 
 describe('the goal in force', () => {
   it('is written on a timer session for a habit with a seconds target', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
-    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.stop();
 
     expect((await eventsToday(TIMER_HABIT))[0]?.meta).toMatchObject({ goalSeconds: 600 });
   });
 
   it('is not written for a timer without a seconds target', async () => {
     const openEnded = protocol.HabitConfigSchema.parse({ trackingMode: 'timer' });
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    const habit = await elementRepo.getElementById(testDb.db, TIMER_HABIT);
+    timer = timerKit([{ ...habit!, config: openEnded } as ElementDefinition]);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
-    await state().stopHabitTimer(TIMER_HABIT, openEnded);
+    await timer.stop();
 
     expect((await eventsToday(TIMER_HABIT))[0]?.meta).not.toHaveProperty('goalSeconds');
   });
@@ -288,9 +295,9 @@ describe('the goal in force', () => {
   /** Raising the goal later must not turn yesterday, met at the old goal, into a miss. */
   it('keeps a past day done after the goal is raised', async () => {
     jest.setSystemTime(new Date(2026, 2, 9, 8, 0, 0));
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(10 * 60_000);
-    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.stop();
 
     jest.setSystemTime(MORNING);
     const raised = protocol.HabitConfigSchema.parse({ trackingMode: 'timer', dailyTargetSeconds: 1200 });
@@ -303,28 +310,6 @@ describe('the goal in force', () => {
 async function flushPromises(): Promise<void> {
   for (let i = 0; i < 20; i += 1) await Promise.resolve();
 }
-
-describe('pause and resume', () => {
-  /**
-   * The phone's clock jumps back (network time, a manual change) while a
-   * timer is paused. A negative pause offset fails validation when sessions
-   * are read back, which drops every saved session at the next start.
-   */
-  it('survives the clock going backwards while paused', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
-    advance(60_000);
-    state().pauseHabitTimer(TIMER_HABIT);
-    advance(-60 * 60_000);
-
-    state().resumeHabitTimer(TIMER_HABIT, timerConfig);
-    await flushPromises();
-
-    expect(state().activeTimerSessions[TIMER_HABIT].pauseOffsetMs).toBe(0);
-    const { loadPersistedActiveTimerSessions } = require('../src/db/repositories/activeTimerRepository') as typeof import('../src/db/repositories/activeTimerRepository');
-    const persisted = await loadPersistedActiveTimerSessions(testDb.db);
-    expect(Object.keys(persisted)).toEqual([TIMER_HABIT]);
-  });
-});
 
 describe('counter undo', () => {
   /**
@@ -373,7 +358,7 @@ describe('Done before the goal', () => {
     await logEarlierSession(459);
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(false);
 
-    const undoable = await state().markHabitDone(TIMER_HABIT, timerConfig);
+    const undoable = await timer.controls.markHabitTimerDone(TIMER_HABIT, timerConfig);
 
     const events = await eventsToday(TIMER_HABIT);
     expect(markers(events)).toEqual([expect.objectContaining({ value: 0 })]);
@@ -384,16 +369,16 @@ describe('Done before the goal', () => {
   });
 
   it('stops a running timer, keeps its seconds and marks the day, in one write', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
     const lock = holdWriteLock();
-    const done = state().markHabitDone(TIMER_HABIT, timerConfig);
-    await Promise.resolve();
+    const done = timer.controls.markHabitTimerDone(TIMER_HABIT, timerConfig);
+    await flushPromises();
     expect(state().activeTimerSessions[TIMER_HABIT]).toBeUndefined();
     expect(await eventsToday(TIMER_HABIT)).toEqual([]);
 
     lock.release();
-    await Promise.all([lock.held, done]);
+    const [, undoable] = await Promise.all([lock.held, done]);
 
     const events = await eventsToday(TIMER_HABIT);
     expect(events.map((e) => [e.meta?.source, e.value])).toEqual([
@@ -402,25 +387,28 @@ describe('Done before the goal', () => {
     ]);
     expect(state().dailyTotals[TIMER_HABIT]).toBe(300);
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
+    expect(undoable).toBe(true);
   });
 
   it('writes no marker when the day is done without one', async () => {
     await logEarlierSession(700);
 
-    expect(await state().markHabitDone(TIMER_HABIT, timerConfig)).toBe(false);
+    expect(await timer.controls.markHabitTimerDone(TIMER_HABIT, timerConfig)).toBe(false);
     expect(markers(await eventsToday(TIMER_HABIT))).toEqual([]);
   });
 
-  /** After process death the track's end callback is gone; Done must still finish it. */
-  it('finishes a play-once timer whose track can no longer report its end', async () => {
+  /** A play-once session ended by Done before its track does still counts the day. */
+  it('finishes a play-once timer before its track ends', async () => {
     const playOnce = protocol.HabitConfigSchema.parse({
       trackingMode: 'timer',
       timerSound: { trackId: 'meditation15min', playbackMode: 'play_once' },
     });
-    state().startHabitTimer(TIMER_HABIT, playOnce);
+    const habit = await elementRepo.getElementById(testDb.db, TIMER_HABIT);
+    timer = timerKit([{ ...habit!, config: playOnce } as ElementDefinition]);
+    await timer.press(TIMER_HABIT);
     advance(14 * 60_000);
 
-    await state().markHabitDone(TIMER_HABIT, playOnce);
+    await timer.controls.markHabitTimerDone(TIMER_HABIT, playOnce);
 
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
     expect(state().dailyTotals[TIMER_HABIT]).toBe(14 * 60);
@@ -428,14 +416,14 @@ describe('Done before the goal', () => {
 
   it('tells the card a day is done only by the mark, through a reload, and not after Undo', async () => {
     await logEarlierSession(459);
-    await state().markHabitDone(TIMER_HABIT, timerConfig);
+    await timer.controls.markHabitTimerDone(TIMER_HABIT, timerConfig);
     expect(state().habitMarkedToday[TIMER_HABIT]).toBe(true);
 
     store.useEventStore.setState({ habitMarkedToday: {} });
     await state().loadHabitDayState([{ id: TIMER_HABIT, config: timerConfig }]);
     expect(state().habitMarkedToday[TIMER_HABIT]).toBe(true);
 
-    await state().unmarkHabitDone(TIMER_HABIT, timerConfig);
+    await timer.controls.unmarkHabitTimerDone(TIMER_HABIT, timerConfig);
     expect(state().habitMarkedToday[TIMER_HABIT]).toBe(false);
     expect(state().dailyTotals[TIMER_HABIT]).toBe(459);
   });
@@ -447,11 +435,11 @@ describe('Done before the goal', () => {
   });
 
   it('Undo removes only the marker and keeps the logged seconds', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(5 * 60_000);
-    await state().markHabitDone(TIMER_HABIT, timerConfig);
+    await timer.controls.markHabitTimerDone(TIMER_HABIT, timerConfig);
 
-    await state().unmarkHabitDone(TIMER_HABIT, timerConfig);
+    await timer.controls.unmarkHabitTimerDone(TIMER_HABIT, timerConfig);
 
     const events = await eventsToday(TIMER_HABIT);
     expect(events.map((e) => [e.meta?.source, e.value])).toEqual([['timer_session', 300]]);
@@ -499,7 +487,7 @@ describe('Done before the goal', () => {
 describe('a timer running past its goal', () => {
   it('counts as done the moment it reaches the goal, before it is stopped', async () => {
     await state().loadHabitDayState([{ id: TIMER_HABIT, config: timerConfig }]);
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
 
     jest.advanceTimersByTime(599_000);
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(false);
@@ -508,7 +496,7 @@ describe('a timer running past its goal', () => {
   });
 
   it('stays done when the day state reloads while it runs', async () => {
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     advance(11 * 60_000);
 
     await state().loadHabitDayState([{ id: TIMER_HABIT, config: timerConfig }]);
@@ -519,9 +507,9 @@ describe('a timer running past its goal', () => {
 
   it('does not count a paused timer that has not reached the goal', async () => {
     await state().loadHabitDayState([{ id: TIMER_HABIT, config: timerConfig }]);
-    state().startHabitTimer(TIMER_HABIT, timerConfig);
+    await timer.press(TIMER_HABIT);
     jest.advanceTimersByTime(60_000);
-    state().pauseHabitTimer(TIMER_HABIT);
+    await timer.press(TIMER_HABIT);
 
     jest.advanceTimersByTime(20 * 60_000);
 

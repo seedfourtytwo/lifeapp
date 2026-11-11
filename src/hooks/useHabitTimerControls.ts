@@ -7,7 +7,7 @@ import {
   unmarkHabitTimerDone,
 } from '../habitTimer/habitTimerControls';
 
-/** Couples habit timer store actions with bundled sound + lock-screen media controls. */
+/** The habit card's timer controls; the native core plays the session. */
 export function useHabitTimerControls() {
   const handleMarkDone = useCallback(
     (elementId: string, config: HabitConfig) => markHabitTimerDone(elementId, config),
@@ -19,8 +19,8 @@ export function useHabitTimerControls() {
     [],
   );
 
-  const handleTimerPress = useCallback((elementId: string, config: HabitConfig) => {
-    pressHabitTimer(elementId, config);
+  const handleTimerPress = useCallback((elementId: string) => {
+    pressHabitTimer(elementId);
   }, []);
 
   const handleResetToday = useCallback(

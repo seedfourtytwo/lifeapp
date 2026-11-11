@@ -11,11 +11,6 @@ import { toDateString } from './event';
  * midnight before the app noticed the new day.
  */
 
-/** How often a running session records that the process is still alive. */
-export const TIMER_HEARTBEAT_MS = 30_000;
-/** A heartbeat older than this at a cold start means the process died mid-session. */
-export const TIMER_HEARTBEAT_STALE_MS = 2 * TIMER_HEARTBEAT_MS;
-
 export interface TimerSessionPart {
   /** Local calendar day these seconds belong to. */
   date: string;
@@ -37,20 +32,6 @@ function nextLocalMidnight(ms: number): number {
 /** When active time stopped accruing: the pause, or now. */
 function activeEndMs(session: ActiveTimerSession, nowMs: number): number {
   return session.pausedAt ? new Date(session.pausedAt).getTime() : nowMs;
-}
-
-/**
- * The process died with this session running and nothing has counted since
- * its last heartbeat: treat it as paused there, so the dead hours are not
- * counted and the user can resume or finish it.
- */
-export function pauseAtLastHeartbeat(
-  session: ActiveTimerSession,
-  nowMs: number,
-): ActiveTimerSession {
-  if (session.pausedAt || !session.heartbeatAt) return session;
-  if (nowMs - new Date(session.heartbeatAt).getTime() <= TIMER_HEARTBEAT_STALE_MS) return session;
-  return { ...session, pausedAt: session.heartbeatAt };
 }
 
 /**

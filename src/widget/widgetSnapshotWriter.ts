@@ -2,7 +2,7 @@ import { getDatabase } from '../db/client';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as eventRepo from '../db/repositories/eventRepository';
-import { isCounterElement, isHabitElement, type ActiveTimerSession } from '../protocol';
+import { isCounterElement, isHabitElement } from '../protocol';
 import { WidgetSnapshotSchema } from '../protocol/widgetSnapshot';
 import { loadCounterStreakMaps } from '../store/counterStreakFetch';
 import { useElementStore } from '../store/elementStore';
@@ -83,15 +83,8 @@ export function requestWidgetSnapshot(): Promise<void> {
   return pending;
 }
 
-function withoutHeartbeats(sessions: Record<string, ActiveTimerSession>): string {
-  return JSON.stringify(
-    Object.entries(sessions).map(([id, { heartbeatAt: _beat, ...session }]) => [id, session]),
-  );
-}
-
 type EventSnapshotInputs = ReturnType<typeof useEventStore.getState>;
 
-/** A heartbeat alone changes nothing the widget shows. */
 function eventInputsChanged(next: EventSnapshotInputs, previous: EventSnapshotInputs): boolean {
   return (
     next.dailyTotals !== previous.dailyTotals ||
@@ -100,9 +93,7 @@ function eventInputsChanged(next: EventSnapshotInputs, previous: EventSnapshotIn
     next.habitStreaks !== previous.habitStreaks ||
     next.counterStreaks !== previous.counterStreaks ||
     next.dayMapsDate !== previous.dayMapsDate ||
-    (next.activeTimerSessions !== previous.activeTimerSessions &&
-      withoutHeartbeats(next.activeTimerSessions) !==
-        withoutHeartbeats(previous.activeTimerSessions))
+    next.activeTimerSessions !== previous.activeTimerSessions
   );
 }
 

@@ -1,5 +1,9 @@
 import type { ActiveTimerSession, HabitConfig, LifeEvent } from '../../protocol';
-import type { TimerSessionRecord } from '../../protocol/coreTimer';
+import type {
+  CoreTimerState,
+  TimerSessionRecord,
+  TimerStartRequest,
+} from '../../protocol/coreTimer';
 import { currentAppCalendarDate } from '../../utils/dayRollover';
 import type { CounterStreakInput } from '../counterStreakFetch';
 import type { HabitStreakInput } from '../habitStreakFetch';
@@ -15,13 +19,6 @@ export interface LoggedElsewhere {
   date: string;
 }
 
-export interface HabitTimerStopOptions {
-  trackCompleted?: boolean;
-  playChime?: boolean;
-  /** Done pressed before the goal: the stop also marks the day done. */
-  markComplete?: boolean;
-}
-
 /** The event store's shape: today's mirror of SQLite, the timer sessions, and the commands. */
 export interface EventState extends ResettableMirror {
   dailyTotals: Record<string, number>;
@@ -34,6 +31,11 @@ export interface EventState extends ResettableMirror {
   habitStreaks: Record<string, number>;
   habitFailureStreaks: Record<string, number>;
   counterStreaks: Record<string, number>;
+  /**
+   * The native core's one session, mirrored: keyed by its tracker, shown from
+   * local midnight on when it started on an earlier day (its seconds before
+   * midnight go to that day when it ends).
+   */
   activeTimerSessions: Record<string, ActiveTimerSession>;
   /**
    * The calendar day the day maps (totals, done, streaks) describe. Behind the
@@ -44,35 +46,21 @@ export interface EventState extends ResettableMirror {
   dayStateReady: boolean;
   /** True after at least one successful counter totals load this process. */
   counterTotalsReady: boolean;
-  /** Restore in-progress timers after process death (call once at bootstrap). */
-  hydrateActiveTimerSessions: () => Promise<void>;
-  /**
-   * Adopt the sessions as saved in SQLite, in a live process: unlike the cold
-   * start hydrate nothing is paused or finished. A save still on its way wins
-   * over what was read, since it is newer.
-   */
+  /** Mirror this state of the native core; calls apply in the order they were made. */
+  syncTimerFromCore: (state: CoreTimerState | null) => Promise<void>;
+  /** Ask the native core for its session and mirror it. */
   reloadActiveTimerSessions: () => Promise<void>;
+  /** Start (or resume this tracker's paused) session in the native core. */
+  startHabitTimer: (request: TimerStartRequest) => Promise<void>;
+  pauseHabitTimer: () => Promise<void>;
+  resumeHabitTimer: () => Promise<void>;
   /**
-   * The sound playing for this habit's session is still going. Called on every
-   * playback status update, foreground or locked; saves at most every
-   * TIMER_HEARTBEAT_MS so a restart can tell where a dead session stopped.
-   * Only the session the sound belongs to is stamped: a heartbeat must never
-   * stand for a session nothing was actually watching.
+   * End the native session and hand back its record, for the caller to log
+   * (`applyFinishedTimerSession`); null when there was none.
    */
-  recordTimerHeartbeat: (elementId: string) => void;
-  /**
-   * The sound stopped while a session runs on (a play-once track that ended
-   * short of a minutes goal). With no source left, the heartbeat goes, so a
-   * restart counts the session by the clock instead of cutting it at the end
-   * of the track.
-   */
-  clearTimerHeartbeats: () => void;
-  /**
-   * The day changed under a running session: log its seconds before midnight
-   * onto the days they happened and keep it running for today. A session
-   * paused before midnight is simply finished. Today's sessions are left alone.
-   */
-  rollHabitTimerOver: (elementId: string, config: HabitConfig) => Promise<void>;
+  finishHabitTimer: (markComplete: boolean) => Promise<TimerSessionRecord | null>;
+  /** Throw away this tracker's session (archive, delete), or any session (clear data). */
+  discardHabitTimer: (elementId?: string) => Promise<void>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
@@ -90,15 +78,6 @@ export interface EventState extends ResettableMirror {
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
   /** Tick the day (today by default) unless SQLite says it is already done — never un-ticks. */
   completeHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
-  startHabitTimer: (elementId: string, config: HabitConfig) => void;
-  pauseHabitTimer: (elementId: string) => void;
-  resumeHabitTimer: (elementId: string, config: HabitConfig) => void;
-  stopHabitTimer: (
-    elementId: string,
-    config: HabitConfig,
-    date?: string,
-    options?: HabitTimerStopOptions,
-  ) => Promise<void>;
   /**
    * Log a session the native core finished: each day it ran on gets its own
    * seconds with the goal that was in force, and Done marks the day it ended
@@ -111,15 +90,15 @@ export interface EventState extends ResettableMirror {
     record: TimerSessionRecord,
   ) => Promise<void>;
   /**
-   * Done on a timed habit before its goal: stops a running or paused session
-   * (its seconds kept) and marks the day done, in one write. Resolves true
-   * when the day is now done only because of that mark, so Undo is worth offering.
+   * Done on a timed habit with no session: marks today done unless it is.
+   * Resolves true when the day is now done only because of that mark, so
+   * Undo is worth offering. A running session ends through the core instead.
    */
   markHabitDone: (elementId: string, config: HabitConfig) => Promise<boolean>;
+  /** The day is done, and only because Done was pressed: Undo has something to take back. */
+  isHabitDayDoneOnlyByMark: (elementId: string, config: HabitConfig, date: string) => Promise<boolean>;
   /** Undo for `markHabitDone`: removes today's mark, keeps every logged second. */
   unmarkHabitDone: (elementId: string, config: HabitConfig) => Promise<void>;
-  /** Drop an in-progress timer without writing an event (archive/delete). */
-  discardHabitTimer: (elementId: string) => void;
   /** Clears the day and resolves to the events it removed, so Undo can put them back. */
   resetHabitToday: (elementId: string, config: HabitConfig, date?: string) => Promise<LifeEvent[]>;
   /** Undo for `resetHabitToday`: re-inserts what it removed, then reloads that day. */

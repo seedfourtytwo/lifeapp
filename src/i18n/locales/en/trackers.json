@@ -163,7 +163,7 @@
     "dailyGoalPlaceholder": "e.g. 15",
     "soundWhileRunningLabel": "Sound while running",
     "soundHint": "Choose a bundled meditation or focus track.",
-    "noTracksBundledHint": "No tracks bundled yet. Add MP3 files to assets/sounds/ in the project, then rebuild the app.",
+    "noTracksBundledHint": "No tracks bundled yet. Add MP3 files to modules/life-core/android/src/main/res/raw/ in the project, then rebuild the app.",
     "loading": "Loading…",
     "stopPreview": "Stop preview",
     "previewSound": "Preview sound",
@@ -212,13 +212,5 @@
     "streakMany": "{{count}} days in a row",
     "soundLoopsA11y": "Sound loops while the timer runs",
     "soundPlaysOnceA11y": "Sound plays once, then the timer stops"
-  },
-  "lockScreen": {
-    "paused": "Paused",
-    "running": "Running",
-    "ready": "Ready",
-    "playToStart": "Play to start",
-    "playToCheckOff": "Play to check off",
-    "fallbackHabitName": "Habit"
   }
 }

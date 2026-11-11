@@ -10,18 +10,12 @@ import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterInput } from '../protocol/kinds/counter';
 import { buildHabitConfig, type HabitInput } from '../protocol/kinds/habit';
 import { prepareHabitTimerSoundForSave } from '../utils/habitTimerSoundSave';
-import { stopHabitSound } from '../audio/habitTimerSound';
 import {
   mergeKindOrderIntoDashboard,
   applyVisibleOrder,
 } from '../utils/reorderHabits';
 import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
-import {
-  abortHabitTimerRestore,
-  awaitElementEventWrites,
-  awaitHabitTimerStop,
-  useEventStore,
-} from './eventStore';
+import { awaitElementEventWrites, useEventStore } from './eventStore';
 import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
 
@@ -90,15 +84,9 @@ async function insertActiveElement(
   return dashboardItem;
 }
 
-/** Stop in-memory timer + audio when that habit is leaving Home. */
-async function clearHabitRuntime(elementId: string): Promise<void> {
-  const hadSession = useEventStore.getState().activeTimerSessions[elementId] != null;
-  abortHabitTimerRestore(elementId);
-  useEventStore.getState().discardHabitTimer(elementId);
-  await awaitHabitTimerStop(elementId);
-  if (hadSession) {
-    void stopHabitSound();
-  }
+/** A habit leaving Home takes its running timer with it, logging nothing. */
+function clearHabitRuntime(elementId: string): Promise<void> {
+  return useEventStore.getState().discardHabitTimer(elementId);
 }
 
 /** Drop pins for archived elements; ensure every active element has a sort row. */
@@ -342,8 +330,6 @@ export const useElementStore = create<ElementState>((set, get) => ({
       await clearHabitRuntime(elementId);
     } catch (error) {
       console.warn('Timer teardown after archive failed', error);
-      abortHabitTimerRestore(elementId);
-      useEventStore.getState().discardHabitTimer(elementId);
     }
     invalidateElementLoads();
     set({
@@ -390,7 +376,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       throw new Error(i18n.t('common:errors.elementNotFound'));
     }
     await awaitElementEventWrites(id);
-    // Finalize/abort timer before CASCADE delete so stop can't rehydrate a ghost.
+    // The timer goes before the rows, so nothing can be logged against them.
     await clearHabitRuntime(id);
     await withGuardedElementWrite(async () => {
       const db = await getDatabase();

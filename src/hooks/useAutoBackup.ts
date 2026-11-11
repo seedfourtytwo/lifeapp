@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import { runDailyBackup } from '../backup/dailyBackup';
-import { whenActiveTimersReady } from '../store/eventStore';
+import { whenStartupDone } from './startupGate';
 
 /**
  * Today's backup, once the app has finished starting and again each time it
@@ -12,7 +12,7 @@ export function useAutoBackup(): void {
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
     let mounted = true;
-    void whenActiveTimersReady().then(() => {
+    void whenStartupDone().then(() => {
       if (mounted) void runDailyBackup();
     });
     const subscription = AppState.addEventListener('change', (state) => {

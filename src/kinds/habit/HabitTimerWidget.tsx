@@ -1,14 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import {
   dayOutcome,
   factsFromTotal,
   formatHabitHomeTimerLabel,
-  habitTimerGoal,
   isActiveTimerPaused,
   liveTimerTotalSeconds,
   type HabitElement,
@@ -53,22 +51,10 @@ export function HabitTimerWidget({
   const { t } = useTranslation('trackers');
   const [, setTick] = useState(0);
   const [resetBubblesOpen, setResetBubblesOpen] = useState(false);
-  const loggedTotalAtSessionStart = useRef(todayTotal);
-  const chimePlayedRef = useRef(false);
   const isRunning = Boolean(activeTimerSession);
   const isPaused = isActiveTimerPaused(activeTimerSession);
-  const goal = habitTimerGoal(config);
   const streakLabel = formatHabitStreakLabel(config, streak);
   const soundIndicator = describeHabitCardSound(config);
-
-  const todayTotalRef = useRef(todayTotal);
-  todayTotalRef.current = todayTotal;
-
-  useEffect(() => {
-    if (!activeTimerSession?.startedAt) return;
-    loggedTotalAtSessionStart.current = todayTotalRef.current;
-    chimePlayedRef.current = false;
-  }, [activeTimerSession?.startedAt]);
 
   useEffect(() => {
     if (!isRunning || isPaused) return;
@@ -77,9 +63,6 @@ export function HabitTimerWidget({
   }, [isPaused, isRunning, activeTimerSession?.startedAt]);
 
   const displayTotal = liveTimerTotalSeconds(todayTotal, activeTimerSession);
-  /** The day as it stands this second, counting the running session's seconds. */
-  const liveDone = (total: number) =>
-    dayOutcome({ kind: 'habit', config }, factsFromTotal(total)).done;
   // The store knows what the seconds cannot (a finished track, a manual Done);
   // the live total turns the card done the moment a running timer reaches its goal.
   const live = dayOutcome({ kind: 'habit', config }, factsFromTotal(displayTotal));
@@ -97,15 +80,6 @@ export function HabitTimerWidget({
   // Done pressed by mistake must stay undoable after the snackbar has gone.
   // A goal really met has no mark to take back, so it gets no control.
   const showUnmark = Boolean(isMarkedDone && onUnmarkDone) && !isRunning;
-
-  // The track's own end chimes a play-once habit; a seconds goal chimes here, live.
-  useEffect(() => {
-    if (goal.type !== 'seconds' || !isRunning || isPaused || chimePlayedRef.current) return;
-    if (!liveDone(loggedTotalAtSessionStart.current) && live.done) {
-      chimePlayedRef.current = true;
-      void playHabitCompleteChime();
-    }
-  });
 
   const progress = effectiveTarget !== undefined ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);

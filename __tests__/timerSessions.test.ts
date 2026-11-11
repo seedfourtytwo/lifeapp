@@ -18,27 +18,7 @@ describe('the timer session reducer', () => {
 
     expect(nextTimerSessions(started, { type: 'start', elementId: ID, nowMs: T0 + 1 })).toBe(started);
     expect(nextTimerSessions(started, { type: 'resume', elementId: ID, nowMs: T0 + 1 })).toBe(started);
-    expect(nextTimerSessions(started, { type: 'clearHeartbeats' })).toBe(started);
-    expect(nextTimerSessions(started, { type: 'remove', elementId: 'other' })).toBe(started);
-  });
-
-  it('stamps a heartbeat at most every thirty seconds, and never while paused', () => {
-    const started = nextTimerSessions({}, { type: 'start', elementId: ID, nowMs: T0 });
-    const beat = nextTimerSessions(started, { type: 'heartbeat', elementId: ID, nowMs: T0 + 1_000 });
-
-    expect(nextTimerSessions(beat, { type: 'heartbeat', elementId: ID, nowMs: T0 + 20_000 })).toBe(beat);
-    const paused = nextTimerSessions(beat, { type: 'pause', elementId: ID, nowMs: T0 + 40_000 });
-    expect(nextTimerSessions(paused, { type: 'heartbeat', elementId: ID, nowMs: T0 + 80_000 })).toBe(paused);
-  });
-
-  it('drops the heartbeat on resume so a pause is not taken for a death', () => {
-    const started = nextTimerSessions({}, { type: 'start', elementId: ID, nowMs: T0 });
-    const beat = nextTimerSessions(started, { type: 'heartbeat', elementId: ID, nowMs: T0 + 1_000 });
-    const paused = nextTimerSessions(beat, { type: 'pause', elementId: ID, nowMs: T0 + 2_000 });
-
-    const resumed = nextTimerSessions(paused, { type: 'resume', elementId: ID, nowMs: T0 + 3_000 });
-
-    expect(resumed[ID]).not.toHaveProperty('heartbeatAt');
+    expect(nextTimerSessions(started, { type: 'pause', elementId: 'other', nowMs: T0 + 1 })).toBe(started);
   });
 
   it('never makes the pause offset negative when the clock went back', () => {

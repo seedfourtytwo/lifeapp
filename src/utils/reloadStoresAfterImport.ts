@@ -1,5 +1,3 @@
-import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';
-import { stopHabitSound } from '../audio/habitTimerSound';
 import { cancelCalendarReminders } from '../notifications/calendarReminders';
 import type { ClearAppDataOptions } from '../db/clearDataPlan';
 import { applyAppLanguage } from '../i18n';
@@ -10,7 +8,6 @@ import { useElementStore } from '../store/elementStore';
 import { useFoodStore } from '../store/foodStore';
 import { useTodoStore } from '../store/todoStore';
 import {
-  awaitHabitTimerStops,
   counterStreakInputsFromElements,
   habitStreakInputsFromElements,
   useEventStore,
@@ -49,7 +46,6 @@ export async function reloadStoresAfterImport(
     Boolean(options.cleared?.activityHistory);
   const preferencesCleared = full || Boolean(options.cleared?.preferences);
 
-  await stopHabitSound();
   bumpDataGeneration('protocol');
   if (activityCleared) {
     // The catalog, todo list and journals were wiped with activity — drop the
@@ -58,9 +54,6 @@ export async function reloadStoresAfterImport(
     bumpDataGeneration('todos');
     bumpDataGeneration('journal');
   }
-  // Only safe to blank the event mirror once no timer stop is still writing.
-  await awaitHabitTimerStops();
-
   if (activityCleared) {
     await useEventStore.getState().reset();
   }
@@ -98,8 +91,6 @@ export async function reloadStoresAfterImport(
         ? loadCounterStreaks(counterStreakInputs)
         : Promise.resolve(),
     ]);
-
-    void preloadConfiguredHabitSounds(getActiveHabits(elements, dashboard));
 
     await useFoodStore.getState().reset();
     await useFoodStore.getState().loadWeek(currentAppCalendarDate());

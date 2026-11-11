@@ -1,6 +1,4 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { stopHabitSound } from '../audio/habitTimerSound';
-import { stopHabitTimerLockScreenTicker } from '../habitTimer/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import {
@@ -11,7 +9,6 @@ import {
   type PersistedConcept,
 } from './persistedConcepts';
 import * as settingsRepo from './repositories/settingsRepository';
-import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
@@ -114,11 +111,9 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     bumpDataGeneration('catalog');
     bumpDataGeneration('todos');
     bumpDataGeneration('journal');
-    stopHabitTimerLockScreenTicker();
-    await stopHabitSound();
+    // The running session goes with the activity it would have been logged into.
+    await useEventStore.getState().discardHabitTimer();
     await awaitPendingEventWrites();
-    useEventStore.setState({ activeTimerSessions: {} });
-    await clearPersistedActiveTimerSessions(await getDatabase());
   }
   if (options.calendar) {
     bumpDataGeneration('calendar');
@@ -155,17 +150,8 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
         }
       }
       if (options.preferences) {
-        const liveSessions = useEventStore.getState().activeTimerSessions;
+        // The running timer is not in app_settings: the native core keeps it.
         await clearAmbient(db, 'preferences');
-        // Preference wipe clears all app_settings rows; re-write ephemeral timer state
-        // so a theme/settings clear does not orphan a running lock-screen session.
-        if (Object.keys(liveSessions).length > 0) {
-          await settingsRepo.setSetting(
-            db,
-            ACTIVE_TIMER_SESSIONS_KEY,
-            JSON.stringify(liveSessions),
-          );
-        }
       }
     });
 

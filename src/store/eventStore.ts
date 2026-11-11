@@ -9,18 +9,11 @@ import { createTimerSessionActions } from './events/timerSessionActions';
 import { todayDate, type EventState } from './events/state';
 
 export type { HabitStreakInput, CounterStreakInput };
-export {
-  abortHabitTimerRestore,
-  awaitElementEventWrites,
-  awaitHabitTimerStop,
-  awaitHabitTimerStops,
-  awaitPendingEventWrites,
-} from './events/eventCommands';
-export { releaseActiveTimersReady, whenActiveTimersReady } from './events/timerPersistence';
+export { awaitElementEventWrites, awaitPendingEventWrites } from './events/eventCommands';
 
 /**
- * Today's events as SQLite holds them, the running timers, and the commands
- * that change either. The parts live in `./events/`: the day mirror, the
+ * Today's events as SQLite holds them, a mirror of the native core's timer,
+ * and the commands that change either. The parts live in `./events/`: the day mirror, the
  * streak cache, the timer sessions and the event commands.
  */
 export const useEventStore = create<EventState>((set, get) => ({

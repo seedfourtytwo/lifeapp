@@ -1,269 +1,136 @@
 import { Alert } from 'react-native';
+import { lifeCore } from '../core/lifeCore';
 import { i18n } from '../i18n';
 import {
-  pauseHabitSound,
-  playHabitSound,
-  resumeHabitSound,
-  stopHabitSound,
-} from '../audio/habitTimerSound';
-import {
+  getHabitTimerPlaybackMode,
   habitTimerGoal,
   hasHabitTimerSound,
-  isActiveTimerPaused,
-  type ActiveTimerSession,
+  isHabitElement,
+  toDateString,
   type HabitConfig,
+  type HabitElement,
 } from '../protocol';
+import type { TimerSessionRecord, TimerStartRequest } from '../protocol/coreTimer';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore, whenActiveTimersReady } from '../store/eventStore';
-import { currentAppCalendarDate } from '../utils/dayRollover';
-import {
-  getFocusedHabitId,
-  peekAdjacentHabit,
-  setFocusedHabitId,
-} from './habitLockScreenQueue';
-import {
-  lockScreenMetaFor,
-  presentFocusedHabitReady,
-  refreshLockScreenTicker,
-} from './habitTimerPresentation';
-import { stopHabitTimerLockScreenTicker } from './habitTimerLockScreen';
-
-function playSoundForConfig(
-  elementId: string,
-  config: HabitConfig,
-  onFinish: (elementId: string, config: HabitConfig, trackCompleted?: boolean) => void,
-): Promise<void> {
-  setFocusedHabitId(elementId);
-  // The track is the goal: its end completes the habit. A play-once track with a
-  // minutes target just ends; the session keeps running (overtime / Done).
-  const finishOnTrackEnd = habitTimerGoal(config).type === 'play_once';
-  return playHabitSound(config.timerSound, {
-    lockScreen: lockScreenMetaFor(elementId, config),
-    onEnded: finishOnTrackEnd
-      ? () => {
-          onFinish(elementId, config, true);
-        }
-      : undefined,
-  }).then(() => {
-    refreshLockScreenTicker();
-  });
-}
+import { useEventStore } from '../store/eventStore';
+import { todayDate } from '../store/events/state';
+import { applyFinishedTimerSession } from '../widget/pendingWidgetActions';
 
 /**
- * Timer audio is a side effect: the session (and its seconds) stands without
- * it, so a player that fails to start is logged, never left unhandled.
+ * The habit timer's controls. The session itself (clock, sound, goal chime,
+ * notification) lives in the native core; these apply the app's rules on
+ * top: one timer at a time, Done early and its Undo, a reset of today, and a
+ * finished session logged at once.
  */
-function warnSoundFailure(error: unknown): void {
-  console.warn('Timer sound failed; the timer keeps running', error);
-}
 
-async function finalizeOtherTimers(exceptElementId: string): Promise<void> {
-  const sessions = useEventStore.getState().activeTimerSessions;
-  const otherIds = Object.keys(sessions).filter((id) => id !== exceptElementId);
-  if (otherIds.length === 0) return;
+/** One control at a time: a second tap waits for the first to land. */
+let controls: Promise<unknown> = Promise.resolve();
 
-  await stopHabitSound();
-  stopHabitTimerLockScreenTicker();
-  const stopHabitTimer = useEventStore.getState().stopHabitTimer;
-  const discardHabitTimer = useEventStore.getState().discardHabitTimer;
-  const elements = useElementStore.getState().elements;
-
-  for (const id of otherIds) {
-    const element = elements.find((item) => item.id === id);
-    if (element?.kind === 'habit') {
-      try {
-        await stopHabitTimer(id, element.config);
-      } catch (error) {
-        console.warn('Failed to finalize previous timer', error);
-        discardHabitTimer(id);
-      }
-    } else {
-      discardHabitTimer(id);
-    }
-  }
-}
-
-let timerStartChain: Promise<void> = Promise.resolve();
-
-function enqueueTimerStart(work: () => Promise<void>): Promise<void> {
-  const next = timerStartChain.catch(() => undefined).then(work);
-  timerStartChain = next.then(
-    () => undefined,
-    () => undefined,
-  );
+function oneAtATime<T>(work: () => Promise<T>): Promise<T> {
+  const next = controls.catch(() => undefined).then(work);
+  controls = next.catch(() => undefined);
   return next;
 }
 
-/** Silence the timer, run the store write, then move lock-screen focus on. */
-async function endTimerWith<T>(
-  elementId: string,
-  write: () => Promise<T>,
-  advance = true,
-): Promise<T> {
-  stopHabitTimerLockScreenTicker();
-  await stopHabitSound();
-  const result = await write();
-  if (!advance) return result;
-
-  const next = peekAdjacentHabit('next');
-  if (next && next.element.id !== elementId) {
-    setFocusedHabitId(next.element.id);
-  } else {
-    setFocusedHabitId(elementId);
-  }
-  await presentFocusedHabitReady();
-  return result;
+function habitElement(elementId: string): HabitElement {
+  const element = useElementStore.getState().elements.find((item) => item.id === elementId);
+  if (!element || !isHabitElement(element)) throw new Error(`No timed habit ${elementId}`);
+  return element;
 }
 
-export function finishHabitTimer(
-  elementId: string,
-  config: HabitConfig,
-  trackCompleted = false,
-  options?: { advance?: boolean; playChime?: boolean },
-): Promise<void> {
-  const date = currentAppCalendarDate();
-  return endTimerWith(
-    elementId,
-    () =>
-      useEventStore.getState().stopHabitTimer(elementId, config, date, {
-        trackCompleted,
-        playChime: options?.playChime,
-      }),
-    options?.advance,
+/** What the core needs to play and show this habit's session. */
+function startRequest(element: HabitElement): TimerStartRequest {
+  const { config } = element;
+  const { dailyTotals, dayMapsDate } = useEventStore.getState();
+  const logged = dayMapsDate === todayDate() ? (dailyTotals[element.id] ?? 0) : 0;
+  return {
+    trackerId: element.id,
+    name: element.name,
+    lockScreenName: config.lockScreenName ?? null,
+    iconKey: config.icon ?? null,
+    goal: habitTimerGoal(config),
+    trackId: hasHabitTimerSound(config.timerSound) ? (config.timerSound?.trackId?.trim() ?? null) : null,
+    loop: getHabitTimerPlaybackMode(config.timerSound) === 'loop',
+    loggedSeconds: Math.floor(logged),
+  };
+}
+
+/** End the core's session and log it now; the copy the core queued is then a duplicate. */
+async function finishAndLog(markComplete: boolean): Promise<TimerSessionRecord | null> {
+  const record = await useEventStore.getState().finishHabitTimer(markComplete);
+  if (record) await applyFinishedTimerSession(record);
+  return record;
+}
+
+function alertFailure(titleKey: string, error: unknown): void {
+  Alert.alert(
+    i18n.t(titleKey),
+    error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
   );
 }
 
 /**
- * Done on a timed habit: stops a running or paused timer and marks today
- * done even short of the goal. Resolves true when Undo is worth offering.
+ * Play starts or resumes, pause pauses: one tap, and the sound comes with
+ * it. Another habit's session ends first, its seconds logged.
+ */
+export function pressHabitTimer(elementId: string): Promise<void> {
+  return oneAtATime(async () => {
+    const state = await lifeCore.getState();
+    if (state?.trackerId === elementId && !state.pausedAt) {
+      await useEventStore.getState().pauseHabitTimer();
+      return;
+    }
+    if (state && state.trackerId !== elementId) await finishAndLog(false);
+    await useEventStore.getState().startHabitTimer(startRequest(habitElement(elementId)));
+  }).catch((error: unknown) => alertFailure('trackers:habitWidget.couldNotStartTimerTitle', error));
+}
+
+/**
+ * Done on a timed habit: ends a running or paused session (its seconds
+ * kept) and marks the day done even short of the goal. Resolves true when
+ * Undo is worth offering.
  */
 export function markHabitTimerDone(elementId: string, config: HabitConfig): Promise<boolean> {
-  return endTimerWith(elementId, () => useEventStore.getState().markHabitDone(elementId, config));
-}
-
-/** Undo for `markHabitTimerDone`: the day keeps its seconds and loses the mark. */
-export async function unmarkHabitTimerDone(elementId: string, config: HabitConfig): Promise<void> {
-  await useEventStore.getState().unmarkHabitDone(elementId, config);
-  if (getFocusedHabitId() === elementId) {
-    await presentFocusedHabitReady();
-  }
-}
-
-/** Resolves once the start has been taken (or found already running). */
-export function startHabitTimerSession(elementId: string, config: HabitConfig): Promise<void> {
-  return enqueueTimerStart(async () => {
-    try {
-      // Wait for persisted-session hydrate + day totals so starts/finishes are consistent.
-      await whenActiveTimersReady();
-      const existing = useEventStore.getState().activeTimerSessions[elementId];
-      if (existing) {
-        if (isActiveTimerPaused(existing)) {
-          resumeHabitTimerSession(elementId, config);
-        }
-        return;
-      }
-      await finalizeOtherTimers(elementId);
-      if (useEventStore.getState().activeTimerSessions[elementId]) return;
-      setFocusedHabitId(elementId);
-      useEventStore.getState().startHabitTimer(elementId, config);
-      await playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
-        void finishHabitTimer(id, cfg, trackCompleted, {
-          playChime: trackCompleted === true,
-        }).catch((error) => {
-          Alert.alert(
-            i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-            error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-          );
-        });
-      }).catch(warnSoundFailure);
-    } catch (error) {
-      Alert.alert(
-        i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
-        error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-      );
+  return oneAtATime(async () => {
+    const state = await lifeCore.getState();
+    if (state?.trackerId !== elementId) {
+      return useEventStore.getState().markHabitDone(elementId, config);
     }
+    const record = await finishAndLog(true);
+    if (!record) return false;
+    // The mark goes on the day the session's time ended.
+    const endDay = toDateString(new Date(record.endedAt));
+    return useEventStore.getState().isHabitDayDoneOnlyByMark(elementId, config, endDay);
   });
 }
 
-/** Stop a timer and throw its session away: nothing is logged. */
-export async function discardHabitTimerSession(elementId: string): Promise<void> {
-  if (!useEventStore.getState().activeTimerSessions[elementId]) return;
-  stopHabitTimerLockScreenTicker();
-  await stopHabitSound();
-  useEventStore.getState().discardHabitTimer(elementId);
+/** Undo for `markHabitTimerDone`: the day keeps its seconds and loses the mark. */
+export function unmarkHabitTimerDone(elementId: string, config: HabitConfig): Promise<void> {
+  return useEventStore.getState().unmarkHabitDone(elementId, config);
 }
 
-export function pauseHabitTimerSession(elementId: string, _config: HabitConfig): void {
-  useEventStore.getState().pauseHabitTimer(elementId);
-  void pauseHabitSound().catch(warnSoundFailure);
-  refreshLockScreenTicker();
-}
-
-export function resumeHabitTimerSession(elementId: string, config: HabitConfig): void {
-  useEventStore.getState().resumeHabitTimer(elementId, config);
-  const lockScreen = lockScreenMetaFor(elementId, config);
-  if (hasHabitTimerSound(config.timerSound)) {
-    void resumeHabitSound(config.timerSound, {
-      lockScreen,
-      onEnded:
-        habitTimerGoal(config).type === 'play_once'
-          ? () => {
-              void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
-                (error) => {
-                  Alert.alert(
-                    i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-                    error instanceof Error
-                      ? error.message
-                      : i18n.t('common:errors.somethingWentWrong'),
-                  );
-                },
-              );
-            }
-          : undefined,
-    })
-      .then(() => refreshLockScreenTicker())
-      .catch(warnSoundFailure);
-  } else {
-    playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
-      void finishHabitTimer(id, cfg, trackCompleted, {
-        playChime: trackCompleted === true,
-      }).catch((error) => {
-        Alert.alert(
-          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-        );
-      });
-    }).catch(warnSoundFailure);
-  }
-}
-
-export function pressHabitTimer(elementId: string, config: HabitConfig): void {
-  const session: ActiveTimerSession | undefined =
-    useEventStore.getState().activeTimerSessions[elementId];
-  if (!session) {
-    void startHabitTimerSession(elementId, config);
-    return;
-  }
-  if (isActiveTimerPaused(session)) {
-    resumeHabitTimerSession(elementId, config);
-    return;
-  }
-  pauseHabitTimerSession(elementId, config);
-}
-
-/** Clears today's time; resolves to an Undo that puts it back. */
-export async function resetHabitTimerToday(
+/** Clears today's time, banking a running session first; resolves to an Undo that puts it back. */
+export function resetHabitTimerToday(
   elementId: string,
   config: HabitConfig,
 ): Promise<() => Promise<void>> {
-  const date = currentAppCalendarDate();
-  stopHabitTimerLockScreenTicker();
-  await stopHabitSound();
-  const removed = await useEventStore.getState().resetHabitToday(elementId, config, date);
-  if (getFocusedHabitId() === elementId) {
-    await presentFocusedHabitReady();
-  }
-  return () => useEventStore.getState().restoreHabitDay(elementId, config, removed, date);
+  return oneAtATime(async () => {
+    const date = todayDate();
+    if ((await lifeCore.getState())?.trackerId === elementId) await finishAndLog(false);
+    const removed = await useEventStore.getState().resetHabitToday(elementId, config, date);
+    return () => useEventStore.getState().restoreHabitDay(elementId, config, removed, date);
+  });
 }
 
-export { playSoundForConfig };
+/**
+ * The day changed: a session paused before today's midnight is finished,
+ * its seconds going to the days they happened on. A running one runs on and
+ * is split when it ends.
+ */
+export function finishTimerPausedBeforeToday(): Promise<void> {
+  return oneAtATime(async () => {
+    const state = await lifeCore.getState();
+    if (!state?.pausedAt || toDateString(new Date(state.pausedAt)) >= todayDate()) return;
+    await finishAndLog(false);
+  });
+}

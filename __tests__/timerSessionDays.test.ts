@@ -1,10 +1,5 @@
 import { activeTimerElapsedMs, type ActiveTimerSession } from '../src/protocol';
-import {
-  pauseAtLastHeartbeat,
-  timerSessionFromMidnight,
-  timerSessionParts,
-  TIMER_HEARTBEAT_STALE_MS,
-} from '../src/protocol/timerSessionDays';
+import { timerSessionFromMidnight, timerSessionParts } from '../src/protocol/timerSessionDays';
 
 /**
  * Where a timer session's seconds go. Run in Chris's zone, where the clocks
@@ -40,36 +35,6 @@ function seconds(session: ActiveTimerSession, now: Date): [string, number][] {
   return timerSessionParts(session, now.getTime()).map((part) => [part.date, part.seconds]);
 }
 
-describe('a process that died with a timer running', () => {
-  it('counts up to the last heartbeat, not the three dead hours after it', () => {
-    const session = running(at(2026, 11, 11, 8), { heartbeatAt: at(2026, 11, 11, 8, 20).toISOString() });
-    const now = at(2026, 11, 11, 11, 20);
-
-    const restored = pauseAtLastHeartbeat(session, now.getTime());
-
-    expect(restored.pausedAt).toBe(session.heartbeatAt);
-    expect(seconds(restored, now)).toEqual([['2026-11-11', 20 * 60]]);
-  });
-
-  it('leaves a session alone whose heartbeat is recent', () => {
-    const heartbeat = at(2026, 11, 11, 8, 20);
-    const session = running(at(2026, 11, 11, 8), { heartbeatAt: heartbeat.toISOString() });
-    const now = new Date(heartbeat.getTime() + TIMER_HEARTBEAT_STALE_MS - 1);
-    expect(pauseAtLastHeartbeat(session, now.getTime())).toBe(session);
-  });
-
-  it('leaves a paused session, or one saved before heartbeats existed, alone', () => {
-    const now = at(2026, 11, 11, 11).getTime();
-    const paused = running(at(2026, 11, 11, 8), {
-      pausedAt: at(2026, 11, 11, 8, 5).toISOString(),
-      heartbeatAt: at(2026, 11, 11, 8, 20).toISOString(),
-    });
-    const old = running(at(2026, 11, 11, 8));
-    expect(pauseAtLastHeartbeat(paused, now)).toBe(paused);
-    expect(pauseAtLastHeartbeat(old, now)).toBe(old);
-  });
-});
-
 describe('a session across midnight', () => {
   it('gives each day the seconds that happened on it', () => {
     expect(seconds(running(at(2026, 11, 10, 23, 50)), at(2026, 11, 11, 0, 20))).toEqual([
@@ -78,10 +43,10 @@ describe('a session across midnight', () => {
     ]);
   });
 
-  it('and killed after midnight, counts only up to the last heartbeat', () => {
-    const session = running(at(2026, 11, 10, 23, 50), { heartbeatAt: at(2026, 11, 11, 0, 5).toISOString() });
+  it('and killed after midnight, counts only up to where the core paused it, its last heartbeat', () => {
+    const session = running(at(2026, 11, 10, 23, 50), { pausedAt: at(2026, 11, 11, 0, 5).toISOString() });
     const now = at(2026, 11, 11, 7);
-    expect(seconds(pauseAtLastHeartbeat(session, now.getTime()), now)).toEqual([
+    expect(seconds(session, now)).toEqual([
       ['2026-11-10', 10 * 60],
       ['2026-11-11', 5 * 60],
     ]);
@@ -96,9 +61,9 @@ describe('a session across midnight', () => {
   });
 
   it('spans a whole day in between when it ran that long', () => {
-    const session = running(at(2026, 11, 9, 23), { heartbeatAt: at(2026, 11, 11, 1).toISOString() });
+    const session = running(at(2026, 11, 9, 23), { pausedAt: at(2026, 11, 11, 1).toISOString() });
     const now = at(2026, 11, 11, 9);
-    expect(seconds(pauseAtLastHeartbeat(session, now.getTime()), now)).toEqual([
+    expect(seconds(session, now)).toEqual([
       ['2026-11-09', 60 * 60],
       ['2026-11-10', 24 * 60 * 60],
       ['2026-11-11', 60 * 60],
@@ -136,13 +101,12 @@ describe('a session across midnight', () => {
 describe('the part of a session that belongs to today', () => {
   it('starts at midnight and keeps running', () => {
     const now = at(2026, 11, 11, 0, 20);
-    const today = timerSessionFromMidnight(running(at(2026, 11, 10, 23, 50), { heartbeatAt: now.toISOString() }), now.getTime());
+    const today = timerSessionFromMidnight(running(at(2026, 11, 10, 23, 50)), now.getTime());
     expect(today).toEqual({
       startedAt: at(2026, 11, 11, 0).toISOString(),
       pausedAt: null,
       pauseOffsetMs: 0,
       calendarDate: '2026-11-11',
-      heartbeatAt: now.toISOString(),
     });
     expect(seconds(today, now)).toEqual([['2026-11-11', 20 * 60]]);
   });

@@ -8,6 +8,7 @@ import {
   type WidgetActionLogEntry,
 } from '../db/repositories/widgetActionLogRepository';
 import type { ElementDefinition } from '../protocol';
+import type { TimerSessionRecord } from '../protocol/coreTimer';
 import {
   WidgetActionSchema,
   type WidgetAction,
@@ -95,8 +96,12 @@ function parseLines(text: string, result: DrainResult): WidgetAction[] {
   return actions;
 }
 
-async function applyFile(uri: string, result: DrainResult): Promise<void> {
-  const actions = parseLines(await FileSystem.readAsStringAsync(uri), result);
+function emptyResult(): DrainResult {
+  return { applied: 0, duplicates: 0, dropped: [], malformed: 0 };
+}
+
+/** Each action at most once by its id, judged and logged with its outcome. */
+async function applyActions(actions: readonly WidgetAction[], result: DrainResult): Promise<void> {
   const db = await getDatabase();
   const log = await loadWidgetActionLog(db);
   const record = async (entry: WidgetActionLogEntry) => {
@@ -123,12 +128,16 @@ async function applyFile(uri: string, result: DrainResult): Promise<void> {
   }
 }
 
+async function applyFile(uri: string, result: DrainResult): Promise<void> {
+  await applyActions(parseLines(await FileSystem.readAsStringAsync(uri), result), result);
+}
+
 async function exists(uri: string): Promise<boolean> {
   return (await FileSystem.getInfoAsync(uri)).exists;
 }
 
 async function drainOnce(): Promise<DrainResult> {
-  const result: DrainResult = { applied: 0, duplicates: 0, dropped: [], malformed: 0 };
+  const result = emptyResult();
   const directory = widgetDirectory();
   if (!directory) return result;
   const pending = `${directory}${PENDING_ACTIONS_FILE}`;
@@ -146,18 +155,40 @@ async function drainOnce(): Promise<DrainResult> {
   return result;
 }
 
+/** Drains and single applies run one after another, so the applied log is never written twice at once. */
+let applying: Promise<unknown> = Promise.resolve();
+
+function exclusively<T>(work: () => Promise<T>): Promise<T> {
+  const next = applying.catch(() => undefined).then(work);
+  applying = next.catch(() => undefined);
+  return next;
+}
+
 let draining: Promise<DrainResult> | null = null;
 
 /**
- * Apply every tap the widget queued, each through the app's own commands,
+ * Apply every line native queued, each through the app's own commands,
  * each at most once. Calls while a drain runs join it. A line that is not a
  * valid action is counted and skipped; one bad line never stops the rest.
  */
 export function drainPendingWidgetActions(): Promise<DrainResult> {
   if (!draining) {
-    draining = drainOnce().finally(() => {
+    draining = exclusively(drainOnce).finally(() => {
       draining = null;
     });
   }
   return draining;
+}
+
+/**
+ * Log a session the app itself just finished, without waiting for the
+ * queue: the same rules and the same applied log as a drain, so the copy
+ * native queued is skipped as a duplicate when the drain reaches it.
+ */
+export function applyFinishedTimerSession(record: TimerSessionRecord): Promise<DrainResult> {
+  return exclusively(async () => {
+    const result = emptyResult();
+    await applyActions([record], result);
+    return result;
+  });
 }

@@ -20,8 +20,8 @@ import { bumpAllDataGenerations, bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
 import { takeSafetyCopy } from './safetyCopy';
 import { newId } from '../utils/id';
-import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
-import { stopHabitSound } from '../audio/habitTimerSound';
+import { awaitPendingEventWrites } from '../store/eventStore';
+import { lifeCore } from '../core/lifeCore';
 import { i18n } from '../i18n';
 
 export interface ExportedBundle {
@@ -105,14 +105,12 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
 
   // The import replaces the events a running or paused session would be
   // banked into, so its seconds would be lost either way: say so instead.
-  if (Object.keys(useEventStore.getState().activeTimerSessions).length > 0) {
+  if (await lifeCore.getState()) {
     throw new Error(i18n.t('settings:data.importTimerRunning'));
   }
 
-  await stopHabitSound();
   bumpDataGeneration('protocol');
   await awaitPendingEventWrites();
-  useEventStore.setState({ activeTimerSessions: {} });
 
   await withDbWriteLock(async () => {
     // An import replaces the whole device, so every scope is invalidated.

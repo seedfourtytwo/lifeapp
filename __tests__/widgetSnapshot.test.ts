@@ -8,13 +8,12 @@ import type { WidgetSnapshot } from '../src/protocol/widgetSnapshot';
 
 /**
  * The file the widget reads, written by the real stores from a real SQLite
- * onto a real directory. Only the sound is faked.
+ * onto a real directory. The timer is the fake native core.
  */
 
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
-jest.mock('../src/audio/habitTimerSound');
 let mockFs: FakeFileSystem;
 jest.mock('expo-file-system/legacy', () => mockFs.module);
 
@@ -32,6 +31,10 @@ function writer(): typeof import('../src/widget/widgetSnapshotWriter') {
 
 function events() {
   return (require('../src/store/eventStore') as typeof import('../src/store/eventStore')).useEventStore.getState();
+}
+
+function controls(): typeof import('../src/habitTimer/habitTimerControls') {
+  return require('../src/habitTimer/habitTimerControls');
 }
 
 function elements() {
@@ -104,7 +107,7 @@ describe('the widget snapshot', () => {
     await insertTick(TRACKERS.kefir, '2026-03-09', '550e8400-e29b-41d4-a716-446655441202');
     await events().toggleHabit(TRACKERS.kefir, configOf(TRACKERS.kefir));
     for (let i = 0; i < 5; i += 1) await events().logEvent(TRACKERS.water, 1);
-    events().startHabitTimer(TRACKERS.breathing, configOf(TRACKERS.breathing));
+    await controls().pressHabitTimer(TRACKERS.breathing);
     jest.setSystemTime(new Date(2026, 2, 10, 9, 32));
     await settle();
 
@@ -183,7 +186,7 @@ describe('the widget snapshot', () => {
   });
 
   it('calls a running timer past its goal done before it is logged', async () => {
-    events().startHabitTimer(TRACKERS.breathing, configOf(TRACKERS.breathing));
+    await controls().pressHabitTimer(TRACKERS.breathing);
     jest.setSystemTime(new Date(2026, 2, 10, 9, 36));
     await settle();
 
@@ -210,16 +213,16 @@ describe('the widget snapshot', () => {
       return tracker.kind === 'habit' ? tracker.timer?.session : undefined;
     };
 
-    events().startHabitTimer(TRACKERS.meditation, config);
+    await controls().pressHabitTimer(TRACKERS.meditation);
     await settle();
     expect(sessionOf()).toMatchObject({ paused: false });
 
     jest.setSystemTime(new Date(2026, 2, 10, 9, 40));
-    events().pauseHabitTimer(TRACKERS.meditation);
+    await controls().pressHabitTimer(TRACKERS.meditation);
     await settle();
     expect(sessionOf()).toMatchObject({ paused: true, elapsedSeconds: 600 });
 
-    await events().markHabitDone(TRACKERS.meditation, config);
+    await controls().markHabitTimerDone(TRACKERS.meditation, config);
     await settle();
     expect(sessionOf()).toBeNull();
     expect(trackerIn(readSnapshot(), TRACKERS.meditation)).toMatchObject({
@@ -280,21 +283,22 @@ describe('the widget snapshot', () => {
 
     await events().toggleHabit(TRACKERS.creatine, configOf(TRACKERS.creatine));
     for (let i = 0; i < 4; i += 1) await events().logEvent(TRACKERS.water, 1);
-    events().startHabitTimer(TRACKERS.breathing, configOf(TRACKERS.breathing));
+    await controls().pressHabitTimer(TRACKERS.breathing);
     await settle();
 
     expect(fsModule.moveAsync).toHaveBeenCalledTimes(1);
     expect(trackerIn(readSnapshot(), TRACKERS.water).total).toBe(4);
   });
 
-  it('ignores a timer heartbeat', async () => {
-    events().startHabitTimer(TRACKERS.breathing, configOf(TRACKERS.breathing));
+  it('is not rewritten when the core reports the timer unchanged', async () => {
+    await controls().pressHabitTimer(TRACKERS.breathing);
     await settle();
     const fsModule = mockFs.module as { moveAsync: jest.Mock };
     fsModule.moveAsync.mockClear();
+    const { lifeCore } = require('../src/core/lifeCore') as typeof import('../src/core/lifeCore');
 
     jest.setSystemTime(new Date(2026, 2, 10, 9, 31));
-    events().recordTimerHeartbeat(TRACKERS.breathing);
+    await events().syncTimerFromCore(await lifeCore.getState());
     jest.advanceTimersByTime(writer().WIDGET_SNAPSHOT_DEBOUNCE_MS);
     await new Promise((resolve) => setImmediate(resolve));
 

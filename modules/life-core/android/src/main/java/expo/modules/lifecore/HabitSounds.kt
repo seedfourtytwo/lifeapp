@@ -1,7 +1,8 @@
 package expo.modules.lifecore
 
 /**
- * The bundled sounds, in this module's `res/raw` so they exist without Metro.
+ * The bundled sounds, in this module's `res/raw` so they exist without Metro
+ * (96 kbps MP3s: enough for guided audio, light on the APK).
  * The track ids are the ones `src/protocol/habitSoundCatalog.ts` lists, with
  * its labels and durations; `__tests__/habitSoundNativeCatalog.test.ts` reads
  * this file and fails when the two lists drift apart.

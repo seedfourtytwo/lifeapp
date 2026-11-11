@@ -29,18 +29,6 @@ jest.mock('../src/db/client', () => ({
   })),
 }));
 
-jest.mock('../src/audio/habitTimerSound', () => ({
-  stopHabitSound: jest.fn(async () => {
-    mockCalls.push('stopHabitSound');
-  }),
-}));
-
-jest.mock('../src/audio/preloadConfiguredHabitSounds', () => ({
-  preloadConfiguredHabitSounds: jest.fn(async () => {
-    mockCalls.push('preloadConfiguredHabitSounds');
-  }),
-}));
-
 jest.mock('../src/notifications/calendarReminders', () => ({
   cancelCalendarReminders: jest.fn(async () => {
     mockCalls.push('cancelCalendarReminders');
@@ -91,12 +79,6 @@ jest.mock('../src/db/repositories/dashboardRepository', () => ({
 jest.mock('../src/db/repositories/eventRepository', () => ({
   getDailyTotalsForElementsOnDate: jest.fn(async () => new Map()),
   getDayFactsForElementsOnDate: jest.fn(async () => new Map()),
-}));
-
-jest.mock('../src/db/repositories/activeTimerRepository', () => ({
-  loadPersistedActiveTimerSessions: jest.fn(async () => ({})),
-  persistActiveTimerSessions: jest.fn(async () => undefined),
-  clearPersistedActiveTimerSessions: jest.fn(async () => undefined),
 }));
 
 jest.mock('../src/db/repositories/calendarRepository', () => ({
@@ -339,10 +321,9 @@ describe('reloadStoresAfterImport', () => {
       expect(getDataGeneration('calendar')).toBe(0);
     });
 
-    it('stops habit audio first and applies the language after settings load', async () => {
+    it('applies the language after settings load', async () => {
       await reloadStoresAfterImport({ fullReplace: true });
 
-      expect(mockCalls[0]).toBe('stopHabitSound');
       expect(mockCalls.indexOf('settingsLoad')).toBeLessThan(
         mockCalls.indexOf('applyAppLanguage'),
       );
@@ -352,11 +333,9 @@ describe('reloadStoresAfterImport', () => {
       await reloadStoresAfterImport({ fullReplace: true });
 
       expect(mockCalls).toEqual([
-        'stopHabitSound',
         'cancelCalendarReminders',
         'clearCachedForecast',
         'elementLoad',
-        'preloadConfiguredHabitSounds',
         'foodLoad',
         'todoLoad',
         'settingsLoad',

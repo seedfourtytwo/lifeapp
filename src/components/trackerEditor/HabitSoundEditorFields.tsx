@@ -7,17 +7,8 @@ import SegmentedControl from '../SegmentedControl';
 import { FilledField } from '../sheet';
 import { typeScale } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
-import {
-  playHabitSound,
-  preloadHabitSound,
-  stopHabitSound,
-  warmupHabitSoundPlayback,
-} from '../../audio/habitTimerSound';
-import {
-  BUNDLED_HABIT_SOUND_CATALOG,
-  buildHabitTimerSound,
-  type HabitTimerPlaybackMode,
-} from '../../protocol';
+import { lifeCore } from '../../core/lifeCore';
+import { BUNDLED_HABIT_SOUND_CATALOG, type HabitTimerPlaybackMode } from '../../protocol';
 import { formSectionStyles as styles } from './FormSection';
 
 type SoundFieldState = {
@@ -44,44 +35,26 @@ export default function HabitSoundEditorFields({
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewSessionRef = useRef(0);
 
-  const buildPreviewSound = useCallback(
-    () =>
-      buildHabitTimerSound({
-        trackId: sound.habitSoundTrackId,
-        playbackMode: sound.habitSoundPlaybackMode,
-      }),
-    [sound.habitSoundTrackId, sound.habitSoundPlaybackMode],
-  );
-
   const stopPreview = useCallback(() => {
     previewSessionRef.current += 1;
-    void stopHabitSound();
+    void lifeCore.stopPreview();
     setPreviewPlaying(false);
     setPreviewLoading(false);
   }, []);
 
-  useEffect(() => {
-    void warmupHabitSoundPlayback();
-    return () => {
-      stopPreview();
-    };
-  }, [stopPreview]);
-
-  useEffect(() => {
-    if (!sound.habitSoundTrackId.trim()) return;
-    void preloadHabitSound(buildPreviewSound());
-  }, [buildPreviewSound, sound.habitSoundTrackId]);
+  useEffect(() => stopPreview, [stopPreview]);
 
   const hasSound = Boolean(sound.habitSoundTrackId.trim());
 
+  /** The track plays natively, from the app's own files, apart from any running timer. */
   const handlePreviewSound = async () => {
     if (previewPlaying) {
       stopPreview();
       return;
     }
 
-    const previewSound = buildPreviewSound();
-    if (!previewSound) {
+    const trackId = sound.habitSoundTrackId.trim();
+    if (!trackId) {
       Alert.alert(t('habitSoundFields.noSoundSelectedTitle'), t('habitSoundFields.noSoundSelectedBody'));
       return;
     }
@@ -89,13 +62,7 @@ export default function HabitSoundEditorFields({
     const session = previewSessionRef.current;
     setPreviewLoading(true);
     try {
-      const started = await playHabitSound(previewSound, {
-        onEnded: () => {
-          if (session !== previewSessionRef.current) return;
-          setPreviewPlaying(false);
-          setPreviewLoading(false);
-        },
-      });
+      const started = await lifeCore.previewSound(trackId);
       if (session !== previewSessionRef.current) return;
       if (!started) {
         Alert.alert(

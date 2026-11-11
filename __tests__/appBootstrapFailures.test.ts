@@ -11,15 +11,11 @@ import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
-jest.mock('../src/audio/habitTimerSound');
-jest.mock('../src/audio/habitCompleteSound');
 
 import { getDatabase } from '../src/db/client';
 import * as dashboardRepo from '../src/db/repositories/dashboardRepository';
 import * as elementRepo from '../src/db/repositories/elementRepository';
 import { useAppBootstrap } from '../src/hooks/useAppBootstrap';
-import { warmupHabitSoundPlayback } from '../src/audio/habitTimerSound';
-import { warmupHabitCompleteChime } from '../src/audio/habitCompleteSound';
 import { HabitConfigSchema, PROTOCOL_VERSION } from '../src/protocol';
 
 const HABIT = '550e8400-e29b-41d4-a716-446655440951';
@@ -59,8 +55,6 @@ beforeEach(async () => {
     sortOrder: 0,
   });
   testDb.raw.exec('PRAGMA foreign_keys = OFF; DROP TABLE events;');
-  (warmupHabitSoundPlayback as jest.Mock).mockRejectedValue(new Error('no audio session'));
-  (warmupHabitCompleteChime as jest.Mock).mockRejectedValue(new Error('no audio session'));
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
   unhandled.mockClear();

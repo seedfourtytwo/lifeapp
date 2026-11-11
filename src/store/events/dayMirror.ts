@@ -78,7 +78,7 @@ export function applyTodayMaps(
 
 /**
  * When a running timer with a seconds goal reaches it, the day is done — for
- * the header, the list order, the lock-screen queue and the evening count, not
+ * the header, the list order, the widget snapshot and the evening count, not
  * only the card that ticks every second. Each running session has at most one
  * pending crossing; pausing, stopping or discarding it cancels the crossing.
  */
