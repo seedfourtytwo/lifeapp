@@ -37,6 +37,7 @@ let playbackEpoch = 0;
 let ignoreRemoteStatus = false;
 let onRemotePlayingChange: ((playing: boolean) => void) | null = null;
 let onPlaybackProgress: (() => void) | null = null;
+let onPlaybackEnded: (() => void) | null = null;
 let onRemoteSkip: ((direction: 'next' | 'prev') => void) | null = null;
 let onTrackEnded: (() => void) | null = null;
 const preloadedSourceKeys = new Set<string>();
@@ -150,6 +151,9 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
         onTrackEnded = null;
         return;
       }
+      // No more status updates come from a finished track: whatever runs on
+      // has lost its heartbeat source.
+      onPlaybackEnded?.();
       const ended = onTrackEnded;
       onTrackEnded = null;
       ended?.();
@@ -157,7 +161,7 @@ function attachStatusListener(activePlayer: AudioPlayer): void {
     }
 
     if (!status.isLoaded) return;
-    onPlaybackProgress?.();
+    if (status.playing) onPlaybackProgress?.();
 
     const nowMs = Date.now();
     const wallDeltaMs = nowMs - seekBaselineAtMs;
@@ -252,17 +256,20 @@ async function withLocalControl(work: () => void | Promise<void>): Promise<void>
  * Register callbacks for lock-screen / headset transport.
  * `onPlayingChange` fires when the OS pauses or resumes playback (not when we do).
  * `onSkip` fires when seek ±10s buttons are used (mapped to next/prev habit).
- * `onPlaybackProgress` fires on every status update of a loaded player — about
+ * `onPlaybackProgress` fires on every status update of a playing player — about
  * once a second, and also while the phone is locked, when JS timers do not run.
+ * `onPlaybackEnded` fires when a track plays to its end and stops.
  */
 export function setHabitTimerRemoteHandlers(handlers: {
   onPlayingChange?: ((playing: boolean) => void) | null;
   onSkip?: ((direction: 'next' | 'prev') => void) | null;
   onPlaybackProgress?: (() => void) | null;
+  onPlaybackEnded?: (() => void) | null;
 }): void {
   onRemotePlayingChange = handlers.onPlayingChange ?? null;
   onRemoteSkip = handlers.onSkip ?? null;
   onPlaybackProgress = handlers.onPlaybackProgress ?? null;
+  onPlaybackEnded = handlers.onPlaybackEnded ?? null;
 }
 
 export function updateHabitTimerLockScreen(metadata: HabitTimerLockScreenMeta): void {

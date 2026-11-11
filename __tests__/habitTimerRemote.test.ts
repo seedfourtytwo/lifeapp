@@ -16,6 +16,7 @@ jest.mock('../src/audio/habitTimerSound');
 type RemoteHandlers = {
   onPlayingChange?: ((playing: boolean) => void) | null;
   onPlaybackProgress?: (() => void) | null;
+  onPlaybackEnded?: (() => void) | null;
 };
 
 const HABIT_A = '550e8400-e29b-41d4-a716-446655440801';
@@ -121,12 +122,23 @@ it('acts on today, not yesterday\'s maps, on the first press after midnight', as
 
 /**
  * Playback status keeps arriving while the phone is locked, when JS timers
- * do not run. It is what tells a later restart how long the session really ran.
+ * do not run. It is what tells a later restart how long the session really ran,
+ * so it stamps the habit the sound is playing for and no other.
  */
-it('records a timer heartbeat on every playback status update', () => {
+it('records a heartbeat for the habit the sound plays for', () => {
   const heartbeat = jest.spyOn(eventStore().getState(), 'recordTimerHeartbeat');
+  const { setFocusedHabitId } = require('../src/kinds/habit/habitLockScreenQueue') as typeof import('../src/kinds/habit/habitLockScreenQueue');
+  setFocusedHabitId(HABIT_B);
 
   handlers.onPlaybackProgress?.();
 
-  expect(heartbeat).toHaveBeenCalledTimes(1);
+  expect(heartbeat).toHaveBeenCalledWith(HABIT_B);
+});
+
+it('drops the heartbeat when the track ends and the session runs on without it', () => {
+  const clear = jest.spyOn(eventStore().getState(), 'clearTimerHeartbeats');
+
+  handlers.onPlaybackEnded?.();
+
+  expect(clear).toHaveBeenCalledTimes(1);
 });

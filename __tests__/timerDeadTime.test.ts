@@ -102,13 +102,13 @@ describe('the heartbeat', () => {
     state().startHabitTimer(HABIT, config);
 
     setNow(local(11, 11, 8, 1));
-    state().recordTimerHeartbeat();
+    state().recordTimerHeartbeat(HABIT);
     await flushPromises();
     const first = (await timerRepo.loadPersistedActiveTimerSessions(testDb.db))[HABIT]?.heartbeatAt;
     expect(first).toBe(local(11, 11, 8, 1).toISOString());
 
     setNow(new Date(local(11, 11, 8, 1).getTime() + 10_000));
-    state().recordTimerHeartbeat();
+    state().recordTimerHeartbeat(HABIT);
     await flushPromises();
     expect((await timerRepo.loadPersistedActiveTimerSessions(testDb.db))[HABIT]?.heartbeatAt).toBe(first);
   });
@@ -120,9 +120,68 @@ describe('the heartbeat', () => {
     const before = state().activeTimerSessions[HABIT];
 
     setNow(local(11, 11, 8, 5));
-    state().recordTimerHeartbeat();
+    state().recordTimerHeartbeat(HABIT);
 
     expect(state().activeTimerSessions[HABIT]).toBe(before);
+  });
+});
+
+describe('the heartbeat comes only from the sound playing for a session', () => {
+  const OTHER = '550e8400-e29b-41d4-a716-446655440904';
+
+  it('stamps only the session the playing sound belongs to', async () => {
+    await startAt(local(11, 11, 8));
+    state().startHabitTimer(HABIT, config);
+    store.useEventStore.setState({
+      activeTimerSessions: { ...state().activeTimerSessions, [OTHER]: session(local(11, 11, 8)) },
+    });
+
+    setNow(local(11, 11, 8, 1));
+    state().recordTimerHeartbeat(HABIT);
+
+    expect(state().activeTimerSessions[HABIT]?.heartbeatAt).toBe(local(11, 11, 8, 1).toISOString());
+    expect(state().activeTimerSessions[OTHER]?.heartbeatAt).toBeUndefined();
+  });
+
+  it('is not set by starting a timer, before any sound has played', async () => {
+    await startAt(local(11, 11, 8));
+    state().startHabitTimer(HABIT, config);
+    expect(state().activeTimerSessions[HABIT]?.heartbeatAt).toBeUndefined();
+  });
+
+  it('is dropped on resume, so a pause is never mistaken for the process dying', async () => {
+    await startAt(local(11, 11, 8));
+    state().startHabitTimer(HABIT, config);
+    setNow(local(11, 11, 8, 1));
+    state().recordTimerHeartbeat(HABIT);
+    state().pauseHabitTimer(HABIT);
+    setNow(local(11, 11, 8, 30));
+
+    state().resumeHabitTimer(HABIT, config);
+
+    expect(state().activeTimerSessions[HABIT]?.heartbeatAt).toBeUndefined();
+  });
+
+  it('is dropped when the sound stops while the session runs on', async () => {
+    await startAt(local(11, 11, 8));
+    state().startHabitTimer(HABIT, config);
+    setNow(local(11, 11, 8, 1));
+    state().recordTimerHeartbeat(HABIT);
+
+    state().clearTimerHeartbeats();
+    await flushPromises();
+
+    expect(state().activeTimerSessions[HABIT]?.heartbeatAt).toBeUndefined();
+    expect((await timerRepo.loadPersistedActiveTimerSessions(testDb.db))[HABIT]?.heartbeatAt).toBeUndefined();
+  });
+
+  it('without one, a restart counts the session by the clock rather than cutting it short', async () => {
+    await startAt(local(11, 11, 9));
+    await persisted(session(local(11, 11, 8)));
+
+    await state().hydrateActiveTimerSessions();
+
+    expect(state().activeTimerSessions[HABIT]?.pausedAt).toBeNull();
   });
 });
 

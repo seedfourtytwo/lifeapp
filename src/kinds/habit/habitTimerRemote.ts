@@ -10,6 +10,7 @@ import { i18n } from '../../i18n';
 import { getHabitTimerPlaybackMode, isActiveTimerPaused } from '../../protocol';
 import { useEventStore, whenActiveTimersReady } from '../../store/eventStore';
 import {
+  getFocusedHabitId,
   peekAdjacentHabit,
   resolveFocusedHabit,
   setFocusedHabitId,
@@ -118,11 +119,17 @@ async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
  *
  * - Play / Pause: start, pause, or resume the focused habit
  * - Seek forward / back: next / previous habit (finishes a running timer first)
- * - Playback progress: the running timer's heartbeat
+ * - Playback progress / end: the running timer's heartbeat, and its loss
  */
 export function installHabitTimerRemoteControls(): void {
   setHabitTimerRemoteHandlers({
-    onPlaybackProgress: () => useEventStore.getState().recordTimerHeartbeat(),
+    // The player only ever plays for the focused habit: playing a session's
+    // sound focuses it, and skipping away finishes the running timer first.
+    onPlaybackProgress: () => {
+      const focused = getFocusedHabitId();
+      if (focused) useEventStore.getState().recordTimerHeartbeat(focused);
+    },
+    onPlaybackEnded: () => useEventStore.getState().clearTimerHeartbeats(),
     onPlayingChange: (playing) => {
       void (async () => {
         // A locked phone may have slept through midnight; act on today's maps.

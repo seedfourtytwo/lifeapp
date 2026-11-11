@@ -45,6 +45,7 @@ export function setHabitTimerRemoteHandlers(_handlers: {
   onPlayingChange?: ((playing: boolean) => void) | null;
   onSkip?: ((direction: 'next' | 'prev') => void) | null;
   onPlaybackProgress?: (() => void) | null;
+  onPlaybackEnded?: (() => void) | null;
 }): void {}
 
 export function updateHabitTimerLockScreen(_metadata: HabitTimerLockScreenMeta): void {}

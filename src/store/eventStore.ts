@@ -120,11 +120,20 @@ interface EventState extends ResettableMirror {
   /** Restore in-progress timers after process death (call once at bootstrap). */
   hydrateActiveTimerSessions: () => Promise<void>;
   /**
-   * Note that this process is still running its timers. Called often (every
-   * playback status update, foreground or locked); saves at most every
+   * The sound playing for this habit's session is still going. Called on every
+   * playback status update, foreground or locked; saves at most every
    * TIMER_HEARTBEAT_MS so a restart can tell where a dead session stopped.
+   * Only the session the sound belongs to is stamped: a heartbeat must never
+   * stand for a session nothing was actually watching.
    */
-  recordTimerHeartbeat: () => void;
+  recordTimerHeartbeat: (elementId: string) => void;
+  /**
+   * The sound stopped while a session runs on (a play-once track that ended
+   * short of a minutes goal). With no source left, the heartbeat goes, so a
+   * restart counts the session by the clock instead of cutting it at the end
+   * of the track.
+   */
+  clearTimerHeartbeats: () => void;
   /**
    * The day changed under a running session: log its seconds before midnight
    * onto the days they happened and keep it running for today. A session
@@ -723,19 +732,27 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (firstHabit) armTargetCrossing(firstHabit.id, firstHabit.config, set, get);
   },
 
-  recordTimerHeartbeat: () => {
+  recordTimerHeartbeat: (elementId) => {
     const nowMs = Date.now();
-    const sessions = get().activeTimerSessions;
-    let changed = false;
-    const next: Record<string, ActiveTimerSession> = {};
-    for (const [id, session] of Object.entries(sessions)) {
-      const due =
-        !session.pausedAt &&
-        (!session.heartbeatAt || nowMs - new Date(session.heartbeatAt).getTime() >= TIMER_HEARTBEAT_MS);
-      next[id] = due ? { ...session, heartbeatAt: new Date(nowMs).toISOString() } : session;
-      changed ||= due;
+    const session = get().activeTimerSessions[elementId];
+    if (!session || session.pausedAt) return;
+    if (session.heartbeatAt && nowMs - new Date(session.heartbeatAt).getTime() < TIMER_HEARTBEAT_MS) {
+      return;
     }
-    if (!changed) return;
+    const next = {
+      ...get().activeTimerSessions,
+      [elementId]: { ...session, heartbeatAt: new Date(nowMs).toISOString() },
+    };
+    set({ activeTimerSessions: next });
+    schedulePersistActiveTimers(next);
+  },
+
+  clearTimerHeartbeats: () => {
+    const sessions = get().activeTimerSessions;
+    if (!Object.values(sessions).some((session) => session.heartbeatAt)) return;
+    const next = Object.fromEntries(
+      Object.entries(sessions).map(([id, { heartbeatAt: _dropped, ...session }]) => [id, session]),
+    );
     set({ activeTimerSessions: next });
     schedulePersistActiveTimers(next);
   },
@@ -1005,7 +1022,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     if (get().activeTimerSessions[elementId]) return;
     const activeTimerSessions = {
       ...get().activeTimerSessions,
-      [elementId]: { ...createActiveTimerSession(), heartbeatAt: new Date().toISOString() },
+      [elementId]: createActiveTimerSession(),
     };
     set({ activeTimerSessions });
     schedulePersistActiveTimers(activeTimerSessions);
@@ -1035,13 +1052,15 @@ export const useEventStore = create<EventState>((set, get) => ({
     // A clock set backwards while paused would make this negative, and a negative
     // offset fails validation when sessions are read back — dropping all of them.
     const pausedMs = Math.max(0, Date.now() - new Date(session.pausedAt).getTime());
+    // The heartbeat from before the pause goes: until the sound reports again,
+    // a restart must not mistake the pause for the moment the process died.
+    const { heartbeatAt: _beforePause, ...unpaused } = session;
     const activeTimerSessions = {
       ...get().activeTimerSessions,
       [elementId]: {
-        ...session,
+        ...unpaused,
         pausedAt: null,
         pauseOffsetMs: session.pauseOffsetMs + pausedMs,
-        heartbeatAt: new Date().toISOString(),
       },
     };
     set({ activeTimerSessions });
