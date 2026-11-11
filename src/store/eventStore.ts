@@ -109,6 +109,8 @@ interface EventState extends ResettableMirror {
   deleteCounterEvents: (elementId: string, eventIds: readonly string[]) => Promise<void>;
   setDailyTotal: (elementId: string, total: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
+  /** Tick today unless SQLite says it is already done — never un-ticks. */
+  completeHabit: (elementId: string, config: HabitConfig) => Promise<void>;
   startHabitTimer: (elementId: string) => void;
   pauseHabitTimer: (elementId: string) => void;
   resumeHabitTimer: (elementId: string) => void;
@@ -305,6 +307,95 @@ function applyTodayMaps(
         }
       : {}),
   });
+}
+
+/**
+ * Tick or un-tick (`toggle`), or tick only if not already done (`complete`, the
+ * lock-screen path, which must never un-tick). SQLite decides inside the lock.
+ */
+async function writeHabitTick(
+  intent: 'toggle' | 'complete',
+  elementId: string,
+  config: HabitConfig,
+  date: string,
+  set: (partial: Partial<EventState>) => void,
+  get: () => EventState,
+): Promise<void> {
+  if (habitToggleInFlight.has(elementId)) return;
+  habitToggleInFlight.add(elementId);
+  const dataEpochAtStart = getDataGeneration('protocol');
+  const ourWriteEpoch = bumpWriteEpoch(elementId);
+
+  // Instant feedback from the mirror; SQLite decides below, inside the lock.
+  const mirrorDone = get().habitDoneToday[elementId] ?? false;
+  const mirrorTotal = get().dailyTotals[elementId] ?? 0;
+  if (intent === 'toggle' || !mirrorDone) {
+    applyTodayMaps(
+      elementId,
+      date,
+      { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 },
+      set,
+      get,
+    );
+  }
+
+  try {
+    await withDbWriteLock(async () => {
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+        return;
+      }
+      const db = await getDatabase();
+      // The mirror can be a day old (first lock-screen press after midnight)
+      // or overtaken by a load, so what the day holds is read here.
+      const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
+      const done = isHabitDayComplete(sumEventValues(existing), config, existing);
+      let nextEvents: Pick<LifeEvent, 'value' | 'meta'>[] = existing;
+      if (done && intent === 'toggle') {
+        await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
+        nextEvents = [];
+      } else if (!done) {
+        const tick = {
+          id: newId(),
+          elementId,
+          timestamp: new Date().toISOString(),
+          date,
+          value: 1,
+          meta: { source: 'habit_tick' },
+          protocolVersion: PROTOCOL_VERSION,
+        };
+        await eventRepo.insertEvent(db, tick);
+        nextEvents = [...existing, tick];
+        void playHabitCompleteHaptic();
+      }
+
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+        return;
+      }
+      const nextTotal = sumEventValues(nextEvents);
+      applyTodayMaps(
+        elementId,
+        date,
+        { habitDone: isHabitDayComplete(nextTotal, config, nextEvents), dailyTotal: nextTotal },
+        set,
+        get,
+      );
+      const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
+      applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+    });
+  } catch (error) {
+    if (!eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+      applyTodayMaps(
+        elementId,
+        date,
+        { habitDone: mirrorDone, dailyTotal: mirrorTotal },
+        set,
+        get,
+      );
+    }
+    throw error;
+  } finally {
+    habitToggleInFlight.delete(elementId);
+  }
 }
 
 export const useEventStore = create<EventState>((set, get) => ({
@@ -608,80 +699,11 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (wrote) await refreshCounterStreakAfterWrite(elementId, set, get);
     }),
 
-  toggleHabit: async (elementId, config, date = todayDate()) => {
-    if (habitToggleInFlight.has(elementId)) return;
-    habitToggleInFlight.add(elementId);
-    const dataEpochAtStart = getDataGeneration('protocol');
-    const ourWriteEpoch = bumpWriteEpoch(elementId);
+  toggleHabit: (elementId, config, date = todayDate()) =>
+    writeHabitTick('toggle', elementId, config, date, set, get),
 
-    // Instant feedback from the mirror; SQLite decides below, inside the lock.
-    const mirrorDone = get().habitDoneToday[elementId] ?? false;
-    const mirrorTotal = get().dailyTotals[elementId] ?? 0;
-    applyTodayMaps(
-      elementId,
-      date,
-      { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 },
-      set,
-      get,
-    );
-
-    try {
-      await withDbWriteLock(async () => {
-        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
-          return;
-        }
-        const db = await getDatabase();
-        // The mirror can be a day old (first lock-screen press after midnight)
-        // or overtaken by a load, so what the day holds is read here.
-        const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
-        const done = isHabitDayComplete(sumEventValues(existing), config, existing);
-        let nextEvents: Pick<LifeEvent, 'value' | 'meta'>[] = [];
-        if (done) {
-          await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
-        } else {
-          const tick = {
-            id: newId(),
-            elementId,
-            timestamp: new Date().toISOString(),
-            date,
-            value: 1,
-            meta: { source: 'habit_tick' },
-            protocolVersion: PROTOCOL_VERSION,
-          };
-          await eventRepo.insertEvent(db, tick);
-          nextEvents = [...existing, tick];
-          void playHabitCompleteHaptic();
-        }
-
-        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
-          return;
-        }
-        const nextTotal = sumEventValues(nextEvents);
-        applyTodayMaps(
-          elementId,
-          date,
-          { habitDone: isHabitDayComplete(nextTotal, config, nextEvents), dailyTotal: nextTotal },
-          set,
-          get,
-        );
-        const { streak, failureStreak } = await loadHabitStreakForElement(elementId, config);
-        applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
-      });
-    } catch (error) {
-      if (!eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
-        applyTodayMaps(
-          elementId,
-          date,
-          { habitDone: mirrorDone, dailyTotal: mirrorTotal },
-          set,
-          get,
-        );
-      }
-      throw error;
-    } finally {
-      habitToggleInFlight.delete(elementId);
-    }
-  },
+  completeHabit: (elementId, config) =>
+    writeHabitTick('complete', elementId, config, todayDate(), set, get),
 
   startHabitTimer: (elementId) => {
     if (get().activeTimerSessions[elementId]) return;

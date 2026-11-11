@@ -57,7 +57,9 @@ async function startOrToggleFocusedHabit(): Promise<void> {
   }
 
   try {
-    await useEventStore.getState().toggleHabit(element.id, config);
+    // A button press on a locked phone only ever completes — it must not
+    // silently un-tick a habit that is already done.
+    await useEventStore.getState().completeHabit(element.id, config);
     const next = peekAdjacentHabit('next');
     if (next) {
       setFocusedHabitId(next.element.id);
