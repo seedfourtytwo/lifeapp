@@ -22,8 +22,19 @@ export function invalidateDatabaseConnection(): void {
   initPromise = null;
 }
 
+/**
+ * How long a statement waits for a lock another connection holds before
+ * failing with SQLITE_BUSY. expo-sqlite never sets one, so SQLite's default of
+ * 0 applies: any overlap — a safety copy's connection, a future reader in the
+ * widget process — throws at once. Five seconds covers any write this app
+ * makes; anything longer is a stuck connection, and failing is the right call.
+ */
+const BUSY_TIMEOUT_MS = 5000;
+
 async function openAndMigrate(): Promise<SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
+  // Per connection, and before the migrations' BEGIN IMMEDIATE.
+  await db.execAsync(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS};`);
   await runMigrations(db, { beforeUpgrade: () => takeSafetyCopy(db, 'migration') });
   return db;
 }
