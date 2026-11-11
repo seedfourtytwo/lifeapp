@@ -14,7 +14,7 @@ Expo SDK 54 · React Native · TypeScript (strict) · expo-sqlite · Zod · Zust
 2. **repositories** — all SQL
 3. **kinds** — kind-specific UI and aggregation (`counter`, `habit`); catalogs (e.g. `nutrition`) get their own domain folder
 4. **stores** — reload after mutate; the event store's parts live in `store/events/`
-5. **habitTimer/** — the timer's controls, lock-screen queue and media buttons: drives stores and audio, never SQL
+5. **habitTimer/** — the timer's controls (one at a time, Done and Undo, reset): drives stores and the native core through `src/core/lifeCore.ts`, never SQL. The running timer itself (clock, sound, notification) is native, in `modules/life-core`
 6. **screens** — thin composition
 
 ## Rules

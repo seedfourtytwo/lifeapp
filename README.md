@@ -102,9 +102,27 @@ src/
 ├── i18n/           # en + fr catalogs
 ├── theme/          # themes, decorations, spacing + type scale
 ├── notifications/  # Local habit + calendar reminders
-├── audio/          # Timer sounds + completion chime
+├── core/           # Typed wrapper over the native core (a fake on web and in Jest)
+├── habitTimer/     # The timer's controls: one at a time, Done, Undo, reset
+├── widget/         # Snapshot writer and pending-actions drain
 └── navigation/
+
+modules/
+├── life-core/                 # Native core (Kotlin): the running habit timer
+└── life-moonshine-dictation/  # On-device dictation
 ```
+
+### The running timer is native
+
+A habit timer runs in `modules/life-core`: a foreground service (type
+`mediaPlayback`) owns its clock, sound (ExoPlayer, tracks in the module's
+`res/raw`), goal chime (exact alarm), heartbeat and the ongoing notification
+with Pause/Resume and Done. It works with the app closed and the phone locked.
+The app asks it to start, pause, resume, finish or discard through
+`src/core/lifeCore.ts` and mirrors its state. A finished session comes back as
+a `timer_session` line in the pending-actions queue, which JavaScript logs into
+SQLite; native never touches the database. The files and their rules:
+`docs/widget-contract.md`.
 
 ## Getting started
 
@@ -175,7 +193,20 @@ EAS cloud builds are optional when the local SDK is unavailable. Details: `.curs
 
 ### When to rebuild the native APK
 
-JS-only changes → Metro reload. New/changed native modules (clipboard, location, speech, audio, haptics, document picker, …) → new **dev** or **prod** APK.
+JS-only changes → Metro reload. New/changed native modules (clipboard, location, speech, audio, haptics, document picker, …), anything in `modules/` (the timer service, its sounds) → new **dev** or **prod** APK. A fresh checkout or worktree needs `npm install` first, so the local modules are linked before `expo prebuild`.
+
+### Native unit tests
+
+The pure Kotlin of the native core (timer state, `timer.json`, the queue
+append) has JVM tests, run through Gradle after a prebuild:
+
+```bash
+cd android && ./gradlew :life-core:testDebugUnitTest
+```
+
+Results land in `modules/life-core/android/build/test-results/testDebugUnitTest/`.
+Two fixtures in `modules/life-core/fixtures/` are read by these tests and by
+Jest, so Kotlin and the Zod schemas hold each other to the same JSON.
 
 ## Life Protocol
 
