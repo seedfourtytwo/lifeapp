@@ -17,6 +17,7 @@ describe('buildHabitTimerLockScreenMeta', () => {
     timeSlot: 'anytime',
     schedule: { type: 'daily' },
     dailyTargetSeconds: 900,
+    reminderTimes: [],
   };
 
   it('includes habit name and running elapsed vs target', () => {
@@ -39,7 +40,7 @@ describe('buildHabitTimerLockScreenMeta', () => {
     const meta = buildHabitTimerLockScreenMeta(
       'Mobility',
       paused,
-      { trackingMode: 'timer', timeSlot: 'anytime', schedule: { type: 'daily' } },
+      { trackingMode: 'timer', timeSlot: 'anytime', schedule: { type: 'daily' }, reminderTimes: [] },
       new Date('2025-01-01T10:05:00.000Z').getTime(),
     );
     expect(meta.albumTitle).toBe('Paused · 1:00');
@@ -48,7 +49,7 @@ describe('buildHabitTimerLockScreenMeta', () => {
   it('describes ready-to-start habits', () => {
     const meta = buildHabitReadyLockScreenMeta(
       'Breathwork',
-      { trackingMode: 'timer', timeSlot: 'anytime', schedule: { type: 'daily' } },
+      { trackingMode: 'timer', timeSlot: 'anytime', schedule: { type: 'daily' }, reminderTimes: [] },
       '2/3',
     );
     expect(meta.title).toBe('Breathwork');

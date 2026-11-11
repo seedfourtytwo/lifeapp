@@ -49,6 +49,11 @@ export const HabitTimeRangeSchema = z.object({
 
 export type HabitTimeRange = z.infer<typeof HabitTimeRangeSchema>;
 
+/** One entry per time, earliest first — HH:mm sorts as text. */
+export function normalizeReminderTimes(times: readonly string[]): string[] {
+  return [...new Set(times)].sort();
+}
+
 export const HabitConfigSchema = z.object({
   trackingMode: HabitTrackingModeSchema.default('boolean'),
   timeSlot: HabitTimeSlotSchema.default('anytime'),
@@ -62,6 +67,14 @@ export const HabitConfigSchema = z.object({
   timerSound: HabitTimerSoundSchema.optional(),
   /** Minutes before timeRange.start to fire a local reminder */
   remindMinutesBefore: z.number().int().nonnegative().optional(),
+  /**
+   * Local clock times (HH:mm) to remind on each scheduled day, independent of
+   * the time window. Stored once each, in clock order.
+   */
+  reminderTimes: z
+    .array(HabitTimeHHmmSchema)
+    .default([])
+    .transform(normalizeReminderTimes),
   /** Show current success or failure streak on the habit card */
   showStreakOnCard: z.boolean().optional(),
   /** Optional curated Material Community Icon for Home / library identity. */
@@ -88,6 +101,7 @@ export const DEFAULT_HABIT_CONFIG: HabitConfig = {
   trackingMode: 'boolean',
   timeSlot: 'anytime',
   schedule: { type: 'daily' },
+  reminderTimes: [],
 };
 
 export const HABIT_TIME_SLOT_LABELS: Record<HabitTimeSlot, string> = {
@@ -119,6 +133,7 @@ export type HabitInput = {
   timerSound?: HabitTimerSound;
   schedule?: HabitSchedule;
   remindMinutesBefore?: number;
+  reminderTimes?: readonly string[];
   showStreakOnCard?: boolean;
   icon?: TrackerIconId;
 };
@@ -147,6 +162,7 @@ export function buildHabitConfig(
     ...(input.remindMinutesBefore !== undefined && input.remindMinutesBefore >= 0
       ? { remindMinutesBefore: input.remindMinutesBefore }
       : {}),
+    reminderTimes: normalizeReminderTimes(input.reminderTimes ?? []),
     ...(input.showStreakOnCard === false
       ? { showStreakOnCard: false }
       : { showStreakOnCard: true }),

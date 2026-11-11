@@ -8,6 +8,7 @@ const dailyTimed: HabitConfig = {
   schedule: { type: 'daily' },
   timeRange: { start: '07:00', end: '08:00' },
   remindMinutesBefore: 15,
+  reminderTimes: [],
 };
 
 const weekdaysTimed: HabitConfig = {
