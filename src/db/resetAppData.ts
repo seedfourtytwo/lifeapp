@@ -13,6 +13,7 @@ import {
 } from './clearDataPlan';
 import { bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
+import { takeSafetyCopy } from './safetyCopy';
 import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
@@ -125,6 +126,8 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     bumpClearedScopes(options);
 
     const db = await getDatabase();
+    // Outside the transaction: SQLite's backup refuses a connection mid-write.
+    await takeSafetyCopy(db, 'clear');
     await db.withTransactionAsync(async () => {
       if (options.definitions) {
         // Definitions always take all activity with them, so there is no period

@@ -260,7 +260,34 @@ async function inTransaction(db: SQLiteDatabase, work: () => Promise<void>): Pro
   }
 }
 
-export async function runMigrations(db: SQLiteDatabase): Promise<void> {
+export interface MigrationHooks {
+  /**
+   * Runs once, before anything touches a database that needs upgrading — not
+   * on a fresh install, not on a steady-state boot. A throw stops the upgrade.
+   */
+  beforeUpgrade?: () => Promise<void>;
+}
+
+async function readSchemaVersion(db: SQLiteDatabase): Promise<number | null> {
+  const table = await db.getFirstAsync<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_version'",
+  );
+  if (!table) return null;
+  const row = await db.getFirstAsync<{ version: number }>(
+    'SELECT version FROM schema_version LIMIT 1',
+  );
+  return row?.version ?? null;
+}
+
+export async function runMigrations(
+  db: SQLiteDatabase,
+  hooks: MigrationHooks = {},
+): Promise<void> {
+  const versionAtOpen = await readSchemaVersion(db);
+  if (versionAtOpen != null && versionAtOpen < CURRENT_SCHEMA_VERSION) {
+    await hooks.beforeUpgrade?.();
+  }
+
   await db.execAsync(SCHEMA_SQL);
 
   const row = await db.getFirstAsync<{ version: number }>(

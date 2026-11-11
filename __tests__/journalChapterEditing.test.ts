@@ -5,6 +5,10 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
+// The raw copy before a wipe is native; its own tests cover it.
+jest.mock('../src/db/safetyCopy', () => ({
+  takeSafetyCopy: jest.fn(async () => undefined),
+}));
 
 import { getDatabase } from '../src/db/client';
 import { exportProtocolBundle, importProtocolBundle } from '../src/db/export';

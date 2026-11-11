@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { DB_NAME } from './schema';
 import { runMigrations } from './migrations';
+import { takeSafetyCopy } from './safetyCopy';
 
 let dbInstance: SQLiteDatabase | null = null;
 let initPromise: Promise<SQLiteDatabase> | null = null;
@@ -23,7 +24,7 @@ export function invalidateDatabaseConnection(): void {
 
 async function openAndMigrate(): Promise<SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await runMigrations(db);
+  await runMigrations(db, { beforeUpgrade: () => takeSafetyCopy(db, 'migration') });
   return db;
 }
 

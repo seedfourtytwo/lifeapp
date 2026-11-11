@@ -15,6 +15,10 @@ import {
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
+// The raw copy before a wipe is native; its own tests cover it.
+jest.mock('../src/db/safetyCopy', () => ({
+  takeSafetyCopy: jest.fn(async () => undefined),
+}));
 
 jest.mock('../src/db/repositories/elementRepository', () => ({
   getAllElements: jest.fn(),

@@ -18,6 +18,7 @@ import { clearDataForImport } from './resetAppData';
 import { normalizeProtocolBundleInput } from './normalizeProtocolBundle';
 import { bumpAllDataGenerations, bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
+import { takeSafetyCopy } from './safetyCopy';
 import { newId } from '../utils/id';
 import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 import { stopHabitSound } from '../audio/habitTimerSound';
@@ -111,6 +112,8 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
     bumpAllDataGenerations();
 
     const db = await getDatabase();
+    // Outside the transaction: SQLite's backup refuses a connection mid-write.
+    await takeSafetyCopy(db, 'import');
 
     await db.withTransactionAsync(async () => {
       await clearDataForImport(db);
