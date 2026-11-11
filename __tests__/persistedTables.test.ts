@@ -415,7 +415,7 @@ const CLEAR_CASES: ClearCase[] = [
   },
   {
     name: 'everything, the way a backup import wipes the device first',
-    run: (db) => clearDataForImport(db),
+    run: (db) => clearDataForImport(db, () => true),
     expected: {
       schema_version: 1,
       elements: 0,

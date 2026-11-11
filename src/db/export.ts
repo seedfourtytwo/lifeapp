@@ -22,6 +22,7 @@ import { takeSafetyCopy } from './safetyCopy';
 import { newId } from '../utils/id';
 import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 import { stopHabitSound } from '../audio/habitTimerSound';
+import { i18n } from '../i18n';
 
 export interface ExportedBundle {
   bundle: ProtocolBundle;
@@ -102,6 +103,12 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
   const normalized = normalizeProtocolBundleInput(raw);
   const bundle = parseProtocolBundle(normalized);
 
+  // The import replaces the events a running or paused session would be
+  // banked into, so its seconds would be lost either way: say so instead.
+  if (Object.keys(useEventStore.getState().activeTimerSessions).length > 0) {
+    throw new Error(i18n.t('settings:data.importTimerRunning'));
+  }
+
   await stopHabitSound();
   bumpDataGeneration('protocol');
   await awaitPendingEventWrites();
@@ -116,7 +123,7 @@ export async function importProtocolBundle(raw: unknown): Promise<void> {
     await takeSafetyCopy(db, 'import');
 
     await db.withTransactionAsync(async () => {
-      await clearDataForImport(db);
+      await clearDataForImport(db, (key) => bundle[key] !== undefined);
 
       for (const element of bundle.elements) {
         await elementRepo.insertElement(db, element);

@@ -48,6 +48,7 @@
     "importCompleteBody": "Your habits, counters, history, notes, journals, and preferences were restored.",
     "importFailedTitle": "Import failed",
     "importFailedBodyFallback": "Could not import that backup file.",
+    "importTimerRunning": "Stop or finish the running timer first. An import replaces your history, so its time would be lost.",
     "clearFailedTitle": "Clear failed",
     "clearFailedBodyFallback": "Could not clear local data.",
     "clearedTitle": "Data cleared",

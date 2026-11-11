@@ -72,7 +72,7 @@ export interface ConceptClear {
 }
 
 /** The payload keys of a backup bundle — `protocolVersion`/`exportedAt` are envelope, not data. */
-type BundleDataKey = Exclude<keyof ProtocolBundle, 'protocolVersion' | 'exportedAt'>;
+export type BundleDataKey = Exclude<keyof ProtocolBundle, 'protocolVersion' | 'exportedAt'>;
 
 export interface PersistedConcept {
   /** Stable id — used by the driven tests and by the named repair wrappers. */

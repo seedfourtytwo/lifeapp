@@ -3,7 +3,13 @@ import { stopHabitSound } from '../audio/habitTimerSound';
 import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
-import { importClearStep, PERSISTED_CONCEPTS, type AmbientClearFlag } from './persistedConcepts';
+import {
+  importClearStep,
+  PERSISTED_CONCEPTS,
+  type AmbientClearFlag,
+  type BundleDataKey,
+  type PersistedConcept,
+} from './persistedConcepts';
 import * as settingsRepo from './repositories/settingsRepository';
 import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
 import {
@@ -180,9 +186,46 @@ export async function clearAllAppData(): Promise<void> {
   });
 }
 
-/** Replace everything before importing a backup bundle. */
-export async function clearDataForImport(db: SQLiteDatabase): Promise<void> {
-  for (const { clear } of CLEAR_ORDER) {
-    await importClearStep(clear)?.(db);
+/**
+ * The concepts an import replaces: every one the file carries, every one that
+ * is never backed up (caches, re-fetched weather), and every one whose rows
+ * point at a replaced table — kept, they would reference rows that are gone.
+ * A concept the file does not carry at all is left as it is, so a file older
+ * than todos or the calendar cannot erase them.
+ *
+ * The references are read from SQLite's own foreign keys, in declaration
+ * order, which is parents first.
+ */
+async function conceptsReplacedByImport(
+  db: SQLiteDatabase,
+  carries: (key: BundleDataKey) => boolean,
+): Promise<Set<PersistedConcept>> {
+  const replaced = new Set<PersistedConcept>();
+  const replacedTables = new Set<string>();
+  for (const concept of PERSISTED_CONCEPTS) {
+    let replace = concept.bundleKey == null || carries(concept.bundleKey);
+    for (const table of concept.tables) {
+      if (replace) break;
+      const references = await db.getAllAsync<{ table: string }>(
+        `PRAGMA foreign_key_list(${table})`,
+      );
+      replace = references.some((reference) => replacedTables.has(reference.table));
+    }
+    if (!replace) continue;
+    replaced.add(concept);
+    for (const table of concept.tables) replacedTables.add(table);
+  }
+  return replaced;
+}
+
+/** Wipe what an import is about to replace. `carries` says which bundle keys the file has. */
+export async function clearDataForImport(
+  db: SQLiteDatabase,
+  carries: (key: BundleDataKey) => boolean,
+): Promise<void> {
+  const replaced = await conceptsReplacedByImport(db, carries);
+  for (const concept of CLEAR_ORDER) {
+    if (!replaced.has(concept)) continue;
+    await importClearStep(concept.clear)?.(db);
   }
 }

@@ -369,7 +369,7 @@ describe('persisted concepts', () => {
       await seedEveryConcept();
       const before = rowsIn(concept);
 
-      await clearDataForImport(db);
+      await clearDataForImport(db, () => true);
 
       expect(rowsIn(concept)).toBe(importClearStep(concept.clear) ? 0 : before);
     });

@@ -113,6 +113,8 @@ describe('protocol backup settings', () => {
   const db = {
     withTransactionAsync: jest.fn(async (fn: () => Promise<void>) => fn()),
     runAsync: jest.fn(),
+    // No foreign keys reported: what the import replaces follows the bundle's keys alone.
+    getAllAsync: jest.fn(async () => []),
   };
 
   beforeEach(() => {

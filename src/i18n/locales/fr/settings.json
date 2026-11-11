@@ -48,6 +48,7 @@
     "importCompleteBody": "Vos habitudes, compteurs, historique, notes, journaux et préférences ont été restaurés.",
     "importFailedTitle": "Échec de l'import",
     "importFailedBodyFallback": "Impossible d'importer ce fichier de sauvegarde.",
+    "importTimerRunning": "Arrêtez ou terminez d'abord le minuteur en cours. Un import remplace votre historique, son temps serait donc perdu.",
     "clearFailedTitle": "Échec de l'effacement",
     "clearFailedBodyFallback": "Impossible d'effacer les données locales.",
     "clearedTitle": "Données effacées",
