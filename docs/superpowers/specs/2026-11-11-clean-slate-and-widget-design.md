@@ -149,6 +149,10 @@ Follow-ups:
 
 Device checks owed: the folder picker grants and the grant survives a restart; a copy lands in the folder on first foreground of the day; status line after revoking the folder; `./gradlew assembleDebug` with no signing file; a release build fails without it and signs with the new key with it; a timer killed from recents comes back paused at the right time; a timer running across midnight logs two events.
 
+**Stage 4 device check (2026-11-11, Life dev, by Fable):** debug build works with no signing file. Folder picker grants access; a file `life-dashboard-auto-backup-<date>-<time>.json` (single extension) lands at once and Settings shows "Last copy …". A no-sound timer killed after 75 s and reopened 2 min later came back paused at 1:00 (last heartbeat), not at wall-clock time. Review added a09dec4 (heartbeat only on the playing, focused session; none after a track ends or on resume).
+
+Still unchecked on a device: timer across midnight; status line after the folder is revoked or deleted; release build with and without the key file; French strings; heartbeat while the phone is locked.
+
 ### Stage 5 — Make the app safe for a second writer
 
 - One `refreshFromDb()` on every AppState `active` and on a widget broadcast; it also re-hydrates timer sessions.
