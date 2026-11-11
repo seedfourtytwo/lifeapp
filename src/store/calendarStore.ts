@@ -160,13 +160,15 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     } catch (error) {
       console.error('Failed to load calendar', error);
       if (generation !== calendarLoadGeneration) return;
-      // Never keep ghost events/reminders that could reschedule notifications.
+      // Never keep ghost events/reminders that could reschedule notifications —
+      // and never call an empty result "loaded": the reminder sync would read it
+      // as "no reminders" and cancel every one already scheduled.
       set({
         calendars: [],
         events: [],
         reminders: [],
         clearedByKey: {},
-        isLoaded: true,
+        isLoaded: false,
       });
     }
   },
