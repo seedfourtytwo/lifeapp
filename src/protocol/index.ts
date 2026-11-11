@@ -128,6 +128,16 @@ export {
   type BundledHabitSound,
 } from './habitSoundCatalog';
 
+export { dayFactsFromEvents, dayOutcome, habitTimerGoal } from './dayOutcome';
+export type {
+  DayEvent,
+  DayFacts,
+  DayOutcome,
+  DayOutcomeReason,
+  DayOutcomeTracker,
+  HabitTimerGoal,
+} from './dayOutcome';
+
 export {
   parseEventMeta,
   validateEventForElement,
