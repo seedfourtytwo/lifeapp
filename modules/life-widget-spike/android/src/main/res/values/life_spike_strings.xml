@@ -1,0 +1,4 @@
+<resources>
+  <string name="life_spike_widget_label">Life lock spike</string>
+  <string name="life_spike_widget_description">Throwaway lock-screen test widget</string>
+</resources>

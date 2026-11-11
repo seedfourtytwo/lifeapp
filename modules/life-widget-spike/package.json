@@ -1,0 +1,9 @@
+{
+  "name": "life-widget-spike",
+  "version": "0.0.1",
+  "private": true,
+  "description": "THROWAWAY spike: lock-screen widget facts on GrapheneOS. Delete after.",
+  "peerDependencies": {
+    "expo": "*"
+  }
+}
