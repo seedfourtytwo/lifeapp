@@ -725,8 +725,8 @@ export const useEventStore = create<EventState>((set, get) => ({
       const ourWriteEpoch = bumpWriteEpoch(elementId);
 
       const endedAt = new Date();
-      const stopOpts = habitTimerStopOptions.get(elementId);
-      const { value, meta } = buildTimerSessionPayloadFromSession(session, endedAt, stopOpts);
+      // Options only change the meta; the seconds are fixed at the moment of the stop.
+      const { value } = buildTimerSessionPayloadFromSession(session, endedAt);
       const mirrorTotal = get().dailyTotals[elementId] ?? 0;
 
       // Clear session immediately so double-taps can't double-insert.
@@ -745,6 +745,10 @@ export const useEventStore = create<EventState>((set, get) => ({
             return;
           }
 
+          // Read now, not at the start: a stop that joined while this one waited
+          // (a play-once track ending after Done) may have added trackCompleted.
+          const stopOpts = habitTimerStopOptions.get(elementId);
+          const { meta } = buildTimerSessionPayloadFromSession(session, endedAt, stopOpts);
           const db = await getDatabase();
           const existingEvents = await eventRepo.getEventsForElementOnDate(
             db,

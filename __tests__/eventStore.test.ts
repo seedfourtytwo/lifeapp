@@ -243,4 +243,26 @@ describe('stopHabitTimer', () => {
 
     expect((await eventsToday(TIMER_HABIT)).map((e) => e.value)).toContain(300);
   });
+
+  /**
+   * Done is tapped, and while that stop waits the play-once track ends
+   * naturally and joins it with trackCompleted. The joined stop writes one
+   * event, and it must carry what the joiner knew.
+   */
+  it('writes options from a stop that joined while the first waited', async () => {
+    state().startHabitTimer(TIMER_HABIT);
+    advance(5 * 60_000);
+    const lock = holdWriteLock();
+    const done = state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    const naturalEnd = state().stopHabitTimer(TIMER_HABIT, timerConfig, undefined, {
+      trackCompleted: true,
+    });
+
+    lock.release();
+    await Promise.all([lock.held, done, naturalEnd]);
+
+    const events = await eventsToday(TIMER_HABIT);
+    expect(events).toHaveLength(1);
+    expect(events[0].meta).toMatchObject({ trackCompleted: true });
+  });
 });
