@@ -62,7 +62,9 @@ function ensureAppStateResumeListener(): void {
 }
 
 async function resumeActiveSoundIfInterrupted(): Promise<void> {
-  if (!player || userPausedPlayback) return;
+  // The player outlives a stopped timer; with no source there is nothing to resume,
+  // and playing it would report "playing" to the lock-screen handlers.
+  if (!player || userPausedPlayback || activeSourceKey === null) return;
   try {
     if (!player.playing) {
       player.play();
