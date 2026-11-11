@@ -18,6 +18,7 @@ import type { LifeCore } from './lifeCoreTypes';
  */
 export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
   let request: TimerStartRequest | null = null;
+  let sessionId = '';
   let sessions: TimerSessions = {};
   let heartbeatAt = '';
   const listeners = new Set<(state: CoreTimerState | null) => void>();
@@ -27,6 +28,7 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
     if (!request || !session) return null;
     return {
       ...request,
+      sessionId,
       startedAt: session.startedAt,
       pausedAt: session.pausedAt,
       pausedMs: session.pauseOffsetMs,
@@ -68,6 +70,7 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
       }
       if (running) return step((elementId, nowMs) => ({ type: 'resume', elementId, nowMs }))!;
       request = next;
+      sessionId = newId();
       return step((elementId, nowMs) => ({ type: 'start', elementId, nowMs }))!;
     },
 
@@ -83,7 +86,7 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
       const endedAtMs = session.pausedAt ? new Date(session.pausedAt).getTime() : atMs;
       const record: TimerSessionRecord = {
         v: 1,
-        id: newId(),
+        id: state.sessionId,
         at: new Date(atMs).toISOString(),
         day: toDateString(new Date(atMs)),
         type: 'timer_session',

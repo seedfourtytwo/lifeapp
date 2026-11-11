@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 
-/** The same cases as `__tests__/timerSessions.test.ts` and the stale-heartbeat rule of stage 4. */
+/** The same cases as `__tests__/timerSessions.test.ts`, and the dead-process rule of stage 4. */
 class TimerSessionTest {
   private val t0 = 1_773_129_600_000L // 2026-03-10T08:00:00Z
   private val request = TimerStartRequest(
@@ -19,7 +19,7 @@ class TimerSessionTest {
     loggedSeconds = 0,
   )
 
-  private fun started(nowMs: Long = t0) = TimerSession.start(request, nowMs, "2026-03-10")
+  private fun started(nowMs: Long = t0) = TimerSession.start(request, nowMs, "2026-03-10", SESSION_ID)
 
   @Test
   fun startsRunningWithAFreshHeartbeat() {
@@ -71,29 +71,31 @@ class TimerSessionTest {
   }
 
   @Test
-  fun aStaleHeartbeatMeansTheProcessDiedSoTheSessionPausesThere() {
+  fun aSessionLeftRunningByADeadProcessPausesAtItsLastHeartbeat() {
     val session = started().heartbeat(t0 + 20 * 60_000)
-    val restored = session.pauseAtLastHeartbeat(t0 + 3 * 3_600_000)
+    val restored = session.pauseAtLastHeartbeat()
 
     assertEquals(t0 + 20 * 60_000, restored.pausedAtMs)
     assertEquals(20 * 60_000L, restored.activeMs(t0 + 3 * 3_600_000))
   }
 
   @Test
-  fun leavesASessionAloneWhoseHeartbeatIsRecent() {
+  fun evenARecentHeartbeatIsWhereTheDeadProcessStopped() {
+    // Only a fresh process asks, and a fresh process has no service playing
+    // the session: the seconds since the last beat were not watched by anyone.
     val session = started().heartbeat(t0 + 60_000)
-    assertSame(session, session.pauseAtLastHeartbeat(t0 + 60_000 + TimerSession.HEARTBEAT_STALE_MS))
+    assertEquals(t0 + 60_000, session.pauseAtLastHeartbeat().pausedAtMs)
   }
 
   @Test
   fun leavesAPausedSessionAlone() {
     val paused = started().pause(t0 + 5 * 60_000)
-    assertSame(paused, paused.pauseAtLastHeartbeat(t0 + 3 * 3_600_000))
+    assertSame(paused, paused.pauseAtLastHeartbeat())
   }
 
   @Test
   fun reachesTheGoalAfterTheSecondsNotYetLoggedToday() {
-    val session = TimerSession.start(request.copy(loggedSeconds = 300), t0, "2026-03-10")
+    val session = TimerSession.start(request.copy(loggedSeconds = 300), t0, "2026-03-10", SESSION_ID)
     assertEquals(t0 + 600_000, session.goalAtMs())
     val afterPause = session.pause(t0 + 60_000).resume(t0 + 90_000)
     assertEquals(t0 + 630_000, afterPause.goalAtMs())
@@ -102,9 +104,15 @@ class TimerSessionTest {
   @Test
   fun hasNoGoalMomentWhilePausedOrWithoutASecondsGoalOrOnceReached() {
     assertNull(started().pause(t0 + 1).goalAtMs())
-    assertNull(TimerSession.start(request.copy(goal = TimerGoal.Open), t0, "2026-03-10").goalAtMs())
-    assertNull(TimerSession.start(request.copy(goal = TimerGoal.PlayOnce(912)), t0, "2026-03-10").goalAtMs())
+    assertNull(TimerSession.start(request.copy(goal = TimerGoal.Open), t0, "2026-03-10", SESSION_ID).goalAtMs())
+    assertNull(TimerSession.start(request.copy(goal = TimerGoal.PlayOnce(912)), t0, "2026-03-10", SESSION_ID).goalAtMs())
     assertNull(started().reachGoal(t0 + 900_000).goalAtMs())
+  }
+
+  @Test
+  fun hasNoGoalMomentWhenTodayAlreadyReachedTheGoalBeforeTheSession() {
+    // No chime for a day that was done before this session started.
+    assertNull(TimerSession.start(request.copy(loggedSeconds = 900), t0, "2026-03-10", SESSION_ID).goalAtMs())
   }
 
   @Test
@@ -119,11 +127,11 @@ class TimerSessionTest {
   @Test
   fun finishesARunningSessionIntoItsRecord() {
     val session = started().pause(t0 + 10_000).resume(t0 + 15_000)
-    val record = session.finish(t0 + 65_500, "2026-03-10", "id-1", markComplete = true, trackCompleted = false)
+    val record = session.finish(t0 + 65_500, "2026-03-10", markComplete = true, trackCompleted = false)
 
     assertEquals(
       TimerSessionRecord(
-        id = "id-1",
+        id = SESSION_ID,
         atMs = t0 + 65_500,
         day = "2026-03-10",
         trackerId = request.trackerId,
@@ -141,11 +149,15 @@ class TimerSessionTest {
 
   @Test
   fun endsAPausedSessionAtItsPause() {
-    val session = TimerSession.start(request.copy(goal = TimerGoal.Open), t0, "2026-03-10").pause(t0 + 120_000)
-    val record = session.finish(t0 + 3_720_000, "2026-03-10", "id-2", markComplete = false, trackCompleted = false)
+    val session = TimerSession.start(request.copy(goal = TimerGoal.Open), t0, "2026-03-10", SESSION_ID).pause(t0 + 120_000)
+    val record = session.finish(t0 + 3_720_000, "2026-03-10", markComplete = false, trackCompleted = false)
 
     assertEquals(t0 + 120_000, record.endedAtMs)
     assertEquals(120, record.activeSeconds)
     assertNull(record.goalSecondsInForce)
+  }
+
+  private companion object {
+    const val SESSION_ID = "6f1c2a9e-8d3b-4c55-9a1e-2b7d4e0f9c11"
   }
 }

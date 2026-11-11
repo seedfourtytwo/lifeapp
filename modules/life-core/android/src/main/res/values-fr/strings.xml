@@ -1,0 +1,11 @@
+<resources>
+  <string name="life_core_timer_channel">Minuteur en cours</string>
+  <string name="life_core_timer_public_title">Minuteur</string>
+  <string name="life_core_timer_running">En cours</string>
+  <string name="life_core_timer_paused">En pause · %1$s</string>
+  <string name="life_core_timer_goal">sur %1$s</string>
+  <string name="life_core_timer_goal_reached">Objectif atteint</string>
+  <string name="life_core_timer_pause">Pause</string>
+  <string name="life_core_timer_resume">Reprendre</string>
+  <string name="life_core_timer_done">Terminé</string>
+</resources>

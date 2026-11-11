@@ -38,6 +38,8 @@ export const TimerStartRequestSchema = z.object({
 export type TimerStartRequest = z.infer<typeof TimerStartRequestSchema>;
 
 export const CoreTimerStateSchema = TimerStartRequestSchema.extend({
+  /** Becomes the finished session's queue id, so finishing it twice logs it once. */
+  sessionId: z.string().uuid(),
   startedAt: Instant,
   /** Set while paused. */
   pausedAt: Instant.nullable(),
@@ -59,7 +61,7 @@ export type CoreTimerState = z.infer<typeof CoreTimerStateSchema>;
  */
 export const TimerSessionRecordSchema = z.object({
   v: z.literal(1),
-  /** New for each finished session; the same id is never applied twice. */
+  /** The session's `sessionId`; the same id is never applied twice. */
   id: z.string().uuid(),
   /** When the session was finished. */
   at: Instant,

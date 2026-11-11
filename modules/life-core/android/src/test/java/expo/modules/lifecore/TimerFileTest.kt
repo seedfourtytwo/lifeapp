@@ -24,7 +24,7 @@ class TimerFileTest {
     loop = false,
     loggedSeconds = 42,
   )
-  private val session = TimerSession.start(request, t0, "2026-03-10").pause(t0 + 1_500)
+  private val session = TimerSession.start(request, t0, "2026-03-10", SESSION_ID).pause(t0 + 1_500)
 
   private fun file() = TimerFile(File(folder.root, "widget/timer.json"))
 
@@ -119,5 +119,9 @@ class TimerFileTest {
     assertEquals(JSONObject.NULL, json.get("goalSecondsInForce"))
     assertEquals(600L, json.getLong("activeSeconds"))
     assertEquals(true, json.getBoolean("trackCompleted"))
+  }
+
+  private companion object {
+    const val SESSION_ID = "6f1c2a9e-8d3b-4c55-9a1e-2b7d4e0f9c11"
   }
 }

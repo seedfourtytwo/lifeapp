@@ -33,12 +33,9 @@ class SharedFixturesTest {
   @Test
   fun aFinishedSessionEncodesToTheSharedLine() {
     val t0 = 1_773_129_600_000L
-    val session = TimerSession.start(
-      TimerJson.decodeSession(fixture("timer-state.json")).request,
-      t0,
-      "2026-03-10",
-    ).pause(t0 + 60_000).resume(t0 + 90_000)
-    val record = session.finish(t0 + 1_200_000, "2026-03-10", "6f1c2a9e-8d3b-4c55-9a1e-2b7d4e0f9c11", markComplete = true, trackCompleted = false)
+    val saved = TimerJson.decodeSession(fixture("timer-state.json"))
+    val session = TimerSession.start(saved.request, t0, "2026-03-10", saved.sessionId).pause(t0 + 60_000).resume(t0 + 90_000)
+    val record = session.finish(t0 + 1_200_000, "2026-03-10", markComplete = true, trackCompleted = false)
 
     assertEquals(canonical(fixture("timer-session-line.json")), canonical(TimerJson.encodeRecord(record)))
   }

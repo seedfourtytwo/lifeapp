@@ -117,6 +117,7 @@ The app may not run after midnight. Compute "today" at render time from the phon
 
 | Field | Type | Meaning |
 |---|---|---|
+| `sessionId` | UUID | Becomes the `id` of the session's `timer_session` line, so a session finished twice (a crash between the append and the delete) is logged once. |
 | `trackerId` | UUID | The timed habit. |
 | `name` | string | The real name. **Never show it on the lock screen.** |
 | `lockScreenName` | string \| null | The neutral name; null shows "Timer" or the icon. |
@@ -132,7 +133,7 @@ The app may not run after midnight. Compute "today" at render time from the phon
 | `goalReachedAt` | instant \| null | When the seconds goal was reached (the chime rang). |
 | `heartbeatAt` | instant | Last moment a live process was running it. |
 
-Active time is computed as in "A live clock without the app" below, with `pausedMs` for `pausedMs`. A process that starts and finds a running session whose `heartbeatAt` is more than 60 seconds old knows the process that ran it died: it treats the session as paused at `heartbeatAt` (and writes that), so the dead time is never counted and the session stays resumable.
+Active time is computed as in "A live clock without the app" below, with `pausedMs` for `pausedMs`. A process that has just started and finds a running session knows the process that ran it died (the timer service lives in the app's process): it treats the session as paused at `heartbeatAt` and writes that, so the dead time is never counted and the session stays resumable. A reader in a live process (the widget) never applies this rule; it reads the file as it is.
 
 ## Pending actions
 

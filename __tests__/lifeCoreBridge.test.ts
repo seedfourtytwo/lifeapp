@@ -4,6 +4,7 @@ import { lifeCore, nativeLifeCore } from '../src/core/lifeCore';
 const HABIT = '550e8400-e29b-41d4-a716-446655440001';
 
 const state = {
+  sessionId: '6f1c2a9e-8d3b-4c55-9a1e-2b7d4e0f9c12',
   trackerId: HABIT,
   name: 'Meditation',
   lockScreenName: null,

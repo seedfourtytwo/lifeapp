@@ -92,6 +92,7 @@ describe('the fake native core', () => {
     const record = await core.finish({ markComplete: true });
 
     expect(TimerSessionRecordSchema.parse(record)).toEqual(record);
+    expect(record?.id).toBe(seen[0]?.sessionId);
     expect(record).toMatchObject({
       type: 'timer_session',
       trackerId: HABIT,

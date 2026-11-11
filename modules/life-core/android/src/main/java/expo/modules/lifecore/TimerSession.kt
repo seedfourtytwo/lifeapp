@@ -41,6 +41,8 @@ data class TimerSessionRecord(
  * instants, never from counted ticks, because a sleeping phone stretches ticks.
  */
 data class TimerSession(
+  /** Becomes the id of the session's queue line, so finishing it twice logs it once. */
+  val sessionId: String,
   val request: TimerStartRequest,
   val startedAtMs: Long,
   val pausedAtMs: Long?,
@@ -70,15 +72,18 @@ data class TimerSession(
   /**
    * The process that ran this session is gone and nothing has counted since
    * its last heartbeat: it stands paused there, resumable, so the dead time
-   * is not counted (the stage 4 rule).
+   * is not counted (the stage 4 rule). Asked only by a process that has just
+   * started, which knows no service of its own is playing the session.
    */
-  fun pauseAtLastHeartbeat(nowMs: Long): TimerSession =
-    if (isPaused || nowMs - heartbeatAtMs <= HEARTBEAT_STALE_MS) this else copy(pausedAtMs = heartbeatAtMs)
+  fun pauseAtLastHeartbeat(): TimerSession = if (isPaused) this else copy(pausedAtMs = heartbeatAtMs)
 
-  /** When a running session reaches its seconds goal, counting what today logged before it. */
+  /**
+   * When a running session reaches its seconds goal, counting what today
+   * logged before it; null when a day already done before it has no goal left.
+   */
   fun goalAtMs(): Long? {
     val goal = request.goal as? TimerGoal.Seconds ?: return null
-    if (isPaused || goalReachedAtMs != null) return null
+    if (isPaused || goalReachedAtMs != null || request.loggedSeconds >= goal.seconds) return null
     return startedAtMs + pausedMs + (goal.seconds - request.loggedSeconds) * 1000L
   }
 
@@ -90,13 +95,12 @@ data class TimerSession(
   fun finish(
     nowMs: Long,
     dayAtFinish: String,
-    id: String,
     markComplete: Boolean,
     trackCompleted: Boolean,
   ): TimerSessionRecord {
     val endedAt = pausedAtMs ?: nowMs
     return TimerSessionRecord(
-      id = id,
+      id = sessionId,
       atMs = nowMs,
       day = dayAtFinish,
       trackerId = request.trackerId,
@@ -113,10 +117,9 @@ data class TimerSession(
   companion object {
     /** How often a running session records that its process is alive. */
     const val HEARTBEAT_MS = 30_000L
-    /** A heartbeat older than this, found by a fresh process, means the old one died. */
-    const val HEARTBEAT_STALE_MS = 2 * HEARTBEAT_MS
 
-    fun start(request: TimerStartRequest, nowMs: Long, day: String) = TimerSession(
+    fun start(request: TimerStartRequest, nowMs: Long, day: String, sessionId: String) = TimerSession(
+      sessionId = sessionId,
       request = request,
       startedAtMs = nowMs,
       pausedAtMs = null,

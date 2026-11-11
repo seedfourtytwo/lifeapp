@@ -65,7 +65,7 @@ object TimerJson {
 
   fun decodeRequest(text: String): TimerStartRequest = decodeRequest(JSONObject(text))
 
-  fun encodeSession(session: TimerSession): String = encodeRequestInto(JSONObject(), session.request)
+  fun encodeSession(session: TimerSession): String = encodeRequestInto(JSONObject().put("sessionId", session.sessionId), session.request)
     .put("startedAt", instant(session.startedAtMs))
     .put("pausedAt", nullable(session.pausedAtMs?.let(::instant)))
     .put("pausedMs", session.pausedMs)
@@ -77,6 +77,7 @@ object TimerJson {
   fun decodeSession(text: String): TimerSession {
     val json = JSONObject(text)
     return TimerSession(
+      sessionId = json.getString("sessionId"),
       request = decodeRequest(json),
       startedAtMs = parseInstant(json.getString("startedAt")),
       pausedAtMs = json.nullableInstant("pausedAt"),
