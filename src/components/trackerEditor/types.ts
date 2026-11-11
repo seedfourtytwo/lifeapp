@@ -27,6 +27,9 @@ export type TrackerEditorSession = {
   scheduleAnchorDate: string;
   useReminder: boolean;
   remindMinutesBefore: string;
+  reminderTimes: string[];
+  /** A time typed into the Reminders row but not yet added. */
+  reminderTimeDraft: string;
   showStreakOnCard: boolean;
 };
 
@@ -58,6 +61,8 @@ export type TrackerEditorSaveData =
       scheduleAnchorDate: string;
       useReminder: boolean;
       remindMinutesBefore: string;
+      reminderTimes: string[];
+      reminderTimeDraft: string;
       showStreakOnCard: boolean;
     };
 
@@ -78,5 +83,7 @@ export type HabitEditorFieldState = Pick<
   | 'scheduleAnchorDate'
   | 'useReminder'
   | 'remindMinutesBefore'
+  | 'reminderTimes'
+  | 'reminderTimeDraft'
   | 'showStreakOnCard'
 >;

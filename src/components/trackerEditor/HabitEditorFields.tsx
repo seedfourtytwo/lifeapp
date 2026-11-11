@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import ChoiceChip from '../ChoiceChip';
 import QuietText from '../QuietText';
@@ -11,6 +11,7 @@ import { typeScale } from '../../theme/typography';
 import type { TFunction } from 'i18next';
 import { getDateLocale } from '../../i18n';
 import { parseLocalDate, toDateString, type HabitTrackingMode } from '../../protocol';
+import { withReminderTime } from '../../utils/reminderTimes';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
 import type { HabitEditorFieldState, HabitScheduleType } from './types';
@@ -90,6 +91,74 @@ type Props = {
   state: HabitEditorFieldState;
   onChange: (patch: Partial<HabitEditorFieldState>) => void;
 };
+
+/** Clock times to be reminded at on each due day; the same row for check-off and timer habits. */
+function RemindersSection({ state, onChange }: Props) {
+  const { t } = useTranslation('trackers');
+  const theme = useTheme();
+  const [draftInvalid, setDraftInvalid] = useState(false);
+
+  const addDraft = () => {
+    const reminderTimes = withReminderTime(state.reminderTimes, state.reminderTimeDraft);
+    if (!reminderTimes) {
+      setDraftInvalid(true);
+      return;
+    }
+    onChange({ reminderTimes, reminderTimeDraft: '' });
+  };
+
+  return (
+    <FormSection
+      title={t('habitFields.remindersSectionTitle')}
+      description={t('habitFields.remindersSectionDescription')}
+      collapsible
+      defaultCollapsed
+      value={
+        state.reminderTimes.length > 0
+          ? state.reminderTimes.join(', ')
+          : t('habitFields.remindersOff')
+      }
+    >
+      {state.reminderTimes.map((time) => (
+        <View key={time} style={styles.switchRow}>
+          <Text style={[typeScale.body, typeScale.data, styles.switchLabel]}>{time}</Text>
+          <IconButton
+            icon="close"
+            size={20}
+            iconColor={theme.colors.onSurfaceVariant}
+            onPress={() =>
+              onChange({ reminderTimes: state.reminderTimes.filter((other) => other !== time) })
+            }
+            accessibilityLabel={t('habitFields.removeReminderTimeA11y', { time })}
+          />
+        </View>
+      ))}
+      <View style={styles.timeRow}>
+        <FilledField
+          placeholder={t('habitFields.reminderTimePlaceholder')}
+          value={state.reminderTimeDraft}
+          onChangeText={(reminderTimeDraft) => {
+            setDraftInvalid(false);
+            onChange({ reminderTimeDraft });
+          }}
+          onSubmitEditing={addDraft}
+          keyboardType="numbers-and-punctuation"
+          error={draftInvalid ? t('validation.reminderTimeFormat') : null}
+          style={styles.timeField}
+        />
+        <Button
+          mode="text"
+          compact
+          onPress={addDraft}
+          disabled={!state.reminderTimeDraft.trim()}
+          accessibilityLabel={t('habitFields.addReminderTimeA11y')}
+        >
+          {t('habitFields.addReminderTime')}
+        </Button>
+      </View>
+    </FormSection>
+  );
+}
 
 /**
  * Memoized: a keystroke in the editor's name field re-renders the dialog, and
@@ -275,6 +344,8 @@ function HabitEditorFields({ state, onChange }: Props) {
           </View>
         ) : null}
       </FormSection>
+
+      <RemindersSection state={state} onChange={onChange} />
 
       <FormSection
         title={t('habitFields.timeWindowSectionTitle')}

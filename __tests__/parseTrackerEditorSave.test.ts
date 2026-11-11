@@ -22,6 +22,8 @@ const habitSaveData = (
   scheduleAnchorDate: '2025-06-30',
   useReminder: false,
   remindMinutesBefore: '15',
+  reminderTimes: [],
+  reminderTimeDraft: '',
   showStreakOnCard: false,
   ...overrides,
 });

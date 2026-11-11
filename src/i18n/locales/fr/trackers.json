@@ -35,7 +35,8 @@
     "firstDayFormat": "Le premier jour doit être au format AAAA-MM-JJ",
     "reminderMinutesNonNegative": "Les minutes de rappel doivent être zéro ou plus",
     "timeRangeFormat": "Entrez des heures valides au format HH:mm, ex. 06:00",
-    "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité"
+    "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité",
+    "reminderTimeFormat": "Saisissez une heure comme 08:00"
   },
   "confirm": {
     "deleteTitle": "Supprimer {{kind}} ?",
@@ -142,7 +143,14 @@
     "reminderBeforeStartLabel": "Rappel avant le début",
     "minutesBeforeLabel": "Minutes avant",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Toute la journée"
+    "timeWindowOff": "Toute la journée",
+    "remindersSectionTitle": "Rappels",
+    "remindersSectionDescription": "Une notification à chacune de ces heures, les jours où cette habitude est prévue, jusqu'à ce qu'elle soit faite.",
+    "remindersOff": "Aucun",
+    "reminderTimePlaceholder": "Ajouter une heure, ex. 08:00",
+    "addReminderTime": "Ajouter",
+    "addReminderTimeA11y": "Ajouter une heure de rappel",
+    "removeReminderTimeA11y": "Supprimer le rappel de {{time}}"
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Objectif quotidien (minutes)",

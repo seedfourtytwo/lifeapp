@@ -27,6 +27,8 @@ export function newEditorSession(
     scheduleAnchorDate: toDateString(new Date()),
     useReminder: false,
     remindMinutesBefore: '15',
+    reminderTimes: [],
+    reminderTimeDraft: '',
     showStreakOnCard: true,
     ...overrides,
   };
@@ -81,6 +83,7 @@ export function editorSessionFromHabit(
     useReminder: config.remindMinutesBefore !== undefined,
     remindMinutesBefore:
       config.remindMinutesBefore !== undefined ? String(config.remindMinutesBefore) : '15',
+    reminderTimes: [...config.reminderTimes],
     showStreakOnCard: config.showStreakOnCard !== false,
   });
 }

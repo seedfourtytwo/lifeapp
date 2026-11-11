@@ -7,6 +7,7 @@ import {
   type HabitInput,
   type HabitSchedule,
 } from '../protocol';
+import { withReminderTime } from './reminderTimes';
 import { parseTimeHHmm } from './time';
 
 function parseIncrements(raw: string): number[] {
@@ -77,6 +78,16 @@ function parseRemindMinutes(
   return minutes;
 }
 
+/** The listed times, plus one still in the field so Save does not lose it. */
+function parseReminderTimes(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>): string[] {
+  if (!data.reminderTimeDraft.trim()) return data.reminderTimes;
+  const times = withReminderTime(data.reminderTimes, data.reminderTimeDraft);
+  if (!times) {
+    throw new Error(i18n.t('trackers:validation.reminderTimeFormat'));
+  }
+  return times;
+}
+
 export function parseTrackerEditorSave(
   data: TrackerEditorSaveData,
 ): { kind: 'counter'; input: CounterInput } | { kind: 'habit'; input: HabitInput } {
@@ -135,6 +146,7 @@ export function parseTrackerEditorSave(
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,
       remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
+      reminderTimes: parseReminderTimes(data),
       showStreakOnCard: data.showStreakOnCard,
     },
   };

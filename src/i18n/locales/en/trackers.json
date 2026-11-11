@@ -35,7 +35,8 @@
     "firstDayFormat": "First day must be YYYY-MM-DD",
     "reminderMinutesNonNegative": "Reminder minutes must be zero or more",
     "timeRangeFormat": "Enter valid times in HH:mm format, e.g. 06:00",
-    "timeRangeRequiredForVisibility": "Set a time range before limiting visibility"
+    "timeRangeRequiredForVisibility": "Set a time range before limiting visibility",
+    "reminderTimeFormat": "Enter a time like 08:00"
   },
   "confirm": {
     "deleteTitle": "Delete {{kind}}?",
@@ -142,7 +143,14 @@
     "reminderBeforeStartLabel": "Reminder before start",
     "minutesBeforeLabel": "Minutes before",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Any time"
+    "timeWindowOff": "Any time",
+    "remindersSectionTitle": "Reminders",
+    "remindersSectionDescription": "A notification at each of these times on the days this habit is due, until it is done.",
+    "remindersOff": "Off",
+    "reminderTimePlaceholder": "Add a time, e.g. 08:00",
+    "addReminderTime": "Add",
+    "addReminderTimeA11y": "Add reminder time",
+    "removeReminderTimeA11y": "Remove the {{time}} reminder"
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Daily goal (minutes)",

@@ -128,6 +128,8 @@ const habitState = Object.freeze({
   scheduleAnchorDate: habitSession.scheduleAnchorDate,
   useReminder: habitSession.useReminder,
   remindMinutesBefore: habitSession.remindMinutesBefore,
+  reminderTimes: habitSession.reminderTimes,
+  reminderTimeDraft: habitSession.reminderTimeDraft,
   showStreakOnCard: habitSession.showStreakOnCard,
 });
 
