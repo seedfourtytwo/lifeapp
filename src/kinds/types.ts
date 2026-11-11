@@ -13,6 +13,10 @@ export interface WidgetProps<TElement extends ElementDefinition = ElementDefinit
   onEditNote?: () => void;
   hasTodayNote?: boolean;
   isDone?: boolean;
+  /** Timed habit done today only by Done: the card offers to un-mark it. */
+  isMarkedDone?: boolean;
+  /** Removes today's Done mark; the logged seconds stay. */
+  onUnmarkDone?: () => void | Promise<void>;
   onToggle?: () => Promise<void>;
   streak?: number;
   failureStreak?: number;

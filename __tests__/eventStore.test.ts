@@ -426,6 +426,26 @@ describe('Done before the goal', () => {
     expect(state().dailyTotals[TIMER_HABIT]).toBe(14 * 60);
   });
 
+  it('tells the card a day is done only by the mark, through a reload, and not after Undo', async () => {
+    await logEarlierSession(459);
+    await state().markHabitDone(TIMER_HABIT, timerConfig);
+    expect(state().habitMarkedToday[TIMER_HABIT]).toBe(true);
+
+    store.useEventStore.setState({ habitMarkedToday: {} });
+    await state().loadHabitDayState([{ id: TIMER_HABIT, config: timerConfig }]);
+    expect(state().habitMarkedToday[TIMER_HABIT]).toBe(true);
+
+    await state().unmarkHabitDone(TIMER_HABIT, timerConfig);
+    expect(state().habitMarkedToday[TIMER_HABIT]).toBe(false);
+    expect(state().dailyTotals[TIMER_HABIT]).toBe(459);
+  });
+
+  it('does not call a day whose goal was met done only by the mark', async () => {
+    await logEarlierSession(700);
+    expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
+    expect(state().habitMarkedToday[TIMER_HABIT]).toBe(false);
+  });
+
   it('Undo removes only the marker and keeps the logged seconds', async () => {
     state().startHabitTimer(TIMER_HABIT, timerConfig);
     advance(5 * 60_000);

@@ -195,6 +195,7 @@
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Completed. Tap to undo",
+    "markedDoneTapToUndoA11y": "Marked done, tap to undo",
     "markHabitDoneA11y": "Mark habit done",
     "couldNotUpdateTitle": "Could not update habit",
     "couldNotStartTimerTitle": "Could not start timer",

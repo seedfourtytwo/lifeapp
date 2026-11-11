@@ -195,6 +195,7 @@
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Terminé. Appuyez pour annuler",
+    "markedDoneTapToUndoA11y": "Marqué comme fait, appuyez pour annuler",
     "markHabitDoneA11y": "Marquer l'habitude comme faite",
     "couldNotUpdateTitle": "Mise à jour de l'habitude impossible",
     "couldNotStartTimerTitle": "Impossible de démarrer le minuteur",

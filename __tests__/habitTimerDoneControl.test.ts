@@ -13,6 +13,7 @@ import TestRenderer, {
 import { PaperProvider } from 'react-native-paper';
 import { HabitTimerWidget } from '../src/kinds/habit/HabitTimerWidget';
 import { TrackerCardRoundButton } from '../src/kinds/TrackerCardRoundButton';
+import { TrackerCardTick } from '../src/kinds/TrackerCardTick';
 import { createActiveTimerSession, type ActiveTimerSession } from '../src/protocol';
 import { appLightTheme } from '../src/theme/themes';
 import { habitElement } from './support/elements';
@@ -54,6 +55,8 @@ function render(props: {
   todayTotal?: number;
   isDone?: boolean;
   session?: ActiveTimerSession | null;
+  isMarkedDone?: boolean;
+  onUnmarkDone?: () => void;
 }): ReactTestInstance {
   let tree!: ReactTestRenderer;
   act(() => {
@@ -67,6 +70,8 @@ function render(props: {
           activeTimerSession: props.session ?? null,
           onTimerPress: () => {},
           onTimerFinish: () => {},
+          isMarkedDone: props.isMarkedDone ?? false,
+          onUnmarkDone: props.onUnmarkDone ?? (() => {}),
         }),
       }),
     );
@@ -106,5 +111,41 @@ describe('Done on a timed habit', () => {
   it('only finishes the session once the goal is already met', () => {
     const button = doneButton(render({ todayTotal: 900, isDone: true, session: createActiveTimerSession() }));
     expect(button?.props.accessibilityLabel).toBe('Finish timer session');
+  });
+});
+
+const unmarkTick = (root: ReactTestInstance) => root.findAllByType(TrackerCardTick)[0];
+
+describe('un-marking a day done with Done', () => {
+  it('shows a filled tick on a day done only by Done, with no timer running', () => {
+    const tick = unmarkTick(render({ todayTotal: 459, isDone: true, isMarkedDone: true }));
+    expect(tick?.props.done).toBe(true);
+    expect(tick?.props.accessibilityLabel).toBe('Marked done, tap to undo');
+    expect(doneButton(render({ todayTotal: 459, isDone: true, isMarkedDone: true }))).toBeUndefined();
+  });
+
+  it('shows nothing to un-mark on a day whose goal was really met', () => {
+    expect(unmarkTick(render({ todayTotal: 900, isDone: true }))).toBeUndefined();
+    expect(
+      unmarkTick(render({ element: playOnce, todayTotal: 1340, isDone: true })),
+    ).toBeUndefined();
+  });
+
+  it('shows no tick while a timer runs on a marked day; Done banks the session', () => {
+    const root = render({ todayTotal: 459, isDone: true, isMarkedDone: true, session: createActiveTimerSession() });
+    expect(unmarkTick(root)).toBeUndefined();
+    expect(doneButton(root)).toBeDefined();
+  });
+
+  it('un-marks on press, and the partly done day gets its Done button back', () => {
+    const onUnmarkDone = jest.fn();
+    const tick = unmarkTick(render({ todayTotal: 459, isDone: true, isMarkedDone: true, onUnmarkDone }));
+    act(() => (tick?.props.onPress as () => void)());
+    expect(onUnmarkDone).toHaveBeenCalledTimes(1);
+
+    // What the store holds after the un-mark: the seconds, not done, no mark.
+    const after = render({ todayTotal: 459, isDone: false, isMarkedDone: false });
+    expect(unmarkTick(after)).toBeUndefined();
+    expect(doneButton(after)?.props.accessibilityLabel).toBe('Mark habit done');
   });
 });

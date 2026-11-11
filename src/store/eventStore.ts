@@ -92,6 +92,11 @@ function schedulePersistActiveTimers(
 interface EventState extends ResettableMirror {
   dailyTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
+  /**
+   * Done today only because Done was pressed short of the goal: the one kind
+   * of done day the card offers to un-mark (seconds kept).
+   */
+  habitMarkedToday: Record<string, boolean>;
   habitStreaks: Record<string, number>;
   habitFailureStreaks: Record<string, number>;
   counterStreaks: Record<string, number>;
@@ -159,6 +164,15 @@ function todayDate(): string {
 
 function habitDayDone(config: HabitConfig, events: readonly DayEvent[]): boolean {
   return dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(events)).done;
+}
+
+/** The mirror's view of a habit day: done, and whether only by the mark. */
+function habitDayState(
+  config: HabitConfig,
+  events: readonly DayEvent[],
+): { habitDone: boolean; habitMarked: boolean } {
+  const outcome = dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(events));
+  return { habitDone: outcome.done, habitMarked: outcome.reason === 'marked_complete' };
 }
 
 function isManualComplete(event: DayEvent): boolean {
@@ -326,6 +340,8 @@ function applyTodayMaps(
   patch: Partial<{
     dailyTotal: number;
     habitDone: boolean;
+    /** Only read with `habitDone`; absent means the day is not done by the mark alone. */
+    habitMarked: boolean;
     streak: number;
     failureStreak: number;
   }>,
@@ -338,7 +354,13 @@ function applyTodayMaps(
       ? { dailyTotals: { ...get().dailyTotals, [elementId]: patch.dailyTotal } }
       : {}),
     ...(patch.habitDone !== undefined
-      ? { habitDoneToday: { ...get().habitDoneToday, [elementId]: patch.habitDone } }
+      ? {
+          habitDoneToday: { ...get().habitDoneToday, [elementId]: patch.habitDone },
+          habitMarkedToday: {
+            ...get().habitMarkedToday,
+            [elementId]: patch.habitDone && (patch.habitMarked ?? false),
+          },
+        }
       : {}),
     ...(patch.streak !== undefined
       ? { habitStreaks: { ...get().habitStreaks, [elementId]: patch.streak } }
@@ -413,14 +435,14 @@ function optimisticDay(
   intent: HabitDayIntent,
   mirrorDone: boolean,
   mirrorTotal: number,
-): { habitDone: boolean; dailyTotal: number } | null {
+): { habitDone: boolean; habitMarked?: boolean; dailyTotal: number } | null {
   switch (intent) {
     case 'toggle':
       return { habitDone: !mirrorDone, dailyTotal: mirrorDone ? 0 : 1 };
     case 'complete':
       return mirrorDone ? null : { habitDone: true, dailyTotal: 1 };
     case 'mark':
-      return { habitDone: true, dailyTotal: mirrorTotal };
+      return { habitDone: true, habitMarked: true, dailyTotal: mirrorTotal };
     case 'unmark':
       return { habitDone: false, dailyTotal: mirrorTotal };
     default: {
@@ -489,6 +511,7 @@ async function writeHabitDay(
 
   // Instant feedback from the mirror; SQLite decides below, inside the lock.
   const mirrorDone = get().habitDoneToday[elementId] ?? false;
+  const mirrorMarked = get().habitMarkedToday[elementId] ?? false;
   const mirrorTotal = get().dailyTotals[elementId] ?? 0;
   const optimistic = optimisticDay(intent, mirrorDone, mirrorTotal);
   if (optimistic) applyTodayMaps(elementId, date, optimistic, set, get);
@@ -506,7 +529,7 @@ async function writeHabitDay(
       applyTodayMaps(
         elementId,
         date,
-        { habitDone: habitDayDone(config, nextEvents), dailyTotal: sumEventValues(nextEvents) },
+        { ...habitDayState(config, nextEvents), dailyTotal: sumEventValues(nextEvents) },
         set,
         get,
       );
@@ -520,7 +543,7 @@ async function writeHabitDay(
       applyTodayMaps(
         elementId,
         date,
-        { habitDone: mirrorDone, dailyTotal: mirrorTotal },
+        { habitDone: mirrorDone, habitMarked: mirrorMarked, dailyTotal: mirrorTotal },
         set,
         get,
       );
@@ -545,6 +568,7 @@ async function doneOnlyByMark(
 export const useEventStore = create<EventState>((set, get) => ({
   dailyTotals: {},
   habitDoneToday: {},
+  habitMarkedToday: {},
   habitStreaks: {},
   habitFailureStreaks: {},
   counterStreaks: {},
@@ -560,6 +584,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     set({
       dailyTotals: {},
       habitDoneToday: {},
+      habitMarkedToday: {},
       habitStreaks: {},
       habitFailureStreaks: {},
       counterStreaks: {},
@@ -702,6 +727,7 @@ export const useEventStore = create<EventState>((set, get) => ({
 
     const totals: Record<string, number> = {};
     const status: Record<string, boolean> = {};
+    const marked: Record<string, boolean> = {};
     for (const { id, config } of habits) {
       const outcome = dayOutcome(
         { kind: 'habit', config },
@@ -709,6 +735,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       );
       totals[id] = outcome.total;
       status[id] = outcome.done;
+      marked[id] = outcome.reason === 'marked_complete';
     }
 
     if (generation !== habitDayLoadGeneration) return;
@@ -721,6 +748,10 @@ export const useEventStore = create<EventState>((set, get) => ({
       habitDoneToday: {
         ...get().habitDoneToday,
         ...mergeUnchangedEntries(status, epochs),
+      },
+      habitMarkedToday: {
+        ...get().habitMarkedToday,
+        ...mergeUnchangedEntries(marked, epochs),
       },
       dayStateReady: true,
     });
@@ -1000,7 +1031,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           applyTodayMaps(
             elementId,
             persistDate,
-            { dailyTotal: nextTotal, habitDone: isComplete, streak, failureStreak },
+            { dailyTotal: nextTotal, ...habitDayState(config, nextEvents), streak, failureStreak },
             set,
             get,
           );
@@ -1111,7 +1142,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       applyTodayMaps(
         elementId,
         date,
-        { dailyTotal: total, habitDone: habitDayDone(config, events) },
+        { dailyTotal: total, ...habitDayState(config, events) },
         set,
         get,
       );

@@ -19,6 +19,7 @@ import { trackerCardStyles as styles } from '../trackerCardStyles';
 import { describeHabitCardSound, formatHabitStreakLabel } from './habitCardLabels';
 import { HabitSoundIndicator } from './HabitSoundIndicator';
 import { TrackerCardRoundButton } from '../TrackerCardRoundButton';
+import { TrackerCardTick } from '../TrackerCardTick';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { NoteIconButton } from '../../notes/NoteIconButton';
@@ -30,6 +31,8 @@ export function HabitTimerWidget({
   todayTotal,
   streak,
   isDone,
+  isMarkedDone,
+  onUnmarkDone,
   activeTimerSession,
   onTimerPress,
   onTimerFinish,
@@ -91,6 +94,9 @@ export function HabitTimerWidget({
   const showManualDone =
     Boolean(onTimerFinish) && (isRunning || (displayTotal > 0 && !isComplete));
   const doneMarksDay = !isComplete;
+  // Done pressed by mistake must stay undoable after the snackbar has gone.
+  // A goal really met has no mark to take back, so it gets no control.
+  const showUnmark = Boolean(isMarkedDone && onUnmarkDone) && !isRunning;
 
   // The track's own end chimes a play-once habit; a seconds goal chimes here, live.
   useEffect(() => {
@@ -212,6 +218,14 @@ export function HabitTimerWidget({
                   ? t('habitWidget.markHabitDoneA11y')
                   : t('habitWidget.finishSessionA11y')
               }
+            />
+          ) : null}
+
+          {showUnmark ? (
+            <TrackerCardTick
+              done
+              onPress={() => void onUnmarkDone?.()}
+              accessibilityLabel={t('habitWidget.markedDoneTapToUndoA11y')}
             />
           ) : null}
 

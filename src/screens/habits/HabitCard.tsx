@@ -45,6 +45,7 @@ export default function HabitCard({
   const {
     todayTotal,
     isDone,
+    isMarkedDone,
     streak,
     activeTimerSession,
     toggleHabit,
@@ -52,6 +53,7 @@ export default function HabitCard({
     useShallow((state) => ({
       todayTotal: state.dailyTotals[habit.id] ?? 0,
       isDone: state.habitDoneToday[habit.id] ?? false,
+      isMarkedDone: state.habitMarkedToday[habit.id] ?? false,
       streak: state.habitStreaks[habit.id] ?? 0,
       activeTimerSession: state.activeTimerSessions[habit.id] ?? null,
       toggleHabit: state.toggleHabit,
@@ -65,6 +67,15 @@ export default function HabitCard({
       element={habit}
       todayTotal={todayTotal}
       isDone={isDone}
+      isMarkedDone={isMarkedDone}
+      onUnmarkDone={() =>
+        handleUnmarkDone(habit.id, config).catch((error) => {
+          Alert.alert(
+            t('habitWidget.couldNotUpdateTitle'),
+            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+          );
+        })
+      }
       streak={streak}
       activeTimerSession={activeTimerSession}
       hasTodayNote={hasTodayNote}
