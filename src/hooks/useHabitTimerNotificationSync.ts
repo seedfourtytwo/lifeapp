@@ -3,6 +3,7 @@ import { syncHabitTimerNotification } from '../notifications/habitTimerNotificat
 import { habitTimerTargetFire } from '../notifications/habitTimerTarget';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
+import { useNotificationPermissionStore } from '../store/notificationPermissionStore';
 import { useSettingsStore } from '../store/settingsStore';
 
 /**
@@ -27,6 +28,7 @@ export function watchHabitTimerNotification(): () => void {
       target?.fireAt.getTime() ?? null,
       target?.name ?? null,
       useSettingsStore.getState().appLanguage,
+      useNotificationPermissionStore.getState().permission?.status ?? null,
     ]);
     if (key === lastKey) return;
     lastKey = key;
@@ -40,6 +42,7 @@ export function watchHabitTimerNotification(): () => void {
     useEventStore.subscribe(evaluate),
     useElementStore.subscribe(evaluate),
     useSettingsStore.subscribe(evaluate),
+    useNotificationPermissionStore.subscribe(evaluate),
   ];
   return () => {
     for (const unsubscribe of unsubscribes) unsubscribe();

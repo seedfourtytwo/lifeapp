@@ -4,6 +4,7 @@ import { syncHabitReminders } from '../notifications/habitReminders';
 import { toDateString } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
+import { useNotificationPermissionStore } from '../store/notificationPermissionStore';
 import { useSettingsStore } from '../store/settingsStore';
 
 /** A burst of store writes (a tick, its streak reload) should cost one sync. */
@@ -11,7 +12,7 @@ const SETTLE_MS = 1500;
 
 /**
  * Everything a habit reminder depends on, as one comparable string: the day,
- * the switch and language, and for each habit its name, config, archived
+ * the switch, language and notification permission, and for each habit its name, config, archived
  * state and whether it is done today. Anything else changing is no reason to
  * touch the scheduler.
  */
@@ -30,7 +31,13 @@ function reminderInputs(now: Date): { key: string; done: Record<string, boolean>
     .filter((element) => element.kind === 'habit')
     .map((h) => [h.id, h.name, h.archivedAt ?? null, h.config, done[h.id] ?? false]);
   return {
-    key: JSON.stringify([today, trackerRemindersEnabled, appLanguage, habits]),
+    key: JSON.stringify([
+      today,
+      trackerRemindersEnabled,
+      appLanguage,
+      useNotificationPermissionStore.getState().permission?.status ?? null,
+      habits,
+    ]),
     done,
   };
 }
@@ -70,6 +77,7 @@ export function watchHabitReminders(): () => void {
     useElementStore.subscribe(scheduleEvaluate),
     useEventStore.subscribe(scheduleEvaluate),
     useSettingsStore.subscribe(scheduleEvaluate),
+    useNotificationPermissionStore.subscribe(scheduleEvaluate),
   ];
 
   // Opening the app rolls the two-week window forward even if nothing changed.

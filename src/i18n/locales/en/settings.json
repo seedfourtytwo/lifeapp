@@ -150,5 +150,18 @@
   },
   "general": {
     "sectionTitle": "General"
+  },
+  "notifications": {
+    "sectionTitle": "Notifications",
+    "deniedTitle": "Notifications are off for Life",
+    "deniedBody": "Reminders cannot appear until you allow them.",
+    "allow": "Allow",
+    "allowA11y": "Allow notifications",
+    "eveningTitle": "Evening check-in",
+    "eveningDescription": "What is still open today",
+    "eveningTimeTitle": "Time",
+    "eveningTimeA11y": "Check-in time",
+    "habitRemindersTitle": "Habit reminders",
+    "habitRemindersDescription": "The times set on each habit"
   }
 }

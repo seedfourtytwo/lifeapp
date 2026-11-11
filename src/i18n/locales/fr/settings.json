@@ -150,5 +150,18 @@
   },
   "general": {
     "sectionTitle": "Général"
+  },
+  "notifications": {
+    "sectionTitle": "Notifications",
+    "deniedTitle": "Les notifications sont désactivées pour Life",
+    "deniedBody": "Les rappels ne peuvent pas s'afficher tant que vous ne les autorisez pas.",
+    "allow": "Autoriser",
+    "allowA11y": "Autoriser les notifications",
+    "eveningTitle": "Bilan du soir",
+    "eveningDescription": "Ce qui reste à faire aujourd'hui",
+    "eveningTimeTitle": "Heure",
+    "eveningTimeA11y": "Heure du bilan",
+    "habitRemindersTitle": "Rappels des habitudes",
+    "habitRemindersDescription": "Les heures réglées sur chaque habitude"
   }
 }

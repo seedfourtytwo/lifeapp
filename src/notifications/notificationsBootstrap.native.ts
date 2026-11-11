@@ -74,6 +74,24 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return result.granted || result.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 }
 
+export type NotificationPermission = {
+  /** `unavailable`: this build has no notifications module at all. */
+  status: 'granted' | 'denied' | 'undetermined' | 'unavailable';
+  /** False once the phone will no longer show the prompt; only system settings can allow it. */
+  canAskAgain: boolean;
+};
+
+export async function getNotificationPermission(): Promise<NotificationPermission> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return { status: 'unavailable', canAskAgain: false };
+  const settings = await Notifications.getPermissionsAsync();
+  if (settings.granted) return { status: 'granted', canAskAgain: settings.canAskAgain };
+  return {
+    status: settings.status === Notifications.PermissionStatus.DENIED ? 'denied' : 'undetermined',
+    canAskAgain: settings.canAskAgain,
+  };
+}
+
 export async function cancelScheduledWithPrefix(
   notifications: NotificationsModule,
   prefix: string,

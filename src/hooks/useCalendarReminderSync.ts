@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { useCalendarStore } from '../store/calendarStore';
+import { useNotificationPermissionStore } from '../store/notificationPermissionStore';
 import { useSettingsStore } from '../store/settingsStore';
 import {
   isNotificationsNativeAvailable,
@@ -19,6 +20,7 @@ export function useCalendarReminderSync(): void {
   const clearedByKey = useCalendarStore((s) => s.clearedByKey);
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const appLanguage = useSettingsStore((s) => s.appLanguage);
+  const permissionStatus = useNotificationPermissionStore((s) => s.permission?.status);
 
   useEffect(() => {
     if (!settingsLoaded || !isLoaded || !isNotificationsNativeAvailable()) return;
@@ -31,7 +33,16 @@ export function useCalendarReminderSync(): void {
     }).catch((error) => {
       console.warn('Calendar reminder sync skipped', error);
     });
-  }, [calendars, clearedByKey, events, isLoaded, reminders, settingsLoaded, appLanguage]);
+  }, [
+    calendars,
+    clearedByKey,
+    events,
+    isLoaded,
+    reminders,
+    settingsLoaded,
+    appLanguage,
+    permissionStatus,
+  ]);
 
   useEffect(() => {
     if (!settingsLoaded || !isLoaded || !isNotificationsNativeAvailable()) return;

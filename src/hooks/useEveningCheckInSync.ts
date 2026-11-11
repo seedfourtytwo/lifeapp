@@ -7,6 +7,7 @@ import {
 import { countUnfinishedTrackersToday } from '../notifications/unfinishedTrackers';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
+import { useNotificationPermissionStore } from '../store/notificationPermissionStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useTodoStore } from '../store/todoStore';
 
@@ -36,6 +37,8 @@ export function useEveningCheckInSync(): void {
   const enabled = useSettingsStore((s) => s.eveningCheckInEnabled);
   const time = useSettingsStore((s) => s.eveningCheckInTime);
   const appLanguage = useSettingsStore((s) => s.appLanguage);
+  // Allowing notifications in Settings must bring the check-in back at once.
+  const permissionStatus = useNotificationPermissionStore((s) => s.permission?.status);
 
   useEffect(() => {
     if (!settingsLoaded || !isNotificationsNativeAvailable()) return;
@@ -81,5 +84,5 @@ export function useEveningCheckInSync(): void {
       for (const unsubscribe of unsubscribes) unsubscribe();
       appStateSub.remove();
     };
-  }, [settingsLoaded, enabled, time, appLanguage]);
+  }, [settingsLoaded, enabled, time, appLanguage, permissionStatus]);
 }

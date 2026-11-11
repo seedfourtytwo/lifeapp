@@ -10,6 +10,7 @@ import SettingsGroup from '../../components/settings/SettingsGroup';
 import SettingsRow from '../../components/settings/SettingsRow';
 import SettingsSegmented from '../../components/settings/SettingsSegmented';
 import { useProtocolBackup } from '../../hooks/useProtocolBackup';
+import NotificationSettingsSection from './NotificationSettingsSection';
 import type { AppLanguage } from '../../protocol/appSettings';
 import type { JournalNotebook } from '../../protocol';
 import { applyAppLanguage } from '../../i18n';
@@ -161,6 +162,8 @@ export default function AppSettingsScreen() {
           />
         ) : null}
       </SettingsGroup>
+
+      <NotificationSettingsSection />
 
       <SettingsGroup title={t('data.sectionTitle')}>
         <SettingsRow

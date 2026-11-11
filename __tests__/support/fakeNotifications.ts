@@ -88,6 +88,7 @@ export function createFakeNotifications() {
     }),
     SchedulableTriggerInputTypes: { DATE: 'date', DAILY: 'daily' },
     AndroidImportance: { DEFAULT: 5, HIGH: 6 },
+    PermissionStatus: { GRANTED: 'granted', DENIED: 'denied', UNDETERMINED: 'undetermined' },
     IosAuthorizationStatus: { PROVISIONAL: 3 },
   };
   return fake;
