@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { PROTOCOL_VERSION } from './envelope';
+import { CommitmentConfigSchema } from './kinds/commitment';
 import { CounterConfigSchema } from './kinds/counter';
 import { HabitConfigSchema } from './kinds/habit';
 
 /** Only implemented kinds belong here. Add new kinds when you ship them. */
-export const ElementKindSchema = z.enum(['counter', 'habit']);
+export const ElementKindSchema = z.enum(['counter', 'habit', 'commitment']);
 
 export type ElementKind = z.infer<typeof ElementKindSchema>;
 
@@ -25,11 +26,13 @@ const ElementBaseSchema = z.object({
 export const ElementDefinitionSchema = z.discriminatedUnion('kind', [
   ElementBaseSchema.extend({ kind: z.literal('habit'), config: HabitConfigSchema }),
   ElementBaseSchema.extend({ kind: z.literal('counter'), config: CounterConfigSchema }),
+  ElementBaseSchema.extend({ kind: z.literal('commitment'), config: CommitmentConfigSchema }),
 ]);
 
 export type ElementDefinition = z.infer<typeof ElementDefinitionSchema>;
 export type HabitElement = Extract<ElementDefinition, { kind: 'habit' }>;
 export type CounterElement = Extract<ElementDefinition, { kind: 'counter' }>;
+export type CommitmentElement = Extract<ElementDefinition, { kind: 'commitment' }>;
 
 export function isHabitElement(element: ElementDefinition): element is HabitElement {
   return element.kind === 'habit';
@@ -39,9 +42,14 @@ export function isCounterElement(element: ElementDefinition): element is Counter
   return element.kind === 'counter';
 }
 
+export function isCommitmentElement(element: ElementDefinition): element is CommitmentElement {
+  return element.kind === 'commitment';
+}
+
 const configSchemas: Record<ElementKind, z.ZodType> = {
   counter: CounterConfigSchema,
   habit: HabitConfigSchema,
+  commitment: CommitmentConfigSchema,
 };
 
 /** Throws when `config` is not a valid config for `kind`. */

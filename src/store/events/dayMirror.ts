@@ -3,7 +3,6 @@ import {
   dayOutcome,
   factsFromTotal,
   habitTimerGoal,
-  isCounterElement,
   isHabitElement,
   type HabitConfig,
 } from '../../protocol';
@@ -163,26 +162,37 @@ export function requeryElementDay(
       armTargetCrossing(elementId, element.config, set, get);
       return;
     }
-    if (isCounterElement(element)) {
-      const streak = await loadCounterStreakForElement(
-        elementId,
-        element.config,
-        element.createdAt ?? null,
-      );
-      if (date !== todayDate()) return;
-      set({
-        dailyTotals: { ...get().dailyTotals, [elementId]: facts.total },
-        counterStreaks: { ...get().counterStreaks, [elementId]: streak },
-      });
+    switch (element.kind) {
+      case 'counter': {
+        const streak = await loadCounterStreakForElement(
+          elementId,
+          element.config,
+          element.createdAt ?? null,
+        );
+        if (date !== todayDate()) return;
+        set({
+          dailyTotals: { ...get().dailyTotals, [elementId]: facts.total },
+          counterStreaks: { ...get().counterStreaks, [elementId]: streak },
+        });
+        return;
+      }
+      case 'commitment':
+        // Its day is its slips: the total is all `dayOutcome` needs.
+        applyTodayMaps(elementId, date, { dailyTotal: facts.total }, set, get);
+        return;
+      default: {
+        const unknown: never = element;
+        throw new Error(`Unknown tracker kind ${JSON.stringify(unknown)}`);
+      }
     }
   });
 }
 
-type DayMirrorActions = Pick<EventState, 'loadCounterTotals' | 'loadHabitDayState'>;
+type DayMirrorActions = Pick<EventState, 'loadDayTotals' | 'loadHabitDayState'>;
 
 export function createDayMirrorActions(set: SetEventState, get: GetEventState): DayMirrorActions {
   return {
-    loadCounterTotals: (elementIds) =>
+    loadDayTotals: (elementIds) =>
       inMirrorOrder(async () => {
         if (elementIds.length === 0) {
           set({ counterTotalsReady: true });

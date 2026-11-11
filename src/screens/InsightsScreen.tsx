@@ -20,7 +20,7 @@ import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import {
   chartPlotValue,
-  chartUnitLabel,
+  getDailyValueSemantics,
   factsFromTotal,
   type DayFacts,
   type ElementDefinition,
@@ -234,7 +234,7 @@ export default function InsightsScreen() {
       id: el.id,
       color: seriesColorAt(themeMode, i),
       values: normalized[i] ?? [],
-      binary: el.kind === 'habit' && chartUnitLabel(el) === 'done',
+      binary: getDailyValueSemantics(el).unit === 'done',
     }));
   }, [selectedElements, dates, factsByElement, themeMode]);
 

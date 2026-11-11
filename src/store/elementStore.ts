@@ -3,8 +3,15 @@ import { create } from 'zustand';
 import { getDatabase } from '../db/client';
 import { i18n } from '../i18n';
 import { newId } from '../utils/id';
-import type { DashboardItem, ElementDefinition } from '../protocol';
-import { DEFAULT_COUNTER_CONFIG, PROTOCOL_VERSION } from '../protocol';
+import type { CommitmentInput, DashboardItem, ElementDefinition, LifeEvent } from '../protocol';
+import {
+  buildCommitmentConfig,
+  CommitmentEventMetaSchema,
+  DEFAULT_COUNTER_CONFIG,
+  insteadHabitIdsProblem,
+  PROTOCOL_VERSION,
+} from '../protocol';
+import { DEFAULT_RIDE_SECONDS } from '../protocol/urge';
 import * as elementRepo from '../db/repositories/elementRepository';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import { buildCounterConfig, type CounterInput } from '../protocol/kinds/counter';
@@ -14,7 +21,12 @@ import {
   mergeKindOrderIntoDashboard,
   applyVisibleOrder,
 } from '../utils/reorderHabits';
-import { getActiveCounters, getActiveHabits } from '../utils/dashboardElements';
+import {
+  getActiveCommitment,
+  getActiveCounters,
+  getActiveHabits,
+} from '../utils/dashboardElements';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 import { awaitElementEventWrites, useEventStore } from './eventStore';
 import { getDataGeneration } from '../db/dataGeneration';
 import { withDbWriteLock } from '../db/writeLock';
@@ -82,6 +94,25 @@ async function insertActiveElement(
   };
   await elementRepo.insertElementWithDashboardItem(db, element, dashboardItem);
   return dashboardItem;
+}
+
+/** There is at most one commitment not archived; `except` is the one being saved. */
+function assertNoOtherActiveCommitment(elements: readonly ElementDefinition[], except?: string): void {
+  const active = getActiveCommitment(elements);
+  if (active && active.id !== except) {
+    throw new Error(i18n.t('common:errors.commitmentAlreadyActive'));
+  }
+}
+
+function assertInsteadHabits(ids: readonly string[], elements: readonly ElementDefinition[]): void {
+  switch (insteadHabitIdsProblem(ids, elements)) {
+    case null:
+      return;
+    case 'missing':
+      throw new Error(i18n.t('common:errors.insteadHabitMissing'));
+    case 'not_a_timer':
+      throw new Error(i18n.t('common:errors.insteadHabitNotTimer'));
+  }
 }
 
 /** A habit leaving Home takes its running timer with it, logging nothing. */
@@ -159,6 +190,12 @@ interface ElementState {
   updateCounter: (id: string, input: CounterInput) => Promise<void>;
   createHabit: (input: HabitInput) => Promise<void>;
   updateHabit: (id: string, input: HabitInput) => Promise<void>;
+  /** Clear from now. Refused while another commitment is not archived. */
+  createCommitment: (input: CommitmentInput) => Promise<void>;
+  /** Keeps clear-since and the ride length; instead-habits must be timed habits on Home. */
+  updateCommitment: (id: string, input: CommitmentInput) => Promise<void>;
+  /** Append a slip now and move clear-since to it. Nothing else changes. */
+  logSlip: (id: string) => Promise<void>;
   archiveElement: (elementId: string) => Promise<void>;
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
@@ -306,6 +343,81 @@ export const useElementStore = create<ElementState>((set, get) => ({
     });
   },
 
+  createCommitment: async (input) => {
+    await withGuardedElementWrite(async () => {
+      const { elements } = get();
+      assertNoOtherActiveCommitment(elements);
+      assertInsteadHabits(input.insteadHabitIds, elements);
+      const db = await getDatabase();
+      const now = new Date().toISOString();
+      const element: ElementDefinition = {
+        id: newId(),
+        kind: 'commitment',
+        name: input.name.trim(),
+        config: buildCommitmentConfig(input, { clearSince: now, rideSeconds: DEFAULT_RIDE_SECONDS }),
+        protocolVersion: PROTOCOL_VERSION,
+        createdAt: now,
+        archivedAt: null,
+      };
+
+      const dashboardItem = await insertActiveElement(db, element);
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: [...get().elements, element],
+        dashboard: [...get().dashboard, dashboardItem],
+      });
+    });
+  },
+
+  updateCommitment: async (id, input) => {
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const existing = get().elements.find((e) => e.id === id);
+      if (!existing || existing.kind !== 'commitment') {
+        throw new Error(i18n.t('common:errors.commitmentNotFound'));
+      }
+      assertInsteadHabits(input.insteadHabitIds, get().elements);
+
+      const config = buildCommitmentConfig(input, existing.config);
+      await elementRepo.updateElement(db, id, { name: input.name.trim(), config }, 'commitment');
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: get().elements.map((element) =>
+          element.id === id ? { ...existing, name: input.name.trim(), config } : element,
+        ),
+      });
+    });
+  },
+
+  logSlip: async (id) => {
+    await withGuardedElementWrite(async () => {
+      const db = await getDatabase();
+      const existing = get().elements.find((e) => e.id === id);
+      if (!existing || existing.kind !== 'commitment') {
+        throw new Error(i18n.t('common:errors.commitmentNotFound'));
+      }
+      const now = new Date();
+      const slip: LifeEvent = {
+        id: newId(),
+        elementId: id,
+        timestamp: now.toISOString(),
+        date: currentAppCalendarDate(now),
+        value: 1,
+        meta: CommitmentEventMetaSchema.parse({ source: 'slip' }),
+        protocolVersion: PROTOCOL_VERSION,
+      };
+      const config = { ...existing.config, clearSince: slip.timestamp };
+      await elementRepo.recordSlip(db, id, slip, config);
+      invalidateElementLoads();
+      applyElementMutation(set, {
+        elements: get().elements.map((element) =>
+          element.id === id ? { ...existing, config } : element,
+        ),
+      });
+    });
+    await useEventStore.getState().loadDayTotals([id]);
+  },
+
   archiveElement: async (elementId) => {
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt != null) return;
@@ -343,6 +455,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
   restoreElement: async (elementId) => {
     const existing = get().elements.find((element) => element.id === elementId);
     if (!existing || existing.archivedAt == null) return;
+    if (existing.kind === 'commitment') assertNoOtherActiveCommitment(get().elements);
 
     let dashboardItem: DashboardItem | null = null;
     await withGuardedElementWrite(async () => {

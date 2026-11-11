@@ -5,11 +5,18 @@ export {
   ElementKindSchema,
   ElementDefinitionSchema,
   assertElementConfig,
+  isCommitmentElement,
   isCounterElement,
   isHabitElement,
   parseElementDefinition,
 } from './element';
-export type { CounterElement, ElementDefinition, ElementKind, HabitElement } from './element';
+export type {
+  CommitmentElement,
+  CounterElement,
+  ElementDefinition,
+  ElementKind,
+  HabitElement,
+} from './element';
 
 export { EventSchema, toDateString, parseLocalDate, shiftDateString } from './event';
 export type { LifeEvent } from './event';
@@ -162,6 +169,23 @@ export {
   shouldShowCounterStreakOnCard,
 } from './kinds/counter';
 export type { CounterConfig, CounterEventMeta, CounterInput } from './kinds/counter';
+
+export {
+  CommitmentConfigSchema,
+  CommitmentEventMetaSchema,
+  DEFAULT_COMMITMENT_LOCK_SCREEN_NAME,
+  INSTEAD_HABITS_MAX,
+  OWN_LINES_MAX,
+  OWN_LINE_MAX_LENGTH,
+  buildCommitmentConfig,
+  currentOwnLine,
+  insteadHabitIdsProblem,
+  lampHours,
+  lampsPassed,
+  nextLamp,
+  usableInsteadHabits,
+} from './kinds/commitment';
+export type { CommitmentConfig, CommitmentInput, NextLamp } from './kinds/commitment';
 
 export {
   TRACKER_ICON_IDS,

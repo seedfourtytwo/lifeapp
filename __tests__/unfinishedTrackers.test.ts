@@ -1,4 +1,4 @@
-import { CounterConfigSchema } from '../src/protocol';
+import { CommitmentConfigSchema, CounterConfigSchema } from '../src/protocol';
 import { HabitConfigSchema } from '../src/protocol';
 import { PROTOCOL_VERSION, TodoSchema } from '../src/protocol';
 import { countUnfinishedTrackersToday } from '../src/notifications/unfinishedTrackers';
@@ -157,5 +157,29 @@ describe('countUnfinishedTrackersToday — todos', () => {
         now,
       }),
     ).toMatchObject({ habits: 1, todos: 0, total: 1 });
+  });
+});
+
+describe('countUnfinishedTrackersToday — commitment', () => {
+  const commitment: ElementDefinition = {
+    id: '550e8400-e29b-41d4-a716-446655440013',
+    kind: 'commitment',
+    name: 'No buying',
+    config: CommitmentConfigSchema.parse({ clearSince: '2025-01-01T00:00:00.000Z' }),
+    protocolVersion: PROTOCOL_VERSION,
+    createdAt: '2025-01-01T00:00:00.000Z',
+    archivedAt: null,
+  };
+
+  it('never counts it, kept or slipped: nothing is left to do', () => {
+    for (const slips of [0, 1]) {
+      expect(
+        countUnfinishedTrackersToday({
+          elements: [commitment],
+          habitDoneToday: {},
+          dailyTotals: { [commitment.id]: slips },
+        }).total,
+      ).toBe(0);
+    }
   });
 });

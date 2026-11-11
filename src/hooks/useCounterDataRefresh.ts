@@ -11,7 +11,7 @@ import {
 export function useRefreshCounterTotalsOnFocus(): void {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
-  const loadCounterTotals = useEventStore((s) => s.loadCounterTotals);
+  const loadDayTotals = useEventStore((s) => s.loadDayTotals);
   const loadCounterStreaks = useEventStore((s) => s.loadCounterStreaks);
 
   const counters = useMemo(
@@ -27,12 +27,12 @@ export function useRefreshCounterTotalsOnFocus(): void {
   useFocusEffect(
     useCallback(() => {
       if (counterIds.length > 0) {
-        void loadCounterTotals(counterIds);
+        void loadDayTotals(counterIds);
       }
       if (streakInputs.length > 0) {
         void loadCounterStreaks(streakInputs);
       }
-    }, [counterIds, loadCounterStreaks, loadCounterTotals, streakInputs]),
+    }, [counterIds, loadCounterStreaks, loadDayTotals, streakInputs]),
   );
 }
 

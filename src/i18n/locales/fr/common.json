@@ -40,7 +40,11 @@
     "counterNotFound": "Compteur introuvable",
     "habitNotFound": "Habitude introuvable",
     "elementNotFound": "Élément introuvable",
-    "dataReplacedTryAgain": "Les données ont été remplacées ; réessayez"
+    "dataReplacedTryAgain": "Les données ont été remplacées ; réessayez",
+    "commitmentNotFound": "Engagement introuvable",
+    "commitmentAlreadyActive": "Un engagement est déjà en cours. Archivez-le avant d’en commencer un autre.",
+    "insteadHabitNotTimer": "Une habitude de remplacement doit être une habitude minutée.",
+    "insteadHabitMissing": "Une habitude de remplacement n’existe plus. Choisissez-la à nouveau."
   },
   "weekdaysShort": {
     "sun": "dim.",

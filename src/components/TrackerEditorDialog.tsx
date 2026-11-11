@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { lifeCore } from '../core/lifeCore';
 import { EditorSheet, FilledField } from './sheet';
+import CommitmentEditorFields from './trackerEditor/CommitmentEditorFields';
 import CounterEditorFields from './trackerEditor/CounterEditorFields';
 import { newEditorSession } from './trackerEditor/trackerEditorSession';
 import HabitEditorFields from './trackerEditor/HabitEditorFields';
 import IconPickerField from './trackerEditor/IconPickerField';
 import type {
+  CommitmentEditorFieldState,
   TrackerEditorSaveData,
   TrackerEditorSession,
   HabitEditorFieldState,
@@ -46,6 +48,18 @@ function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorF
   };
 }
 
+function commitmentFieldStateFromSession(session: TrackerEditorSession): CommitmentEditorFieldState {
+  return {
+    lockScreenName: session.lockScreenName,
+    ownLines: session.ownLines,
+    ownLineDraft: session.ownLineDraft,
+    insteadHabitIds: session.insteadHabitIds,
+  };
+}
+
+const emptyCommitmentFields = (): CommitmentEditorFieldState =>
+  commitmentFieldStateFromSession(newEditorSession({ mode: 'commitment' }));
+
 const emptyHabitFields = (): HabitEditorFieldState =>
   habitFieldStateFromSession(newEditorSession({ mode: 'habit' }));
 
@@ -70,6 +84,8 @@ export default function TrackerEditorDialog({
   const [dailyTarget, setDailyTarget] = useState('');
   const [showStreakOnCard, setShowStreakOnCard] = useState(true);
   const [habitFields, setHabitFields] = useState<HabitEditorFieldState>(emptyHabitFields);
+  const [commitmentFields, setCommitmentFields] =
+    useState<CommitmentEditorFieldState>(emptyCommitmentFields);
 
   useEffect(() => {
     if (!session) return;
@@ -79,6 +95,7 @@ export default function TrackerEditorDialog({
     setDailyTarget(session.dailyTarget);
     setShowStreakOnCard(session.showStreakOnCard);
     setHabitFields(habitFieldStateFromSession(session));
+    setCommitmentFields(commitmentFieldStateFromSession(session));
   }, [session, sessionId]);
 
   /**
@@ -92,6 +109,12 @@ export default function TrackerEditorDialog({
     [],
   );
 
+  const handleCommitmentFieldsChange = useCallback(
+    (patch: Partial<CommitmentEditorFieldState>) =>
+      setCommitmentFields((current) => ({ ...current, ...patch })),
+    [],
+  );
+
   const closeEditor = () => {
     void lifeCore.stopPreview();
     onDismiss();
@@ -99,23 +122,36 @@ export default function TrackerEditorDialog({
 
   const handleSave = () => {
     void lifeCore.stopPreview();
-    if (mode === 'counter') {
-      onSave({ mode: 'counter', name, icon, increments, dailyTarget, showStreakOnCard });
-      return;
+    switch (mode) {
+      case 'counter':
+        onSave({ mode: 'counter', name, icon, increments, dailyTarget, showStreakOnCard });
+        return;
+      case 'habit':
+        onSave({ mode: 'habit', name, icon, ...habitFields });
+        return;
+      case 'commitment':
+        onSave({ mode: 'commitment', name, ...commitmentFields });
+        return;
+      default: {
+        const unknown: never = mode;
+        throw new Error(`Unknown editor mode ${String(unknown)}`);
+      }
     }
-    onSave({
-      mode: 'habit',
-      name,
-      icon,
-      ...habitFields,
-    });
   };
 
   const title = useMemo(() => {
-    if (mode === 'counter') {
-      return editingId ? t('editor.editCounterTitle') : t('editor.newCounterTitle');
+    switch (mode) {
+      case 'counter':
+        return editingId ? t('editor.editCounterTitle') : t('editor.newCounterTitle');
+      case 'habit':
+        return editingId ? t('editor.editHabitTitle') : t('editor.newHabitTitle');
+      case 'commitment':
+        return editingId ? t('editor.editCommitmentTitle') : t('editor.newCommitmentTitle');
+      default: {
+        const unknown: never = mode;
+        throw new Error(`Unknown editor mode ${String(unknown)}`);
+      }
     }
-    return editingId ? t('editor.editHabitTitle') : t('editor.newHabitTitle');
   }, [editingId, mode, t]);
 
   const busy = saving || deleting;
@@ -149,9 +185,12 @@ export default function TrackerEditorDialog({
         autoComplete="off"
       />
 
-      <IconPickerField value={icon} onChange={setIcon} />
+      {/* A commitment is shown by name, and by its lock-screen name only when locked. */}
+      {mode === 'commitment' ? null : <IconPickerField value={icon} onChange={setIcon} />}
 
-      {mode === 'counter' ? (
+      {mode === 'commitment' ? (
+        <CommitmentEditorFields state={commitmentFields} onChange={handleCommitmentFieldsChange} />
+      ) : mode === 'counter' ? (
         <CounterEditorFields
           increments={increments}
           dailyTarget={dailyTarget}

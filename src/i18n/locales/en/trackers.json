@@ -7,11 +7,15 @@
     "habitsAddLabel": "New habit",
     "habitsEmpty": "No habits yet",
     "archiveTitle": "Archive",
-    "archiveEmpty": "Nothing archived"
+    "archiveEmpty": "Nothing archived",
+    "commitmentTitle": "Commitment",
+    "commitmentAddLabel": "New commitment",
+    "commitmentEmpty": "No commitment"
   },
   "kindLabel": {
     "counter": "counter",
-    "habit": "habit"
+    "habit": "habit",
+    "commitment": "commitment"
   },
   "schedule": {
     "weekdays": "Weekdays",
@@ -36,7 +40,8 @@
     "reminderMinutesNonNegative": "Reminder minutes must be zero or more",
     "timeRangeFormat": "Enter valid times in HH:mm format, e.g. 06:00",
     "timeRangeRequiredForVisibility": "Set a time range before limiting visibility",
-    "reminderTimeFormat": "Enter a time like 08:00"
+    "reminderTimeFormat": "Enter a time like 08:00",
+    "ownLineTooLong": "Keep each line to {{max}} characters"
   },
   "confirm": {
     "deleteTitle": "Delete {{kind}}?",
@@ -52,7 +57,8 @@
     "restore": "Restore",
     "delete": "Delete",
     "moreA11y": "More actions for {{name}}",
-    "itemsCountA11y": "{{title}}, {{count}} items"
+    "itemsCountA11y": "{{title}}, {{count}} items",
+    "commitmentBadge": "Commitment"
   },
   "homeIdentity": {
     "historyHint": "Opens history"
@@ -79,7 +85,9 @@
     "delete": "Delete",
     "save": "Save",
     "streakShown": "Shown",
-    "streakHidden": "Hidden"
+    "streakHidden": "Hidden",
+    "newCommitmentTitle": "New commitment",
+    "editCommitmentTitle": "Edit commitment"
   },
   "counterFields": {
     "sectionTitle": "Counter settings",
@@ -212,5 +220,22 @@
     "streakMany": "{{count}} days in a row",
     "soundLoopsA11y": "Sound loops while the timer runs",
     "soundPlaysOnceA11y": "Sound plays once, then the timer stops"
+  },
+  "commitment": {
+    "dayClear": "Clear",
+    "daySlip": "Slip"
+  },
+  "commitmentFields": {
+    "lockScreenSectionDescription": "What a locked phone calls it. Nothing else about it is shown there.",
+    "ownLinesSectionTitle": "Your own lines",
+    "ownLinesSectionDescription": "A few short lines in your own words. One shows at a time and the next takes its place at each milestone.",
+    "ownLinePlaceholder": "Add a line",
+    "addOwnLine": "Add",
+    "addOwnLineA11y": "Add this line",
+    "removeOwnLineA11y": "Remove the line {{line}}",
+    "ownLinesLockScreenNote": "The line showing now can appear on your lock screen.",
+    "insteadSectionTitle": "Instead",
+    "insteadSectionDescription": "Up to two timed habits to start in place of the urge.",
+    "insteadNoTimedHabits": "No timed habits yet. Add one under Habits to offer it here."
   }
 }

@@ -1,4 +1,5 @@
 import type { LifeEvent } from './event';
+import type { CommitmentConfig } from './kinds/commitment';
 import type { CounterConfig } from './kinds/counter';
 import type { HabitConfig } from './kinds/habit';
 import { getBundledHabitSoundDurationSeconds } from './habitSoundCatalog';
@@ -76,7 +77,8 @@ export function habitTimerGoal(config: HabitConfig): HabitTimerGoal {
 
 export type DayOutcomeTracker =
   | { kind: 'habit'; config: HabitConfig }
-  | { kind: 'counter'; config: CounterConfig };
+  | { kind: 'counter'; config: CounterConfig }
+  | { kind: 'commitment'; config: CommitmentConfig };
 
 /**
  * Why a day is or is not done. Callers branch on `done`; the reason is for
@@ -93,7 +95,10 @@ export type DayOutcomeReason =
   | 'time_logged'
   | 'nothing_logged'
   | 'marked_complete'
-  | 'no_target';
+  | 'no_target'
+  /** A commitment's day with no slip in it. */
+  | 'clear'
+  | 'slipped';
 
 export interface DayOutcome {
   total: number;
@@ -152,12 +157,22 @@ function counterOutcome(config: CounterConfig, facts: DayFacts): DayOutcome {
   return { total, done: met, reason: met ? 'target_met' : 'under_target', target };
 }
 
+/** A commitment's day: `total` is the slips in it, and any slip means it was not kept. */
+function commitmentOutcome(facts: DayFacts): DayOutcome {
+  const { total } = facts;
+  return total === 0
+    ? { total, done: true, reason: 'clear' }
+    : { total, done: false, reason: 'slipped' };
+}
+
 export function dayOutcome(tracker: DayOutcomeTracker, facts: DayFacts): DayOutcome {
   switch (tracker.kind) {
     case 'habit':
       return habitOutcome(tracker.config, facts);
     case 'counter':
       return counterOutcome(tracker.config, facts);
+    case 'commitment':
+      return commitmentOutcome(facts);
     default: {
       const unreachable: never = tracker;
       throw new Error(`Unknown tracker kind ${JSON.stringify(unreachable)}`);

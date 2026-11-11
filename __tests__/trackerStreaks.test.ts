@@ -1,4 +1,4 @@
-import { CounterConfigSchema, HabitConfigSchema, type DayFacts } from '../src/protocol';
+import { CommitmentConfigSchema, CounterConfigSchema, HabitConfigSchema, type DayFacts } from '../src/protocol';
 import { completedDates, computeTrackerStreaks } from '../src/utils/trackerStreaks';
 
 const facts = (total: number, extra: Partial<DayFacts> = {}): DayFacts => ({
@@ -80,5 +80,31 @@ describe('computeTrackerStreaks', () => {
         '2025-01-02',
       ),
     ).toEqual({ streak: 1, failureStreak: 0 });
+  });
+});
+
+describe('a commitment', () => {
+  const commitment = {
+    kind: 'commitment' as const,
+    config: CommitmentConfigSchema.parse({ clearSince: '2026-03-01T08:00:00.000Z' }),
+  };
+
+  it('keeps every day without a slip, logged or not, back to the day it was made', () => {
+    expect(
+      computeTrackerStreaks(commitment, [], '2026-03-10', '2026-03-01'),
+    ).toEqual({ streak: 10, failureStreak: 0 });
+  });
+
+  it('counts the run from the day after the last slip', () => {
+    expect(
+      computeTrackerStreaks(commitment, [{ date: '2026-03-05', facts: facts(1) }], '2026-03-10', '2026-03-01')
+        .streak,
+    ).toBe(5);
+  });
+
+  it('counts a day with a slip today as not kept, the run before it standing', () => {
+    expect(
+      computeTrackerStreaks(commitment, [{ date: '2026-03-10', facts: facts(1) }], '2026-03-10', '2026-03-01'),
+    ).toEqual({ streak: 9, failureStreak: 0 });
   });
 });

@@ -163,3 +163,32 @@ describe('parseTrackerEditorSave', () => {
     ).toThrow(/positive number/);
   });
 });
+
+describe('parseTrackerEditorSave — commitment', () => {
+  const commitment = {
+    mode: 'commitment' as const,
+    name: 'No buying',
+    lockScreenName: '',
+    ownLines: ['I sleep better'],
+    ownLineDraft: '',
+    insteadHabitIds: [],
+  };
+
+  it('keeps a line still in the field, so Save does not lose it', () => {
+    expect(parseTrackerEditorSave({ ...commitment, ownLineDraft: ' Money for the trip ' })).toEqual({
+      kind: 'commitment',
+      input: {
+        name: 'No buying',
+        lockScreenName: '',
+        ownLines: ['I sleep better', 'Money for the trip'],
+        insteadHabitIds: [],
+      },
+    });
+  });
+
+  it('refuses a line longer than eighty characters', () => {
+    expect(() => parseTrackerEditorSave({ ...commitment, ownLineDraft: 'x'.repeat(81) })).toThrow(
+      'Keep each line to 80 characters',
+    );
+  });
+});

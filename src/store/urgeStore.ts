@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../db/client';
 import { withGuardedWrite } from '../db/dataGeneration';
+import * as elementRepo from '../db/repositories/elementRepository';
 import * as urgeRepo from '../db/repositories/urgeRepository';
 import {
   DEFAULT_RIDE_SECONDS,
@@ -10,6 +11,7 @@ import {
   type UrgeOutcome,
   type UrgeSource,
 } from '../protocol/urge';
+import { getActiveCommitment } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { newId } from '../utils/id';
 import type { ResettableMirror } from './mirrorReset';
@@ -50,7 +52,9 @@ const EMPTY: UrgeMirror = { ride: null, urgesToday: 0, riddenOutTotal: 0, loaded
 
 /** Rides out what has ended and reads the state back, inside the caller's write. */
 async function settle(db: SQLiteDatabase, now: Date): Promise<UrgeMirror> {
-  const rideSeconds = DEFAULT_RIDE_SECONDS;
+  // The commitment's ride length; with none (or none any more), ten minutes.
+  const commitment = getActiveCommitment(await elementRepo.getAllElements(db));
+  const rideSeconds = commitment?.config.rideSeconds ?? DEFAULT_RIDE_SECONDS;
   const open = await urgeRepo.getOpenUrges(db);
   const ended = ridesEnded(open, rideSeconds, now);
   for (const { id, resolvedAt } of ended) {

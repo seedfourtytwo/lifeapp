@@ -1,19 +1,28 @@
 import type { ElementDefinition, ElementKind } from './element';
 import { HabitEventMetaSchema } from './kinds/habit';
 import { CounterEventMetaSchema } from './kinds/counter';
+import { CommitmentEventMetaSchema } from './kinds/commitment';
 import type { LifeEvent } from './event';
 
 export function parseEventMeta(
   kind: ElementKind,
   meta: unknown,
-): ReturnType<typeof CounterEventMetaSchema.parse> | ReturnType<typeof HabitEventMetaSchema.parse> {
-  if (kind === 'counter') {
-    return CounterEventMetaSchema.parse(meta);
+):
+  | ReturnType<typeof CounterEventMetaSchema.parse>
+  | ReturnType<typeof HabitEventMetaSchema.parse>
+  | ReturnType<typeof CommitmentEventMetaSchema.parse> {
+  switch (kind) {
+    case 'counter':
+      return CounterEventMetaSchema.parse(meta);
+    case 'habit':
+      return HabitEventMetaSchema.parse(meta);
+    case 'commitment':
+      return CommitmentEventMetaSchema.parse(meta);
+    default: {
+      const unknown: never = kind;
+      throw new Error(`No event meta schema for kind: ${String(unknown)}`);
+    }
   }
-  if (kind === 'habit') {
-    return HabitEventMetaSchema.parse(meta);
-  }
-  throw new Error(`No event meta schema for kind: ${kind}`);
 }
 
 export function validateEventForElement(

@@ -1,7 +1,14 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { DashboardItem, ElementDefinition, ElementKind } from '../../protocol';
+import type {
+  CommitmentConfig,
+  DashboardItem,
+  ElementDefinition,
+  ElementKind,
+  LifeEvent,
+} from '../../protocol';
 import {
   assertElementConfig,
+  CommitmentConfigSchema,
   CounterConfigSchema,
   ElementDefinitionSchema,
   HabitConfigSchema,
@@ -9,6 +16,7 @@ import {
 } from '../../protocol';
 import { ensureElementsSchema } from '../schemaIntegrity';
 import * as dashboardRepo from './dashboardRepository';
+import * as eventRepo from './eventRepository';
 
 interface ElementRow {
   id: string;
@@ -38,6 +46,8 @@ function rowToElement(row: ElementRow): ElementDefinition {
       return { ...base, kind: 'habit', config: HabitConfigSchema.parse(config) };
     case 'counter':
       return { ...base, kind: 'counter', config: CounterConfigSchema.parse(config) };
+    case 'commitment':
+      return { ...base, kind: 'commitment', config: CommitmentConfigSchema.parse(config) };
     default:
       throw new Error(`Unknown element kind: ${row.kind}`);
   }
@@ -200,4 +210,22 @@ export async function restoreElementAndPin(
     throw new Error(`Dashboard pin missing for restored element ${id}`);
   }
   return pin;
+}
+
+/** Append a slip and move the commitment's clear-since to it, both or neither. */
+export async function recordSlip(
+  db: SQLiteDatabase,
+  commitmentId: string,
+  slip: LifeEvent,
+  config: CommitmentConfig,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    assertElementConfig('commitment', config);
+    await eventRepo.insertEvent(db, slip);
+    await db.runAsync(
+      'UPDATE elements SET config_json = ? WHERE id = ?',
+      JSON.stringify(config),
+      commitmentId,
+    );
+  });
 }

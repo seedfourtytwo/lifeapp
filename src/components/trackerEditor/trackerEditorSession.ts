@@ -1,4 +1,10 @@
-import { toDateString, type CounterConfig, type HabitConfig, getHabitTimerPlaybackMode } from '../../protocol';
+import {
+  getHabitTimerPlaybackMode,
+  toDateString,
+  type CommitmentConfig,
+  type CounterConfig,
+  type HabitConfig,
+} from '../../protocol';
 import { newId } from '../../utils/id';
 import type { TrackerEditorSession } from './types';
 
@@ -31,6 +37,9 @@ export function newEditorSession(
     reminderTimes: [],
     reminderTimeDraft: '',
     showStreakOnCard: true,
+    ownLines: [],
+    ownLineDraft: '',
+    insteadHabitIds: [],
     ...overrides,
   };
 }
@@ -87,5 +96,20 @@ export function editorSessionFromHabit(
       config.remindMinutesBefore !== undefined ? String(config.remindMinutesBefore) : '15',
     reminderTimes: [...config.reminderTimes],
     showStreakOnCard: config.showStreakOnCard !== false,
+  });
+}
+
+export function editorSessionFromCommitment(
+  id: string,
+  name: string,
+  config: CommitmentConfig,
+): TrackerEditorSession {
+  return newEditorSession({
+    mode: 'commitment',
+    editingId: id,
+    name,
+    lockScreenName: config.lockScreenName,
+    ownLines: [...config.ownLines],
+    insteadHabitIds: [...config.insteadHabitIds],
   });
 }

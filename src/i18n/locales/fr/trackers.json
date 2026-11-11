@@ -7,11 +7,15 @@
     "habitsAddLabel": "Nouvelle habitude",
     "habitsEmpty": "Aucune habitude",
     "archiveTitle": "Archive",
-    "archiveEmpty": "Rien d’archivé"
+    "archiveEmpty": "Rien d’archivé",
+    "commitmentTitle": "Engagement",
+    "commitmentAddLabel": "Nouvel engagement",
+    "commitmentEmpty": "Aucun engagement"
   },
   "kindLabel": {
     "counter": "compteur",
-    "habit": "habitude"
+    "habit": "habitude",
+    "commitment": "engagement"
   },
   "schedule": {
     "weekdays": "Jours de semaine",
@@ -36,7 +40,8 @@
     "reminderMinutesNonNegative": "Les minutes de rappel doivent être zéro ou plus",
     "timeRangeFormat": "Entrez des heures valides au format HH:mm, ex. 06:00",
     "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité",
-    "reminderTimeFormat": "Saisissez une heure comme 08:00"
+    "reminderTimeFormat": "Saisissez une heure comme 08:00",
+    "ownLineTooLong": "Gardez chaque phrase sous {{max}} caractères"
   },
   "confirm": {
     "deleteTitle": "Supprimer {{kind}} ?",
@@ -52,7 +57,8 @@
     "restore": "Restaurer",
     "delete": "Supprimer",
     "moreA11y": "Plus d’actions pour {{name}}",
-    "itemsCountA11y": "{{title}}, {{count}} éléments"
+    "itemsCountA11y": "{{title}}, {{count}} éléments",
+    "commitmentBadge": "Engagement"
   },
   "homeIdentity": {
     "historyHint": "Ouvre l’historique"
@@ -79,7 +85,9 @@
     "delete": "Supprimer",
     "save": "Enregistrer",
     "streakShown": "Affichée",
-    "streakHidden": "Masquée"
+    "streakHidden": "Masquée",
+    "newCommitmentTitle": "Nouvel engagement",
+    "editCommitmentTitle": "Modifier l’engagement"
   },
   "counterFields": {
     "sectionTitle": "Paramètres du compteur",
@@ -212,5 +220,22 @@
     "streakMany": "{{count}} jours d'affilée",
     "soundLoopsA11y": "Le son tourne en boucle pendant le minuteur",
     "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête"
+  },
+  "commitment": {
+    "dayClear": "Tenu",
+    "daySlip": "Écart"
+  },
+  "commitmentFields": {
+    "lockScreenSectionDescription": "Le nom affiché sur un téléphone verrouillé. Rien d’autre n’y apparaît.",
+    "ownLinesSectionTitle": "Vos phrases",
+    "ownLinesSectionDescription": "Quelques phrases courtes, avec vos mots. Une seule s’affiche à la fois, la suivante prend sa place à chaque étape.",
+    "ownLinePlaceholder": "Ajouter une phrase",
+    "addOwnLine": "Ajouter",
+    "addOwnLineA11y": "Ajouter cette phrase",
+    "removeOwnLineA11y": "Retirer la phrase {{line}}",
+    "ownLinesLockScreenNote": "La phrase affichée en ce moment peut apparaître sur l’écran verrouillé.",
+    "insteadSectionTitle": "À la place",
+    "insteadSectionDescription": "Jusqu’à deux habitudes minutées à lancer à la place de l’envie.",
+    "insteadNoTimedHabits": "Pas encore d’habitude minutée. Ajoutez-en une dans Habitudes pour la proposer ici."
   }
 }

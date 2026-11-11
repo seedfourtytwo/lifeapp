@@ -2,7 +2,7 @@ import { cancelCalendarReminders } from '../notifications/calendarReminders';
 import type { ClearAppDataOptions } from '../db/clearDataPlan';
 import { applyAppLanguage } from '../i18n';
 import { bumpDataGeneration } from '../db/dataGeneration';
-import { getActiveCounters, getActiveHabits } from './dashboardElements';
+import { getActiveCommitment, getActiveCounters, getActiveHabits } from './dashboardElements';
 import { useCalendarStore } from '../store/calendarStore';
 import { useElementStore } from '../store/elementStore';
 import { useFoodStore } from '../store/foodStore';
@@ -79,16 +79,18 @@ export async function reloadStoresAfterImport(
     const { elements, dashboard } = useElementStore.getState();
     const habitInputs = habitStreakInputsFromElements(getActiveHabits(elements, dashboard));
     const counters = getActiveCounters(elements, dashboard);
-    const counterIds = counters.map((element) => element.id);
+    const commitment = getActiveCommitment(elements);
+    // The commitment's day is its slips: a total, loaded with the counters'.
+    const totalIds = [...counters, ...(commitment ? [commitment] : [])].map((element) => element.id);
     const counterStreakInputs = counterStreakInputsFromElements(counters);
 
-    const { loadHabitDayState, loadHabitStreaks, loadCounterTotals, loadCounterStreaks } =
+    const { loadHabitDayState, loadHabitStreaks, loadDayTotals, loadCounterStreaks } =
       useEventStore.getState();
     // Always call day/counter loaders — empty inputs still mark *Ready flags true.
     await Promise.all([
       loadHabitDayState(habitInputs),
       habitInputs.length > 0 ? loadHabitStreaks(habitInputs) : Promise.resolve(),
-      loadCounterTotals(counterIds),
+      loadDayTotals(totalIds),
       counterStreakInputs.length > 0
         ? loadCounterStreaks(counterStreakInputs)
         : Promise.resolve(),

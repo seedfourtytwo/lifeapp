@@ -9,6 +9,7 @@ import { dayOutcome, type DayFacts } from './dayOutcome';
  * | counter | —                   | increment or set total   | quick_button, manual    |
  * | habit   | trackingMode boolean| 1 = checked off          | habit_tick              |
  * | habit   | trackingMode timer  | session length (seconds) | timer_session           |
+ * | commitment | —                | 1 = a slip               | slip                    |
  *
  * Daily total = SUM(events.value) for that element on that calendar date.
  * Completion rules live in kind config (e.g. dailyTarget, dailyTargetSeconds).
@@ -33,6 +34,9 @@ export function getDailyValueSemantics(element: ElementDefinition): DailyValueSe
       return element.config.trackingMode === 'timer'
         ? { unit: 'seconds', displayUnit: 'seconds' }
         : { unit: 'done', displayUnit: 'done' };
+    case 'commitment':
+      // Charted as kept days: a day without a slip is the one that counts.
+      return { unit: 'done', displayUnit: 'done' };
     default:
       return unknownKind(element);
   }
@@ -45,6 +49,8 @@ export function chartUnitLabel(element: ElementDefinition): string {
       return element.config.unit;
     case 'habit':
       return element.config.trackingMode === 'timer' ? 'min' : 'done';
+    case 'commitment':
+      return 'done';
     default:
       return unknownKind(element);
   }
@@ -57,6 +63,8 @@ export function chartPlotValue(element: ElementDefinition, facts: DayFacts): num
       return facts.total;
     case 'habit':
       if (element.config.trackingMode === 'timer') return Math.round(facts.total / 60);
+      return dayOutcome(element, facts).done ? 1 : 0;
+    case 'commitment':
       return dayOutcome(element, facts).done ? 1 : 0;
     default:
       return unknownKind(element);

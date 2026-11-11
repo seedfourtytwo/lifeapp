@@ -40,7 +40,11 @@
     "counterNotFound": "Counter element not found",
     "habitNotFound": "Habit not found",
     "elementNotFound": "Element not found",
-    "dataReplacedTryAgain": "Data was replaced; try again"
+    "dataReplacedTryAgain": "Data was replaced; try again",
+    "commitmentNotFound": "Commitment not found",
+    "commitmentAlreadyActive": "There is already a commitment. Archive it before starting another.",
+    "insteadHabitNotTimer": "An instead-habit has to be a timed habit.",
+    "insteadHabitMissing": "An instead-habit is no longer there. Pick it again."
   },
   "weekdaysShort": {
     "sun": "Sun",

@@ -25,6 +25,9 @@ const DoneReasonSchema = z.enum([
   'nothing_logged',
   'marked_complete',
   'no_target',
+  /** A commitment's day: no slip in it, or a slip. */
+  'clear',
+  'slipped',
   /** A timer still running has passed its seconds goal; not yet logged. */
   'running_past_goal',
 ]);

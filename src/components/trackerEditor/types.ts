@@ -2,7 +2,7 @@ import type { HabitSchedule, HabitTrackingMode, HabitTimerPlaybackMode, TrackerI
 
 export type HabitScheduleType = HabitSchedule['type'];
 
-export type TrackerEditorMode = 'counter' | 'habit';
+export type TrackerEditorMode = 'counter' | 'habit' | 'commitment';
 
 export type TrackerEditorSession = {
   sessionId: string;
@@ -32,6 +32,12 @@ export type TrackerEditorSession = {
   reminderTimeDraft: string;
   showStreakOnCard: boolean;
   lockScreenName: string;
+  /** A commitment's lines in his own words. */
+  ownLines: string[];
+  /** A line typed but not yet added. */
+  ownLineDraft: string;
+  /** A commitment's timed habits offered instead of the urge. */
+  insteadHabitIds: string[];
 };
 
 export type TrackerEditorSaveData =
@@ -66,7 +72,13 @@ export type TrackerEditorSaveData =
       reminderTimeDraft: string;
       showStreakOnCard: boolean;
       lockScreenName: string;
-    };
+    }
+  | ({ mode: 'commitment'; name: string } & CommitmentEditorFieldState);
+
+export type CommitmentEditorFieldState = Pick<
+  TrackerEditorSession,
+  'lockScreenName' | 'ownLines' | 'ownLineDraft' | 'insteadHabitIds'
+>;
 
 export type HabitEditorFieldState = Pick<
   TrackerEditorSession,

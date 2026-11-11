@@ -4,6 +4,8 @@ import {
   buildHabitTimerSound,
   normalizeLockScreenName,
   isScheduleSupportedForReminders,
+  OWN_LINE_MAX_LENGTH,
+  type CommitmentInput,
   type CounterInput,
   type HabitInput,
   type HabitSchedule,
@@ -89,9 +91,32 @@ function parseReminderTimes(data: Extract<TrackerEditorSaveData, { mode: 'habit'
   return times;
 }
 
-export function parseTrackerEditorSave(
-  data: TrackerEditorSaveData,
-): { kind: 'counter'; input: CounterInput } | { kind: 'habit'; input: HabitInput } {
+/** The listed lines, plus one still in the field so Save does not lose it. */
+function parseOwnLines(data: Extract<TrackerEditorSaveData, { mode: 'commitment' }>): string[] {
+  const lines = [...data.ownLines, data.ownLineDraft].map((line) => line.trim()).filter(Boolean);
+  if (lines.some((line) => line.length > OWN_LINE_MAX_LENGTH)) {
+    throw new Error(i18n.t('trackers:validation.ownLineTooLong', { max: OWN_LINE_MAX_LENGTH }));
+  }
+  return lines;
+}
+
+export type ParsedTrackerEditorSave =
+  | { kind: 'counter'; input: CounterInput }
+  | { kind: 'habit'; input: HabitInput }
+  | { kind: 'commitment'; input: CommitmentInput };
+
+export function parseTrackerEditorSave(data: TrackerEditorSaveData): ParsedTrackerEditorSave {
+  if (data.mode === 'commitment') {
+    return {
+      kind: 'commitment',
+      input: {
+        name: data.name,
+        lockScreenName: data.lockScreenName,
+        ownLines: parseOwnLines(data),
+        insteadHabitIds: data.insteadHabitIds,
+      },
+    };
+  }
   if (data.mode === 'counter') {
     return {
       kind: 'counter',

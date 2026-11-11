@@ -1,3 +1,4 @@
+import { i18n } from '../i18n';
 import {
   dayOutcome,
   formatHabitTimerDuration,
@@ -20,6 +21,10 @@ export function formatTrackerHistoryDayValue(
       return dayOutcome(element, facts).done ? 'Done' : '—';
     case 'counter':
       return `${total} ${element.config.unit}`;
+    case 'commitment':
+      return i18n.t(
+        dayOutcome(element, facts).done ? 'trackers:commitment.dayClear' : 'trackers:commitment.daySlip',
+      );
     default: {
       const unknown: never = element;
       throw new Error(`Unknown tracker kind: ${JSON.stringify(unknown)}`);

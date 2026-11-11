@@ -61,7 +61,8 @@ export interface EventState extends ResettableMirror {
   finishHabitTimer: (markComplete: boolean) => Promise<TimerSessionRecord | null>;
   /** Throw away this tracker's session (archive, delete), or any session (clear data). */
   discardHabitTimer: (elementId?: string) => Promise<void>;
-  loadCounterTotals: (elementIds: string[]) => Promise<void>;
+  /** Today's totals for trackers judged by their total alone: counters, and commitments (slips today). */
+  loadDayTotals: (elementIds: string[]) => Promise<void>;
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;

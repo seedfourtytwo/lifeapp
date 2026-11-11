@@ -110,9 +110,21 @@ function counterTracker(counter: CounterElement, input: WidgetSnapshotInput): Wi
 export function buildWidgetSnapshot(input: WidgetSnapshotInput): WidgetSnapshot {
   const { now } = input;
   const today = toDateString(now);
-  const trackers = input.trackers.map((tracker) =>
-    tracker.kind === 'habit' ? habitTracker(tracker, input, today) : counterTracker(tracker, input),
-  );
+  const trackers = input.trackers.flatMap((tracker): WidgetSnapshotTracker[] => {
+    switch (tracker.kind) {
+      case 'habit':
+        return [habitTracker(tracker, input, today)];
+      case 'counter':
+        return [counterTracker(tracker, input)];
+      case 'commitment':
+        // Not part of snapshot version 1.
+        return [];
+      default: {
+        const unknown: never = tracker;
+        throw new Error(`Unknown tracker kind ${JSON.stringify(unknown)}`);
+      }
+    }
+  });
 
   const nextReminders = input.trackers
     .flatMap((tracker) => {

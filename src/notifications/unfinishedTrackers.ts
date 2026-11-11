@@ -52,6 +52,10 @@ export function countUnfinishedTrackersToday(args: {
           counters += 1;
         }
         break;
+      case 'commitment':
+        // Its day is kept or it is not; either way nothing is left to do, so
+        // the check-in never counts it (and never mentions a slip).
+        break;
       default: {
         const unknown: never = element;
         throw new Error(`Unknown tracker kind: ${JSON.stringify(unknown)}`);

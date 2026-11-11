@@ -5,6 +5,7 @@ export type {
   HabitScheduleType,
 } from './types';
 export {
+  editorSessionFromCommitment,
   editorSessionFromCounter,
   editorSessionFromHabit,
   newEditorSession,

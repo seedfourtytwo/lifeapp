@@ -126,6 +126,15 @@ const openTodo: Todo = {
   protocolVersion: PROTOCOL_VERSION,
 };
 
+jest.mock('../src/db/repositories/urgeRepository', () => ({
+  getOpenUrges: jest.fn(async () => {
+    mockCalls.push('urgeLoad');
+    return [];
+  }),
+  countUrgesOnDay: jest.fn(async () => 0),
+  countRiddenOut: jest.fn(async () => 0),
+}));
+
 jest.mock('../src/db/repositories/todoRepository', () => ({
   getOpenTodos: jest.fn(async () => {
     mockCalls.push('todoLoad');
@@ -338,6 +347,9 @@ describe('reloadStoresAfterImport', () => {
         'elementLoad',
         'foodLoad',
         'todoLoad',
+        // The urge refresh reads the commitment for its ride length.
+        'elementLoad',
+        'urgeLoad',
         'settingsLoad',
         'applyAppLanguage',
         'calendarLoad',

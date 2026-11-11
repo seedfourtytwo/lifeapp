@@ -10,6 +10,7 @@ import { UndoSnackbar } from '../components/UndoSnackbar';
 import TrackerLibraryCard from '../components/TrackerLibraryCard';
 import TrackersCollapsibleSection from '../components/TrackersCollapsibleSection';
 import {
+  editorSessionFromCommitment,
   editorSessionFromCounter,
   editorSessionFromHabit,
   newEditorSession,
@@ -20,7 +21,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { ElementDefinition } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { counterMetaLines, habitMetaLines } from '../utils/trackerMetaLines';
-import { isElementArchived } from '../utils/dashboardElements';
+import { getActiveCommitment, isElementArchived } from '../utils/dashboardElements';
 import { parseTrackerEditorSave } from '../utils/parseTrackerEditorSave';
 
 function runElementMutation(
@@ -47,6 +48,8 @@ export default function TrackersScreen() {
   const updateCounter = useElementStore((s) => s.updateCounter);
   const createHabit = useElementStore((s) => s.createHabit);
   const updateHabit = useElementStore((s) => s.updateHabit);
+  const createCommitment = useElementStore((s) => s.createCommitment);
+  const updateCommitment = useElementStore((s) => s.updateCommitment);
   const archiveElement = useElementStore((s) => s.archiveElement);
   const restoreElement = useElementStore((s) => s.restoreElement);
   /** The tracker just archived, while its Undo is on offer. */
@@ -111,6 +114,7 @@ export default function TrackersScreen() {
     () => elements.filter((element) => element.kind === 'habit' && !isElementArchived(element)),
     [elements],
   );
+  const activeCommitment = useMemo(() => getActiveCommitment(elements), [elements]);
   const archivedElements = useMemo(
     () =>
       elements
@@ -151,64 +155,66 @@ export default function TrackersScreen() {
     [deleteElement, t, tCommon],
   );
 
+  const kindLabel = useCallback(
+    (element: ElementDefinition) => t(`kindLabel.${element.kind}`),
+    [t],
+  );
+
   const renderElementCard = useCallback(
     (element: ElementDefinition, archived: boolean) => {
-      const kindLabel = t(element.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit');
-
-      if (element.kind === 'counter') {
-        const { config } = element;
-        return (
-          <TrackerLibraryCard
-            key={element.id}
-            name={element.name}
-            icon={config.icon}
-            description={counterMetaLines(config)[0]}
-            archived={archived}
-            onEdit={() =>
-              setEditorSession(editorSessionFromCounter(element.id, element.name, config))
-            }
-            onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
-            onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
-            onArchive={
-              archived
-                ? undefined
-                : () => archiveWithUndo(element)
-            }
-            onRestore={
-              archived
-                ? () =>
-                    runElementMutation(
-                      () => restoreElement(element.id),
-                      tCommon('alerts.couldNotRestore'),
-                      tCommon,
-                    )
-                : undefined
-            }
-          />
-        );
+      let card: Pick<
+        React.ComponentProps<typeof TrackerLibraryCard>,
+        'icon' | 'description' | 'onEdit'
+      >;
+      switch (element.kind) {
+        case 'counter': {
+          const { config } = element;
+          card = {
+            icon: config.icon,
+            description: counterMetaLines(config)[0],
+            onEdit: () => setEditorSession(editorSessionFromCounter(element.id, element.name, config)),
+          };
+          break;
+        }
+        case 'habit': {
+          const { config } = element;
+          card = {
+            icon: config.icon,
+            description: [
+              config.trackingMode === 'timer' ? t('card.timerBadge') : t('card.checkOffBadge'),
+              habitMetaLines(config)[0],
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            onEdit: () => setEditorSession(editorSessionFromHabit(element.id, element.name, config)),
+          };
+          break;
+        }
+        case 'commitment': {
+          const { config } = element;
+          card = {
+            icon: null,
+            description: [t('card.commitmentBadge'), config.lockScreenName].join(' · '),
+            onEdit: () =>
+              setEditorSession(editorSessionFromCommitment(element.id, element.name, config)),
+          };
+          break;
+        }
+        default: {
+          const unknown: never = element;
+          throw new Error(`Unknown tracker kind ${JSON.stringify(unknown)}`);
+        }
       }
 
-      const { config } = element;
       return (
         <TrackerLibraryCard
           key={element.id}
           name={element.name}
-          icon={config.icon}
-          description={[
-            config.trackingMode === 'timer' ? t('card.timerBadge') : t('card.checkOffBadge'),
-            habitMetaLines(config)[0],
-          ]
-            .filter(Boolean)
-            .join(' · ')}
+          {...card}
           archived={archived}
-          onEdit={() => setEditorSession(editorSessionFromHabit(element.id, element.name, config))}
           onHistory={() => navigation.navigate('TrackerHistory', { elementId: element.id })}
-          onDelete={() => confirmDelete(element.id, element.name, kindLabel)}
-          onArchive={
-            archived
-              ? undefined
-              : () => archiveWithUndo(element)
-          }
+          onDelete={() => confirmDelete(element.id, element.name, kindLabel(element))}
+          onArchive={archived ? undefined : () => archiveWithUndo(element)}
           onRestore={
             archived
               ? () =>
@@ -225,6 +231,7 @@ export default function TrackersScreen() {
     [
       archiveWithUndo,
       confirmDelete,
+      kindLabel,
       navigation,
       restoreElement,
       t,
@@ -238,16 +245,22 @@ export default function TrackersScreen() {
     setSaving(true);
     try {
       const parsed = parseTrackerEditorSave(data);
-      if (parsed.kind === 'counter') {
-        if (editingId) {
-          await updateCounter(editingId, parsed.input);
-        } else {
-          await createCounter(parsed.input);
+      switch (parsed.kind) {
+        case 'counter':
+          await (editingId ? updateCounter(editingId, parsed.input) : createCounter(parsed.input));
+          break;
+        case 'habit':
+          await (editingId ? updateHabit(editingId, parsed.input) : createHabit(parsed.input));
+          break;
+        case 'commitment':
+          await (editingId
+            ? updateCommitment(editingId, parsed.input)
+            : createCommitment(parsed.input));
+          break;
+        default: {
+          const unknown: never = parsed;
+          throw new Error(`Unknown tracker kind ${JSON.stringify(unknown)}`);
         }
-      } else if (editingId) {
-        await updateHabit(editingId, parsed.input);
-      } else {
-        await createHabit(parsed.input);
       }
       closeEditor();
     } catch (error) {
@@ -296,6 +309,19 @@ export default function TrackersScreen() {
         </TrackersCollapsibleSection>
 
         <TrackersCollapsibleSection
+          title={t('screen.commitmentTitle')}
+          icon="road-variant"
+          count={activeCommitment ? 1 : 0}
+          addLabel={t('screen.commitmentAddLabel')}
+          // One at a time: a second one is started after the first is archived.
+          showAddButton={!activeCommitment}
+          onAdd={() => setEditorSession(newEditorSession({ mode: 'commitment' }))}
+          emptyMessage={t('screen.commitmentEmpty')}
+        >
+          {activeCommitment ? renderElementCard(activeCommitment, false) : null}
+        </TrackersCollapsibleSection>
+
+        <TrackersCollapsibleSection
           title={t('screen.archiveTitle')}
           icon="archive-outline"
           count={archivedElements.length}
@@ -319,7 +345,7 @@ export default function TrackersScreen() {
                 confirmDelete(
                   editingElement.id,
                   editingElement.name,
-                  t(editingElement.kind === 'counter' ? 'kindLabel.counter' : 'kindLabel.habit'),
+                  kindLabel(editingElement),
                 )
             : undefined
         }

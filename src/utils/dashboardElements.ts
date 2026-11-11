@@ -1,6 +1,8 @@
 import {
+  isCommitmentElement,
   isCounterElement,
   isHabitElement,
+  type CommitmentElement,
   type CounterElement,
   type DashboardItem,
   type ElementDefinition,
@@ -53,4 +55,11 @@ export function getActiveCounters(
   dashboard: DashboardItem[],
 ): CounterElement[] {
   return getActiveElements(elements.filter(isCounterElement), dashboard);
+}
+
+/** The one commitment not archived, or null; there is at most one. */
+export function getActiveCommitment(elements: readonly ElementDefinition[]): CommitmentElement | null {
+  return elements.find((element): element is CommitmentElement =>
+    isCommitmentElement(element) && !isElementArchived(element),
+  ) ?? null;
 }
