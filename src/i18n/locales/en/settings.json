@@ -36,6 +36,8 @@
     "backupSavedBody": "Your JSON backup was downloaded.",
     "backupSharedTitle": "Backup shared",
     "backupSharedBody": "Your JSON backup was handed to the app you picked.",
+    "backupSkippedRows_one": "1 entry could not be read and is not in this backup.",
+    "backupSkippedRows_other": "{{count}} entries could not be read and are not in this backup.",
     "exportFailedTitle": "Export failed",
     "exportFailedBodyFallback": "Could not export your data.",
     "importRebuildRequiredBody": "Backup import needs a fresh app build.",

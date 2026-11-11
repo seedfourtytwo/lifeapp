@@ -517,7 +517,7 @@ describe('persisted tables', () => {
   describe('backup round-trip', () => {
     it('restores every table the bundle carries', async () => {
       await seedEveryTable(db, notebookId);
-      const bundle = await exportProtocolBundle();
+      const { bundle } = await exportProtocolBundle();
 
       await importProtocolBundle(bundle);
 
@@ -526,10 +526,10 @@ describe('persisted tables', () => {
 
     it('re-exports byte-identical content', async () => {
       await seedEveryTable(db, notebookId);
-      const before = await exportProtocolBundle();
+      const { bundle: before } = await exportProtocolBundle();
 
       await importProtocolBundle(before);
-      const after = await exportProtocolBundle();
+      const { bundle: after } = await exportProtocolBundle();
 
       expect({ ...after, exportedAt: '' }).toEqual({ ...before, exportedAt: '' });
     });

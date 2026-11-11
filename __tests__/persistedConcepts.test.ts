@@ -373,7 +373,7 @@ describe('persisted concepts', () => {
     it('survives a backup round-trip if it declares a bundle key', async () => {
       await seedEveryConcept();
       const before = rowsIn(concept);
-      const bundle = await exportProtocolBundle();
+      const { bundle } = await exportProtocolBundle();
 
       await importProtocolBundle(bundle);
 

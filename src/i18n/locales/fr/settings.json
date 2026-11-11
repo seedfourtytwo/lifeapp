@@ -36,6 +36,8 @@
     "backupSavedBody": "Votre sauvegarde JSON a été téléchargée.",
     "backupSharedTitle": "Sauvegarde partagée",
     "backupSharedBody": "Votre sauvegarde JSON a été transmise à l'application choisie.",
+    "backupSkippedRows_one": "1 entrée n'a pas pu être lue et ne figure pas dans cette sauvegarde.",
+    "backupSkippedRows_other": "{{count}} entrées n'ont pas pu être lues et ne figurent pas dans cette sauvegarde.",
     "exportFailedTitle": "Échec de l'export",
     "exportFailedBodyFallback": "Impossible d'exporter vos données.",
     "importRebuildRequiredBody": "L’import de sauvegarde nécessite une nouvelle version de l’application.",

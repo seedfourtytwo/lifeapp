@@ -187,7 +187,7 @@ describe('editing one chapter of a notebook day', () => {
   it('carries every chapter of a day through a backup round-trip', async () => {
     await seedTwoChapters();
 
-    const bundle = await exportProtocolBundle();
+    const { bundle } = await exportProtocolBundle();
     await importProtocolBundle(bundle);
 
     const chapters = await loadJournalChapters(journalTarget(), DATE);

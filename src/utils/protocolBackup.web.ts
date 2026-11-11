@@ -13,7 +13,7 @@ export function isImportBackupAvailable(): boolean {
 }
 
 export async function exportBackupToFile(): Promise<ExportBackupResult> {
-  const bundle = await exportProtocolBundle();
+  const { bundle, skippedRows } = await exportProtocolBundle();
   const json = serializeBundle(bundle);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -22,7 +22,7 @@ export async function exportBackupToFile(): Promise<ExportBackupResult> {
   anchor.download = protocolBackupFileName();
   anchor.click();
   URL.revokeObjectURL(url);
-  return 'saved';
+  return { destination: 'saved', skippedRows };
 }
 
 export async function importBackupFromFile(): Promise<boolean> {

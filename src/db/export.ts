@@ -11,6 +11,7 @@ import * as journalNotebookRepo from '../db/repositories/journalNotebookReposito
 import * as calendarRepo from '../db/repositories/calendarRepository';
 import * as foodRepo from '../db/repositories/foodRepository';
 import * as todoRepo from '../db/repositories/todoRepository';
+import { countRows, type BackedUpTable } from '../db/repositories/rowCountRepository';
 import { markSeedFoodsApplied } from '../nutrition/seedCatalog';
 import { readAppSettings, writeAppSettings } from './appSettingsBackup';
 import { clearDataForImport } from './resetAppData';
@@ -21,7 +22,13 @@ import { newId } from '../utils/id';
 import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
 import { stopHabitSound } from '../audio/habitTimerSound';
 
-export async function exportProtocolBundle(): Promise<ProtocolBundle> {
+export interface ExportedBundle {
+  bundle: ProtocolBundle;
+  /** Rows the repositories could not read and so left out of `bundle`. */
+  skippedRows: number;
+}
+
+export async function exportProtocolBundle(): Promise<ExportedBundle> {
   return withDbWriteLock(async () => {
     const db = await getDatabase();
     // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
@@ -40,10 +47,31 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
     const foodLog = await foodRepo.getAllFoodLog(db);
     const todos = await todoRepo.getAllTodos(db);
 
+    // Reads skip rows that fail validation; a backup must not look complete when it is not.
+    const read: [BackedUpTable, number][] = [
+      ['elements', elements.length],
+      ['dashboard_items', dashboard.length],
+      ['events', events.length],
+      ['day_notes', dayNotesRaw.length],
+      ['journal_notebooks', journalNotebooks.length],
+      ['daily_journals', dailyJournals.length],
+      ['calendars', calendars.length],
+      ['calendar_events', calendarEvents.length],
+      ['calendar_reminders', reminders.length],
+      ['calendar_occurrence_clears', clears.length],
+      ['food_items', foodItems.length],
+      ['food_log', foodLog.length],
+      ['todos', todos.length],
+    ];
+    let skippedRows = 0;
+    for (const [table, readCount] of read) {
+      skippedRows += (await countRows(db, table)) - readCount;
+    }
+
     const elementIds = new Set(elements.map((element) => element.id));
     const dayNotes = dayNotesRaw.filter((note) => elementIds.has(note.elementId));
 
-    return createProtocolBundle({
+    const bundle = createProtocolBundle({
       elements,
       dashboard: dashboard.filter((item) => {
         const element = elements.find((candidate) => candidate.id === item.elementId);
@@ -65,6 +93,7 @@ export async function exportProtocolBundle(): Promise<ProtocolBundle> {
         clearedOccurrences: clears,
       },
     });
+    return { bundle, skippedRows };
   });
 }
 

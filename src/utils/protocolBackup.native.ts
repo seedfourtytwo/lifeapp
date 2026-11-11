@@ -57,10 +57,10 @@ async function shareBackupFile(json: string): Promise<void> {
 }
 
 export async function exportBackupToFile(): Promise<ExportBackupResult> {
-  const bundle = await exportProtocolBundle();
+  const { bundle, skippedRows } = await exportProtocolBundle();
   const json = serializeBundle(bundle);
   await shareBackupFile(json);
-  return 'shared';
+  return { destination: 'shared', skippedRows };
 }
 
 export async function importBackupFromFile(): Promise<boolean> {

@@ -23,8 +23,10 @@ export function useProtocolBackup() {
   const handleExport = useCallback(async () => {
     setBusy(true);
     try {
-      const { titleKey, bodyKey } = exportBackupAlertKeys(await exportBackupToFile());
-      Alert.alert(t(titleKey), t(bodyKey));
+      const result = await exportBackupToFile();
+      const { titleKey, bodyKey, skippedRowsKey } = exportBackupAlertKeys(result);
+      const skipped = skippedRowsKey ? `\n\n${t(skippedRowsKey, { count: result.skippedRows })}` : '';
+      Alert.alert(t(titleKey), `${t(bodyKey)}${skipped}`);
     } catch (error) {
       Alert.alert(
         t('settings:data.exportFailedTitle'),
