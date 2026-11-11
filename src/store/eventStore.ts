@@ -685,7 +685,9 @@ export const useEventStore = create<EventState>((set, get) => ({
     const session = get().activeTimerSessions[elementId];
     if (!session?.pausedAt) return;
 
-    const pausedMs = Date.now() - new Date(session.pausedAt).getTime();
+    // A clock set backwards while paused would make this negative, and a negative
+    // offset fails validation when sessions are read back — dropping all of them.
+    const pausedMs = Math.max(0, Date.now() - new Date(session.pausedAt).getTime());
     const activeTimerSessions = {
       ...get().activeTimerSessions,
       [elementId]: {

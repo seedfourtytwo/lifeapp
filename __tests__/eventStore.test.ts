@@ -266,3 +266,29 @@ describe('stopHabitTimer', () => {
     expect(events[0].meta).toMatchObject({ trackCompleted: true });
   });
 });
+
+async function flushPromises(): Promise<void> {
+  for (let i = 0; i < 20; i += 1) await Promise.resolve();
+}
+
+describe('pause and resume', () => {
+  /**
+   * The phone's clock jumps back (network time, a manual change) while a
+   * timer is paused. A negative pause offset fails validation when sessions
+   * are read back, which drops every saved session at the next start.
+   */
+  it('survives the clock going backwards while paused', async () => {
+    state().startHabitTimer(TIMER_HABIT);
+    advance(60_000);
+    state().pauseHabitTimer(TIMER_HABIT);
+    advance(-60 * 60_000);
+
+    state().resumeHabitTimer(TIMER_HABIT);
+    await flushPromises();
+
+    expect(state().activeTimerSessions[TIMER_HABIT].pauseOffsetMs).toBe(0);
+    const { loadPersistedActiveTimerSessions } = require('../src/db/repositories/activeTimerRepository') as typeof import('../src/db/repositories/activeTimerRepository');
+    const persisted = await loadPersistedActiveTimerSessions(testDb.db);
+    expect(Object.keys(persisted)).toEqual([TIMER_HABIT]);
+  });
+});
