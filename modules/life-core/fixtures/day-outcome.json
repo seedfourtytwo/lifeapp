@@ -1,0 +1,323 @@
+{
+  "about": "The done rule, run by dayOutcome.test fixtures in Jest and by DayRulesTest in Kotlin.",
+  "cases": [
+    {
+      "name": "check-off ticked",
+      "rule": {
+        "kind": "check_off"
+      },
+      "facts": {
+        "total": 1,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "checked"
+    },
+    {
+      "name": "check-off not ticked",
+      "rule": {
+        "kind": "check_off"
+      },
+      "facts": {
+        "total": 0,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "not_checked"
+    },
+    {
+      "name": "check-off marked done counts as checked once ticked",
+      "rule": {
+        "kind": "check_off"
+      },
+      "facts": {
+        "total": 0,
+        "trackCompleted": false,
+        "markedComplete": true
+      },
+      "done": true,
+      "reason": "marked_complete"
+    },
+    {
+      "name": "seconds goal a second short",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        }
+      },
+      "facts": {
+        "total": 899,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "under_target"
+    },
+    {
+      "name": "seconds goal exactly met",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        }
+      },
+      "facts": {
+        "total": 900,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "target_met"
+    },
+    {
+      "name": "seconds goal passed",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        }
+      },
+      "facts": {
+        "total": 901,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "target_met"
+    },
+    {
+      "name": "seconds goal short but Done pressed",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        }
+      },
+      "facts": {
+        "total": 300,
+        "trackCompleted": false,
+        "markedComplete": true
+      },
+      "done": true,
+      "reason": "marked_complete"
+    },
+    {
+      "name": "seconds goal met and Done pressed: the goal is the reason",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        }
+      },
+      "facts": {
+        "total": 900,
+        "trackCompleted": false,
+        "markedComplete": true
+      },
+      "done": true,
+      "reason": "target_met"
+    },
+    {
+      "name": "play-once long session, track not finished",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "play_once",
+          "trackSeconds": 915
+        }
+      },
+      "facts": {
+        "total": 1340,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "track_not_finished"
+    },
+    {
+      "name": "play-once short session, track finished",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "play_once",
+          "trackSeconds": 915
+        }
+      },
+      "facts": {
+        "total": 30,
+        "trackCompleted": true,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "track_finished"
+    },
+    {
+      "name": "play-once Done pressed",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "play_once",
+          "trackSeconds": 915
+        }
+      },
+      "facts": {
+        "total": 10,
+        "trackCompleted": false,
+        "markedComplete": true
+      },
+      "done": true,
+      "reason": "marked_complete"
+    },
+    {
+      "name": "open goal one second logged",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "open"
+        }
+      },
+      "facts": {
+        "total": 1,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "time_logged"
+    },
+    {
+      "name": "open goal nothing logged",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "open"
+        }
+      },
+      "facts": {
+        "total": 0,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "nothing_logged"
+    },
+    {
+      "name": "open goal nothing logged but Done pressed",
+      "rule": {
+        "kind": "timer",
+        "goal": {
+          "type": "open"
+        }
+      },
+      "facts": {
+        "total": 0,
+        "trackCompleted": false,
+        "markedComplete": true
+      },
+      "done": true,
+      "reason": "marked_complete"
+    },
+    {
+      "name": "counter one below target",
+      "rule": {
+        "kind": "counter",
+        "target": 8
+      },
+      "facts": {
+        "total": 7,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "under_target"
+    },
+    {
+      "name": "counter at target",
+      "rule": {
+        "kind": "counter",
+        "target": 8
+      },
+      "facts": {
+        "total": 8,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "target_met"
+    },
+    {
+      "name": "counter over target",
+      "rule": {
+        "kind": "counter",
+        "target": 8
+      },
+      "facts": {
+        "total": 12,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "target_met"
+    },
+    {
+      "name": "counter without target is never done",
+      "rule": {
+        "kind": "counter",
+        "target": null
+      },
+      "facts": {
+        "total": 40,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "no_target"
+    },
+    {
+      "name": "commitment with no slip",
+      "rule": {
+        "kind": "commitment"
+      },
+      "facts": {
+        "total": 0,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": true,
+      "reason": "clear"
+    },
+    {
+      "name": "commitment with a slip",
+      "rule": {
+        "kind": "commitment"
+      },
+      "facts": {
+        "total": 1,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "slipped"
+    },
+    {
+      "name": "commitment with two slips",
+      "rule": {
+        "kind": "commitment"
+      },
+      "facts": {
+        "total": 2,
+        "trackCompleted": false,
+        "markedComplete": false
+      },
+      "done": false,
+      "reason": "slipped"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "about": "Time clear and lamp labels, English and French, as formatTimeClear / formatLampLabel and the widget's strings write them.",
+  "clearTime": [
+    {
+      "elapsedMs": 0,
+      "en": "0m",
+      "fr": "0 min"
+    },
+    {
+      "elapsedMs": 2579999,
+      "en": "42m",
+      "fr": "42 min"
+    },
+    {
+      "elapsedMs": 3599999,
+      "en": "59m",
+      "fr": "59 min"
+    },
+    {
+      "elapsedMs": 3600000,
+      "en": "1h 0m",
+      "fr": "1 h 0"
+    },
+    {
+      "elapsedMs": 18720000,
+      "en": "5h 12m",
+      "fr": "5 h 12"
+    },
+    {
+      "elapsedMs": 86399999,
+      "en": "23h 59m",
+      "fr": "23 h 59"
+    },
+    {
+      "elapsedMs": 86400000,
+      "en": "1d 0h",
+      "fr": "1 j 0 h"
+    },
+    {
+      "elapsedMs": 226740000,
+      "en": "2d 14h",
+      "fr": "2 j 14 h"
+    },
+    {
+      "elapsedMs": 3456000000,
+      "en": "40d 0h",
+      "fr": "40 j 0 h"
+    },
+    {
+      "elapsedMs": -18000000,
+      "en": "0m",
+      "fr": "0 min"
+    }
+  ],
+  "lampLabels": [
+    {
+      "hours": 24,
+      "en": "24h",
+      "fr": "24 h"
+    },
+    {
+      "hours": 48,
+      "en": "48h",
+      "fr": "48 h"
+    },
+    {
+      "hours": 72,
+      "en": "3d",
+      "fr": "3 j"
+    },
+    {
+      "hours": 120,
+      "en": "5d",
+      "fr": "5 j"
+    },
+    {
+      "hours": 336,
+      "en": "14d",
+      "fr": "14 j"
+    },
+    {
+      "hours": 504,
+      "en": "21d",
+      "fr": "21 j"
+    }
+  ]
+}

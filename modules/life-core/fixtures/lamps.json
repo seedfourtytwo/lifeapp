@@ -1,0 +1,115 @@
+{
+  "about": "Lamps passed and the next lamp's hour, a given number of hours after clear-since. Lamps: 24, 48, 72, 120, 168, 240, 336 h, then every 168 h; a lamp is passed exactly at its hour.",
+  "clearSince": "2026-03-07T09:30:00.000Z",
+  "cases": [
+    {
+      "hoursAfter": -5,
+      "lampsPassed": 0,
+      "nextLampHours": 24
+    },
+    {
+      "hoursAfter": 0,
+      "lampsPassed": 0,
+      "nextLampHours": 24
+    },
+    {
+      "hoursAfter": 23.99,
+      "lampsPassed": 0,
+      "nextLampHours": 24
+    },
+    {
+      "hoursAfter": 24,
+      "lampsPassed": 1,
+      "nextLampHours": 48
+    },
+    {
+      "hoursAfter": 47,
+      "lampsPassed": 1,
+      "nextLampHours": 48
+    },
+    {
+      "hoursAfter": 48,
+      "lampsPassed": 2,
+      "nextLampHours": 72
+    },
+    {
+      "hoursAfter": 72,
+      "lampsPassed": 3,
+      "nextLampHours": 120
+    },
+    {
+      "hoursAfter": 119,
+      "lampsPassed": 3,
+      "nextLampHours": 120
+    },
+    {
+      "hoursAfter": 120,
+      "lampsPassed": 4,
+      "nextLampHours": 168
+    },
+    {
+      "hoursAfter": 168,
+      "lampsPassed": 5,
+      "nextLampHours": 240
+    },
+    {
+      "hoursAfter": 240,
+      "lampsPassed": 6,
+      "nextLampHours": 336
+    },
+    {
+      "hoursAfter": 335,
+      "lampsPassed": 6,
+      "nextLampHours": 336
+    },
+    {
+      "hoursAfter": 336,
+      "lampsPassed": 7,
+      "nextLampHours": 504
+    },
+    {
+      "hoursAfter": 503,
+      "lampsPassed": 7,
+      "nextLampHours": 504
+    },
+    {
+      "hoursAfter": 504,
+      "lampsPassed": 8,
+      "nextLampHours": 672
+    },
+    {
+      "hoursAfter": 700,
+      "lampsPassed": 9,
+      "nextLampHours": 840
+    }
+  ],
+  "ownLines": {
+    "lines": [
+      "first",
+      "second",
+      "third"
+    ],
+    "cases": [
+      {
+        "hoursAfter": 1,
+        "shown": "first"
+      },
+      {
+        "hoursAfter": 23.99,
+        "shown": "first"
+      },
+      {
+        "hoursAfter": 24,
+        "shown": "second"
+      },
+      {
+        "hoursAfter": 48,
+        "shown": "third"
+      },
+      {
+        "hoursAfter": 72,
+        "shown": "first"
+      }
+    ]
+  }
+}

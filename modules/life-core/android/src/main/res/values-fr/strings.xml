@@ -8,4 +8,9 @@
   <string name="life_core_timer_pause">Pause</string>
   <string name="life_core_timer_resume">Reprendre</string>
   <string name="life_core_timer_done">Terminé</string>
+  <string name="life_core_widget_clear_minutes">%1$d min</string>
+  <string name="life_core_widget_clear_hours_minutes">%1$d h %2$d</string>
+  <string name="life_core_widget_clear_days_hours">%1$d j %2$d h</string>
+  <string name="life_core_widget_lamp_hours">%1$d h</string>
+  <string name="life_core_widget_lamp_days">%1$d j</string>
 </resources>

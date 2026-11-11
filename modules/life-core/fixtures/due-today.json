@@ -1,0 +1,160 @@
+{
+  "about": "Due on a date from a schedule (contract: Working out today without the app). Dates are local; the clock changes are Europe/Paris 2026.",
+  "cases": [
+    {
+      "name": "daily",
+      "schedule": {
+        "type": "daily"
+      },
+      "date": "2026-03-10",
+      "due": true
+    },
+    {
+      "name": "weekdays on a Tuesday",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "date": "2026-03-10",
+      "due": true
+    },
+    {
+      "name": "weekdays on a Saturday",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "date": "2026-03-14",
+      "due": false
+    },
+    {
+      "name": "weekdays on a Sunday",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "date": "2026-03-15",
+      "due": false
+    },
+    {
+      "name": "weekends on a Sunday",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          0,
+          6
+        ]
+      },
+      "date": "2026-03-15",
+      "due": true
+    },
+    {
+      "name": "every 3 days on the anchor",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-03-27"
+      },
+      "date": "2026-03-27",
+      "due": true
+    },
+    {
+      "name": "every 3 days the day before the anchor",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-03-27"
+      },
+      "date": "2026-03-26",
+      "due": false
+    },
+    {
+      "name": "every 3 days three days before the anchor",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-03-27"
+      },
+      "date": "2026-03-24",
+      "due": false
+    },
+    {
+      "name": "every 3 days across the spring clock change",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-03-27"
+      },
+      "date": "2026-03-30",
+      "due": true
+    },
+    {
+      "name": "every 3 days one after the spring clock change",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-03-27"
+      },
+      "date": "2026-03-31",
+      "due": false
+    },
+    {
+      "name": "every 2 days across the autumn clock change",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 2,
+        "anchorDate": "2026-10-24"
+      },
+      "date": "2026-10-26",
+      "due": true
+    },
+    {
+      "name": "every 2 days the day after",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 2,
+        "anchorDate": "2026-10-24"
+      },
+      "date": "2026-10-27",
+      "due": false
+    },
+    {
+      "name": "every 2 days a year on",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 2,
+        "anchorDate": "2026-10-24"
+      },
+      "date": "2027-10-24",
+      "due": false
+    },
+    {
+      "name": "every 2 days 366 days on",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 2,
+        "anchorDate": "2026-10-24"
+      },
+      "date": "2027-10-25",
+      "due": true
+    }
+  ]
+}
