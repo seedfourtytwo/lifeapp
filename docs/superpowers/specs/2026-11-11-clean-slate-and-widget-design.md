@@ -138,6 +138,17 @@ Follow-ups:
 - Timer dead time: persist a heartbeat and cap elapsed at it on restart. Decision needed: at midnight, end the session or split it (proposal: split, seconds go to the day they happened).
 - **Own signing key** (decision for Chris): the release is signed with the public Android debug key from the Expo template, stable only by accident. Moving to a private key needs one export → uninstall → install → import, so it comes after stage 0 and the auto-backup.
 
+**Stage 4 status (2026-11-11):** implemented by Opus on `clean-slate-stage-4` (ends 0adf55d), not yet reviewed; 151 suites / 1753 tests, type-check and lint green. Not yet run on a device.
+
+Decisions made in the build: safety copies keep the last 5, in `files/SQLite/safety-copies/`; automatic backups keep the last 14, named `life-dashboard-auto-backup-…` so pruning never touches a hand-kept export. Import while a timer runs or is paused is refused (banking first is pointless: the import replaces the events it would go into). A concept the file lacks is kept unless its rows point at a replaced table, so day notes still follow their trackers. Backup folder and per-target results live in `files/auto-backup.json`, not SQLite, so an import cannot switch the backup off. A process that died mid-session is restored paused at its last heartbeat (every 30 s, driven by playback status so it runs while locked); pauses are counted before midnight when splitting. The rollover finishes a session paused before midnight and rolls a running one.
+
+Follow-ups:
+- Montara target: the runner takes a second `BackupTarget` as is; the server needs an upload endpoint first. Encrypt before upload (Architecture direction).
+- Picking a new folder does not release the old folder's grant (expo-file-system has no call for it).
+- EAS cloud release builds now need the signing properties file too.
+
+Device checks owed: the folder picker grants and the grant survives a restart; a copy lands in the folder on first foreground of the day; status line after revoking the folder; `./gradlew assembleDebug` with no signing file; a release build fails without it and signs with the new key with it; a timer killed from recents comes back paused at the right time; a timer running across midnight logs two events.
+
 ### Stage 5 — Make the app safe for a second writer
 
 - One `refreshFromDb()` on every AppState `active` and on a widget broadcast; it also re-hydrates timer sessions.
