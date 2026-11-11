@@ -1,4 +1,4 @@
-import { i18n } from '../../i18n';
+import { i18n } from '../i18n';
 import {
   activeTimerElapsedSeconds,
   formatHabitTimerDuration,
@@ -6,7 +6,7 @@ import {
   isActiveTimerPaused,
   type ActiveTimerSession,
   type HabitConfig,
-} from '../../protocol';
+} from '../protocol';
 
 export type HabitTimerLockScreenMeta = {
   title?: string;

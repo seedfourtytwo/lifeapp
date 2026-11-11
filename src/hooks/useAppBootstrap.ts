@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   installHabitTimerRemoteControls,
   restoreHabitTimerPlaybackAfterHydration,
-} from '../kinds/habit/habitTimerRemote';
+} from '../habitTimer/habitTimerRemote';
 import { warmupHabitSoundPlayback } from '../audio/habitTimerSound';
 import { warmupHabitCompleteChime } from '../audio/habitCompleteSound';
 import { preloadConfiguredHabitSounds } from '../audio/preloadConfiguredHabitSounds';

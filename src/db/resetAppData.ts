@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
+import { stopHabitTimerLockScreenTicker } from '../habitTimer/habitTimerLockScreen';
 import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import {

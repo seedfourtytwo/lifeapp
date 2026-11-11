@@ -49,7 +49,7 @@ function config(timerSound?: { trackId: string; playbackMode: 'loop' }) {
 }
 
 it('keeps the timer running when its sound fails to start', async () => {
-  const controls = require('../src/kinds/habit/habitTimerControls') as typeof import('../src/kinds/habit/habitTimerControls');
+  const controls = require('../src/habitTimer/habitTimerControls') as typeof import('../src/habitTimer/habitTimerControls');
   const { useEventStore } = require('../src/store/eventStore') as typeof import('../src/store/eventStore');
 
   controls.startHabitTimerSession(HABIT, config());
@@ -60,7 +60,7 @@ it('keeps the timer running when its sound fails to start', async () => {
 });
 
 it('handles a sound that fails on resume', async () => {
-  const controls = require('../src/kinds/habit/habitTimerControls') as typeof import('../src/kinds/habit/habitTimerControls');
+  const controls = require('../src/habitTimer/habitTimerControls') as typeof import('../src/habitTimer/habitTimerControls');
   const { useEventStore } = require('../src/store/eventStore') as typeof import('../src/store/eventStore');
   useEventStore.getState().startHabitTimer(HABIT, config());
   useEventStore.getState().pauseHabitTimer(HABIT);

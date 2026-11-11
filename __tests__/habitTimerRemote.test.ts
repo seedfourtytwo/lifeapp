@@ -62,7 +62,7 @@ beforeEach(async () => {
   (sound.setHabitTimerRemoteHandlers as jest.Mock).mockImplementation((next: RemoteHandlers) => {
     handlers = next;
   });
-  require('../src/kinds/habit/habitTimerRemote').installHabitTimerRemoteControls();
+  require('../src/habitTimer/habitTimerRemote').installHabitTimerRemoteControls();
   await require('../src/hooks/refreshAllDailyData').refreshAllDailyData();
 });
 
@@ -91,7 +91,7 @@ async function settle(): Promise<void> {
 it('does not un-tick a done habit when play is pressed on it', async () => {
   await eventStore().getState().toggleHabit(HABIT_A, tickConfig);
   await eventStore().getState().toggleHabit(HABIT_B, tickConfig);
-  const { setFocusedHabitId } = require('../src/kinds/habit/habitLockScreenQueue') as typeof import('../src/kinds/habit/habitLockScreenQueue');
+  const { setFocusedHabitId } = require('../src/habitTimer/habitLockScreenQueue') as typeof import('../src/habitTimer/habitLockScreenQueue');
   setFocusedHabitId(HABIT_A);
 
   handlers.onPlayingChange?.(true);
@@ -127,7 +127,7 @@ it('acts on today, not yesterday\'s maps, on the first press after midnight', as
  */
 it('records a heartbeat for the habit the sound plays for', () => {
   const heartbeat = jest.spyOn(eventStore().getState(), 'recordTimerHeartbeat');
-  const { setFocusedHabitId } = require('../src/kinds/habit/habitLockScreenQueue') as typeof import('../src/kinds/habit/habitLockScreenQueue');
+  const { setFocusedHabitId } = require('../src/habitTimer/habitLockScreenQueue') as typeof import('../src/habitTimer/habitLockScreenQueue');
   setFocusedHabitId(HABIT_B);
 
   handlers.onPlaybackProgress?.();

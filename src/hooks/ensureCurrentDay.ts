@@ -1,5 +1,5 @@
 import { stopHabitSound } from '../audio/habitTimerSound';
-import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
+import { stopHabitTimerLockScreenTicker } from '../habitTimer/habitTimerLockScreen';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
