@@ -2,25 +2,19 @@ import {
   filterHabitsDueToday,
   isHabitDueToday,
   orderHabitsList,
-  PROTOCOL_VERSION,
   type ElementDefinition,
 } from '../src/protocol';
+import { habitElement } from './support/elements';
 
 const habit = (
   id: string,
   overrides: Record<string, unknown> = {},
-): ElementDefinition => ({
-  id,
-  kind: 'habit',
-  name: `Habit ${id}`,
-  config: {
-    timeSlot: 'anytime',
-    schedule: { type: 'daily' },
-    ...overrides,
-  },
-  protocolVersion: PROTOCOL_VERSION,
-  createdAt: '2025-01-01T00:00:00.000Z',
-});
+): ElementDefinition =>
+  habitElement({
+    id,
+    name: `Habit ${id}`,
+    config: { timeSlot: 'anytime', schedule: { type: 'daily' }, ...overrides },
+  });
 
 describe('isHabitDueToday', () => {
   it('respects weekday schedule', () => {

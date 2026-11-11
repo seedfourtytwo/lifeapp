@@ -1,3 +1,5 @@
+import { CounterConfigSchema } from '../src/protocol';
+import { HabitConfigSchema } from '../src/protocol';
 import type { ElementDefinition } from '../src/protocol';
 import { preloadConfiguredHabitSounds } from '../src/audio/preloadConfiguredHabitSounds';
 import { preloadHabitSound } from '../src/audio/habitTimerSound';
@@ -23,11 +25,11 @@ describe('preloadConfiguredHabitSounds', () => {
         name: 'Meditate',
         protocolVersion: 1,
         createdAt: '2025-01-01T00:00:00.000Z',
-        config: {
+        config: HabitConfigSchema.parse({
           timeSlot: 'morning',
           trackingMode: 'timer',
           timerSound: { trackId: 'meditation15min' },
-        },
+        }),
       },
       {
         id: '2',
@@ -35,11 +37,11 @@ describe('preloadConfiguredHabitSounds', () => {
         name: 'Meditate again',
         protocolVersion: 1,
         createdAt: '2025-01-01T00:00:00.000Z',
-        config: {
+        config: HabitConfigSchema.parse({
           timeSlot: 'evening',
           trackingMode: 'timer',
           timerSound: { trackId: 'meditation15min' },
-        },
+        }),
       },
       {
         id: '3',
@@ -47,11 +49,11 @@ describe('preloadConfiguredHabitSounds', () => {
         name: 'Wim Hof',
         protocolVersion: 1,
         createdAt: '2025-01-01T00:00:00.000Z',
-        config: {
+        config: HabitConfigSchema.parse({
           timeSlot: 'morning',
           trackingMode: 'timer',
           timerSound: { trackId: 'wimhofMorning' },
-        },
+        }),
       },
     ];
 
@@ -70,10 +72,10 @@ describe('preloadConfiguredHabitSounds', () => {
         name: 'Stretch',
         protocolVersion: 1,
         createdAt: '2025-01-01T00:00:00.000Z',
-        config: {
+        config: HabitConfigSchema.parse({
           timeSlot: 'morning',
           trackingMode: 'timer',
-        },
+        }),
       },
       {
         id: '2',
@@ -81,9 +83,9 @@ describe('preloadConfiguredHabitSounds', () => {
         name: 'Pushups',
         protocolVersion: 1,
         createdAt: '2025-01-01T00:00:00.000Z',
-        config: {
+        config: CounterConfigSchema.parse({ unit: 'reps',
           quickIncrements: [5],
-        },
+        }),
       },
     ];
 

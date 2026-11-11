@@ -1,6 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { DashboardItem, ElementDefinition, ElementKind } from '../../protocol';
-import { PROTOCOL_VERSION, validateElementConfig } from '../../protocol';
+import {
+  assertElementConfig,
+  CounterConfigSchema,
+  ElementDefinitionSchema,
+  HabitConfigSchema,
+  PROTOCOL_VERSION,
+} from '../../protocol';
 import { ensureElementsSchema } from '../schemaIntegrity';
 import * as dashboardRepo from './dashboardRepository';
 
@@ -14,19 +20,27 @@ interface ElementRow {
   archived_at: string | null;
 }
 
+/**
+ * The one place a stored config is parsed. Its defaults are kept, so nothing
+ * downstream re-parses or casts: it narrows on `kind` and reads the config.
+ */
 function rowToElement(row: ElementRow): ElementDefinition {
-  const config = JSON.parse(row.config_json) as Record<string, unknown>;
-  validateElementConfig(row.kind as ElementKind, config);
-
-  return {
+  const base = {
     id: row.id,
-    kind: row.kind as ElementKind,
     name: row.name,
-    config,
     protocolVersion: PROTOCOL_VERSION,
     createdAt: row.created_at,
     archivedAt: row.archived_at ?? null,
   };
+  const config: unknown = JSON.parse(row.config_json);
+  switch (row.kind) {
+    case 'habit':
+      return { ...base, kind: 'habit', config: HabitConfigSchema.parse(config) };
+    case 'counter':
+      return { ...base, kind: 'counter', config: CounterConfigSchema.parse(config) };
+    default:
+      throw new Error(`Unknown element kind: ${row.kind}`);
+  }
 }
 
 export async function getAllElements(db: SQLiteDatabase): Promise<ElementDefinition[]> {
@@ -83,7 +97,7 @@ export async function insertElement(
   db: SQLiteDatabase,
   element: ElementDefinition,
 ): Promise<void> {
-  validateElementConfig(element.kind, element.config);
+  ElementDefinitionSchema.parse(element);
 
   await db.runAsync(
     `INSERT INTO elements (id, kind, name, config_json, protocol_version, created_at, archived_at)
@@ -98,13 +112,17 @@ export async function insertElement(
   );
 }
 
+/**
+ * Store a new name and config as given. Migrations pass raw configs that still
+ * carry fields later steps read, so the config is checked, not rewritten.
+ */
 export async function updateElement(
   db: SQLiteDatabase,
   id: string,
-  updates: Pick<ElementDefinition, 'name' | 'config'>,
+  updates: { name: string; config: Record<string, unknown> },
   kind: ElementKind,
 ): Promise<void> {
-  validateElementConfig(kind, updates.config);
+  assertElementConfig(kind, updates.config);
 
   await db.runAsync(
     `UPDATE elements SET name = ?, config_json = ? WHERE id = ?`,

@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import {
   dayFactsFromEvents,
+  HabitConfigSchema,
   PROTOCOL_VERSION,
   type DayFacts,
   type LifeEvent,
@@ -49,7 +50,7 @@ beforeEach(async () => {
       id,
       kind: 'habit',
       name: 'Meditate',
-      config: { trackingMode: 'timer' },
+      config: HabitConfigSchema.parse({ trackingMode: 'timer' }),
       protocolVersion: PROTOCOL_VERSION,
       createdAt: '2026-01-01T08:00:00.000Z',
       archivedAt: null,

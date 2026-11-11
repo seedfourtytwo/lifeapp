@@ -1,10 +1,11 @@
-import { PROTOCOL_VERSION, type DashboardItem, type ElementDefinition } from '../src/protocol';
+import { type DashboardItem, type ElementDefinition } from '../src/protocol';
 import {
   applyVisibleOrder,
   mergeHabitOrderIntoDashboard,
   mergeKindOrderIntoDashboard,
   moveIdInOrder,
 } from '../src/utils/reorderHabits';
+import { counterElement, habitElement } from './support/elements';
 
 describe('moveIdInOrder', () => {
   it('moves an id to a new index', () => {
@@ -49,14 +50,8 @@ describe('mergeKindOrderIntoDashboard', () => {
   const element = (
     id: string,
     kind: 'habit' | 'counter',
-  ): ElementDefinition => ({
-    id,
-    name: id,
-    kind,
-    config: {},
-    protocolVersion: PROTOCOL_VERSION,
-    createdAt: '2026-01-01T00:00:00.000Z',
-  });
+  ): ElementDefinition =>
+    kind === 'habit' ? habitElement({ id }) : counterElement({ id });
 
   const dash = (elementId: string, sortOrder: number): DashboardItem => ({
     id: `d-${elementId}`,

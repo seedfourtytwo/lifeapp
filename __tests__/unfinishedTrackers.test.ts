@@ -1,3 +1,5 @@
+import { CounterConfigSchema } from '../src/protocol';
+import { HabitConfigSchema } from '../src/protocol';
 import { PROTOCOL_VERSION, TodoSchema } from '../src/protocol';
 import { countUnfinishedTrackersToday } from '../src/notifications/unfinishedTrackers';
 import type { ElementDefinition, Todo } from '../src/protocol';
@@ -10,11 +12,11 @@ const habit: ElementDefinition = {
   id: habitId,
   kind: 'habit',
   name: 'Meditate',
-  config: {
+  config: HabitConfigSchema.parse({
     timeSlot: 'anytime',
     trackingMode: 'boolean',
     schedule: { type: 'daily' },
-  },
+  }),
   protocolVersion: PROTOCOL_VERSION,
   createdAt: '2025-01-01T00:00:00.000Z',
   archivedAt: null,
@@ -24,11 +26,11 @@ const counterWithTarget: ElementDefinition = {
   id: counterId,
   kind: 'counter',
   name: 'Push-ups',
-  config: {
+  config: CounterConfigSchema.parse({
     unit: 'reps',
     quickIncrements: [5, 10],
     dailyTarget: 50,
-  },
+  }),
   protocolVersion: PROTOCOL_VERSION,
   createdAt: '2025-01-01T00:00:00.000Z',
   archivedAt: null,
@@ -38,10 +40,10 @@ const counterWithoutTarget: ElementDefinition = {
   id: counterNoTargetId,
   kind: 'counter',
   name: 'Steps',
-  config: {
+  config: CounterConfigSchema.parse({
     unit: 'steps',
     quickIncrements: [1000],
-  },
+  }),
   protocolVersion: PROTOCOL_VERSION,
   createdAt: '2025-01-01T00:00:00.000Z',
   archivedAt: null,

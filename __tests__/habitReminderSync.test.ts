@@ -4,8 +4,9 @@
  * feeding the real scheduler. Store state is set the way their loaders set
  * it; only expo-notifications (and the database connection) are faked.
  */
-import type { ElementDefinition } from '../src/protocol';
+import type { ElementDefinition, HabitElement } from '../src/protocol';
 import type { FakeNotifications } from './support/fakeNotifications';
+import { habitElement } from './support/elements';
 
 jest.mock('expo-notifications', () =>
   require('./support/fakeNotifications').createFakeNotifications(),
@@ -29,14 +30,13 @@ let stores: Stores;
 let fake: FakeNotifications;
 let stop: () => void;
 
-const kefir = (extra: Partial<ElementDefinition> = {}): ElementDefinition => ({
-  id: KEFIR,
-  kind: 'habit',
-  name: 'Burp the kefir',
-  protocolVersion: 1,
-  createdAt: '2026-01-01T08:00:00.000Z',
-  config: { trackingMode: 'boolean', schedule: { type: 'daily' }, reminderTimes: ['09:00'] },
-  archivedAt: null,
+const kefir = (extra: Partial<Omit<HabitElement, 'kind'>> = {}): ElementDefinition => ({
+  ...habitElement({
+    id: KEFIR,
+    name: 'Burp the kefir',
+    createdAt: '2026-01-01T08:00:00.000Z',
+    config: { trackingMode: 'boolean', schedule: { type: 'daily' }, reminderTimes: ['09:00'] },
+  }),
   ...extra,
 });
 

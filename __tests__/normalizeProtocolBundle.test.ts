@@ -35,8 +35,12 @@ describe('normalizeProtocolBundleInput', () => {
 
     const bundle = parseProtocolBundle(normalized);
     expect(bundle.elements).toHaveLength(1);
+    // Parsed on import, so the habit defaults are filled in; the legacy keys are gone.
     expect(bundle.elements[0].config).toEqual({
       timeSlot: 'anytime',
+      trackingMode: 'boolean',
+      schedule: { type: 'daily' },
+      reminderTimes: [],
     });
     expect(bundle.elements[0].archivedAt).toBeNull();
   });

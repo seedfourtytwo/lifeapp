@@ -259,7 +259,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       applyElementMutation(set, {
         elements: get().elements.map((element) =>
           element.id === id
-            ? { ...element, name: input.name.trim(), config }
+            ? { ...existing, name: input.name.trim(), config }
             : element,
         ),
       });
@@ -313,7 +313,7 @@ export const useElementStore = create<ElementState>((set, get) => ({
       applyElementMutation(set, {
         elements: get().elements.map((element) =>
           element.id === id
-            ? { ...element, name: input.name.trim(), config }
+            ? { ...existing, name: input.name.trim(), config }
             : element,
         ),
       });

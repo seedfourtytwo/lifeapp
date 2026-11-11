@@ -1,3 +1,4 @@
+import { HabitConfigSchema } from '../src/protocol';
 import {
   filterHabitsDueToday,
   orderHabitsList,
@@ -10,11 +11,11 @@ describe('lock screen habit queue ordering', () => {
       id: 'a',
       kind: 'habit',
       name: 'Mobility',
-      config: {
+      config: HabitConfigSchema.parse({
         trackingMode: 'timer',
         timeSlot: 'anytime',
         schedule: { type: 'daily' },
-      },
+      }),
       protocolVersion: 1,
       createdAt: '2025-01-01T00:00:00.000Z',
       archivedAt: null,
@@ -23,11 +24,11 @@ describe('lock screen habit queue ordering', () => {
       id: 'b',
       kind: 'habit',
       name: 'Breathwork',
-      config: {
+      config: HabitConfigSchema.parse({
         trackingMode: 'timer',
         timeSlot: 'anytime',
         schedule: { type: 'daily' },
-      },
+      }),
       protocolVersion: 1,
       createdAt: '2025-01-01T00:00:00.000Z',
       archivedAt: null,
@@ -36,11 +37,11 @@ describe('lock screen habit queue ordering', () => {
       id: 'c',
       kind: 'habit',
       name: 'Walk',
-      config: {
+      config: HabitConfigSchema.parse({
         trackingMode: 'boolean',
         timeSlot: 'anytime',
         schedule: { type: 'daily' },
-      },
+      }),
       protocolVersion: 1,
       createdAt: '2025-01-01T00:00:00.000Z',
       archivedAt: null,

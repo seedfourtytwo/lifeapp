@@ -6,6 +6,7 @@
  */
 import type { ElementDefinition } from '../src/protocol';
 import { permission, type FakeNotifications } from './support/fakeNotifications';
+import { habitElement } from './support/elements';
 
 jest.mock('expo-notifications', () =>
   require('./support/fakeNotifications').createFakeNotifications(),
@@ -40,14 +41,14 @@ function habit(
   extra: Partial<ElementDefinition> = {},
 ): ElementDefinition {
   return {
-    id,
-    kind: 'habit',
-    name,
-    protocolVersion: 1,
-    createdAt: '2026-01-01T08:00:00.000Z',
-    config: { trackingMode: 'boolean', schedule: { type: 'daily' }, ...config },
+    ...habitElement({
+      id,
+      name,
+      createdAt: '2026-01-01T08:00:00.000Z',
+      config: { trackingMode: 'boolean', schedule: { type: 'daily' }, ...config },
+    }),
     ...extra,
-  };
+  } as ElementDefinition;
 }
 
 const kefir = (extra: Partial<ElementDefinition> = {}) =>

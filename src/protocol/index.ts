@@ -4,10 +4,10 @@ export type { ProtocolVersion } from './envelope';
 export {
   ElementKindSchema,
   ElementDefinitionSchema,
-  validateElementConfig,
+  assertElementConfig,
   parseElementDefinition,
 } from './element';
-export type { ElementKind, ElementDefinition } from './element';
+export type { CounterElement, ElementDefinition, ElementKind, HabitElement } from './element';
 
 export { EventSchema, toDateString, parseLocalDate, shiftDateString } from './event';
 export type { LifeEvent } from './event';

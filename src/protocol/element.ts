@@ -8,40 +8,40 @@ export const ElementKindSchema = z.enum(['counter', 'habit']);
 
 export type ElementKind = z.infer<typeof ElementKindSchema>;
 
-export const ElementDefinitionSchema = z.object({
+const ElementBaseSchema = z.object({
   id: z.string().uuid(),
-  kind: ElementKindSchema,
   name: z.string().min(1),
-  config: z.record(z.unknown()),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   createdAt: z.string().datetime(),
   /** When set, the element is hidden from Home but kept for later restore. */
   archivedAt: z.string().datetime().nullable().optional(),
 });
 
+/**
+ * A tracker with its config already parsed for its kind, defaults filled in.
+ * Parsed once where it enters (a database row, an imported file); everything
+ * after that narrows on `kind` and reads `config` as typed.
+ */
+export const ElementDefinitionSchema = z.discriminatedUnion('kind', [
+  ElementBaseSchema.extend({ kind: z.literal('habit'), config: HabitConfigSchema }),
+  ElementBaseSchema.extend({ kind: z.literal('counter'), config: CounterConfigSchema }),
+]);
+
 export type ElementDefinition = z.infer<typeof ElementDefinitionSchema>;
+export type HabitElement = Extract<ElementDefinition, { kind: 'habit' }>;
+export type CounterElement = Extract<ElementDefinition, { kind: 'counter' }>;
 
 const configSchemas: Record<ElementKind, z.ZodType> = {
   counter: CounterConfigSchema,
   habit: HabitConfigSchema,
 };
 
-export function validateElementConfig(
-  kind: ElementKind,
-  config: unknown,
-): Record<string, unknown> {
-  const schema = configSchemas[kind];
-  if (!schema) {
-    throw new Error(`No config schema for kind: ${kind}`);
-  }
-  return schema.parse(config) as Record<string, unknown>;
+/** Throws when `config` is not a valid config for `kind`. */
+export function assertElementConfig(kind: ElementKind, config: unknown): void {
+  configSchemas[kind].parse(config);
 }
 
 export function parseElementDefinition(raw: unknown): ElementDefinition {
   const element = ElementDefinitionSchema.parse(raw);
-  validateElementConfig(element.kind, element.config);
-  return {
-    ...element,
-    archivedAt: element.archivedAt ?? null,
-  };
+  return { ...element, archivedAt: element.archivedAt ?? null };
 }

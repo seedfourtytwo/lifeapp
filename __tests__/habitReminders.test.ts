@@ -1,4 +1,5 @@
 import type { ElementDefinition, HabitConfig } from '../src/protocol';
+import { habitElement as buildHabit } from './support/elements';
 
 type ScheduleArgs = {
   identifier: string;
@@ -33,12 +34,9 @@ jest.mock('expo-notifications', () => ({
 }));
 
 function habitElement(overrides: Partial<HabitConfig> = {}, id = 'h1'): ElementDefinition {
-  return {
+  return buildHabit({
     id,
-    kind: 'habit',
     name: 'Meditate',
-    protocolVersion: 1,
-    createdAt: '2025-01-01T00:00:00.000Z',
     config: {
       timeSlot: 'morning',
       trackingMode: 'boolean',
@@ -47,7 +45,7 @@ function habitElement(overrides: Partial<HabitConfig> = {}, id = 'h1'): ElementD
       remindMinutesBefore: 10,
       ...overrides,
     },
-  };
+  });
 }
 
 /**

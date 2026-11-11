@@ -1,24 +1,17 @@
 import type { DashboardItem, ElementDefinition } from '../src/protocol';
-import { PROTOCOL_VERSION } from '../src/protocol';
 import {
   getActiveElements,
   getActiveHabits,
   isElementArchived,
 } from '../src/utils/dashboardElements';
+import { counterElement, habitElement } from './support/elements';
 
 const element = (
   id: string,
   kind: 'counter' | 'habit' = 'counter',
   archivedAt: string | null = null,
-): ElementDefinition => ({
-  id,
-  kind,
-  name: id,
-  config: {},
-  protocolVersion: PROTOCOL_VERSION,
-  createdAt: '2025-01-01T00:00:00.000Z',
-  archivedAt,
-});
+): ElementDefinition =>
+  kind === 'habit' ? habitElement({ id, archivedAt }) : counterElement({ id, archivedAt });
 
 const dashboardItem = (elementId: string, sortOrder: number): DashboardItem => ({
   id: `dash-${elementId}`,
