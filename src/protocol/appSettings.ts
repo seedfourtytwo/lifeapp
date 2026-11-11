@@ -75,6 +75,12 @@ export const DEFAULT_EVENING_CHECK_IN_TIME = '20:00';
  */
 export const DEFAULT_EVENING_CHECK_IN_ENABLED = true;
 
+/**
+ * Master switch for per-habit reminders (reminder times and the one before a
+ * time window). Separate from the evening check-in, and on unless turned off.
+ */
+export const DEFAULT_TRACKER_REMINDERS_ENABLED = true;
+
 const EveningCheckInTimeSchema = z
   .string()
   .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Expected HH:mm');
@@ -87,11 +93,13 @@ const AppSettingsObjectSchema = z.object({
     )
     .optional(),
   appLanguage: z.enum(APP_LANGUAGES).optional(),
-  /** Parked — no Settings UI or scheduler. Kept for backup import. */
   eveningCheckInEnabled: z.boolean().optional(),
-  /** Parked — no Settings UI or scheduler. Kept for backup import. */
   eveningCheckInTime: EveningCheckInTimeSchema.optional(),
-  /** @deprecated Prefer eveningCheckInEnabled — kept for backup import. */
+  trackerRemindersEnabled: z.boolean().optional(),
+  /**
+   * @deprecated Prefer eveningCheckInEnabled — kept for backup import. Despite
+   * the name it always meant the evening check-in, never per-habit reminders.
+   */
   habitRemindersEnabled: z.boolean().optional(),
   weatherWidgetEnabled: z.boolean().optional(),
   weatherLocationMode: z.enum(WEATHER_LOCATION_MODES).optional(),
@@ -123,7 +131,8 @@ export const APP_SETTING_KEYS = {
   appLanguage: 'app_language',
   eveningCheckInEnabled: 'evening_check_in_enabled',
   eveningCheckInTime: 'evening_check_in_time',
-  /** Legacy key — read for migration only. */
+  trackerRemindersEnabled: 'tracker_reminders_enabled',
+  /** Legacy key for the evening check-in — read for migration only. */
   habitRemindersEnabled: 'habit_reminders_enabled',
   weatherWidgetEnabled: 'weather_widget_enabled',
   weatherLocationMode: 'weather_location_mode',

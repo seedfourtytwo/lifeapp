@@ -8,6 +8,7 @@ import {
   APP_SETTING_KEYS,
   DEFAULT_EVENING_CHECK_IN_ENABLED,
   DEFAULT_EVENING_CHECK_IN_TIME,
+  DEFAULT_TRACKER_REMINDERS_ENABLED,
   isAppLanguage,
   isWeatherLocationMode,
   parseEveningCheckInTime,
@@ -52,6 +53,7 @@ interface SettingsState {
   appLanguage: AppLanguage;
   eveningCheckInEnabled: boolean;
   eveningCheckInTime: string;
+  trackerRemindersEnabled: boolean;
   weatherWidgetEnabled: boolean;
   weatherLocationMode: WeatherLocationMode;
   weatherPlaceName: string | null;
@@ -63,6 +65,7 @@ interface SettingsState {
   setAppLanguage: (language: AppLanguage) => Promise<void>;
   setEveningCheckInEnabled: (enabled: boolean) => Promise<void>;
   setEveningCheckInTime: (time: string) => Promise<void>;
+  setTrackerRemindersEnabled: (enabled: boolean) => Promise<void>;
   setWeatherWidgetEnabled: (enabled: boolean) => Promise<void>;
   setWeatherLocationMode: (mode: WeatherLocationMode) => Promise<void>;
   setWeatherPlace: (place: {
@@ -77,6 +80,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   appLanguage: 'system',
   eveningCheckInEnabled: DEFAULT_EVENING_CHECK_IN_ENABLED,
   eveningCheckInTime: DEFAULT_EVENING_CHECK_IN_TIME,
+  trackerRemindersEnabled: DEFAULT_TRACKER_REMINDERS_ENABLED,
   weatherWidgetEnabled: false,
   weatherLocationMode: 'manual',
   weatherPlaceName: null,
@@ -96,6 +100,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           APP_SETTING_KEYS.appLanguage,
           APP_SETTING_KEYS.eveningCheckInEnabled,
           APP_SETTING_KEYS.eveningCheckInTime,
+          APP_SETTING_KEYS.trackerRemindersEnabled,
           APP_SETTING_KEYS.habitRemindersEnabled,
           APP_SETTING_KEYS.weatherWidgetEnabled,
           APP_SETTING_KEYS.weatherLocationMode,
@@ -110,6 +115,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         const storedEveningEnabled =
           stored.get(APP_SETTING_KEYS.eveningCheckInEnabled) ?? null;
         const storedEveningTime = stored.get(APP_SETTING_KEYS.eveningCheckInTime) ?? null;
+        const storedTrackerReminders =
+          stored.get(APP_SETTING_KEYS.trackerRemindersEnabled) ?? null;
         const storedLegacyReminders =
           stored.get(APP_SETTING_KEYS.habitRemindersEnabled) ?? null;
         const storedWeatherEnabled =
@@ -171,6 +178,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           appLanguage,
           eveningCheckInEnabled,
           eveningCheckInTime,
+          trackerRemindersEnabled:
+            storedTrackerReminders != null
+              ? parseBool(storedTrackerReminders)
+              : DEFAULT_TRACKER_REMINDERS_ENABLED,
           weatherWidgetEnabled: parseBool(storedWeatherEnabled),
           weatherLocationMode,
           weatherPlaceName: storedPlaceName,
@@ -232,6 +243,18 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const db = await getDatabase();
       await settingsRepo.setSetting(db, APP_SETTING_KEYS.eveningCheckInTime, parsed);
       set({ eveningCheckInTime: parsed });
+    });
+  },
+
+  setTrackerRemindersEnabled: async (enabled) => {
+    await withGuardedSettingsWrite(async () => {
+      const db = await getDatabase();
+      await settingsRepo.setSetting(
+        db,
+        APP_SETTING_KEYS.trackerRemindersEnabled,
+        enabled ? 'true' : 'false',
+      );
+      set({ trackerRemindersEnabled: enabled });
     });
   },
 

@@ -28,6 +28,7 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
     APP_SETTING_KEYS.appLanguage,
     APP_SETTING_KEYS.eveningCheckInEnabled,
     APP_SETTING_KEYS.eveningCheckInTime,
+    APP_SETTING_KEYS.trackerRemindersEnabled,
     APP_SETTING_KEYS.habitRemindersEnabled,
     APP_SETTING_KEYS.weatherWidgetEnabled,
     APP_SETTING_KEYS.weatherLocationMode,
@@ -41,6 +42,8 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
   const appLanguage = stored.get(APP_SETTING_KEYS.appLanguage) ?? null;
   const eveningCheckInEnabled = stored.get(APP_SETTING_KEYS.eveningCheckInEnabled) ?? null;
   const eveningCheckInTime = stored.get(APP_SETTING_KEYS.eveningCheckInTime) ?? null;
+  const trackerRemindersEnabled =
+    stored.get(APP_SETTING_KEYS.trackerRemindersEnabled) ?? null;
   const legacyHabitReminders = stored.get(APP_SETTING_KEYS.habitRemindersEnabled) ?? null;
   const weatherWidgetEnabled = stored.get(APP_SETTING_KEYS.weatherWidgetEnabled) ?? null;
   const weatherLocationMode = stored.get(APP_SETTING_KEYS.weatherLocationMode) ?? null;
@@ -63,6 +66,10 @@ export async function readAppSettings(db: SQLiteDatabase): Promise<AppSettings> 
     parseStoredBool(eveningCheckInEnabled) ?? parseStoredBool(legacyHabitReminders);
   if (eveningEnabled !== undefined) {
     settings.eveningCheckInEnabled = eveningEnabled;
+  }
+  const trackerReminders = parseStoredBool(trackerRemindersEnabled);
+  if (trackerReminders !== undefined) {
+    settings.trackerRemindersEnabled = trackerReminders;
   }
   const parsedTime = parseEveningCheckInTime(eveningCheckInTime);
   if (parsedTime) {
@@ -111,6 +118,13 @@ export async function writeAppSettings(
       db,
       APP_SETTING_KEYS.eveningCheckInTime,
       settings.eveningCheckInTime || DEFAULT_EVENING_CHECK_IN_TIME,
+    );
+  }
+  if (settings.trackerRemindersEnabled !== undefined) {
+    await settingsRepo.setSetting(
+      db,
+      APP_SETTING_KEYS.trackerRemindersEnabled,
+      settings.trackerRemindersEnabled ? 'true' : 'false',
     );
   }
   if (settings.weatherWidgetEnabled !== undefined) {
