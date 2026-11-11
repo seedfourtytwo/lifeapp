@@ -99,11 +99,14 @@ interface EventState extends ResettableMirror {
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
   loadHabitStreaks: (habits: HabitStreakInput[]) => Promise<void>;
+  /** Resolves to the inserted event's id, or null when an import/clear discarded the write. */
   logEvent: (
     elementId: string,
     value: number,
     meta?: Record<string, unknown>,
-  ) => Promise<void>;
+  ) => Promise<string | null>;
+  /** Undo for counter taps: deletes exactly the events `logEvent` returned. */
+  deleteCounterEvents: (elementId: string, eventIds: readonly string[]) => Promise<void>;
   setDailyTotal: (elementId: string, total: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
   startHabitTimer: (elementId: string) => void;
@@ -191,15 +194,15 @@ export function abortHabitTimerRestore(elementId: string): void {
   habitTimerStopAbortRestore.add(elementId);
 }
 
-function enqueueCounterWrite(
+function enqueueCounterWrite<T>(
   elementId: string,
-  work: (dataEpochAtStart: number, writeEpochAtStart: number) => Promise<void>,
-): Promise<void> {
+  work: (dataEpochAtStart: number, writeEpochAtStart: number) => Promise<T>,
+): Promise<T> {
   const previous = counterWriteChains.get(elementId) ?? Promise.resolve();
   const next = previous.catch(() => undefined).then(async () => {
     const dataEpochAtStart = getDataGeneration('protocol');
     const writeEpochAtStart = getWriteEpoch(elementId);
-    await work(dataEpochAtStart, writeEpochAtStart);
+    return work(dataEpochAtStart, writeEpochAtStart);
   });
   counterWriteChains.set(
     elementId,
@@ -524,8 +527,9 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   logEvent: (elementId, value, meta) =>
     enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
-      if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) return;
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) return null;
       const ourWriteEpoch = bumpWriteEpoch(elementId);
+      let insertedId: string | null = null;
       let wrote = false;
       await withDbWriteLock(async () => {
         if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
@@ -533,8 +537,9 @@ export const useEventStore = create<EventState>((set, get) => ({
         }
         const now = new Date();
         const date = toDateString(now);
+        const id = newId();
         await eventRepo.insertEvent(await getDatabase(), {
-          id: newId(),
+          id,
           elementId,
           timestamp: now.toISOString(),
           date,
@@ -542,11 +547,33 @@ export const useEventStore = create<EventState>((set, get) => ({
           meta,
           protocolVersion: PROTOCOL_VERSION,
         });
+        insertedId = id;
 
         if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
         await refreshTotal(elementId, date, set, get);
+        wrote = true;
+      });
+      if (wrote) await refreshCounterStreakAfterWrite(elementId, set, get);
+      return insertedId;
+    }),
+
+  deleteCounterEvents: (elementId, eventIds) =>
+    enqueueCounterWrite(elementId, async (dataEpochAtStart, writeEpochAtStart) => {
+      if (eventWriteSuperseded(dataEpochAtStart, elementId, writeEpochAtStart)) return;
+      const ourWriteEpoch = bumpWriteEpoch(elementId);
+      let wrote = false;
+      await withDbWriteLock(async () => {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+          return;
+        }
+        await eventRepo.deleteEventsByIds(await getDatabase(), elementId, eventIds);
+
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+          return;
+        }
+        await refreshTotal(elementId, todayDate(), set, get);
         wrote = true;
       });
       if (wrote) await refreshCounterStreakAfterWrite(elementId, set, get);

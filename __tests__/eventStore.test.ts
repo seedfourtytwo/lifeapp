@@ -292,3 +292,33 @@ describe('pause and resume', () => {
     expect(Object.keys(persisted)).toEqual([TIMER_HABIT]);
   });
 });
+
+describe('counter undo', () => {
+  /**
+   * Undo used to "set today's total back" — which deletes the whole day and
+   * writes one event stamped now. Earlier entries lost their times and notes.
+   * Undo must remove exactly the taps it offers to undo.
+   */
+  it('removes only the undone taps and keeps the day\'s earlier entries', async () => {
+    const earlier = {
+      id: '550e8400-e29b-41d4-a716-446655440620',
+      elementId: COUNTER,
+      timestamp: new Date(2026, 2, 10, 6, 30).toISOString(),
+      date: TODAY,
+      value: 2,
+      meta: { source: 'quick_button', increment: 2 },
+      protocolVersion: protocol.PROTOCOL_VERSION,
+    };
+    await eventRepo.insertEvent(testDb.db, earlier);
+
+    const first = await state().logEvent(COUNTER, 1);
+    const second = await state().logEvent(COUNTER, 1);
+    expect(first).toEqual(expect.any(String));
+    expect(second).toEqual(expect.any(String));
+
+    await state().deleteCounterEvents(COUNTER, [first as string, second as string]);
+
+    expect(await eventsToday(COUNTER)).toEqual([earlier]);
+    expect(state().dailyTotals[COUNTER]).toBe(2);
+  });
+});

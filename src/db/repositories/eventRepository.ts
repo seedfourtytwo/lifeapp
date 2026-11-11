@@ -54,6 +54,20 @@ export async function deleteEventsForElementOnDate(
   );
 }
 
+/** Remove specific events of one element — Undo of the taps it just logged. */
+export async function deleteEventsByIds(
+  db: SQLiteDatabase,
+  elementId: string,
+  ids: readonly string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db.runAsync(
+    `DELETE FROM events WHERE element_id = ? AND id IN (${placeholdersFor(ids)})`,
+    elementId,
+    ...ids,
+  );
+}
+
 export async function getEventsForElementOnDate(
   db: SQLiteDatabase,
   elementId: string,

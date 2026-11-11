@@ -55,12 +55,20 @@ export default function CountersScreen({
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const reorderCounterToOrder = useElementStore((s) => s.reorderCounterToOrder);
-  const { dailyTotals, counterStreaks, logEvent, setDailyTotal, counterTotalsReady } =
+  const {
+    dailyTotals,
+    counterStreaks,
+    logEvent,
+    deleteCounterEvents,
+    setDailyTotal,
+    counterTotalsReady,
+  } =
     useEventStore(
       useShallow((s) => ({
         dailyTotals: s.dailyTotals,
         counterStreaks: s.counterStreaks,
         logEvent: s.logEvent,
+        deleteCounterEvents: s.deleteCounterEvents,
         setDailyTotal: s.setDailyTotal,
         counterTotalsReady: s.counterTotalsReady,
       })),
@@ -135,7 +143,7 @@ export default function CountersScreen({
     const pending = counterUndo;
     setCounterUndo(null);
     if (!pending) return;
-    setDailyTotal(pending.elementId, pending.restoreTo).catch((err) => {
+    deleteCounterEvents(pending.elementId, pending.eventIds).catch((err) => {
       Alert.alert(
         tCommon('alerts.couldNotSave'),
         err instanceof Error ? err.message : tCommon('errors.somethingWentWrong'),
@@ -252,26 +260,27 @@ export default function CountersScreen({
                       ? tTrackers('counterWidget.reorderLongPressHint')
                       : undefined
                   }
-                  onLog={(value, meta) => {
-                    const before = dailyTotals[element.id] ?? 0;
-                    return logEvent(element.id, value, meta)
-                      .then(() =>
+                  onLog={(value, meta) =>
+                    logEvent(element.id, value, meta)
+                      .then((eventId) => {
+                        // A write an import/clear discarded has nothing to undo.
+                        if (!eventId) return;
                         setCounterUndo((prev) =>
                           nextCounterUndo(prev, {
                             elementId: element.id,
                             name: element.name,
-                            before,
+                            eventId,
                             added: value,
                           }),
-                        ),
-                      )
+                        );
+                      })
                       .catch((err) => {
                         Alert.alert(
                           tCommon('alerts.couldNotLog'),
                           err instanceof Error ? err.message : t('countersTab.couldNotLogBody'),
                         );
-                      });
-                  }}
+                      })
+                  }
                   onSetDailyTotal={async (total) => {
                     await setDailyTotal(element.id, total);
                   }}
