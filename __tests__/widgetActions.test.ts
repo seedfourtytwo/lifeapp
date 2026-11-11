@@ -61,7 +61,7 @@ function events() {
 const pendingPath = () => `${mockFs.root}/widget/pending-actions.jsonl`;
 const drainingPath = () => `${mockFs.root}/widget/pending-actions.draining.jsonl`;
 
-type ActionFields = { type: string; trackerId: string; amount?: number; day?: string; at?: Date; id?: string };
+type ActionFields = { type: string; trackerId: string; amount?: number; day?: string; at?: Date; id?: string } & Record<string, unknown>;
 
 /** One action line, the way the widget writes it. */
 function action(fields: ActionFields): { id: string; at: string } & Record<string, unknown> {
@@ -76,6 +76,32 @@ function action(fields: ActionFields): { id: string; at: string } & Record<strin
   };
 }
 
+/** A finished session, the way the native core queues it. */
+function session(
+  trackerId: string,
+  startedAt: Date,
+  endedAt: Date,
+  options: { pausedMs?: number; goal?: number | null; markComplete?: boolean; trackCompleted?: boolean; id?: string } = {},
+): Record<string, unknown> & { id: string; at: string } {
+  const { pausedMs = 0, goal = null, markComplete = false, trackCompleted = false, id } = options;
+  return action({
+    type: 'timer_session',
+    trackerId,
+    at: endedAt,
+    day: endedAt.getDate() === NOW.getDate() ? TODAY : YESTERDAY,
+    id,
+    ...{
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      pausedMs,
+      activeSeconds: Math.floor((endedAt.getTime() - startedAt.getTime() - pausedMs) / 1000),
+      goalSecondsInForce: goal,
+      trackCompleted,
+      markComplete,
+    },
+  } as ActionFields);
+}
+
 function append(...lines: (Record<string, unknown> | string)[]): void {
   for (const line of lines) {
     fs.appendFileSync(pendingPath(), `${typeof line === 'string' ? line : JSON.stringify(line)}\n`);
@@ -85,10 +111,6 @@ function append(...lines: (Record<string, unknown> | string)[]): void {
 async function eventsOn(elementId: string, date: string): Promise<LifeEvent[]> {
   const eventRepo = require('../src/db/repositories/eventRepository') as typeof import('../src/db/repositories/eventRepository');
   return eventRepo.getEventsForElementOnDate(testDb.db, elementId, date);
-}
-
-async function settle(): Promise<void> {
-  for (let i = 0; i < 10; i += 1) await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('draining the widget queue', () => {
@@ -127,63 +149,122 @@ describe('draining the widget queue', () => {
     expect(events().dailyTotals[TRACKERS.water]).toBe(3);
   });
 
-  it('starts, pauses, resumes and finishes a timer', async () => {
+  it('logs a finished session with the goal it ran under', async () => {
     const id = TRACKERS.meditation;
-    append(action({ type: 'timer_start', trackerId: id }));
-    await drain();
-    expect(events().activeTimerSessions[id]).toMatchObject({ pausedAt: null });
+    append(session(id, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 20), { pausedMs: 60_000, goal: 900 }));
 
-    jest.setSystemTime(new Date(2026, 2, 10, 9, 35));
-    append(action({ type: 'timer_pause', trackerId: id }));
-    await drain();
-    expect(events().activeTimerSessions[id].pausedAt).not.toBeNull();
+    const result = await drain();
 
-    append(action({ type: 'timer_resume', trackerId: id }));
-    await drain();
-    expect(events().activeTimerSessions[id].pausedAt).toBeNull();
+    expect(result).toMatchObject({ applied: 1, dropped: [], malformed: 0 });
+    expect((await eventsOn(id, TODAY)).map((e) => [e.meta?.source, e.value, e.meta?.goalSeconds])).toEqual([
+      ['timer_session', 1140, 900],
+    ]);
+    expect(events().dailyTotals[id]).toBe(1140);
+    expect(events().habitDoneToday[id]).toBe(true);
+  });
 
-    append(action({ type: 'timer_done', trackerId: id }));
+  it('marks the day done for a session ended with Done short of its goal', async () => {
+    const id = TRACKERS.meditation;
+    append(session(id, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 5), { goal: 900, markComplete: true }));
+
     await drain();
-    await settle();
-    expect(events().activeTimerSessions[id]).toBeUndefined();
+
     expect((await eventsOn(id, TODAY)).map((e) => [e.meta?.source, e.value])).toEqual([
       ['timer_session', 300],
       ['manual_complete', 0],
     ]);
     expect(events().habitDoneToday[id]).toBe(true);
+    expect(events().habitMarkedToday[id]).toBe(true);
   });
 
-  it('throws a discarded session away without logging it', async () => {
-    append(action({ type: 'timer_start', trackerId: TRACKERS.breathing }));
-    await drain();
-    jest.setSystemTime(new Date(2026, 2, 10, 9, 40));
+  it('adds no mark when the session itself reached the goal', async () => {
+    const id = TRACKERS.breathing;
+    append(session(id, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 6), { goal: 300, markComplete: true }));
 
-    append(action({ type: 'timer_discard', trackerId: TRACKERS.breathing }));
     await drain();
 
-    expect(events().activeTimerSessions[TRACKERS.breathing]).toBeUndefined();
-    expect(await eventsOn(TRACKERS.breathing, TODAY)).toEqual([]);
+    expect((await eventsOn(id, TODAY)).map((e) => e.meta?.source)).toEqual(['timer_session']);
+    expect(events().habitMarkedToday[id]).toBe(false);
+  });
+
+  it('keeps an Undo of the Done mark when the same session line arrives again', async () => {
+    const id = TRACKERS.meditation;
+    const line = session(id, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 5), { goal: 900, markComplete: true });
+    append(line);
+    await drain();
+    await events().unmarkHabitDone(id, configs.get(id)!);
+
+    append(line);
+    const again = await drain();
+
+    expect(again).toMatchObject({ applied: 0, duplicates: 1 });
+    expect((await eventsOn(id, TODAY)).map((e) => e.meta?.source)).toEqual(['timer_session']);
+    expect(events().habitDoneToday[id]).toBe(false);
+  });
+
+  it('gives each day its own seconds for a session that ran past midnight', async () => {
+    const id = TRACKERS.meditation;
+    append(session(id, new Date(2026, 2, 9, 23, 50), new Date(2026, 2, 10, 0, 20), { goal: 900 }));
+
+    await drain();
+
+    expect((await eventsOn(id, YESTERDAY)).map((e) => e.value)).toEqual([600]);
+    expect((await eventsOn(id, TODAY)).map((e) => e.value)).toEqual([1200]);
+    expect(events().dailyTotals[id]).toBe(1200);
+  });
+
+  it('records a track that played to its end', async () => {
+    const id = TRACKERS.meditation;
+    append(session(id, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 15), { trackCompleted: true }));
+
+    await drain();
+
+    expect((await eventsOn(id, TODAY))[0]?.meta?.trackCompleted).toBe(true);
   });
 
   it('applies an action whose id it has seen once only', async () => {
     const tap = action({ type: 'counter_add', trackerId: TRACKERS.water, amount: 2 });
-    const start = action({ type: 'timer_start', trackerId: TRACKERS.breathing });
-    append(tap, tap, start);
+    const finished = session(TRACKERS.breathing, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 2));
+    append(tap, tap, finished, finished);
     await drain();
 
-    // Done, then the same start arrives again (the widget re-wrote a line).
-    await events().markHabitDone(TRACKERS.breathing, configs.get(TRACKERS.breathing)!);
-    append(start, tap);
+    append(finished, tap);
     const again = await drain();
 
     expect(events().dailyTotals[TRACKERS.water]).toBe(2);
-    expect(events().activeTimerSessions[TRACKERS.breathing]).toBeUndefined();
+    expect(await eventsOn(TRACKERS.breathing, TODAY)).toHaveLength(1);
     expect(again).toMatchObject({ applied: 0, duplicates: 2 });
+  });
+
+  it('a session applied just before the drain died is not logged twice', async () => {
+    append(session(TRACKERS.meditation, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 5), { goal: 900, markComplete: true }));
+    const save = jest.spyOn(require('../src/db/repositories/widgetActionLogRepository'), 'saveWidgetActionLog');
+    save.mockRejectedValueOnce(new Error('process killed'));
+    await expect(drain()).rejects.toThrow('process killed');
+    save.mockRestore();
+
+    await drain();
+
+    expect((await eventsOn(TRACKERS.meditation, TODAY)).map((e) => e.meta?.source)).toEqual([
+      'timer_session',
+      'manual_complete',
+    ]);
+  });
+
+  it('skips the timer control lines of contract v1: control is native now', async () => {
+    for (const type of ['timer_start', 'timer_pause', 'timer_resume', 'timer_done', 'timer_discard']) {
+      append(action({ type, trackerId: TRACKERS.meditation }));
+    }
+
+    const result = await drain();
+
+    expect(result).toMatchObject({ applied: 0, malformed: 5 });
+    expect(await eventsOn(TRACKERS.meditation, TODAY)).toEqual([]);
   });
 
   it('finishes a queue a drain died on after the rename, without applying any of it twice', async () => {
     const first = action({ type: 'counter_add', trackerId: TRACKERS.water, amount: 1 });
-    const second = action({ type: 'timer_start', trackerId: TRACKERS.breathing });
+    const second = session(TRACKERS.breathing, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 2));
     append(first, second);
     const fsModule = mockFs.module as { deleteAsync: jest.Mock };
     fsModule.deleteAsync.mockRejectedValueOnce(new Error('process killed'));
@@ -239,7 +320,7 @@ describe('draining the widget queue', () => {
     await elementStore.getState().deleteElement(TRACKERS.sprouts);
     const archived = action({ type: 'counter_add', trackerId: TRACKERS.coffee, amount: 1 });
     const deleted = action({ type: 'habit_complete', trackerId: TRACKERS.sprouts });
-    const notATimer = action({ type: 'timer_start', trackerId: TRACKERS.kefir });
+    const notATimer = session(TRACKERS.kefir, new Date(2026, 2, 10, 9, 0), new Date(2026, 2, 10, 9, 2));
     const tickOnTimer = action({ type: 'habit_complete', trackerId: TRACKERS.meditation });
     append(archived, deleted, notATimer, tickOnTimer);
 
@@ -259,12 +340,11 @@ describe('draining the widget queue', () => {
     });
   });
 
-  it('puts taps made before midnight on the day they were made, and drops a timer start for it', async () => {
+  it('puts taps made before midnight on the day they were made', async () => {
     const lateEvening = new Date(2026, 2, 9, 23, 50);
     const tick = action({ type: 'habit_complete', trackerId: TRACKERS.kefir, day: YESTERDAY, at: lateEvening });
     const water = action({ type: 'counter_add', trackerId: TRACKERS.water, amount: 1, day: YESTERDAY, at: lateEvening });
-    const start = action({ type: 'timer_start', trackerId: TRACKERS.meditation, day: YESTERDAY, at: lateEvening });
-    append(tick, water, start);
+    append(tick, water);
 
     const result = await drain();
 
@@ -273,8 +353,7 @@ describe('draining the widget queue', () => {
     expect(events().habitDoneToday[TRACKERS.kefir]).toBe(false);
     expect(events().habitStreaks[TRACKERS.kefir]).toBe(1);
     expect((await eventsOn(TRACKERS.water, YESTERDAY)).map((e) => e.timestamp)).toEqual([water.at]);
-    expect(events().activeTimerSessions[TRACKERS.meditation]).toBeUndefined();
-    expect(result.dropped).toEqual([{ id: start.id, reason: 'day_ended' }]);
+    expect(result.dropped).toEqual([]);
   });
 
   it('runs as part of refreshFromDb', async () => {

@@ -1,4 +1,5 @@
 import type { ActiveTimerSession, HabitConfig, LifeEvent } from '../../protocol';
+import type { TimerSessionRecord } from '../../protocol/coreTimer';
 import { currentAppCalendarDate } from '../../utils/dayRollover';
 import type { CounterStreakInput } from '../counterStreakFetch';
 import type { HabitStreakInput } from '../habitStreakFetch';
@@ -97,6 +98,17 @@ export interface EventState extends ResettableMirror {
     config: HabitConfig,
     date?: string,
     options?: HabitTimerStopOptions,
+  ) => Promise<void>;
+  /**
+   * Log a session the native core finished: each day it ran on gets its own
+   * seconds with the goal that was in force, and Done marks the day it ended
+   * on unless the session already made it done. Its rows take ids derived
+   * from the record's id, so applying the same record again inserts nothing.
+   */
+  applyTimerSession: (
+    elementId: string,
+    config: HabitConfig,
+    record: TimerSessionRecord,
   ) => Promise<void>;
   /**
    * Done on a timed habit before its goal: stops a running or paused session

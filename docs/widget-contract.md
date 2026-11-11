@@ -1,8 +1,10 @@
 # Widget contract
 
-What the JavaScript app writes for the lock-screen widget, and what the widget may write back. The native side (stage 6) is built against this file; the Zod schemas in `src/protocol/` are the same contract in code, and the two change together.
+Contract version 2 (stage 6a). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
 
-SQLite has one writer: the JavaScript app. The widget never opens the database. It reads the snapshot and appends to the pending-actions queue, nothing else.
+SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
+
+Changes from version 1: the running timer is owned by native code, so the five timer control lines (`timer_start`, `timer_pause`, `timer_resume`, `timer_done`, `timer_discard`) are gone and a drain skips them as unknown; native appends a `timer_session` line when a session ends; `timer.json` is new. `habit_complete` and `counter_add` are unchanged.
 
 ## Location and encoding
 
@@ -11,7 +13,8 @@ Both files live in the app's private files directory, in a `widget` folder:
 | File | Path on the phone | Written by | Read by |
 |---|---|---|---|
 | Snapshot | `File(context.filesDir, "widget/snapshot.json")` | JavaScript | widget |
-| Pending actions | `File(context.filesDir, "widget/pending-actions.jsonl")` | widget (append) | JavaScript |
+| Timer | `File(context.filesDir, "widget/timer.json")` | native core | widget, JavaScript (through the module) |
+| Pending actions | `File(context.filesDir, "widget/pending-actions.jsonl")` | native (append) | JavaScript |
 
 `context.filesDir` is `/data/user/0/<package>/files` (`com.lifeapp.dashboard`, or `com.lifeapp.dashboard.dev` for the dev build). The folder may not exist before the app's first write; create it if the widget writes first.
 
@@ -108,9 +111,32 @@ The app may not run after midnight. Compute "today" at render time from the phon
   - `{"type":"every_n_days","interval":n,"anchorDate":"YYYY-MM-DD"}`: let `k` be the number of local calendar days from `anchorDate` to `d` (count calendar days; across a clock change local midnights are 23 or 25 hours apart, so round the hour difference, never floor it). Due when `k >= 0` and `k % n == 0`.
 - Reminders for the new day: each `reminderTimes` entry of a due habit, as a local time on `d`. A time that does not exist that day (spring forward) fires an hour later.
 
+## Timer
+
+`modules/life-core/android/src/main/java/expo/modules/lifecore/TimerJson.kt`, `CoreTimerStateSchema` in `src/protocol/coreTimer.ts`. The one running or paused session; the file is absent when there is none. Native replaces it the same way as the snapshot (write `timer.json.tmp`, rename over `timer.json`) on every transition and every 30-second heartbeat while running, and deletes it when the session ends.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `trackerId` | UUID | The timed habit. |
+| `name` | string | The real name. **Never show it on the lock screen.** |
+| `lockScreenName` | string \| null | The neutral name; null shows "Timer" or the icon. |
+| `iconKey` | string \| null | As the snapshot's `icon`. |
+| `goal` | object | The goal in force at the start, as the snapshot's `timer.goal`. |
+| `trackId` | string \| null | The bundled track playing, or null for the silent keepalive. |
+| `loop` | boolean | The track loops until the session ends, or plays once. |
+| `loggedSeconds` | integer | Seconds logged today before this session; the goal is reached at `goal.seconds - loggedSeconds` active seconds. |
+| `startedAt` | instant | When it started. |
+| `pausedAt` | instant \| null | Set while paused. |
+| `pausedMs` | integer | Milliseconds in pauses that have ended. |
+| `day` | local date | The app day it started on. |
+| `goalReachedAt` | instant \| null | When the seconds goal was reached (the chime rang). |
+| `heartbeatAt` | instant | Last moment a live process was running it. |
+
+Active time is computed as in "A live clock without the app" below, with `pausedMs` for `pausedMs`. A process that starts and finds a running session whose `heartbeatAt` is more than 60 seconds old knows the process that ran it died: it treats the session as paused at `heartbeatAt` (and writes that), so the dead time is never counted and the session stays resumable.
+
 ## Pending actions
 
-`src/protocol/widgetActions.ts` (`WidgetActionSchema`). The widget appends one line per tap to `widget/pending-actions.jsonl`; JavaScript drains it on start, on every `refreshFromDb()` (each return to the app) and, from stage 6, on the widget's broadcast. Each action goes through the same store command a tap in the app uses, with all its rules: a habit tap only ever completes, never un-ticks; writes are abandoned if an import or clear replaced the data; a timer stopped after midnight gives each day its own seconds and records the goal in force.
+`src/protocol/widgetActions.ts` (`WidgetActionSchema`). Native appends one line per widget tap and one per finished timer session to `widget/pending-actions.jsonl`; JavaScript drains it on start, on every `refreshFromDb()` (each return to the app, and each timer state change the module reports). Each action goes through the same store command a tap in the app uses, with all its rules: a habit tap only ever completes, never un-ticks; writes are abandoned if an import or clear replaced the data; a session that ran past midnight gives each day its own seconds and records the goal in force.
 
 ### Line format
 
@@ -128,13 +154,23 @@ One JSON object per line, UTF-8, ending in `\n` (0x0A), no other newlines inside
 
 | `type` | Tracker | Effect |
 |---|---|---|
-| `habit_complete` | check-off habit | Marks `day` done if it is not already; never un-ticks. A timer habit is finished with `timer_done`. |
+| `habit_complete` | check-off habit | Marks `day` done if it is not already; never un-ticks. A timer habit ends in a `timer_session`. |
 | `counter_add` | counter | Adds `amount` at `at`, on `day`. |
-| `timer_start` | timer habit | Starts a session now (stopping any other running timer, as the app does), or resumes a paused one. |
-| `timer_pause` | timer habit | Pauses the running session. |
-| `timer_resume` | timer habit | Resumes the paused session. |
-| `timer_done` | timer habit | Stops the session, logs its seconds and marks the day done even short of the goal. With no session, marks the day done. |
-| `timer_discard` | timer habit | Stops the session and logs nothing. |
+| `timer_session` | timer habit | A session native finished; fields below. Logs its seconds, each day getting the seconds that happened on it, with `goalSecondsInForce` recorded; with `markComplete` the day it ended on is marked done unless the session already made it done. |
+
+`timer_session` fields (besides `v`, `id`, `trackerId`, `type`; `at` is when it was finished and `day` the app day then):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `startedAt` | instant | When the session started. |
+| `endedAt` | instant | When active time stopped: the start of the pause it was finished in, or `at`. |
+| `pausedMs` | integer | Milliseconds paused between `startedAt` and `endedAt`. |
+| `activeSeconds` | integer | `floor((endedAt - startedAt - pausedMs) / 1000)`; for the widget's overlay. |
+| `goalSecondsInForce` | integer \| null | The seconds goal when the session started; null for a play-once or open goal. |
+| `trackCompleted` | boolean | A play-once track ran to its end (this is what ended the session). |
+| `markComplete` | boolean | Done was pressed: the day counts as done even short of the goal. A plain stop is false. |
+
+A discarded session appends nothing.
 
 Example:
 
@@ -144,7 +180,7 @@ Example:
 
 ### Appending (native)
 
-For each tap:
+For each line:
 
 1. `fd = Os.open(path, O_WRONLY | O_CREAT | O_APPEND, 0600)` on `files/widget/pending-actions.jsonl`. Open it for this one line; never keep it open.
 2. Write the whole line, newline included, in one `write` call.
@@ -163,14 +199,16 @@ Append only. Never rewrite, truncate, rename or delete either queue file.
 
 Each action is applied at most once, by its id:
 
-- `counter_add` becomes an event whose id is the action's id; inserting it again finds it already there. It is logged after it is applied.
-- `habit_complete` is a no-op on a day already done. It is logged after it is applied.
-- Timer actions are not safe to repeat (a second `timer_start` after `timer_done` would start a new session), so they are logged **before** they are applied.
+- `counter_add` becomes an event whose id is the action's id; inserting it again finds it already there.
+- `habit_complete` is a no-op on a day already done.
+- `timer_session` becomes events whose ids are derived from the action's id and the day (`derivedId` in `src/utils/id.ts`), one per day plus the Done mark; inserting them again finds them there.
+
+So every action is safe to repeat, and each is logged after it is applied. The log is what keeps an Undo standing: a Done mark removed by Undo is not put back by the same line arriving again. When the app itself finishes a session it applies the record at once and logs it; the copy native queued is then a duplicate.
 
 If the app dies:
 
 - after the rename, before any action: the next drain finds the draining file and applies it all.
-- part-way through: actions already logged are skipped; a counter tap applied but not yet logged is found by its event id; a timer tap logged but not yet applied is lost (at most one tap, never applied twice).
+- part-way through: actions already logged are skipped; one applied but not yet logged is found by its event ids and adds nothing.
 - after the last action, before the delete: every action is in the log; the next drain skips them all and deletes the file.
 
 ### Dropped actions
@@ -182,6 +220,7 @@ Read, logged with the reason, and not applied:
 | `tracker_missing` | No tracker with that id (deleted). |
 | `tracker_archived` | The tracker is archived. |
 | `wrong_kind` | A counter action for a habit, a habit action for a counter, or `habit_complete` for a timer habit. |
-| `not_a_timer` | A timer action for a check-off habit. |
-| `day_ended` | A timer action whose `day` is before today: a session runs on today's clock, so the tap means nothing now. `habit_complete` and `counter_add` for an ended day are applied to that day. |
+| `not_a_timer` | A `timer_session` for a check-off habit. |
 | `future_day` | `day` is after today on the phone (clock or zone changed). |
+
+An action for a day that has ended is applied to that day.

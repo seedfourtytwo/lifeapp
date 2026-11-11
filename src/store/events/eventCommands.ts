@@ -1,4 +1,4 @@
-import { newId } from '../../utils/id';
+import { derivedId, newId } from '../../utils/id';
 import {
   buildTimerSessionPayloadFromDuration,
   dayFactsFromEvents,
@@ -13,6 +13,7 @@ import {
   type HabitEventMeta,
   type LifeEvent,
 } from '../../protocol';
+import type { TimerSessionRecord } from '../../protocol/coreTimer';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { playHabitCompleteHaptic } from '../../utils/habitHaptics';
 import { getDatabase } from '../../db/client';
@@ -85,6 +86,35 @@ function timerPartEvents(
       ...(goal.type === 'seconds' ? { goalSeconds: goal.seconds } : {}),
     });
     return habitEvent(elementId, part.date, part.seconds, meta, partEnd.toISOString());
+  });
+}
+
+/**
+ * The events a finished native session becomes: one per day it ran on, each
+ * under an id derived from the record's id and that day.
+ */
+function recordPartEvents(elementId: string, record: TimerSessionRecord): LifeEvent[] {
+  const startedMs = new Date(record.startedAt).getTime();
+  const session: ActiveTimerSession = {
+    startedAt: record.startedAt,
+    pausedAt: null,
+    pauseOffsetMs: record.pausedMs,
+    calendarDate: toDateString(new Date(startedMs)),
+  };
+  const endedAt = new Date(record.endedAt);
+  const parts = timerSessionParts(session, endedAt.getTime());
+  return parts.map((part, index) => {
+    const isLast = index === parts.length - 1;
+    const partStart = index === 0 ? new Date(startedMs) : new Date(part.startMs);
+    const partEnd = isLast ? endedAt : new Date(part.endMs - 1);
+    const { meta } = buildTimerSessionPayloadFromDuration(partStart, partEnd, part.seconds, {
+      trackCompleted: isLast && record.trackCompleted,
+      ...(record.goalSecondsInForce === null ? {} : { goalSeconds: record.goalSecondsInForce }),
+    });
+    return {
+      ...habitEvent(elementId, part.date, part.seconds, meta, partEnd.toISOString()),
+      id: derivedId(record.id, part.date, 'session'),
+    };
   });
 }
 
@@ -242,6 +272,7 @@ async function doneOnlyByMark(
 
 type EventCommands = Pick<
   EventState,
+  | 'applyTimerSession'
   | 'rollHabitTimerOver'
   | 'logEvent'
   | 'deleteCounterEvents'
@@ -257,6 +288,41 @@ type EventCommands = Pick<
 
 export function createEventCommands(set: SetEventState, get: GetEventState): EventCommands {
   return {
+    applyTimerSession: async (elementId, config, record) => {
+      try {
+        await withGuardedWrite('protocol', async () => {
+          const db = await getDatabase();
+          const partEvents = recordPartEvents(elementId, record);
+          const last = partEvents[partEvents.length - 1]!;
+          const before = await eventRepo.getEventsForElementOnDate(db, elementId, last.date);
+          const sessionIsNew = !(await eventRepo.eventExists(db, last.id));
+          const withSession = sessionIsNew ? [...before, last] : before;
+          const markId = derivedId(record.id, last.date, 'mark');
+          const mark =
+            record.markComplete &&
+            !habitDayDone(config, withSession) &&
+            !(await eventRepo.eventExists(db, markId))
+              ? {
+                  ...habitEvent(elementId, last.date, 0, { source: 'manual_complete' }, record.at),
+                  id: markId,
+                }
+              : null;
+          const after = mark ? [...withSession, mark] : withSession;
+
+          await db.withTransactionAsync(async () => {
+            for (const event of mark ? [...partEvents, mark] : partEvents) {
+              if (!(await eventRepo.eventExists(db, event.id))) await eventRepo.insertEvent(db, event);
+            }
+          });
+          if (!habitDayDone(config, before) && habitDayDone(config, after)) {
+            void playHabitCompleteHaptic();
+          }
+        });
+      } finally {
+        await requeryElementDay(elementId, set, get);
+      }
+    },
+
     rollHabitTimerOver: async (elementId, config) => {
       await habitTimerStopPromises.get(elementId);
       const session = get().activeTimerSessions[elementId];

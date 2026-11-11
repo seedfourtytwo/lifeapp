@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { TimerSessionRecordSchema } from './coreTimer';
 
 /**
  * One line of the pending-actions queue: a tap the widget took while the app
- * may not have been running. The widget appends; JavaScript drains and
- * applies each through the app's own commands. `docs/widget-contract.md`
- * holds the append and drain protocol and must change with this.
+ * may not have been running, or a timer session the native core finished.
+ * Native appends; JavaScript drains and applies each through the app's own
+ * commands. `docs/widget-contract.md` (contract version 2) holds the append
+ * and drain protocol and must change with this.
  */
 
 export const WIDGET_ACTION_VERSION = 1;
@@ -27,13 +29,13 @@ export const WidgetActionSchema = z.discriminatedUnion('type', [
     type: z.literal('counter_add'),
     amount: z.number().positive().max(10_000),
   }),
-  ActionBaseSchema.extend({ type: z.literal('timer_start') }),
-  ActionBaseSchema.extend({ type: z.literal('timer_pause') }),
-  ActionBaseSchema.extend({ type: z.literal('timer_resume') }),
-  /** Stop the timer, keep its seconds and mark the day done. */
-  ActionBaseSchema.extend({ type: z.literal('timer_done') }),
-  /** Stop the timer and throw its session away, logging nothing. */
-  ActionBaseSchema.extend({ type: z.literal('timer_discard') }),
+  /**
+   * A session the native core finished (Done, stop, or its track's end). The
+   * timer itself is controlled natively; contract v1's timer_start, _pause,
+   * _resume, _done and _discard lines are no longer a known type, so a drain
+   * skips them.
+   */
+  TimerSessionRecordSchema,
 ]);
 
 export type WidgetAction = z.infer<typeof WidgetActionSchema>;
@@ -44,5 +46,4 @@ export type WidgetActionDropReason =
   | 'tracker_archived'
   | 'wrong_kind'
   | 'not_a_timer'
-  | 'day_ended'
   | 'future_day';

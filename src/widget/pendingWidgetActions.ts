@@ -7,20 +7,13 @@ import {
   saveWidgetActionLog,
   type WidgetActionLogEntry,
 } from '../db/repositories/widgetActionLogRepository';
-import {
-  discardHabitTimerSession,
-  markHabitTimerDone,
-  pauseHabitTimerSession,
-  resumeHabitTimerSession,
-  startHabitTimerSession,
-} from '../habitTimer/habitTimerControls';
 import type { ElementDefinition } from '../protocol';
 import {
   WidgetActionSchema,
   type WidgetAction,
   type WidgetActionDropReason,
 } from '../protocol/widgetActions';
-import { useEventStore, whenActiveTimersReady } from '../store/eventStore';
+import { useEventStore } from '../store/eventStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { widgetDirectory } from './widgetFiles';
 
@@ -61,37 +54,21 @@ function judge(action: WidgetAction, element: ElementDefinition | null, today: s
   }
   if (element.kind !== 'habit') return { drop: 'wrong_kind' };
   const { config } = element;
-  if (action.type === 'habit_complete') {
-    // A tick on a timer would log one second; a timer is finished with timer_done.
-    if (config.trackingMode === 'timer') return { drop: 'wrong_kind' };
-    // On the day it was made, even when that day has ended; completing twice is a no-op.
-    return { apply: () => getState().completeHabit(element.id, config, action.day) };
-  }
-
-  if (config.trackingMode !== 'timer') return { drop: 'not_a_timer' };
-  // A session lives on today's clock: a tap for a day that has ended means nothing now.
-  if (action.day < today) return { drop: 'day_ended' };
   switch (action.type) {
-    case 'timer_start':
-      return { apply: () => startHabitTimerSession(element.id, config) };
-    case 'timer_pause':
-      return { apply: async () => pauseHabitTimerSession(element.id, config) };
-    case 'timer_resume':
-      return { apply: async () => resumeHabitTimerSession(element.id, config) };
-    case 'timer_done':
-      return { apply: () => markHabitTimerDone(element.id, config) };
-    case 'timer_discard':
-      return { apply: () => discardHabitTimerSession(element.id) };
+    case 'habit_complete':
+      // A tick on a timer would log one second; a timer ends in a timer_session.
+      if (config.trackingMode === 'timer') return { drop: 'wrong_kind' };
+      // On the day it was made, even when that day has ended; completing twice is a no-op.
+      return { apply: () => getState().completeHabit(element.id, config, action.day) };
+    case 'timer_session':
+      if (config.trackingMode !== 'timer') return { drop: 'not_a_timer' };
+      // Its rows take ids derived from the record's, so a second apply inserts nothing.
+      return { apply: () => getState().applyTimerSession(element.id, config, action) };
     default: {
       const unknown: never = action;
       throw new Error(`Unknown widget action ${JSON.stringify(unknown)}`);
     }
   }
-}
-
-/** Event writes are made safe to repeat by id; timer taps are not, so they are logged first. */
-function loggedBeforeApplying(action: WidgetAction): boolean {
-  return action.type !== 'counter_add' && action.type !== 'habit_complete';
 }
 
 function parseLines(text: string, result: DrainResult): WidgetAction[] {
@@ -139,10 +116,9 @@ async function applyFile(uri: string, result: DrainResult): Promise<void> {
       await record({ id: action.id, at: action.at, outcome: 'dropped', reason: verdict.drop });
       continue;
     }
-    const entry: WidgetActionLogEntry = { id: action.id, at: action.at, outcome: 'applied' };
-    if (loggedBeforeApplying(action)) await record(entry);
+    // Every action is safe to repeat by id, so it is logged once it has applied.
     await verdict.apply();
-    if (!loggedBeforeApplying(action)) await record(entry);
+    await record({ id: action.id, at: action.at, outcome: 'applied' });
     result.applied += 1;
   }
 }
@@ -155,8 +131,6 @@ async function drainOnce(): Promise<DrainResult> {
   const result: DrainResult = { applied: 0, duplicates: 0, dropped: [], malformed: 0 };
   const directory = widgetDirectory();
   if (!directory) return result;
-  // Timer taps need the sessions a cold start restores.
-  await whenActiveTimersReady();
   const pending = `${directory}${PENDING_ACTIONS_FILE}`;
   const draining = `${directory}${DRAINING_ACTIONS_FILE}`;
 
