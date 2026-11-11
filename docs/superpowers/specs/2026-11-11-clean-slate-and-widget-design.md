@@ -169,6 +169,18 @@ An honest read of the app against its goals, and what changes because of it.
 
 The one-line notification availability fix (stage 2, first bullet) moves into stage 0 so the evening check-in starts working at once. The rest of stage 2 stays where it is.
 
+## Product changes (agreed with Chris 2026-11-11)
+
+These come after stage 6 unless noted, each as its own small spec before building.
+
+1. **Routine player, at his pace.** A routine is an ordered set of existing habits (e.g. morning: meditation, breathing, mobility, face routine, creatine). One Start begins the first item. When an item ends the player does **not** auto-advance: it stops on a "Next: Breathing" card with Start, Later and Skip. Time between items is not counted and nothing nags; he can do other things in between. The routine stays open and resumable for the day, and the widget's "next up" shows the waiting item. Any running item can be paused. Chris's reason: today's flexibility to move around between items matters; the player must remove the "what's next" decision, not the freedom.
+2. **Three states: full, minimum, missed.** Each habit may define a minimum version (e.g. 2 minutes). Minimum keeps the chain alive and is shown differently from full. Builds on `dayOutcome` and the early-complete event from stage 3.
+3. **Strength score beside the streak.** A percentage that falls a little on a miss and recovers, instead of only a counter that resets.
+4. **Quit tracker for "No Smoking".** Time-since clock, money not spent, morning pledge, evening check, cravings survived. A slip is logged; the rest stays. Lives with the commitments in stage 6.
+5. **His own voice at the craving.** Record a short message once; the craving flow plays it, then offers three large buttons that start a ten-minute timer (yoga, walk, breathing). Needs audio recording (today dictation produces text only). Part of the stage 6 craving flow.
+6. **Today-first layout** (already in Architecture direction): one Today screen grouped Morning / Day / Evening, a large "next up" card, done items collapsing to one line, seven-day dots per row, main commitment pinned on top. Counters and Nutrition tabs hidden until used.
+7. Smaller, later: weekly summary file for the Health sessions; reminders at usual buying times; one-tap weekly scoreboard to Donna; a starter food list of ~150 plants; "park it until 9am" after an argument; evening wind-down routine.
+
 ## Left to the builder
 
 Internal names, file layout inside the new modules, test structure, exact widget layout within the constraints above.
