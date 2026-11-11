@@ -1,4 +1,3 @@
-import { requireOptionalNativeModule } from 'expo-modules-core';
 import { i18n } from '../i18n';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
@@ -6,6 +5,15 @@ import { DEFAULT_EVENING_CHECK_IN_TIME, parseEveningCheckInTime } from '../proto
 import { isScheduleSupportedForReminders } from '../protocol/schedule';
 import { isElementArchived } from '../utils/dashboardElements';
 import { collectStartReminderFires } from './habitStartReminderTimes';
+import {
+  cancelScheduledWithPrefix,
+  getNotifications,
+  isNotificationsNativeAvailable,
+  requestNotificationPermissions,
+  type NotificationsModule,
+} from './notificationsBootstrap.native';
+
+export { isNotificationsNativeAvailable, requestNotificationPermissions };
 
 const REMINDER_PREFIX = 'habit-reminder-';
 const END_OF_DAY_REMINDER_ID = `${REMINDER_PREFIX}eod`;
@@ -19,51 +27,6 @@ function enqueueHabitReminderWork(work: () => Promise<void>): Promise<void> {
     () => undefined,
   );
   return next;
-}
-
-type NotificationsModule = typeof import('expo-notifications');
-
-let notificationsModule: NotificationsModule | null = null;
-let notificationsUnavailable = false;
-
-/**
- * Avoid importing expo-notifications when its native side is missing (old dev client).
- * Expo modules are not on React Native's `NativeModules` under the new architecture,
- * so ask the Expo registry for the scheduler module that local reminders go through.
- */
-export function isNotificationsNativeAvailable(): boolean {
-  return requireOptionalNativeModule('ExpoNotificationScheduler') != null;
-}
-
-async function getNotifications(): Promise<NotificationsModule | null> {
-  if (notificationsUnavailable || !isNotificationsNativeAvailable()) {
-    notificationsUnavailable = true;
-    return null;
-  }
-  if (notificationsModule) {
-    return notificationsModule;
-  }
-
-  try {
-    notificationsModule = await import('expo-notifications');
-    notificationsModule.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-    return notificationsModule;
-  } catch (error) {
-    notificationsUnavailable = true;
-    console.warn(
-      'expo-notifications is unavailable; tracker reminders disabled until you rebuild the dev client.',
-      error,
-    );
-    return null;
-  }
 }
 
 function canScheduleStartReminder(config: HabitConfig): boolean {
@@ -81,24 +44,10 @@ function parseCheckInHourMinute(timeHHmm: string): { hour: number; minute: numbe
   return { hour, minute };
 }
 
-export async function requestNotificationPermissions(): Promise<boolean> {
-  const Notifications = await getNotifications();
-  if (!Notifications) return false;
-
-  const settings = await Notifications.getPermissionsAsync();
-  if (settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
-    return true;
-  }
-  const result = await Notifications.requestPermissionsAsync();
-  return result.granted || result.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
-}
-
 async function cancelHabitStartRemindersWith(notifications: NotificationsModule): Promise<void> {
-  const scheduled = await notifications.getAllScheduledNotificationsAsync();
-  const habitIds = scheduled
-    .map((item) => item.identifier)
-    .filter((id) => id.startsWith(REMINDER_PREFIX) && id !== END_OF_DAY_REMINDER_ID);
-  await Promise.all(habitIds.map((id) => notifications.cancelScheduledNotificationAsync(id)));
+  await cancelScheduledWithPrefix(notifications, REMINDER_PREFIX, {
+    keep: (id) => id === END_OF_DAY_REMINDER_ID,
+  });
 }
 
 export async function cancelHabitStartReminders(): Promise<void> {

@@ -2,9 +2,14 @@ import { i18n } from '../i18n';
 import { expandOccurrences } from '../calendar/occurrences';
 import type { Calendar, CalendarEvent, CalendarReminder } from '../calendar/types';
 import {
-  isNotificationsNativeAvailable as habitNotificationsAvailable,
+  cancelScheduledWithPrefix,
+  getNotifications,
+  isNotificationsNativeAvailable,
   requestNotificationPermissions,
-} from './habitReminders.native';
+  type NotificationsModule,
+} from './notificationsBootstrap.native';
+
+export { isNotificationsNativeAvailable };
 
 /**
  * Schedule/cancel local DATE notifications for calendar reminders.
@@ -21,50 +26,8 @@ let reminderSyncGeneration = 0;
 /** Serialize syncs — concurrent callers await the latest chain. */
 let reminderSyncChain: Promise<void> = Promise.resolve();
 
-type NotificationsModule = typeof import('expo-notifications');
-
-let notificationsModule: NotificationsModule | null = null;
-let notificationsUnavailable = false;
-
-export function isNotificationsNativeAvailable(): boolean {
-  return habitNotificationsAvailable();
-}
-
-async function getNotifications(): Promise<NotificationsModule | null> {
-  if (notificationsUnavailable || !isNotificationsNativeAvailable()) {
-    notificationsUnavailable = true;
-    return null;
-  }
-  if (notificationsModule) return notificationsModule;
-
-  try {
-    notificationsModule = await import('expo-notifications');
-    notificationsModule.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-    return notificationsModule;
-  } catch (error) {
-    notificationsUnavailable = true;
-    console.warn(
-      'expo-notifications is unavailable; calendar reminders disabled until you rebuild the dev client.',
-      error,
-    );
-    return null;
-  }
-}
-
 async function cancelCalendarRemindersWith(notifications: NotificationsModule): Promise<void> {
-  const scheduled = await notifications.getAllScheduledNotificationsAsync();
-  const ids = scheduled
-    .map((item) => item.identifier)
-    .filter((id) => id.startsWith(REMINDER_PREFIX));
-  await Promise.all(ids.map((id) => notifications.cancelScheduledNotificationAsync(id)));
+  await cancelScheduledWithPrefix(notifications, REMINDER_PREFIX);
 }
 
 export async function cancelCalendarReminders(): Promise<void> {
