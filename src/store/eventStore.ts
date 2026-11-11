@@ -738,7 +738,10 @@ export const useEventStore = create<EventState>((set, get) => ({
 
       try {
         await withDbWriteLock(async () => {
-          if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+          // Only an import/clear abandons the insert. A newer write to this habit
+          // (Undo, a tick) is not a reason to drop the session's seconds; it only
+          // means this stop must not patch the mirror afterwards.
+          if (dataEpochAtStart !== getDataGeneration('protocol')) {
             return;
           }
 
@@ -755,7 +758,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
           const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
 
-          if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+          if (dataEpochAtStart !== getDataGeneration('protocol')) {
             return;
           }
 

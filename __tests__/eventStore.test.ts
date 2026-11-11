@@ -223,4 +223,24 @@ describe('stopHabitTimer', () => {
     expect(state().dailyTotals[TIMER_HABIT]).toBe(660);
     expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
   });
+
+  /**
+   * Another write to the same habit (here an Undo of a reset) bumps the write
+   * epoch while the stop waits for the lock. That must only stop the stop
+   * from patching the mirror — the session's seconds still belong in SQLite.
+   */
+  it('still logs the session when another write to the habit overtakes it', async () => {
+    state().startHabitTimer(TIMER_HABIT);
+    advance(5 * 60_000);
+    const lock = holdWriteLock();
+    const stop = state().stopHabitTimer(TIMER_HABIT, timerConfig);
+    const undo = state().restoreHabitDay(TIMER_HABIT, timerConfig, [
+      timerSessionEvent('550e8400-e29b-41d4-a716-446655440611', 120, new Date(2026, 2, 10, 7, 0)),
+    ]);
+
+    lock.release();
+    await Promise.all([lock.held, stop, undo]);
+
+    expect((await eventsToday(TIMER_HABIT)).map((e) => e.value)).toContain(300);
+  });
 });
