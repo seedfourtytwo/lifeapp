@@ -27,7 +27,8 @@ export function daysBetween(startDate: string, endDate: string): number {
   const start = parseLocalDate(startDate);
   const end = parseLocalDate(endDate);
   const ms = end.getTime() - start.getTime();
-  return Math.floor(ms / (24 * 60 * 60 * 1000));
+  // Local midnights are 23 or 25 hours apart across a clock change; round, never floor.
+  return Math.round(ms / (24 * 60 * 60 * 1000));
 }
 
 export function isScheduleActiveOnDate(schedule: HabitSchedule, dateStr: string): boolean {
