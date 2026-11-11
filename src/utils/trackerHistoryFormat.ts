@@ -1,15 +1,17 @@
 import {
   CounterConfigSchema,
+  dayOutcome,
   formatHabitTimerDuration,
-  isHabitDayComplete,
   parseHabitConfig,
+  type DayFacts,
   type ElementDefinition,
 } from '../protocol';
 
 export function formatTrackerHistoryDayValue(
   element: ElementDefinition | null,
-  total: number,
+  facts: DayFacts,
 ): string {
+  const { total } = facts;
   if (!element) return String(total);
 
   if (element.kind === 'habit') {
@@ -17,7 +19,7 @@ export function formatTrackerHistoryDayValue(
     if (config.trackingMode === 'timer') {
       return total > 0 ? formatHabitTimerDuration(total) : '—';
     }
-    return isHabitDayComplete(total, config) ? 'Done' : '—';
+    return dayOutcome({ kind: 'habit', config }, facts).done ? 'Done' : '—';
   }
 
   const unit = CounterConfigSchema.parse(element.config).unit;

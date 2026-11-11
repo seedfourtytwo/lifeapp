@@ -1,4 +1,9 @@
-import { parseHabitConfig, type ActiveTimerSession, type ElementDefinition } from '../protocol';
+import {
+  habitTimerGoal,
+  parseHabitConfig,
+  type ActiveTimerSession,
+  type ElementDefinition,
+} from '../protocol';
 import { isElementArchived } from '../utils/dashboardElements';
 
 export type HabitTimerTargetFire = {
@@ -30,14 +35,15 @@ export function habitTimerTargetFire(
     );
     if (!element) continue;
     const config = parseHabitConfig(element.config);
-    if (config.trackingMode !== 'timer' || !config.dailyTargetSeconds) continue;
+    const goal = habitTimerGoal(config);
+    if (config.trackingMode !== 'timer' || goal.type !== 'seconds') continue;
 
     const logged =
       session.calendarDate === input.dayMapsDate ? (input.dailyTotals[elementId] ?? 0) : 0;
     const fireAtMs =
       new Date(session.startedAt).getTime() +
       session.pauseOffsetMs +
-      (config.dailyTargetSeconds - logged) * 1000;
+      (goal.seconds - logged) * 1000;
     if (fireAtMs <= nowMs) continue;
     return { elementId, name: element.name, fireAt: new Date(fireAtMs) };
   }

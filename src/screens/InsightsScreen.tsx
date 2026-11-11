@@ -21,6 +21,8 @@ import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import {
   chartPlotValue,
   chartUnitLabel,
+  factsFromTotal,
+  type DayFacts,
   type ElementDefinition,
   type TrackerIconId,
 } from '../protocol';
@@ -45,6 +47,8 @@ import Rule from '../components/Rule';
 import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
+const NOTHING_LOGGED = factsFromTotal(0);
+
 export default function InsightsScreen() {
   const theme = useTheme();
   const { t } = useTranslation('insights');
@@ -53,8 +57,8 @@ export default function InsightsScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [rangeDays, setRangeDays] = useState<HistoryRangeDays>(DEFAULT_HISTORY_RANGE);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [totalsByElement, setTotalsByElement] = useState<
-    Map<string, Map<string, number>>
+  const [factsByElement, setFactsByElement] = useState<
+    Map<string, Map<string, DayFacts>>
   >(new Map());
   const [weatherByDate, setWeatherByDate] = useState<Map<string, WeatherDailySnapshot>>(
     new Map(),
@@ -114,18 +118,14 @@ export default function InsightsScreen() {
       const since = dates[0]!;
       const until = dates[dates.length - 1]!;
       const ids = active.map((e) => e.id);
-      const totalsMap = await eventRepo.getDailyTotalsForElementsSince(db, ids, since);
+      const factsMap = await eventRepo.getDayFactsForElementsSince(db, ids, since);
       if (generation !== loadGenerationRef.current) return;
 
-      const byElement = new Map<string, Map<string, number>>();
+      const byElement = new Map<string, Map<string, DayFacts>>();
       for (const id of ids) {
-        const dayMap = new Map<string, number>();
-        for (const row of totalsMap.get(id) ?? []) {
-          dayMap.set(row.date, row.total);
-        }
-        byElement.set(id, dayMap);
+        byElement.set(id, new Map((factsMap.get(id) ?? []).map((row) => [row.date, row.facts])));
       }
-      setTotalsByElement(byElement);
+      setFactsByElement(byElement);
 
       setSelectedDate((prev) => {
         if (prev && dates.includes(prev)) return prev;
@@ -227,7 +227,7 @@ export default function InsightsScreen() {
 
   const chartSeries = useMemo(() => {
     const raw = selectedElements.map((el) =>
-      dates.map((date) => chartPlotValue(el, totalsByElement.get(el.id)?.get(date) ?? 0)),
+      dates.map((date) => chartPlotValue(el, factsByElement.get(el.id)?.get(date) ?? NOTHING_LOGGED)),
     );
     const normalized = normalizeSeriesToUnit(raw);
     return selectedElements.map((el, i) => ({
@@ -236,7 +236,7 @@ export default function InsightsScreen() {
       values: normalized[i] ?? [],
       binary: el.kind === 'habit' && chartUnitLabel(el) === 'done',
     }));
-  }, [selectedElements, dates, totalsByElement, themeMode]);
+  }, [selectedElements, dates, factsByElement, themeMode]);
 
   const weatherOverlay = useMemo(() => {
     if (!showWeather) return undefined;
@@ -423,7 +423,7 @@ export default function InsightsScreen() {
               <QuietText style={typeScale.secondary}>{t('screen.tickToCompare')}</QuietText>
             ) : (
               selectedElements.map((el, i) => {
-                const total = totalsByElement.get(el.id)?.get(selectedDate) ?? 0;
+                const facts = factsByElement.get(el.id)?.get(selectedDate) ?? NOTHING_LOGGED;
                 const note = notesByElement.get(el.id);
                 return (
                   <View key={el.id}>
@@ -441,7 +441,7 @@ export default function InsightsScreen() {
                         </Text>
                       </View>
                       <QuietText style={typeScale.data}>
-                        {formatTrackerHistoryDayValue(el, total)}
+                        {formatTrackerHistoryDayValue(el, facts)}
                       </QuietText>
                     </View>
                     <Pressable

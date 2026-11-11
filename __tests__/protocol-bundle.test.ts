@@ -8,7 +8,6 @@ import {
   chartPlotValue,
   chartUnitLabel,
   getDailyValueSemantics,
-  isElementDayComplete,
 } from '../src/protocol';
 
 describe('Life Protocol bundle', () => {
@@ -133,23 +132,6 @@ describe('daily value semantics', () => {
     });
     expect(semantics.unit).toBe('seconds');
   });
-
-  it('marks timer habit complete when goal is met', () => {
-    const element = {
-      id: '550e8400-e29b-41d4-a716-446655440021',
-      kind: 'habit' as const,
-      name: 'Meditate',
-      config: HabitConfigSchema.parse({
-        timeSlot: 'anytime',
-        trackingMode: 'timer',
-        dailyTargetSeconds: 900,
-      }),
-      protocolVersion: PROTOCOL_VERSION,
-      createdAt: '2025-01-01T00:00:00.000Z',
-    };
-    expect(isElementDayComplete(element, 900)).toBe(true);
-    expect(isElementDayComplete(element, 899)).toBe(false);
-  });
 });
 
 describe('chart plot value + unit label', () => {
@@ -184,20 +166,22 @@ describe('chart plot value + unit label', () => {
     createdAt: '2025-01-01T00:00:00.000Z',
   };
 
+  const day = (total: number) => ({ total, trackCompleted: false, markedComplete: false });
+
   it('plots a counter total as-is, labeled with its configured unit', () => {
-    expect(chartPlotValue(counterElement, 12)).toBe(12);
+    expect(chartPlotValue(counterElement, day(12))).toBe(12);
     expect(chartUnitLabel(counterElement)).toBe('reps');
   });
 
   it('plots a boolean habit as 0/1, labeled "done"', () => {
-    expect(chartPlotValue(booleanHabitElement, 1)).toBe(1);
-    expect(chartPlotValue(booleanHabitElement, 0)).toBe(0);
+    expect(chartPlotValue(booleanHabitElement, day(1))).toBe(1);
+    expect(chartPlotValue(booleanHabitElement, day(0))).toBe(0);
     expect(chartUnitLabel(booleanHabitElement)).toBe('done');
   });
 
   it('plots a timer habit in rounded minutes, labeled "min"', () => {
-    expect(chartPlotValue(timerHabitElement, 90)).toBe(2);
-    expect(chartPlotValue(timerHabitElement, 89)).toBe(1);
+    expect(chartPlotValue(timerHabitElement, day(90))).toBe(2);
+    expect(chartPlotValue(timerHabitElement, day(89))).toBe(1);
     expect(chartUnitLabel(timerHabitElement)).toBe('min');
   });
 });

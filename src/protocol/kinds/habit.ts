@@ -1,12 +1,6 @@
 import { z } from 'zod';
 import { i18n } from '../../i18n';
 import { isWithinTimeRange, formatTimeRange } from '../../utils/time';
-import { sumEventValues } from '../../utils/events';
-import {
-  getHabitTimerPlaybackMode,
-  hasHabitTimerSound,
-} from '../habitSound';
-import { getBundledHabitSoundDurationSeconds } from '../habitSoundCatalog';
 import {
   formatScheduleDescription,
   HabitScheduleSchema,
@@ -15,7 +9,6 @@ import {
   type HabitSchedule,
 } from '../schedule';
 import { HabitTimerSoundSchema, type HabitTimerSound } from '../habitSound';
-import type { LifeEvent } from '../event';
 import {
   type ActiveTimerSession,
   activeTimerElapsedSeconds,
@@ -168,107 +161,6 @@ export function buildHabitConfig(
       : { showStreakOnCard: true }),
     ...(input.icon ? { icon: input.icon } : {}),
   };
-}
-
-export function isHabitDayComplete(
-  total: number,
-  config: HabitConfig,
-  dayEvents?: readonly Pick<LifeEvent, 'value' | 'meta'>[],
-): boolean {
-  if (config.trackingMode === 'timer') {
-    if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
-      return total >= config.dailyTargetSeconds;
-    }
-    // play_once without a seconds target: only a finished track counts — never
-    // "any logged seconds" (that incorrectly completes after a short session).
-    if (
-      hasHabitTimerSound(config.timerSound) &&
-      getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
-    ) {
-      if (!dayEvents) return false;
-      return dayEvents.some((event) => isTimerSessionTrackCompleted(event));
-    }
-    return total > 0;
-  }
-  return total >= 1;
-}
-
-/**
- * Seconds goal for progress UI: explicit daily target, else play_once track length.
- */
-export function getHabitTimerEffectiveTargetSeconds(
-  config: HabitConfig,
-): number | undefined {
-  if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
-    return config.dailyTargetSeconds;
-  }
-  if (
-    config.trackingMode !== 'timer' ||
-    !hasHabitTimerSound(config.timerSound) ||
-    getHabitTimerPlaybackMode(config.timerSound) !== 'play_once'
-  ) {
-    return undefined;
-  }
-  const trackId = config.timerSound?.trackId?.trim();
-  if (!trackId) return undefined;
-  return getBundledHabitSoundDurationSeconds(trackId);
-}
-
-/**
- * True when day completion can depend on event meta (play-once timer without a seconds target).
- * Those habits need full event rows for streaks / day state; everyone else can use daily SUMs.
- */
-export function habitNeedsEventMetaForCompletion(config: HabitConfig): boolean {
-  if (config.trackingMode !== 'timer') return false;
-  if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) return false;
-  return (
-    hasHabitTimerSound(config.timerSound) &&
-    getHabitTimerPlaybackMode(config.timerSound) === 'play_once'
-  );
-}
-
-function isTimerSessionTrackCompleted(
-  event: Pick<LifeEvent, 'meta'>,
-): boolean {
-  return (
-    event.meta?.source === 'timer_session' &&
-    event.meta.trackCompleted === true
-  );
-}
-
-export function completedDatesFromHabitEvents(
-  events: readonly LifeEvent[],
-  config: HabitConfig,
-): string[] {
-  const byDate = new Map<string, LifeEvent[]>();
-  for (const event of events) {
-    const dayEvents = byDate.get(event.date) ?? [];
-    dayEvents.push(event);
-    byDate.set(event.date, dayEvents);
-  }
-
-  const completedDates: string[] = [];
-  for (const [date, dayEvents] of byDate) {
-    const total = sumEventValues(dayEvents);
-    if (isHabitDayComplete(total, config, dayEvents)) {
-      completedDates.push(date);
-    }
-  }
-  return completedDates;
-}
-
-/** Completion dates from pre-aggregated daily totals (no per-event meta). */
-export function completedDatesFromDailyTotals(
-  dailyTotals: readonly { date: string; total: number }[],
-  config: HabitConfig,
-): string[] {
-  const completedDates: string[] = [];
-  for (const { date, total } of dailyTotals) {
-    if (isHabitDayComplete(total, config)) {
-      completedDates.push(date);
-    }
-  }
-  return completedDates;
 }
 
 export function shouldShowHabitOnHabitsPage(config: HabitConfig, now = new Date()): boolean {

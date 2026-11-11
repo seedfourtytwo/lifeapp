@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { EditorSheet, FilledField } from '../../components/sheet';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
-import { type CounterConfig } from '../../protocol';
+import { dayOutcome, factsFromTotal, type CounterConfig } from '../../protocol';
 import { playCounterTapHaptic } from '../../utils/habitHaptics';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import { NoteIconButton } from '../../notes/NoteIconButton';
@@ -44,10 +44,10 @@ export function CounterWidget({
   const [saving, setSaving] = useState(false);
   const [bubblesOpen, setBubblesOpen] = useState(false);
 
-  const dailyTarget = config.dailyTarget;
-  const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
-  const progress = hasTarget ? todayTotal / dailyTarget : 0;
-  const isComplete = hasTarget && todayTotal >= dailyTarget;
+  const { done: isComplete, target } = dayOutcome(
+    { kind: 'counter', config },
+    factsFromTotal(todayTotal),
+  );
   const streakLabel = formatCounterStreakLabel(config, streak);
 
   const increments = config.quickIncrements;
@@ -56,7 +56,7 @@ export function CounterWidget({
   // Setting an exact total is a tap on the count, so the tray is only for +N.
   const canShowBubbles = extraIncrements.length > 0;
 
-  const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
+  const countText = target !== undefined ? `${todayTotal} / ${target}` : `${todayTotal}`;
 
   const metaColor = isComplete ? theme.colors.primary : theme.colors.onSurfaceVariant;
 
@@ -117,7 +117,7 @@ export function CounterWidget({
           <TrackerCardTitle
             name={element.name}
             icon={config.icon}
-            progress={hasTarget ? progress : null}
+            progress={target !== undefined ? todayTotal / target : null}
             complete={isComplete}
             streakLabel={streakLabel}
             {...trackerCardTitleInteractions({

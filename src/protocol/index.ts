@@ -128,7 +128,7 @@ export {
   type BundledHabitSound,
 } from './habitSoundCatalog';
 
-export { dayFactsFromEvents, dayOutcome, habitTimerGoal } from './dayOutcome';
+export { dayFactsFromEvents, dayOutcome, factsFromTotal, habitTimerGoal } from './dayOutcome';
 export type {
   DayEvent,
   DayFacts,
@@ -148,7 +148,6 @@ export {
   chartPlotValue,
   chartUnitLabel,
   getDailyValueSemantics,
-  isElementDayComplete,
 } from './semantics';
 export type { DailyValueSemantics, DailyValueUnit } from './semantics';
 
@@ -188,11 +187,6 @@ export {
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
   normalizeReminderTimes,
-  isHabitDayComplete,
-  getHabitTimerEffectiveTargetSeconds,
-  completedDatesFromHabitEvents,
-  completedDatesFromDailyTotals,
-  habitNeedsEventMetaForCompletion,
   parseHabitConfig,
   shouldShowHabitOnHabitsPage,
   shouldShowHabitStreakOnCard,

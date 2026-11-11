@@ -1,8 +1,5 @@
-import type { LifeEvent, HabitConfig } from '../../protocol';
-import {
-  DEFAULT_HABIT_CONFIG,
-  isHabitDayComplete,
-} from '../../protocol';
+import type { HabitConfig } from '../../protocol';
+import { DEFAULT_HABIT_CONFIG } from '../../protocol';
 import { sumEventValues } from '../../utils/events';
 import type { KindHandler } from '../types';
 import { HabitWidget } from './HabitWidget';
@@ -13,7 +10,3 @@ export const habitHandler: KindHandler<HabitConfig> = {
   aggregateDaily: sumEventValues,
   DashboardWidget: HabitWidget,
 };
-
-export function habitEventsComplete(events: LifeEvent[], config: HabitConfig): boolean {
-  return isHabitDayComplete(sumEventValues(events), config, events);
-}

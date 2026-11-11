@@ -21,6 +21,11 @@ export interface DayFacts {
 
 export type DayEvent = Pick<LifeEvent, 'value' | 'meta'>;
 
+/** A day known only by its total: a counter's day, or a day nothing was logged on. */
+export function factsFromTotal(total: number): DayFacts {
+  return { total, trackCompleted: false, markedComplete: false };
+}
+
 export function dayFactsFromEvents(events: readonly DayEvent[]): DayFacts {
   let total = 0;
   let trackCompleted = false;

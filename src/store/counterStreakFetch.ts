@@ -4,7 +4,7 @@ import * as elementRepo from '../db/repositories/elementRepository';
 import { getDatabase } from '../db/client';
 import { streakHistorySinceDate } from '../utils/dates';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
-import { computeCounterTargetStreak } from '../utils/counterStreakCompute';
+import { computeTrackerStreaks } from '../utils/trackerStreaks';
 
 export interface CounterStreakInput {
   id: string;
@@ -15,29 +15,23 @@ export interface CounterStreakInput {
 export async function loadCounterStreakMaps(
   counters: CounterStreakInput[],
 ): Promise<Record<string, number>> {
-  const withTarget = counters.filter(
-    (c) => c.config.dailyTarget !== undefined && c.config.dailyTarget > 0,
-  );
-  if (withTarget.length === 0) return {};
+  if (counters.length === 0) return {};
 
   const db = await getDatabase();
-  const since = streakHistorySinceDate();
-  const totalsByElement = await eventRepo.getDailyTotalsForElementsSince(
+  const factsByElement = await eventRepo.getDayFactsForElementsSince(
     db,
-    withTarget.map((c) => c.id),
-    since,
+    counters.map((c) => c.id),
+    streakHistorySinceDate(),
   );
 
   const streaks: Record<string, number> = {};
-  for (const { id, config, createdAt } of withTarget) {
-    const dailyTarget = config.dailyTarget;
-    if (dailyTarget === undefined || dailyTarget <= 0) continue;
-    streaks[id] = computeCounterTargetStreak(
-      totalsByElement.get(id) ?? [],
-      dailyTarget,
+  for (const { id, config, createdAt } of counters) {
+    streaks[id] = computeTrackerStreaks(
+      { kind: 'counter', config },
+      factsByElement.get(id) ?? [],
       undefined,
       createdOnLocalDate(createdAt),
-    );
+    ).streak;
   }
   return streaks;
 }

@@ -14,33 +14,28 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
-import * as eventRepo from '../db/repositories/eventRepository';
+import { loadTrackerHistory } from '../store/trackerHistoryFetch';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import type { RootStackParamList } from '../navigation/types';
 import {
   chartPlotValue,
   chartUnitLabel,
-  completedDatesFromHabitEvents,
   formatHabitTimerDuration,
-  isElementDayComplete,
-  isHabitScheduledOnDate,
   parseHabitConfig,
+  type DayFacts,
   type ElementDefinition,
 } from '../protocol';
 import {
   DEFAULT_HISTORY_RANGE,
   MOVING_AVERAGE_WINDOW,
   computeActivityStats,
-  computePersonalBestStreak,
   movingAverage,
   type HistoryRangeDays,
 } from '../utils/chartStats';
-import { createdOnLocalDate } from '../utils/createdOnLocalDate';
-import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } from '../utils/dates';
+import { formatChartLabel, formatFullDate, lastNDates } from '../utils/dates';
 import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 import { playChartSelectHaptic } from '../utils/habitHaptics';
-import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
 import {
   formatTrackerHistoryDayValue,
   truncateNotePreview,
@@ -50,7 +45,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TrackerHistory'>;
 
 interface DayRow {
   date: string;
-  total: number;
+  facts: DayFacts;
+  done: boolean;
   label: string;
 }
 
@@ -107,49 +103,19 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
       const range = lastNDates(rangeDays);
       const since = range[0]!;
-      const rows = await eventRepo.getDailyTotalsByElement(db, elementId, since);
+      const history = await loadTrackerHistory(db, loaded, range);
       if (generation !== loadGenerationRef.current) return false;
       const notes = await dayNoteRepo.getNotesForElementInRange(db, elementId, since);
       if (generation !== loadGenerationRef.current) return false;
-      const byDate = new Map(rows.map((r) => [r.date, r.total]));
-      const noteByDate = new Map(notes.map((n) => [n.date, n.body]));
-      setNotesByDate(noteByDate);
+      setNotesByDate(new Map(notes.map((n) => [n.date, n.body])));
 
-      const nextDays = range.map((date) => ({
-        date,
-        total: byDate.get(date) ?? 0,
-        label: formatChartLabel(date),
-      }));
-      setDays(nextDays);
+      setDays(history.days.map((day) => ({ ...day, label: formatChartLabel(day.date) })));
       setSelectedDate((prev) => {
         if (prev && range.includes(prev)) return prev;
         return range[range.length - 1] ?? null;
       });
-
-      if (loaded.kind === 'habit') {
-        const config = parseHabitConfig(loaded.config);
-        const yearRows = await eventRepo.getEventsForElementSince(
-          db,
-          elementId,
-          streakHistorySinceDate(),
-        );
-        if (generation !== loadGenerationRef.current) return false;
-        const createdOn = createdOnLocalDate(loaded.createdAt);
-        const { streak: currentStreak } = computeHabitStreaksFromEvents(
-          yearRows,
-          config,
-          undefined,
-          createdOn,
-        );
-        setStreak(currentStreak);
-        const completed = completedDatesFromHabitEvents(yearRows, config);
-        setPersonalBest(
-          computePersonalBestStreak(completed, (date) => isHabitScheduledOnDate(config, date)),
-        );
-      } else {
-        setStreak(0);
-        setPersonalBest(0);
-      }
+      setStreak(history.streak);
+      setPersonalBest(history.personalBest);
       return true;
     } catch (err) {
       if (generation !== loadGenerationRef.current) return false;
@@ -205,8 +171,8 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
     const habitConfig = isHabit ? parseHabitConfig(element.config) : null;
     const isTimerHabit = habitConfig?.trackingMode === 'timer';
 
-    const plotValues = days.map((d) => chartPlotValue(element, d.total));
-    const completedFlags = days.map((d) => isElementDayComplete(element, d.total));
+    const plotValues = days.map((d) => chartPlotValue(element, d.facts));
+    const completedFlags = days.map((d) => d.done);
     const chartUnit = chartUnitLabel(element);
 
     const activity = computeActivityStats(
@@ -269,7 +235,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const selected = days.find((d) => d.date === selectedDate) ?? null;
   const selectedNote = selectedDate ? notesByDate.get(selectedDate) : undefined;
   const selectedValueLabel = selected
-    ? formatTrackerHistoryDayValue(element, selected.total)
+    ? formatTrackerHistoryDayValue(element, selected.facts)
     : '—';
 
   const stats = chartModel.isHabit

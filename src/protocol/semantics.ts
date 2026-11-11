@@ -1,6 +1,7 @@
 import type { ElementDefinition } from './element';
 import { CounterConfigSchema } from './kinds/counter';
-import { HabitConfigSchema, isHabitDayComplete } from './kinds/habit';
+import { HabitConfigSchema } from './kinds/habit';
+import { dayOutcome, type DayFacts } from './dayOutcome';
 
 /**
  * Life Protocol v1 — how to read `event.value` for daily aggregation (SUM per element per date).
@@ -35,19 +36,6 @@ export function getDailyValueSemantics(element: ElementDefinition): DailyValueSe
   return { unit: 'done', displayUnit: 'done' };
 }
 
-export function isElementDayComplete(element: ElementDefinition, dailyTotal: number): boolean {
-  if (element.kind === 'counter') {
-    const config = CounterConfigSchema.parse(element.config);
-    if (config.dailyTarget && config.dailyTarget > 0) {
-      return dailyTotal >= config.dailyTarget;
-    }
-    return dailyTotal > 0;
-  }
-
-  const config = HabitConfigSchema.parse(element.config);
-  return isHabitDayComplete(dailyTotal, config);
-}
-
 /** History/Insights chart y-axis unit label — 'min' and 'done' are literal labels, not i18n keys. */
 export function chartUnitLabel(element: ElementDefinition): string {
   if (element.kind === 'counter') {
@@ -57,14 +45,14 @@ export function chartUnitLabel(element: ElementDefinition): string {
   return config.trackingMode === 'timer' ? 'min' : 'done';
 }
 
-/** Raw daily total -> chart plot value (e.g. seconds -> minutes for a timer habit). */
-export function chartPlotValue(element: ElementDefinition, dailyTotal: number): number {
+/** A day -> chart plot value (seconds -> minutes for a timer habit, done -> 1 for a check-off). */
+export function chartPlotValue(element: ElementDefinition, facts: DayFacts): number {
   if (element.kind === 'counter') {
-    return dailyTotal;
+    return facts.total;
   }
   const config = HabitConfigSchema.parse(element.config);
   if (config.trackingMode === 'timer') {
-    return Math.round(dailyTotal / 60);
+    return Math.round(facts.total / 60);
   }
-  return isHabitDayComplete(dailyTotal, config) ? 1 : 0;
+  return dayOutcome({ kind: 'habit', config }, facts).done ? 1 : 0;
 }

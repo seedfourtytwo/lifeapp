@@ -4,12 +4,14 @@ import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
   CounterConfigSchema,
-  habitNeedsEventMetaForCompletion,
-  isHabitDayComplete,
+  dayFactsFromEvents,
+  factsFromTotal,
+  dayOutcome,
   parseHabitConfig,
   PROTOCOL_VERSION,
   toDateString,
   type ActiveTimerSession,
+  type DayEvent,
   type HabitConfig,
   type LifeEvent,
 } from '../protocol';
@@ -140,6 +142,10 @@ interface EventState extends ResettableMirror {
 
 function todayDate(): string {
   return currentAppCalendarDate();
+}
+
+function habitDayDone(config: HabitConfig, events: readonly DayEvent[]): boolean {
+  return dayOutcome({ kind: 'habit', config }, dayFactsFromEvents(events)).done;
 }
 
 /** Ignore stale load results if a newer load started. */
@@ -353,8 +359,8 @@ async function writeHabitTick(
       // The mirror can be a day old (first lock-screen press after midnight)
       // or overtaken by a load, so what the day holds is read here.
       const existing = await eventRepo.getEventsForElementOnDate(db, elementId, date);
-      const done = isHabitDayComplete(sumEventValues(existing), config, existing);
-      let nextEvents: Pick<LifeEvent, 'value' | 'meta'>[] = existing;
+      const done = habitDayDone(config, existing);
+      let nextEvents: DayEvent[] = existing;
       if (done && intent === 'toggle') {
         await eventRepo.deleteEventsForElementOnDate(db, elementId, date);
         nextEvents = [];
@@ -380,7 +386,7 @@ async function writeHabitTick(
       applyTodayMaps(
         elementId,
         date,
-        { habitDone: isHabitDayComplete(nextTotal, config, nextEvents), dailyTotal: nextTotal },
+        { habitDone: habitDayDone(config, nextEvents), dailyTotal: nextTotal },
         set,
         get,
       );
@@ -555,37 +561,21 @@ export const useEventStore = create<EventState>((set, get) => ({
     const generation = ++habitDayLoadGeneration;
     const epochs = captureWriteEpochs(habits.map((h) => h.id));
     const db = await getDatabase();
-    const metaHabits = habits.filter((h) => habitNeedsEventMetaForCompletion(h.config));
-    const totalHabits = habits.filter((h) => !habitNeedsEventMetaForCompletion(h.config));
+    const factsByElement = await eventRepo.getDayFactsForElementsOnDate(
+      db,
+      habits.map((h) => h.id),
+      date,
+    );
 
     const totals: Record<string, number> = {};
     const status: Record<string, boolean> = {};
-
-    if (totalHabits.length > 0) {
-      const dayTotals = await eventRepo.getDailyTotalsForElementsOnDate(
-        db,
-        totalHabits.map((h) => h.id),
-        date,
+    for (const { id, config } of habits) {
+      const outcome = dayOutcome(
+        { kind: 'habit', config },
+        factsByElement.get(id) ?? factsFromTotal(0),
       );
-      for (const { id, config } of totalHabits) {
-        const total = dayTotals.get(id) ?? 0;
-        totals[id] = total;
-        status[id] = isHabitDayComplete(total, config);
-      }
-    }
-
-    if (metaHabits.length > 0) {
-      const eventsByElement = await eventRepo.getEventsForElementsOnDate(
-        db,
-        metaHabits.map((h) => h.id),
-        date,
-      );
-      for (const { id, config } of metaHabits) {
-        const events = eventsByElement.get(id) ?? [];
-        const total = sumEventValues(events);
-        totals[id] = total;
-        status[id] = isHabitDayComplete(total, config, events);
-      }
+      totals[id] = outcome.total;
+      status[id] = outcome.done;
     }
 
     if (generation !== habitDayLoadGeneration) return;
@@ -817,8 +807,8 @@ export const useEventStore = create<EventState>((set, get) => ({
           const previousTotal = sumEventValues(existingEvents);
           const nextTotal = previousTotal + value;
           const nextEvents = [...existingEvents, { value, meta }];
-          const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
-          const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
+          const wasComplete = habitDayDone(config, existingEvents);
+          const isComplete = habitDayDone(config, nextEvents);
 
           if (dataEpochAtStart !== getDataGeneration('protocol')) {
             return;
@@ -960,7 +950,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       applyTodayMaps(
         elementId,
         date,
-        { dailyTotal: total, habitDone: isHabitDayComplete(total, config, events) },
+        { dailyTotal: total, habitDone: habitDayDone(config, events) },
         set,
         get,
       );

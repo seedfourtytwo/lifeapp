@@ -13,8 +13,7 @@ jest.mock('../src/hooks/useAppTheme', () => ({
 }));
 
 import { counterHandler } from '../src/kinds/registry';
-import { habitHandler, habitEventsComplete } from '../src/kinds/habit/handler';
-import { HabitConfigSchema } from '../src/protocol';
+import { habitHandler } from '../src/kinds/habit/handler';
 
 describe('counterHandler', () => {
   it('sums event values for daily total', () => {
@@ -42,25 +41,6 @@ describe('counterHandler', () => {
 });
 
 describe('habitHandler', () => {
-  const config = HabitConfigSchema.parse({ timeSlot: 'anytime' });
-
-  it('treats boolean completion as value >= 1', () => {
-    const complete = habitEventsComplete(
-      [
-        {
-          id: '1',
-          elementId: 'e1',
-          timestamp: '2025-01-01T10:00:00.000Z',
-          date: '2025-01-01',
-          value: 1,
-          protocolVersion: 1,
-        },
-      ],
-      config,
-    );
-    expect(complete).toBe(true);
-  });
-
   it('aggregates timer seconds for the day', () => {
     const total = habitHandler.aggregateDaily([
       {

@@ -2,6 +2,7 @@ import { i18n } from '../../i18n';
 import {
   activeTimerElapsedSeconds,
   formatHabitTimerDuration,
+  habitTimerGoal,
   isActiveTimerPaused,
   type ActiveTimerSession,
   type HabitConfig,
@@ -22,10 +23,10 @@ export function buildHabitTimerLockScreenMeta(
   nowMs = Date.now(),
 ): HabitTimerLockScreenMeta {
   const elapsed = activeTimerElapsedSeconds(session, nowMs);
-  const target = config.dailyTargetSeconds;
+  const goal = habitTimerGoal(config);
   const timeLabel =
-    target !== undefined && target > 0
-      ? `${formatHabitTimerDuration(elapsed)} / ${formatHabitTimerDuration(target)}`
+    goal.type === 'seconds'
+      ? `${formatHabitTimerDuration(elapsed)} / ${formatHabitTimerDuration(goal.seconds)}`
       : formatHabitTimerDuration(elapsed);
   const stateLabel = isActiveTimerPaused(session)
     ? i18n.t('trackers:lockScreen.paused')

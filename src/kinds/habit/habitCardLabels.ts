@@ -59,8 +59,8 @@ export type HabitCardSoundIndicator = {
  *
  * Only timer habits ever play audio, so a boolean habit is silent even when its
  * config still carries a `timerSound` from before the mode was switched — the
- * same stance `isHabitDayComplete` and `getHabitTimerEffectiveTargetSeconds`
- * already take. A track id missing from the bundled catalog counts as no sound.
+ * same stance `dayOutcome` takes. A track id missing from the bundled catalog
+ * counts as no sound.
  */
 export function describeHabitCardSound(
   config: HabitConfig,

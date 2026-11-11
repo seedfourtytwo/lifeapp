@@ -7,7 +7,6 @@ import {
   buildCounterConfig,
   buildHabitConfig,
   formatHabitHomeTimerLabel,
-  isHabitDayComplete,
   parseElementDefinition,
   parseProtocolBundle,
   PROTOCOL_VERSION,
@@ -219,69 +218,6 @@ describe('HabitEventMetaSchema', () => {
     if (meta.source === 'timer_session') {
       expect(meta.durationSeconds).toBe(900);
     }
-  });
-});
-
-describe('isHabitDayComplete', () => {
-  it('marks boolean habit complete at one or more', () => {
-    const config = HabitConfigSchema.parse({ timeSlot: 'anytime' });
-    expect(isHabitDayComplete(1, config)).toBe(true);
-    expect(isHabitDayComplete(0, config)).toBe(false);
-  });
-
-  it('marks timer habit complete against daily target', () => {
-    const config = HabitConfigSchema.parse({
-      timeSlot: 'anytime',
-      trackingMode: 'timer',
-      dailyTargetSeconds: 900,
-    });
-    expect(isHabitDayComplete(900, config)).toBe(true);
-    expect(isHabitDayComplete(899, config)).toBe(false);
-  });
-
-  it('marks play_once timer complete only when track finished', () => {
-    const config = HabitConfigSchema.parse({
-      timeSlot: 'anytime',
-      trackingMode: 'timer',
-      timerSound: { trackId: 'meditation15min', playbackMode: 'play_once' },
-    });
-    expect(
-      isHabitDayComplete(120, config, [
-        {
-          value: 120,
-          meta: {
-            source: 'timer_session',
-            startedAt: '2025-01-01T10:00:00.000Z',
-            endedAt: '2025-01-01T10:02:00.000Z',
-            durationSeconds: 120,
-          },
-        },
-      ]),
-    ).toBe(false);
-    expect(
-      isHabitDayComplete(900, config, [
-        {
-          value: 900,
-          meta: {
-            source: 'timer_session',
-            startedAt: '2025-01-01T10:00:00.000Z',
-            endedAt: '2025-01-01T10:15:00.000Z',
-            durationSeconds: 900,
-            trackCompleted: true,
-          },
-        },
-      ]),
-    ).toBe(true);
-  });
-
-  it('does not treat play_once as complete from totals alone', () => {
-    const config = HabitConfigSchema.parse({
-      timeSlot: 'anytime',
-      trackingMode: 'timer',
-      timerSound: { trackId: 'wimhofMorning', playbackMode: 'play_once' },
-    });
-    expect(isHabitDayComplete(30, config)).toBe(false);
-    expect(isHabitDayComplete(1340, config)).toBe(false);
   });
 });
 

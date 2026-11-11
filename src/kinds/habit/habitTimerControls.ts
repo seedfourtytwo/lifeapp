@@ -7,7 +7,7 @@ import {
   stopHabitSound,
 } from '../../audio/habitTimerSound';
 import {
-  getHabitTimerPlaybackMode,
+  habitTimerGoal,
   hasHabitTimerSound,
   isActiveTimerPaused,
   parseHabitConfig,
@@ -35,14 +35,9 @@ function playSoundForConfig(
   onFinish: (elementId: string, config: HabitConfig, trackCompleted?: boolean) => void,
 ): Promise<void> {
   setFocusedHabitId(elementId);
-  const hasSecondsTarget =
-    config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
-  // play_once without a minutes target: track end completes the habit.
-  // With a minutes target, let the session keep running (overtime / finish via Done).
-  const finishOnTrackEnd =
-    hasHabitTimerSound(config.timerSound) &&
-    getHabitTimerPlaybackMode(config.timerSound) === 'play_once' &&
-    !hasSecondsTarget;
+  // The track is the goal: its end completes the habit. A play-once track with a
+  // minutes target just ends; the session keeps running (overtime / Done).
+  const finishOnTrackEnd = habitTimerGoal(config).type === 'play_once';
   return playHabitSound(config.timerSound, {
     lockScreen: lockScreenMetaFor(elementId, config),
     onEnded: finishOnTrackEnd
@@ -172,13 +167,10 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
   useEventStore.getState().resumeHabitTimer(elementId);
   const lockScreen = lockScreenMetaFor(elementId, config);
   if (hasHabitTimerSound(config.timerSound)) {
-    const playbackMode = getHabitTimerPlaybackMode(config.timerSound);
-    const hasSecondsTarget =
-      config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
     void resumeHabitSound(config.timerSound, {
       lockScreen,
       onEnded:
-        playbackMode === 'play_once' && !hasSecondsTarget
+        habitTimerGoal(config).type === 'play_once'
           ? () => {
               void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
                 (error) => {

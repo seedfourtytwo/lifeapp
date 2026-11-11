@@ -5,16 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
 import {
+  dayOutcome,
+  factsFromTotal,
   formatHabitHomeTimerLabel,
-  getHabitTimerEffectiveTargetSeconds,
-  getHabitTimerPlaybackMode,
-  hasHabitTimerSound,
+  habitTimerGoal,
   isActiveTimerPaused,
-  isHabitDayComplete,
   liveTimerTotalSeconds,
   type HabitConfig,
 } from '../../protocol';
-import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
@@ -56,14 +54,7 @@ export function HabitTimerWidget({
   const chimePlayedRef = useRef(false);
   const isRunning = Boolean(activeTimerSession);
   const isPaused = isActiveTimerPaused(activeTimerSession);
-  const effectiveTarget = getHabitTimerEffectiveTargetSeconds(config);
-  const hasCompletionTarget = effectiveTarget !== undefined && effectiveTarget > 0;
-  const hasSecondsTarget =
-    config.dailyTargetSeconds !== undefined && config.dailyTargetSeconds > 0;
-  const isPlayOnceTarget =
-    !hasSecondsTarget &&
-    hasHabitTimerSound(config.timerSound) &&
-    getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
+  const goal = habitTimerGoal(config);
   const streakLabel = formatHabitStreakLabel(config, streak);
   const soundIndicator = describeHabitCardSound(config);
 
@@ -83,11 +74,14 @@ export function HabitTimerWidget({
   }, [isPaused, isRunning, activeTimerSession?.startedAt]);
 
   const displayTotal = liveTimerTotalSeconds(todayTotal, activeTimerSession);
-  // play_once without a seconds goal: only store "track finished" counts as done.
-  // Seconds goals use live total so the wash/colors update during the session.
-  const isComplete = isPlayOnceTarget
-    ? Boolean(isDone)
-    : isHabitDayComplete(displayTotal, config);
+  /** The day as it stands this second, counting the running session's seconds. */
+  const liveDone = (total: number) =>
+    dayOutcome({ kind: 'habit', config }, factsFromTotal(total)).done;
+  // The store knows what the seconds cannot (a finished track, a manual Done);
+  // the live total turns the card done the moment a running timer reaches its goal.
+  const live = dayOutcome({ kind: 'habit', config }, factsFromTotal(displayTotal));
+  const isComplete = Boolean(isDone) || live.done;
+  const effectiveTarget = live.target;
 
   /**
    * Done banks/stops a session:
@@ -96,30 +90,21 @@ export function HabitTimerWidget({
    *   then Done to save). Under target: Play/Pause only; Reset clears the day.
    * - play_once track goal: never — only natural track end completes.
    */
-  const secondsTarget = config.dailyTargetSeconds ?? 0;
   const showManualDone =
     isRunning &&
     Boolean(onTimerFinish) &&
-    (!hasCompletionTarget || (hasSecondsTarget && displayTotal >= secondsTarget));
+    (goal.type === 'open' || (goal.type === 'seconds' && live.done));
 
+  // The track's own end chimes a play-once habit; a seconds goal chimes here, live.
   useEffect(() => {
-    if (!hasSecondsTarget || !isRunning || isPaused || chimePlayedRef.current) return;
-    const previousTotal = loggedTotalAtSessionStart.current;
-    if (
-      shouldPlayHabitCompletionChime(
-        config,
-        previousTotal,
-        displayTotal,
-        [],
-        [{ value: displayTotal - previousTotal, meta: undefined }],
-      )
-    ) {
+    if (goal.type !== 'seconds' || !isRunning || isPaused || chimePlayedRef.current) return;
+    if (!liveDone(loggedTotalAtSessionStart.current) && live.done) {
       chimePlayedRef.current = true;
       void playHabitCompleteChime();
     }
-  }, [config, displayTotal, hasSecondsTarget, isPaused, isRunning]);
+  });
 
-  const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
+  const progress = effectiveTarget !== undefined ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
 
   /** Idle + zero today: show target only (or hide for open-ended). Elapsed appears once started. */
@@ -153,7 +138,7 @@ export function HabitTimerWidget({
         <TrackerCardTitle
           name={element.name}
           icon={config.icon}
-          progress={hasCompletionTarget ? progress : null}
+          progress={effectiveTarget !== undefined ? progress : null}
           complete={isComplete}
           streakLabel={streakLabel}
           {...trackerCardTitleInteractions({

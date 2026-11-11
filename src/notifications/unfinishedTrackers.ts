@@ -1,6 +1,8 @@
 import {
   CounterConfigSchema,
   countTodosNeedingAttention,
+  dayOutcome,
+  factsFromTotal,
   isHabitDueToday,
   parseHabitConfig,
   toDateString,
@@ -47,10 +49,12 @@ export function countUnfinishedTrackersToday(args: {
     }
 
     if (element.kind === 'counter') {
-      const config = CounterConfigSchema.parse(element.config);
-      if (!config.dailyTarget || config.dailyTarget <= 0) continue;
-      const total = args.dailyTotals[element.id] ?? 0;
-      if (total < config.dailyTarget) {
+      const outcome = dayOutcome(
+        { kind: 'counter', config: CounterConfigSchema.parse(element.config) },
+        factsFromTotal(args.dailyTotals[element.id] ?? 0),
+      );
+      // A counter with no daily target is never "unfinished": there is nothing to finish.
+      if (outcome.reason === 'under_target') {
         counters += 1;
       }
     }
