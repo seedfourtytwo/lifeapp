@@ -13,6 +13,7 @@ import {
   cancelScheduledWithPrefix,
   getNotifications,
   isNotificationsNativeAvailable,
+  reconcileDateReminders,
   requestNotificationPermissions,
   REMINDERS_CHANNEL_ID,
   type NotificationsModule,
@@ -77,8 +78,8 @@ function collectHabitReminderFires(
 
 /**
  * Bring the pending habit reminders in line with the habits. Identifiers are
- * stable (habit, day, time), so a re-sync replaces what is already pending and
- * cancels only what no longer belongs: a time removed, a habit archived or
+ * stable (habit, day, time), so a re-sync leaves alone what is already pending
+ * as wanted, replaces what changed, and cancels only what no longer belongs: a time removed, a habit archived or
  * deleted, a day already done, or everything when switched off.
  */
 export async function syncHabitReminders(
@@ -96,26 +97,20 @@ export async function syncHabitReminders(
     if (generation !== habitReminderSyncGeneration) return;
 
     const fires = granted ? collectHabitReminderFires(elements, habitDoneToday, now) : [];
-    const wanted = new Set(fires.map((fire) => fire.identifier));
-    await cancelScheduledWithPrefix(Notifications, REMINDER_PREFIX, {
-      keep: (id) => id === END_OF_DAY_REMINDER_ID || wanted.has(id),
-    });
-
-    for (const fire of fires) {
-      if (generation !== habitReminderSyncGeneration) return;
-      await Notifications.scheduleNotificationAsync({
+    await reconcileDateReminders(
+      Notifications,
+      REMINDER_PREFIX,
+      fires.map((fire) => ({
         identifier: fire.identifier,
-        content: {
-          title: i18n.t('notifications:habitReminder.title'),
-          body: i18n.t('notifications:habitReminder.body', { name: fire.name }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: fire.when,
-          channelId: REMINDERS_CHANNEL_ID,
-        },
-      });
-    }
+        title: i18n.t('notifications:habitReminder.title'),
+        body: i18n.t('notifications:habitReminder.body', { name: fire.name }),
+        when: fire.when,
+      })),
+      {
+        keep: (id) => id === END_OF_DAY_REMINDER_ID,
+        stillCurrent: () => generation === habitReminderSyncGeneration,
+      },
+    );
   };
 
   await enqueueHabitReminderWork(run);

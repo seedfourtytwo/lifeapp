@@ -253,6 +253,43 @@ it('re-syncs to the same pending set without cancelling anything', async () => {
   expect(fake.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
 });
 
+it('a second identical sync schedules nothing', async () => {
+  const now = new Date(2026, 10, 11, 10, 0);
+  await reminders.syncHabitReminders([kefir(), sprouts()], true, {}, now);
+  expect(fake.pending.size).toBeGreaterThan(0);
+  fake.scheduleNotificationAsync.mockClear();
+  fake.cancelScheduledNotificationAsync.mockClear();
+  fake.getAllScheduledNotificationsAsync.mockClear();
+
+  await reminders.syncHabitReminders([kefir(), sprouts()], true, {}, now);
+
+  expect(fake.scheduleNotificationAsync).not.toHaveBeenCalled();
+  expect(fake.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+  expect(fake.getAllScheduledNotificationsAsync).toHaveBeenCalledTimes(1);
+});
+
+it('re-schedules only what changed: a renamed habit, a moved time', async () => {
+  const now = new Date(2026, 10, 11, 10, 0);
+  await reminders.syncHabitReminders([kefir(), sprouts()], true, {}, now);
+  fake.scheduleNotificationAsync.mockClear();
+
+  const renamed = habit(KEFIR, 'Feed the kefir', { reminderTimes: ['09:00'] });
+  const moved = habit(SPROUTS, 'Rinse the sprouts', { reminderTimes: ['08:00', '21:00'] });
+  await reminders.syncHabitReminders([renamed, moved], true, {}, now);
+
+  const rescheduled = fake.scheduleNotificationAsync.mock.calls.map(([r]) => r.identifier);
+  // 09:00 today has passed: 13 kefir days. 21:00 is still ahead: 14 new sprouts times.
+  expect(rescheduled.filter((id) => id.includes(KEFIR))).toHaveLength(13);
+  expect(rescheduled.filter((id) => id.includes(SPROUTS))).toHaveLength(14);
+  expect(rescheduled.every((id) => !id.endsWith('-0800'))).toBe(true);
+  expect(fake.scheduledList().filter((r) => r.identifier.endsWith('-2000'))).toEqual([]);
+  const kefirBodies = fake
+    .scheduledList()
+    .filter((r) => r.identifier.includes(KEFIR))
+    .map((r) => r.content.body);
+  expect(new Set(kefirBodies)).toEqual(new Set(['Time for Feed the kefir']));
+});
+
 it('cancels the reminders of a habit that is archived or deleted, and nothing else', async () => {
   const now = new Date(2026, 10, 11, 10, 0);
   await reminders.scheduleEndOfDayReminder(true, '20:00');

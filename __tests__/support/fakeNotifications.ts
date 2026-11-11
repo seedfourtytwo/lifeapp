@@ -80,7 +80,23 @@ export function createFakeNotifications() {
     cancelScheduledNotificationAsync: jest.fn(async (identifier: string) => {
       pending.delete(identifier);
     }),
-    getAllScheduledNotificationsAsync: jest.fn(async () => [...pending.values()]),
+    // Hands back what the Android module does: a DATE trigger comes back as
+    // { type: 'date', repeats: false, value: <ms>, channelId }, not as it went in.
+    getAllScheduledNotificationsAsync: jest.fn(async () =>
+      [...pending.values()].map((request) => ({
+        identifier: request.identifier,
+        content: { title: request.content.title ?? null, body: request.content.body ?? null },
+        trigger:
+          request.trigger.type === 'date'
+            ? {
+                type: 'date',
+                repeats: false,
+                value: fireMs(request),
+                channelId: request.trigger.channelId ?? null,
+              }
+            : { ...request.trigger },
+      })),
+    ),
     getPermissionsAsync: jest.fn(async () => state.permission),
     requestPermissionsAsync: jest.fn(async () => {
       state.permission = state.answer;

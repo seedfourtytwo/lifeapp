@@ -92,6 +92,62 @@ export async function getNotificationPermission(): Promise<NotificationPermissio
   };
 }
 
+/** One local reminder at a moment in time, as a sync wants it pending. */
+export type DateReminder = { identifier: string; title: string; body: string; when: Date };
+
+/**
+ * When a pending DATE notification fires. Android hands the trigger back as
+ * { type: 'date', value: <ms> } rather than in the shape it was scheduled with.
+ */
+function pendingFireMs(trigger: unknown): number | null {
+  if (typeof trigger !== 'object' || trigger === null || !('value' in trigger)) return null;
+  return typeof trigger.value === 'number' ? trigger.value : null;
+}
+
+/**
+ * Make the pending notifications under `prefix` exactly `wanted`, reading the
+ * pending list once. One already pending with the same time and text is left
+ * alone, so a re-sync with nothing changed schedules and cancels nothing.
+ * Whatever is pending and no longer wanted is cancelled, unless `keep` says so.
+ */
+export async function reconcileDateReminders(
+  notifications: NotificationsModule,
+  prefix: string,
+  wanted: readonly DateReminder[],
+  options: { keep?: (identifier: string) => boolean; stillCurrent?: () => boolean } = {},
+): Promise<void> {
+  const pending = new Map(
+    (await notifications.getAllScheduledNotificationsAsync())
+      .filter((request) => request.identifier.startsWith(prefix))
+      .map((request) => [request.identifier, request]),
+  );
+  const wantedIds = new Set(wanted.map((reminder) => reminder.identifier));
+  const stale = [...pending.keys()].filter((id) => !wantedIds.has(id) && !options.keep?.(id));
+  await Promise.all(stale.map((id) => notifications.cancelScheduledNotificationAsync(id)));
+
+  for (const reminder of wanted) {
+    if (options.stillCurrent && !options.stillCurrent()) return;
+    const current = pending.get(reminder.identifier);
+    if (
+      current &&
+      pendingFireMs(current.trigger) === reminder.when.getTime() &&
+      current.content.title === reminder.title &&
+      current.content.body === reminder.body
+    ) {
+      continue;
+    }
+    await notifications.scheduleNotificationAsync({
+      identifier: reminder.identifier,
+      content: { title: reminder.title, body: reminder.body },
+      trigger: {
+        type: notifications.SchedulableTriggerInputTypes.DATE,
+        date: reminder.when,
+        channelId: REMINDERS_CHANNEL_ID,
+      },
+    });
+  }
+}
+
 export async function cancelScheduledWithPrefix(
   notifications: NotificationsModule,
   prefix: string,

@@ -5,8 +5,9 @@ import {
   cancelScheduledWithPrefix,
   getNotifications,
   isNotificationsNativeAvailable,
+  reconcileDateReminders,
   requestNotificationPermissions,
-  REMINDERS_CHANNEL_ID,
+  type DateReminder,
   type NotificationsModule,
 } from './notificationsBootstrap.native';
 import { NOTIFICATION_BUDGET } from './notificationBudget';
@@ -59,12 +60,57 @@ function reminderBody(title: string, offsetMinutes: number): string {
   );
 }
 
-export async function syncCalendarReminders(input: {
+type CalendarReminderInput = {
   events: CalendarEvent[];
   calendars: Calendar[];
   reminders: CalendarReminder[];
   clearedOccurrenceKeys?: ReadonlySet<string>;
-}): Promise<void> {
+};
+
+/** The earliest reminders within the horizon and the calendar's share; none without permission. */
+async function wantedCalendarReminders(input: CalendarReminderInput): Promise<DateReminder[]> {
+  const enabledReminders = input.reminders.filter((r) => r.enabled);
+  if (enabledReminders.length === 0 || input.events.length === 0) return [];
+  if (!(await requestNotificationPermissions())) return [];
+
+  const now = Date.now();
+  const rangeStart = new Date(now - 24 * 60 * 60 * 1000);
+  const rangeEnd = new Date(now + SCHEDULE_HORIZON_MS);
+  const calendarsById = new Map(input.calendars.map((c) => [c.id, c]));
+  const cleared = input.clearedOccurrenceKeys ?? new Set<string>();
+  const occurrences = expandOccurrences(input.events, calendarsById, rangeStart, rangeEnd).filter(
+    (occ) => !cleared.has(occ.occurrenceKey),
+  );
+
+  const remindersByEvent = new Map<string, CalendarReminder[]>();
+  for (const reminder of enabledReminders) {
+    const list = remindersByEvent.get(reminder.eventId) ?? [];
+    list.push(reminder);
+    remindersByEvent.set(reminder.eventId, list);
+  }
+
+  const fires: DateReminder[] = [];
+  for (const occ of occurrences) {
+    const reminders = remindersByEvent.get(occ.eventId);
+    if (!reminders) continue;
+    for (const reminder of reminders) {
+      const when = new Date(occ.start.getTime() - reminder.offsetMinutes * 60_000);
+      if (when.getTime() <= now) continue;
+      if (when.getTime() > now + SCHEDULE_HORIZON_MS) continue;
+      fires.push({
+        identifier: `${REMINDER_PREFIX}${occ.occurrenceKey}-${reminder.offsetMinutes}`,
+        title: i18n.t('notifications:calendarReminder.title'),
+        body: reminderBody(occ.title, reminder.offsetMinutes),
+        when,
+      });
+    }
+  }
+
+  fires.sort((a, b) => a.when.getTime() - b.when.getTime());
+  return fires.slice(0, NOTIFICATION_BUDGET.calendarReminders);
+}
+
+export async function syncCalendarReminders(input: CalendarReminderInput): Promise<void> {
   const run = async (): Promise<void> => {
     if (!isNotificationsNativeAvailable()) return;
 
@@ -72,74 +118,11 @@ export async function syncCalendarReminders(input: {
     if (!Notifications) return;
 
     const generation = ++reminderSyncGeneration;
-
-    await cancelCalendarRemindersWith(Notifications);
+    const fires = await wantedCalendarReminders(input);
     if (generation !== reminderSyncGeneration) return;
-
-    const enabledReminders = input.reminders.filter((r) => r.enabled);
-    if (enabledReminders.length === 0 || input.events.length === 0) return;
-
-    const granted = await requestNotificationPermissions();
-    if (!granted || generation !== reminderSyncGeneration) return;
-
-    const now = Date.now();
-    const rangeStart = new Date(now - 24 * 60 * 60 * 1000);
-    const rangeEnd = new Date(now + SCHEDULE_HORIZON_MS);
-    const calendarsById = new Map(input.calendars.map((c) => [c.id, c]));
-    const cleared = input.clearedOccurrenceKeys ?? new Set<string>();
-    const occurrences = expandOccurrences(input.events, calendarsById, rangeStart, rangeEnd).filter(
-      (occ) => !cleared.has(occ.occurrenceKey),
-    );
-
-    const remindersByEvent = new Map<string, CalendarReminder[]>();
-    for (const reminder of enabledReminders) {
-      const list = remindersByEvent.get(reminder.eventId) ?? [];
-      list.push(reminder);
-      remindersByEvent.set(reminder.eventId, list);
-    }
-
-    type Fire = { id: string; title: string; body: string; when: Date };
-    const fires: Fire[] = [];
-
-    for (const occ of occurrences) {
-      const reminders = remindersByEvent.get(occ.eventId);
-      if (!reminders) continue;
-      for (const reminder of reminders) {
-        const when = new Date(occ.start.getTime() - reminder.offsetMinutes * 60_000);
-        if (when.getTime() <= now) continue;
-        if (when.getTime() > now + SCHEDULE_HORIZON_MS) continue;
-        fires.push({
-          id: `${REMINDER_PREFIX}${occ.occurrenceKey}-${reminder.offsetMinutes}`,
-          title: i18n.t('notifications:calendarReminder.title'),
-          body: reminderBody(occ.title, reminder.offsetMinutes),
-          when,
-        });
-      }
-    }
-
-    fires.sort((a, b) => a.when.getTime() - b.when.getTime());
-    const toSchedule = fires.slice(0, NOTIFICATION_BUDGET.calendarReminders);
-
-    for (const fire of toSchedule) {
-      if (generation !== reminderSyncGeneration) return;
-      await Notifications.scheduleNotificationAsync({
-        identifier: fire.id,
-        content: {
-          title: fire.title,
-          body: fire.body,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: fire.when,
-          channelId: REMINDERS_CHANNEL_ID,
-        },
-      });
-      // Cancel immediately if a newer sync started while we were scheduling.
-      if (generation !== reminderSyncGeneration) {
-        await Notifications.cancelScheduledNotificationAsync(fire.id);
-        return;
-      }
-    }
+    await reconcileDateReminders(Notifications, REMINDER_PREFIX, fires, {
+      stillCurrent: () => generation === reminderSyncGeneration,
+    });
   };
 
   const next = reminderSyncChain.then(run, run);
