@@ -55,6 +55,14 @@ function playSoundForConfig(
   });
 }
 
+/**
+ * Timer audio is a side effect: the session (and its seconds) stands without
+ * it, so a player that fails to start is logged, never left unhandled.
+ */
+function warnSoundFailure(error: unknown): void {
+  console.warn('Timer sound failed; the timer keeps running', error);
+}
+
 async function finalizeOtherTimers(exceptElementId: string): Promise<void> {
   const sessions = useEventStore.getState().activeTimerSessions;
   const otherIds = Object.keys(sessions).filter((id) => id !== exceptElementId);
@@ -135,7 +143,7 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
       if (useEventStore.getState().activeTimerSessions[elementId]) return;
       setFocusedHabitId(elementId);
       useEventStore.getState().startHabitTimer(elementId);
-      playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
+      await playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
         void finishHabitTimer(id, cfg, trackCompleted, {
           playChime: trackCompleted === true,
         }).catch((error) => {
@@ -144,7 +152,7 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
             error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
           );
         });
-      });
+      }).catch(warnSoundFailure);
     } catch (error) {
       Alert.alert(
         i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
@@ -156,7 +164,7 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
 
 export function pauseHabitTimerSession(elementId: string, _config: HabitConfig): void {
   useEventStore.getState().pauseHabitTimer(elementId);
-  void pauseHabitSound();
+  void pauseHabitSound().catch(warnSoundFailure);
   refreshLockScreenTicker();
 }
 
@@ -184,7 +192,9 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
               );
             }
           : undefined,
-    }).then(() => refreshLockScreenTicker());
+    })
+      .then(() => refreshLockScreenTicker())
+      .catch(warnSoundFailure);
   } else {
     playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
       void finishHabitTimer(id, cfg, trackCompleted, {
@@ -195,7 +205,7 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
           error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
         );
       });
-    });
+    }).catch(warnSoundFailure);
   }
 }
 
