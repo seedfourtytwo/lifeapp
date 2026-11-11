@@ -77,6 +77,16 @@ Each item: failing test, then the smallest fix.
 
 New test harness for this stage: drive `eventStore` against an in-memory SQLite with fake timers. Nothing tests the store today.
 
+**Stage 0–1 status (2026-11-11):** implemented by Opus on `clean-slate-stage-0-1` (20 commits), reviewed by Fable; tests 128 suites / 1535, type-check and lint green. Not yet run on a device.
+
+Follow-ups found while implementing, to fold into the stages named:
+- The day rollover stops every running timer, including one started today before the rollover ran. Guard: skip sessions whose date is today. (Stage 4, with the midnight split.)
+- Saved timers load all-or-nothing: one invalid session drops them all. Load per session. (Stage 4.)
+- Dashboard rows are exported without validation, so a corrupt one passes export and fails import. (Stage 4.)
+- A write-epoch mismatch still drops a tick in `writeHabitTick`, the same pattern item 6 fixed for timer stops. Goes away with the database-as-only-truth change. (Stage 5.)
+
+Device checks owed before stage 2 builds on this: reminders and the evening check-in now schedule (`dumpsys alarm`), and lock-screen/headset behaviour of items 1–3.
+
 ### Stage 2 — Reminders that fire
 
 - Availability check: replace `NativeModules.ExpoPushTokenManager` (`notifications/habitReminders.native.ts:31`, `calendarReminders.native.ts:107`) with `requireOptionalNativeModule('ExpoNotificationScheduler')` from `expo-modules-core` (pattern already in `utils/protocolBackup.native.ts:19`). Share one bootstrap module between the two files. Tests must stop mocking the check into passing.
