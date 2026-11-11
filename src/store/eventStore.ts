@@ -727,15 +727,14 @@ export const useEventStore = create<EventState>((set, get) => ({
       const endedAt = new Date();
       const stopOpts = habitTimerStopOptions.get(elementId);
       const { value, meta } = buildTimerSessionPayloadFromSession(session, endedAt, stopOpts);
-      const previousTotal = get().dailyTotals[elementId] ?? 0;
-      const nextTotal = previousTotal + value;
+      const mirrorTotal = get().dailyTotals[elementId] ?? 0;
 
       // Clear session immediately so double-taps can't double-insert.
       const nextSessions = { ...get().activeTimerSessions };
       delete nextSessions[elementId];
       set({ activeTimerSessions: nextSessions });
       schedulePersistActiveTimers(nextSessions);
-      applyTodayMaps(elementId, persistDate, { dailyTotal: nextTotal }, set, get);
+      applyTodayMaps(elementId, persistDate, { dailyTotal: mirrorTotal + value }, set, get);
 
       try {
         await withDbWriteLock(async () => {
@@ -749,6 +748,9 @@ export const useEventStore = create<EventState>((set, get) => ({
             elementId,
             persistDate,
           );
+          // The mirror may not hold this day yet (cold start) — SQLite does.
+          const previousTotal = sumEventValues(existingEvents);
+          const nextTotal = previousTotal + value;
           const nextEvents = [...existingEvents, { value, meta }];
           const wasComplete = isHabitDayComplete(previousTotal, config, existingEvents);
           const isComplete = isHabitDayComplete(nextTotal, config, nextEvents);
@@ -802,7 +804,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         };
         set({ activeTimerSessions: restored });
         schedulePersistActiveTimers(restored);
-        applyTodayMaps(elementId, persistDate, { dailyTotal: previousTotal }, set, get);
+        applyTodayMaps(elementId, persistDate, { dailyTotal: mirrorTotal }, set, get);
         throw error;
       }
     })();

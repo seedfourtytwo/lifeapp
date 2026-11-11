@@ -186,3 +186,41 @@ describe('toggleHabit', () => {
     expect(state().dailyTotals[TICK_HABIT]).toBe(1);
   });
 });
+
+function timerSessionEvent(id: string, seconds: number, endedAt: Date): LifeEvent {
+  const startedAt = new Date(endedAt.getTime() - seconds * 1000);
+  return {
+    id,
+    elementId: TIMER_HABIT,
+    timestamp: endedAt.toISOString(),
+    date: TODAY,
+    value: seconds,
+    meta: {
+      source: 'timer_session',
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      durationSeconds: seconds,
+    },
+    protocolVersion: protocol.PROTOCOL_VERSION,
+  };
+}
+
+describe('stopHabitTimer', () => {
+  /**
+   * Cold start: a stale session is finished before today's totals are loaded,
+   * so the mirror holds nothing. The day's real total is in SQLite.
+   */
+  it('adds the session to the total SQLite holds, not to the mirror', async () => {
+    await eventRepo.insertEvent(
+      testDb.db,
+      timerSessionEvent('550e8400-e29b-41d4-a716-446655440610', 360, new Date(2026, 2, 10, 7, 0)),
+    );
+    state().startHabitTimer(TIMER_HABIT);
+    advance(5 * 60_000);
+
+    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+
+    expect(state().dailyTotals[TIMER_HABIT]).toBe(660);
+    expect(state().habitDoneToday[TIMER_HABIT]).toBe(true);
+  });
+});
