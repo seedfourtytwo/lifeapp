@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life app screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky-0:#0A0A22; --sky-1:#15153C; --sky-2:#26245E; --sky-3:#3E3280; --ground:#0B0A1E;
+  --glass-a:rgba(26,32,48,.92); --glass-b:rgba(14,19,29,.9); --glass-c:rgba(7,10,16,.9);
+  --cream:#EFE9DC; --cream-dim:rgba(239,233,220,.62); --cream-faint:rgba(239,233,220,.28);
+  --violet:#8B7CFF; --violet-tint:#3A3484;
+  --teal:#4FD6C6; --teal-tint:#1C5A58;
+  --amber:#F2B35B; --amber-tint:#5A4320;
+  --tail:#FF4A3D; --lamp:#FFE7B3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#06061a;color:var(--cream);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1280px;margin:0 auto;padding:40px 24px 80px}
+h1{font-weight:200;font-size:44px;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--cream-dim);max-width:62ch;line-height:1.55;margin:0 0 36px;font-size:15px}
+h2{font-weight:500;font-size:15px;margin:44px 0 4px}
+.note{color:var(--cream-dim);font-size:13px;margin:0 0 18px;max-width:70ch;line-height:1.5}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+figure{margin:0}
+figcaption{font-size:13px;color:var(--cream-dim);margin-top:10px;line-height:1.45}
+figcaption b{color:var(--cream);font-weight:500}
+
+.phone{position:relative;border-radius:34px;overflow:hidden;aspect-ratio:9/19;padding:18px 14px 16px;display:flex;flex-direction:column;gap:12px;
+  background:linear-gradient(180deg,var(--sky-0) 0%,var(--sky-1) 22%,var(--sky-2) 38%,var(--sky-3) 46%,#15132E 49%,var(--ground) 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.stars{position:absolute;inset:0 0 54% 0;pointer-events:none;opacity:.8;
+  background-image:radial-gradient(1px 1px at 12% 18%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 34% 8%,#E9EEFF 50%,transparent 51%),radial-gradient(1.5px 1.5px at 58% 22%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 76% 12%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 88% 30%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 22% 36%,#E9EEFF 50%,transparent 51%),radial-gradient(1.5px 1.5px at 46% 40%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 66% 44%,#E9EEFF 50%,transparent 51%)}
+.phone>*{position:relative}
+.status{display:flex;justify-content:space-between;font-size:11px;color:var(--cream-dim);padding:0 6px}
+.spacer{flex:1}
+
+.glass{position:relative;border-radius:26px;padding:16px;overflow:hidden;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-b) 50%,var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.06),0 2px 6px rgba(0,0,0,.35)}
+.glass::after{content:none}
+.glass>*{position:relative;z-index:1}
+.v{--tint:var(--violet-tint);--light:var(--violet)}
+.t{--tint:var(--teal-tint);--light:var(--teal)}
+.a{--tint:var(--amber-tint);--light:var(--amber)}
+
+.big{font-weight:200;font-size:46px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.mid{font-weight:300;font-size:26px;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.lab{font-size:12px;color:var(--cream-dim);margin-top:4px}
+.name{font-size:15px;font-weight:500}
+.sub{font-size:12px;color:var(--cream-dim);margin-top:2px}
+.pair{display:flex;justify-content:space-between;align-items:flex-end}
+.line{font-weight:300;font-size:16px;line-height:1.35;margin:0}
+.lit{color:var(--light)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--light);margin-right:8px;vertical-align:1px}
+
+.road{display:block;width:100%;height:auto;margin:6px 0 2px}
+.rowline{display:flex;align-items:center;gap:12px}
+.rowline .grow{flex:1;min-width:0}
+.round{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:0;color:var(--cream);cursor:pointer;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.07),0 2px 5px rgba(0,0,0,.4)}
+.round.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px var(--light)}
+.round svg{width:18px;height:18px;fill:currentColor}
+.round.lg{width:60px;height:60px}.round.lg svg{width:24px;height:24px}
+.round:focus-visible,.pill:focus-visible{outline:2px solid var(--cream);outline-offset:2px}
+.pill{flex:1;border:0;border-radius:999px;padding:13px 14px;font:500 14px Inter,sans-serif;color:var(--cream);cursor:pointer;text-align:center;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1.5px var(--light)}
+.pill.quiet{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08)}
+.btns{display:flex;gap:10px;margin-top:14px}
+.center{display:flex;justify-content:center;gap:16px;margin-top:16px}
+.bar{height:3px;border-radius:2px;background:rgba(239,233,220,.14);margin-top:14px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--light)}
+.sect{font-size:12px;color:var(--cream-dim);margin:6px 6px -4px}
+.tile{padding:13px 14px;border-radius:22px}
+.mark{flex:none;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.mark svg{width:20px;height:20px;fill:none;stroke:var(--cream);stroke-width:2;stroke-linecap:square}
+.week{display:flex;gap:4px;margin-top:6px}
+.week i{width:14px;height:3px;border-radius:2px;background:var(--cream-faint)}
+.week i.d{background:var(--cream)}
+.week i.h{background:var(--light)}
+.dock{display:flex;justify-content:space-around;margin-top:auto;padding-top:6px}
+.h-date{font-weight:200;font-size:34px;letter-spacing:-.02em;line-height:1;margin:6px 6px 0}
+.done{font-size:13px;color:var(--cream-dim);padding:10px 14px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.sw{border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.sw b{display:block;font-weight:500;font-size:13px}
+@media (prefers-reduced-motion:no-preference){.car{animation:drive 6s ease-in-out infinite alternate}}
+@keyframes drive{from{transform:translateY(10px)}to{transform:translateY(-6px)}}
+.phone{aspect-ratio:9/20;gap:10px}
+.row{grid-template-columns:repeat(auto-fill,minmax(280px,300px))}
+.head{display:flex;align-items:center;gap:10px;margin-top:4px}
+.head .ttl{flex:1;font-weight:300;font-size:22px;letter-spacing:-.01em}
+.round.sm{width:36px;height:36px}.round.sm svg{width:16px;height:16px}
+.round.txt{font:500 13px Inter,sans-serif;width:40px;height:40px}
+.mini{flex:none;border:0;border-radius:999px;padding:8px 14px;font:500 13px Inter,sans-serif;color:var(--cream);background:linear-gradient(160deg,var(--glass-a),var(--glass-c));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.1)}
+.dim{opacity:.3}
+.sheet{margin:auto -14px -16px;border-radius:30px 30px 0 0;padding:10px 16px 18px;display:flex;flex-direction:column;gap:10px}
+.sheet.full{margin-top:0;flex:1}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--cream-faint);margin:0 auto 4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{border-radius:22px;padding:14px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.choice .mark{margin-bottom:10px}
+.field{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:0 14px;border-radius:16px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);font-size:14px}
+.field span:first-child{color:var(--cream-dim);font-size:13px}
+.field b{font-weight:500}
+.seg{display:flex;padding:3px;border-radius:16px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.seg span{flex:1;text-align:center;padding:9px 0;border-radius:13px;font-size:13px;color:var(--cream-dim)}
+.seg .on{color:var(--cream);font-weight:500;background:linear-gradient(160deg,var(--glass-a),var(--glass-c));box-shadow:inset 0 0 0 1.5px var(--light)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{padding:7px 12px;border-radius:999px;font-size:13px;color:var(--cream-dim);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.chip.on{color:var(--cream);box-shadow:inset 0 0 0 1.5px var(--light)}
+.flab{font-size:12px;color:var(--cream-dim);margin:2px 4px -4px}
+.group{padding:2px 14px;border-radius:20px}
+.srow{display:flex;align-items:center;justify-content:space-between;min-height:38px;font-size:14px}
+.srow+.srow{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.srow em{font-style:normal;color:var(--cream-dim);font-size:13px}
+.tog{width:36px;height:20px;border-radius:10px;background:rgba(255,255,255,.1);position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--cream-dim)}
+.tog.on{background:var(--teal-tint);box-shadow:inset 0 0 0 1.5px var(--teal)}.tog.on::after{left:19px;background:var(--cream)}
+.stats{display:flex;justify-content:space-between}
+.nb{border-radius:22px;padding:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>Life, the app screens</h1>
+<p class="lede">Same Night road language as the widget. Three places, one page per tracker, one way to add, and editors with only the fields that change something. Compare each with what you have today: fewer things to read, nothing hidden behind a long-press.</p>
+
+<h2>Today and adding</h2>
+<p class="note">Habits, counters and todos in one list. Counter buttons sit on the card. The "+" in the dock adds anything.</p>
+<div class="row">
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="head"><div class="h-date" style="flex:1;margin:0 6px">Wed 11 Nov</div>
+    <button class="round sm" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.600 5.600l2.100 2.100M16.300 16.300l2.100 2.100M5.600 18.400l2.100-2.100M16.300 7.700l2.100-2.100" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+  <div class="glass v tile"><div class="rowline"><div class="grow"><div class="name"><span class="dot"></span>Clear</div><div class="sub">2d 15h, next lamp in 9 hours</div></div>
+    <button class="round on" aria-label="Log an urge"><svg viewBox="0 0 24 24"><path d="M3 13c3 0 2-5 5-5s2 8 5 8 2-8 5-8 2 5 3 5" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+  <div class="glass t" style="padding:14px 16px">
+    <div class="sub">Next up</div>
+    <div class="rowline" style="margin-top:6px"><div class="grow"><div class="name" style="font-size:18px">Meditation</div><div class="sub">15 min</div></div>
+      <button class="round on lg" aria-label="Start Meditation"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>
+  </div>
+  <div class="glass a tile"><div class="rowline"><div class="grow"><div class="name">Water</div><div class="sub">5 of 8 glasses</div></div>
+    <button class="round txt on">+1</button><button class="round txt">+2</button></div><div class="bar" style="margin-top:10px"><i style="width:62%"></i></div></div>
+  <div class="glass a tile"><div class="rowline"><div class="grow"><div class="name">Burp kefir</div></div><button class="round" aria-label="Mark done"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+  <div class="glass tile"><div class="rowline"><div class="grow"><div class="name">Call the plumber</div><div class="sub">Todo, today</div></div><button class="round" aria-label="Mark done"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+  <div class="glass tile done">Done, 2: Mobility, Breathing</div>
+  <div class="glass t tile"><div class="pair"><div class="name">Plants this week</div><div class="sub">12 of 30</div></div><div class="bar" style="margin-top:8px"><i style="width:40%"></i></div></div>
+  <div class="dock">
+    <button class="round on v" aria-label="Today"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Road"><svg viewBox="0 0 24 24"><path d="M9 3 5 21M15 3l4 18M12 5v3M12 11v3M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  </div>
+</div>
+<figcaption><b>Today.</b> Everything due, whatever its type. Water shows both its buttons. Plants is one tile. Settings is the gear.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status dim"><span>08:05</span><span>17°</span></div>
+  <div class="h-date dim">Wed 11 Nov</div>
+  <div class="glass v tile dim"><div class="name"><span class="dot"></span>Clear</div><div class="sub">2d 15h</div></div>
+  <div class="glass t tile dim"><div class="name">Meditation</div><div class="sub">15 min</div></div>
+  <div class="glass sheet">
+    <div class="grab"></div>
+    <div class="grid2">
+      <div class="choice"><div class="mark"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></div><div class="name">Check-off</div><div class="sub">Once a day</div></div>
+      <div class="choice"><div class="mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9v4M10 3h4"/></svg></div><div class="name">Timer</div><div class="sub">Minutes, with sound</div></div>
+      <div class="choice"><div class="mark"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></div><div class="name">Counter</div><div class="sub">Add up through the day</div></div>
+      <div class="choice"><div class="mark"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h8"/></svg></div><div class="name">Todo</div><div class="sub">One-off</div></div>
+    </div>
+  </div>
+</div>
+<figcaption><b>The "+".</b> Four choices, then straight into the editor. Today a new counter takes a trip through More and Trackers.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="head"><button class="round sm" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><div class="ttl">Meditation</div><button class="mini">Edit</button>
+    <button class="round sm" aria-label="Archive or delete"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.800"/><circle cx="12" cy="12" r="1.800"/><circle cx="18" cy="12" r="1.800"/></svg></button></div>
+  <div class="glass t" style="padding:18px 16px">
+    <div class="rowline"><div class="grow"><div class="big" style="font-size:36px">07:42</div><div class="lab">of 15 min today</div></div>
+      <button class="round lg" aria-label="Done, count it"><svg viewBox="0 0 24 24"><path d="M9.2 16.6 4.9 12.3l-1.6 1.6 5.9 5.9L21 8l-1.6-1.6z"/></svg></button>
+      <button class="round on lg" aria-label="Resume"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>
+    <div class="bar"><i style="width:51%"></i></div>
+  </div>
+  <div class="glass t" style="padding:16px">
+    <div class="stats"><div><div class="mid">6</div><div class="lab">Streak</div></div><div><div class="mid">21</div><div class="lab">Best</div></div><div style="text-align:right"><div class="mid">24 / 30</div><div class="lab">Last 30 days</div></div></div>
+    <svg class="road" data-days="1,1,1,0,1,1,1,1,1,1,0,1,1,1" data-lamp="0.84" viewBox="0 0 300 170" role="img" aria-label="Road with the last fourteen days"></svg>
+  </div>
+  <div class="glass tile"><div class="sub">Tue 10 Nov, 15 min</div><p class="line" style="margin-top:6px">Head was loud. Stayed anyway.</p></div>
+  <div class="spacer"></div>
+</div>
+<figcaption><b>One page per tracker.</b> Tap its name on Today. Do it, see its road, read a day's note, edit it. Two taps to edit instead of three through a menu.</figcaption>
+</figure>
+
+</div>
+
+<h2>Editors</h2>
+<p class="note">Only fields that change something. Times and dates open the phone's own picker. No paragraphs of explanation.</p>
+<div class="row">
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="glass sheet full t">
+    <div class="grab"></div>
+    <div class="rowline"><div class="mark"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="2.500"/><path d="M4 19c3-1 4-6 8-6s5 5 8 6"/></svg></div><div class="field grow"><b>Meditation</b></div></div>
+    <div class="seg"><span>Check-off</span><span class="on">Timer</span></div>
+    <div class="field"><span>Goal</span><b>15 min</b></div>
+    <div class="field"><span>Sound</span><b>Meditation, 15 min</b></div>
+    <div class="flab">Days</div>
+    <div class="chips"><span class="chip on">Every day</span><span class="chip">Pick days</span><span class="chip">Every few days</span></div>
+    <div class="flab">Reminders</div>
+    <div class="chips"><span class="chip on">07:30</span><span class="chip on">21:00</span><span class="chip">+</span></div>
+    <div class="field"><span>Name on lock screen</span><b>Sit</b></div>
+    <div class="spacer"></div>
+    <div class="btns"><button class="round" aria-label="Delete" style="color:var(--tail)"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><button class="pill">Save</button></div>
+  </div>
+</div>
+<figcaption><b>Habit editor.</b> Eight fields, all visible, no collapsed sections. Gone: time window, second reminder system, loop or play-once, streak switch, the unused note.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="glass sheet full a">
+    <div class="grab"></div>
+    <div class="rowline"><div class="mark"><svg viewBox="0 0 24 24"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/></svg></div><div class="field grow"><b>Water</b></div></div>
+    <div class="field"><span>Counted in</span><b>glasses</b></div>
+    <div class="flab">Buttons, first one is the big one</div>
+    <div class="chips"><span class="chip on">+1</span><span class="chip on">+2</span><span class="chip">+</span></div>
+    <div class="field"><span>Goal a day</span><b>8</b></div>
+    <div class="flab">On Today it looks like this</div>
+    <div class="glass a tile" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)"><div class="rowline"><div class="grow"><div class="name">Water</div><div class="sub">0 of 8 glasses</div></div><button class="round txt on">+1</button><button class="round txt">+2</button></div></div>
+    <div class="spacer"></div>
+    <div class="btns"><button class="round" aria-label="Delete" style="color:var(--tail)"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><button class="pill">Save</button></div>
+  </div>
+</div>
+<figcaption><b>Counter editor.</b> You name the unit, so water stops saying "reps". Up to three buttons, all on the card. A live preview replaces the explanation text.</figcaption>
+</figure>
+
+</div>
+
+<h2>Settings and Journal</h2>
+<div class="row">
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="head"><button class="round sm" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button><div class="ttl">Settings</div></div>
+  <div class="glass group"><div class="srow"><span>Theme</span><em>Night road</em></div><div class="srow"><span>Language</span><em>English</em></div></div>
+  <div class="glass group"><div class="srow"><span>Evening check-in</span><span style="display:flex;gap:10px;align-items:center"><em>20:00</em><i class="tog on"></i></span></div><div class="srow"><span>Reminders</span><i class="tog on"></i></div><div class="srow"><span>Android notification settings</span><em>›</em></div></div>
+  <div class="glass group"><div class="srow"><span><span class="dot" style="--light:var(--teal)"></span>Backed up</span><em>Today 03:10, Montara</em></div><div class="srow"><span>Back up now</span><em>›</em></div><div class="srow"><span>Restore</span><em>›</em></div></div>
+  <div class="glass group"><div class="srow"><span>Weather</span><span style="display:flex;gap:10px;align-items:center"><em>Home</em><i class="tog on"></i></span></div><div class="srow"><span>Archived</span><em>3 ›</em></div></div>
+  <div class="glass group"><div class="srow"><span>Delete old history</span><em>›</em></div><div class="srow"><span style="color:var(--tail)">Erase everything</span><em>›</em></div></div>
+  <div class="spacer"></div>
+  <div class="sub" style="text-align:center">Life 1.6.1</div>
+</div>
+<figcaption><b>Settings.</b> One screen, twelve rows, no helper text. Backup is a status line because it runs by itself. The five-checkbox clear-data sheet becomes two plain actions.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="h-date">Journal</div>
+  <div class="grid2">
+    <div class="glass nb v"><div class="name">Daily</div><div class="sub">Today, 2 entries</div><div class="center" style="justify-content:flex-start;margin-top:12px"><button class="round on" aria-label="Dictate into Daily"><svg viewBox="0 0 24 24"><path d="M12 4v9M8 10a4 4 0 0 0 8 0M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+    <div class="glass nb t"><div class="name">Ideas</div><div class="sub">Mon</div><div class="center" style="justify-content:flex-start;margin-top:12px"><button class="round" aria-label="Dictate into Ideas"><svg viewBox="0 0 24 24"><path d="M12 4v9M8 10a4 4 0 0 0 8 0M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+  </div>
+  <div class="sect">Recent</div>
+  <div class="glass tile"><div class="sub">Today, Daily</div><p class="line" style="margin-top:4px">Slept badly, did the morning anyway.</p></div>
+  <div class="glass tile"><div class="sub">Tue 10 Nov, Meditation</div><p class="line" style="margin-top:4px">Head was loud. Stayed anyway.</p></div>
+  <div class="glass tile"><div class="sub">Mon 9 Nov, Ideas</div><p class="line" style="margin-top:4px">Road as progress, lamps as milestones.</p></div>
+  <div class="spacer"></div>
+  <div class="dock">
+    <button class="round" aria-label="Today"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Road"><svg viewBox="0 0 24 24"><path d="M9 3 5 21M15 3l4 18M12 5v3M12 11v3M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round on v" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  </div>
+</div>
+<figcaption><b>Journal.</b> Tap a notebook to write, tap its mic to dictate. Tracker notes and journal entries share one Recent list.</figcaption>
+</figure>
+
+</div>
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+function el(n,a){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e}
+document.querySelectorAll('svg.road').forEach((svg,idx)=>{
+  const [,,W,H]=svg.getAttribute('viewBox').split(' ').map(Number);
+  const days=svg.dataset.days?svg.dataset.days.split(',').map(Number):[];
+  const vx=W*0.56, vy=18, by=H, half=W*0.42;
+  const defs=el('defs',{});
+  defs.innerHTML=`<linearGradient id="as${idx}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34356A"/><stop offset="1" stop-color="#15152E"/></linearGradient><radialGradient id="gl${idx}"><stop offset="0" stop-color="#8B7CFF" stop-opacity=".5"/><stop offset="1" stop-color="#8B7CFF" stop-opacity="0"/></radialGradient><radialGradient id="lp${idx}"><stop offset="0" stop-color="#FFE7B3" stop-opacity=".7"/><stop offset="1" stop-color="#FFE7B3" stop-opacity="0"/></radialGradient><radialGradient id="tl${idx}"><stop offset="0" stop-color="#FF4A3D" stop-opacity=".5"/><stop offset="1" stop-color="#FF4A3D" stop-opacity="0"/></radialGradient>`;
+  svg.append(defs);
+  svg.append(el('path',{d:`M${vx-3} ${vy}L${vx+3} ${vy}L${W*0.5+half} ${by}L${W*0.5-half} ${by}Z`,fill:`url(#as${idx})`}));
+  const at=t=>{const p=Math.pow(t,1.9);return{x:W*0.5+(vx-W*0.5)*(1-p),y:vy+(by-vy)*p,s:0.06+0.94*p}};
+  const n=days.length;
+  days.forEach((d,i)=>{
+    const t0=1-(i+0.25)/(n+0.6), t1=1-(i+0.8)/(n+0.6);
+    const a=at(t0), b=at(t1);
+    svg.append(el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:d?'#EFE9DC':'#EFE9DC','stroke-opacity':d?0.95:0.16,'stroke-width':1+7*a.s,'stroke-linecap':'butt'}));
+  });
+  const lampT=1-Number(svg.dataset.lamp||0.8), lp=at(lampT);
+  const lx=lp.x+half*lp.s*1.25, lh=10+70*lp.s;
+  svg.append(el('line',{x1:lx,y1:lp.y,x2:lx,y2:lp.y-lh,stroke:'#2A3346','stroke-width':1+4*lp.s}));
+  svg.append(el('circle',{cx:lx,cy:lp.y-lh,r:4+12*lp.s,fill:`url(#lp${idx})`}));
+  svg.append(el('circle',{cx:lx,cy:lp.y-lh,r:1.5+5*lp.s,fill:'#FFE7B3'}));
+  const carT=svg.dataset.car?Number(svg.dataset.car):(n?1-(n+0.15)/(n+0.6):null);
+  if(carT!==null){
+    const c=at(Math.max(carT,0.12)), g=el('g',{class:'car'}), w=10+26*c.s;
+    g.append(el('circle',{cx:c.x-w*0.3,cy:c.y-3,r:1.2+2.4*c.s,fill:'#FF4A3D'}));
+    g.append(el('circle',{cx:c.x+w*0.3,cy:c.y-3,r:1.2+2.4*c.s,fill:'#FF4A3D'}));
+    svg.append(g);
+  }
+});
+</script>
+</body>
+</html>

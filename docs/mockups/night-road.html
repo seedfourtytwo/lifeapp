@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life on the Night road</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky-0:#0A0A22; --sky-1:#15153C; --sky-2:#26245E; --sky-3:#3E3280; --ground:#0B0A1E;
+  --glass-a:rgba(26,32,48,.92); --glass-b:rgba(14,19,29,.9); --glass-c:rgba(7,10,16,.9);
+  --cream:#EFE9DC; --cream-dim:rgba(239,233,220,.62); --cream-faint:rgba(239,233,220,.28);
+  --violet:#8B7CFF; --violet-tint:#3A3484;
+  --teal:#4FD6C6; --teal-tint:#1C5A58;
+  --amber:#F2B35B; --amber-tint:#5A4320;
+  --tail:#FF4A3D; --lamp:#FFE7B3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#06061a;color:var(--cream);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1280px;margin:0 auto;padding:40px 24px 80px}
+h1{font-weight:200;font-size:44px;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--cream-dim);max-width:62ch;line-height:1.55;margin:0 0 36px;font-size:15px}
+h2{font-weight:500;font-size:15px;margin:44px 0 4px}
+.note{color:var(--cream-dim);font-size:13px;margin:0 0 18px;max-width:70ch;line-height:1.5}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+figure{margin:0}
+figcaption{font-size:13px;color:var(--cream-dim);margin-top:10px;line-height:1.45}
+figcaption b{color:var(--cream);font-weight:500}
+
+.phone{position:relative;border-radius:34px;overflow:hidden;aspect-ratio:9/19;padding:18px 14px 16px;display:flex;flex-direction:column;gap:12px;
+  background:linear-gradient(180deg,var(--sky-0) 0%,var(--sky-1) 22%,var(--sky-2) 38%,var(--sky-3) 46%,#15132E 49%,var(--ground) 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.stars{position:absolute;inset:0 0 54% 0;pointer-events:none;opacity:.8;
+  background-image:radial-gradient(1px 1px at 12% 18%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 34% 8%,#E9EEFF 50%,transparent 51%),radial-gradient(1.5px 1.5px at 58% 22%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 76% 12%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 88% 30%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 22% 36%,#E9EEFF 50%,transparent 51%),radial-gradient(1.5px 1.5px at 46% 40%,#E9EEFF 50%,transparent 51%),radial-gradient(1px 1px at 66% 44%,#E9EEFF 50%,transparent 51%)}
+.phone>*{position:relative}
+.status{display:flex;justify-content:space-between;font-size:11px;color:var(--cream-dim);padding:0 6px}
+.spacer{flex:1}
+
+.glass{position:relative;border-radius:26px;padding:16px;overflow:hidden;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-b) 50%,var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.06),0 2px 6px rgba(0,0,0,.35)}
+.glass::after{content:none}
+.glass>*{position:relative;z-index:1}
+.v{--tint:var(--violet-tint);--light:var(--violet)}
+.t{--tint:var(--teal-tint);--light:var(--teal)}
+.a{--tint:var(--amber-tint);--light:var(--amber)}
+
+.big{font-weight:200;font-size:46px;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.mid{font-weight:300;font-size:26px;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.lab{font-size:12px;color:var(--cream-dim);margin-top:4px}
+.name{font-size:15px;font-weight:500}
+.sub{font-size:12px;color:var(--cream-dim);margin-top:2px}
+.pair{display:flex;justify-content:space-between;align-items:flex-end}
+.line{font-weight:300;font-size:16px;line-height:1.35;margin:0}
+.lit{color:var(--light)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--light);margin-right:8px;vertical-align:1px}
+
+.road{display:block;width:100%;height:auto;margin:6px 0 2px}
+.rowline{display:flex;align-items:center;gap:12px}
+.rowline .grow{flex:1;min-width:0}
+.round{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:0;color:var(--cream);cursor:pointer;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.07),0 2px 5px rgba(0,0,0,.4)}
+.round.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px var(--light)}
+.round svg{width:18px;height:18px;fill:currentColor}
+.round.lg{width:60px;height:60px}.round.lg svg{width:24px;height:24px}
+.round:focus-visible,.pill:focus-visible{outline:2px solid var(--cream);outline-offset:2px}
+.pill{flex:1;border:0;border-radius:999px;padding:13px 14px;font:500 14px Inter,sans-serif;color:var(--cream);cursor:pointer;text-align:center;
+  background:linear-gradient(160deg,var(--glass-a),var(--glass-c));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1.5px var(--light)}
+.pill.quiet{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08)}
+.btns{display:flex;gap:10px;margin-top:14px}
+.center{display:flex;justify-content:center;gap:16px;margin-top:16px}
+.bar{height:3px;border-radius:2px;background:rgba(239,233,220,.14);margin-top:14px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--light)}
+.sect{font-size:12px;color:var(--cream-dim);margin:6px 6px -4px}
+.tile{padding:13px 14px;border-radius:22px}
+.mark{flex:none;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.mark svg{width:20px;height:20px;fill:none;stroke:var(--cream);stroke-width:2;stroke-linecap:square}
+.week{display:flex;gap:4px;margin-top:6px}
+.week i{width:14px;height:3px;border-radius:2px;background:var(--cream-faint)}
+.week i.d{background:var(--cream)}
+.week i.h{background:var(--light)}
+.dock{display:flex;justify-content:space-around;margin-top:auto;padding-top:6px}
+.h-date{font-weight:200;font-size:34px;letter-spacing:-.02em;line-height:1;margin:6px 6px 0}
+.done{font-size:13px;color:var(--cream-dim);padding:10px 14px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.sw{border-radius:18px;padding:14px;font-size:12px;line-height:1.5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.sw b{display:block;font-weight:500;font-size:13px}
+@media (prefers-reduced-motion:no-preference){.car{animation:drive 6s ease-in-out infinite alternate}}
+@keyframes drive{from{transform:translateY(10px)}to{transform:translateY(-6px)}}
+</style>
+</head>
+<body>
+<main>
+<h1>Life on the Night road</h1>
+<p class="lede">Your home screen already has a language: dark glass, cream marks, one lit colour, a road running to the horizon. This puts Life inside it. The road stops being wallpaper and becomes the picture of how far you have come: every centre dash is a day, lamps stand at milestones, and the tail lights are you.</p>
+
+<h2>Lock-screen page, four moments</h2>
+<p class="note">One widget that changes with the moment. Every button here works without unlocking. Labels stay neutral, so the screen tells a stranger nothing.</p>
+
+<div class="row">
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>07:12</span><span>Wed 11 Nov</span></div>
+  <div class="glass v">
+    <div class="pair"><div><div class="big">2d 14h</div><div class="lab">Clear</div></div><div style="text-align:right"><div class="mid">0 / 7</div><div class="lab">Today</div></div></div>
+    <svg class="road" data-days="1,1,0,1,1,1,0" data-lamp="0.82" viewBox="0 0 300 150" role="img" aria-label="Road with six of the last seven days lit"></svg>
+    <div class="lab"><span class="lit">3 days</span> at the next lamp, 10 hours away</div>
+  </div>
+  <div class="glass t">
+    <div class="sub">Morning, 1 of 5</div>
+    <div class="rowline" style="margin-top:8px"><div class="grow"><div class="name">Mobility</div><div class="sub">15 min</div></div>
+      <button class="round on lg" aria-label="Start Mobility"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>
+    <div class="btns"><button class="pill quiet">Later</button><button class="pill quiet">Skip</button></div>
+  </div>
+  <div class="spacer"></div>
+</div>
+<figcaption><b>Morning.</b> The routine hands you the next item. You press start when you're ready; nothing runs on by itself.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>07:31</span><span>Wed 11 Nov</span></div>
+  <div class="glass t" style="padding:22px 16px">
+    <div class="sub" style="text-align:center">Breathing, 2 of 5</div>
+    <div class="big" style="font-size:72px;text-align:center;margin-top:10px">07:42</div>
+    <div class="lab" style="text-align:center">of 22:20</div>
+    <div class="bar"><i style="width:34%"></i></div>
+    <div class="center">
+      <button class="round lg" aria-label="Stop and discard"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg></button>
+      <button class="round on lg" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+      <button class="round lg" aria-label="Done, count it"><svg viewBox="0 0 24 24"><path d="M9.2 16.6 4.9 12.3l-1.6 1.6 5.9 5.9L21 8l-1.6-1.6z"/></svg></button>
+    </div>
+  </div>
+  <div class="glass tile"><div class="rowline"><div class="grow"><div class="sub">Then</div><div class="name">Meditation</div></div><div class="sub">15 min</div></div></div>
+  <div class="spacer"></div>
+</div>
+<figcaption><b>Timer running.</b> Stop, pause, and done from the lock screen. Done counts what you did, even short of the goal.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>21:04</span><span>Wed 11 Nov</span></div>
+  <div class="glass v">
+    <div class="pair"><div><div class="big">3d 04h</div><div class="lab">Clear</div></div><div style="text-align:right"><div class="mid">5 / 7</div><div class="lab">Today</div></div></div>
+    <svg class="road" data-days="1,0,1,1,1,1,1" data-lamp="0.5" viewBox="0 0 300 150" role="img" aria-label="Road with six of the last seven days lit, a lamp just passed"></svg>
+    <div class="pair" style="margin-top:2px"><div class="lab"><span class="lit">12</span> ridden out</div><div class="lab">Strength <span class="lit">71%</span></div></div>
+  </div>
+  <div class="glass tile"><p class="line">The experiment is over. I found the limit.</p></div>
+  <div class="btns" style="margin-top:0">
+    <button class="pill t">10 min yoga</button>
+    <button class="pill a">Urge</button>
+  </div>
+  <div class="spacer"></div>
+</div>
+<figcaption><b>Evening.</b> Numbers that can't be argued with, one line you wrote sober, and one tap that starts something else.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>21:06</span><span>Wed 11 Nov</span></div>
+  <div class="glass a" style="padding:22px 16px">
+    <div class="sub" style="text-align:center">Ride it to the lamp</div>
+    <div class="big" style="font-size:72px;text-align:center;margin-top:10px">08:42</div>
+    <svg class="road" data-days="" data-lamp="0.78" data-car="0.3" viewBox="0 0 300 150" role="img" aria-label="A car on the road, part way to a lamp"></svg>
+    <div class="lab" style="text-align:center">Decide at the lamp, not before.</div>
+  </div>
+  <div class="btns" style="margin-top:0">
+    <button class="pill t">10 min yoga</button>
+    <button class="pill quiet">Play my note</button>
+  </div>
+  <div class="glass tile"><div class="rowline"><div class="grow"><div class="name"><span class="dot" style="--light:var(--amber)"></span>Logged 21:06</div><div class="sub">13th this month</div></div></div></div>
+  <div class="spacer"></div>
+</div>
+<figcaption><b>After tapping Urge.</b> It's logged at once. Ten minutes on the road; the choice waits at the lamp.</figcaption>
+</figure>
+
+</div>
+
+<h2>The app, same language</h2>
+<p class="note">One Today screen instead of five tabs. The dock is round glass, like your phone's. Each tile carries one light: teal for practice, amber for upkeep, violet for what you've committed to.</p>
+
+<div class="row">
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="h-date">Wed 11 Nov</div>
+  <div class="glass v tile">
+    <div class="rowline"><div class="grow"><div class="name"><span class="dot"></span>Clear</div><div class="sub">2d 15h, next lamp in 9 hours</div><div class="week"><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="h"></i></div></div>
+      <button class="round on" aria-label="Log an urge"><svg viewBox="0 0 24 24"><path d="M3 13c2.5 0 2.5-5 5-5s2.5 8 5 8 2.5-8 5-8 1.7 5 3 5v2c-2.9 0-2.9-5-4-5-1.7 0-1.7 8-4 8s-3.300-8-5-8c-1.300 0-1.300 5-5 5z"/></svg></button></div>
+  </div>
+  <div class="sect">Morning</div>
+  <div class="glass t" style="padding:16px">
+    <div class="sub">Next up, 3 of 5</div>
+    <div class="rowline" style="margin-top:8px"><div class="grow"><div class="name" style="font-size:18px">Meditation</div><div class="sub">15 min</div><div class="week"><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i></div></div>
+      <button class="round on lg" aria-label="Start Meditation"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div>
+  </div>
+  <div class="glass a tile"><div class="rowline"><div class="mark"><svg viewBox="0 0 24 24"><path d="M8 3h8M9 3v5l-3 5v8h12v-8l-3-5V3"/></svg></div><div class="grow"><div class="name">Burp kefir</div><div class="week"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i></div></div><button class="round" aria-label="Mark Burp kefir done"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div></div>
+  <div class="glass tile done">Done, 2: Mobility, Breathing</div>
+  <div class="sect">Evening</div>
+  <div class="glass t tile"><div class="rowline"><div class="mark"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div><div class="grow"><div class="name">Workout</div><div class="sub">1 h, or 10 min minimum</div></div><button class="round" aria-label="Start Workout"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button></div></div>
+  <div class="dock">
+    <button class="round on v" aria-label="Today"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Road"><svg viewBox="0 0 24 24"><path d="M9 3 5 21M15 3l4 18M12 5v3M12 11v3M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="More"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.800"/><circle cx="12" cy="12" r="1.800"/><circle cx="18" cy="12" r="1.800"/></svg></button>
+  </div>
+</div>
+<figcaption><b>Today.</b> Your commitment pinned on top. One large next-up tile. Finished items fold into a single line, so the list shrinks as you go.</figcaption>
+</figure>
+
+<figure>
+<div class="phone"><div class="stars"></div>
+  <div class="status"><span>08:05</span><span>17°</span></div>
+  <div class="h-date">The road</div>
+  <div class="glass v" style="padding:18px 16px">
+    <div class="pair"><div><div class="big">71%</div><div class="lab">Strength, all habits</div></div><div style="text-align:right"><div class="mid">12</div><div class="lab">Ridden out</div></div></div>
+    <svg class="road" data-days="1,1,0,1,1,1,0,1,1,1,1,0,1,1" data-lamp="0.86" viewBox="0 0 300 190" role="img" aria-label="Road with the last fourteen days"></svg>
+    <div class="lab">Two weeks behind you. Dim dashes are days off, and the road keeps going.</div>
+  </div>
+  <div class="glass tile"><div class="rowline"><div class="grow"><div class="name"><span class="dot" style="--light:var(--lamp)"></span>Lamps passed</div><div class="sub">24 h, 48 h. Next: 3 days</div></div></div></div>
+  <div class="glass a tile"><div class="rowline"><div class="grow"><div class="name">Urges by hour</div><div class="sub">Most between 20:00 and 22:00</div></div></div>
+    <svg viewBox="0 0 240 40" style="width:100%;margin-top:8px" aria-hidden="true"><g fill="#F2B35B"><rect x="6" y="34" width="6" height="4" opacity=".3"/><rect x="26" y="32" width="6" height="6" opacity=".3"/><rect x="46" y="34" width="6" height="4" opacity=".3"/><rect x="66" y="30" width="6" height="8" opacity=".4"/><rect x="86" y="33" width="6" height="5" opacity=".3"/><rect x="106" y="28" width="6" height="10" opacity=".5"/><rect x="126" y="24" width="6" height="14" opacity=".6"/><rect x="146" y="14" width="6" height="24" opacity=".8"/><rect x="166" y="4" width="6" height="34"/><rect x="186" y="10" width="6" height="28" opacity=".9"/><rect x="206" y="26" width="6" height="12" opacity=".5"/><rect x="226" y="33" width="6" height="5" opacity=".3"/></g></svg>
+  </div>
+  <div class="spacer"></div>
+  <div class="dock">
+    <button class="round" aria-label="Today"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round on v" aria-label="Road"><svg viewBox="0 0 24 24"><path d="M9 3 5 21M15 3l4 18M12 5v3M12 11v3M12 17v3" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="Journal"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+    <button class="round" aria-label="More"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.800"/><circle cx="12" cy="12" r="1.800"/><circle cx="18" cy="12" r="1.800"/></svg></button>
+  </div>
+</div>
+<figcaption><b>The road.</b> Replaces Insights. A day off dims one dash; it doesn't erase the road behind you.</figcaption>
+</figure>
+
+<figure>
+<div style="display:flex;flex-direction:column;gap:12px">
+  <div class="swatches">
+    <div class="sw" style="background:linear-gradient(180deg,#0A0A22,#26245E 70%,#3E3280)"><b>Night</b>#0A0A22 to #3E3280<br>every background</div>
+    <div class="sw" style="background:linear-gradient(160deg,#1A2030,#070A10)"><b>Glass</b>#1A2030 to #070A10<br>tiles, buttons, sheets</div>
+    <div class="sw" style="background:#EFE9DC;color:#0A0D14"><b>Cream</b>#EFE9DC<br>text and marks</div>
+    <div class="sw" style="background:#3A3484"><b style="color:#8B7CFF">Violet</b>#8B7CFF<br>yours: commitments</div>
+    <div class="sw" style="background:#1C5A58"><b style="color:#4FD6C6">Teal</b>#4FD6C6<br>practice: body, breath</div>
+    <div class="sw" style="background:#5A4320"><b style="color:#F2B35B">Amber</b>#F2B35B<br>upkeep, and urges</div>
+  </div>
+  <div class="glass" style="border-radius:22px">
+    <div class="big">07:42</div><div class="lab">Numbers: Inter ExtraLight, like your lock-screen clock</div>
+    <div class="name" style="margin-top:14px">Names: Inter Medium</div>
+    <p class="line" style="margin-top:10px">Your own words: Inter Light, a size up.</p>
+  </div>
+  <div class="glass" style="border-radius:22px;font-size:13px;line-height:1.6;color:var(--cream-dim)">
+    <span style="color:var(--cream)">Rules carried over from the icons.</span> One lit feature per tile. Round glass for tools, squircle glass for things. Colour means a kind of thing, never decoration. The same tokens can dress Montara and Photos.
+  </div>
+</div>
+<figcaption><b>The kit.</b> Six colours, one typeface in three weights, two shapes.</figcaption>
+</figure>
+
+</div>
+</main>
+<script>
+const NS='http://www.w3.org/2000/svg';
+function el(n,a){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e}
+document.querySelectorAll('svg.road').forEach((svg,idx)=>{
+  const [,,W,H]=svg.getAttribute('viewBox').split(' ').map(Number);
+  const days=svg.dataset.days?svg.dataset.days.split(',').map(Number):[];
+  const vx=W*0.56, vy=18, by=H, half=W*0.42;
+  const defs=el('defs',{});
+  defs.innerHTML=`<linearGradient id="as${idx}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34356A"/><stop offset="1" stop-color="#15152E"/></linearGradient><radialGradient id="gl${idx}"><stop offset="0" stop-color="#8B7CFF" stop-opacity=".5"/><stop offset="1" stop-color="#8B7CFF" stop-opacity="0"/></radialGradient><radialGradient id="lp${idx}"><stop offset="0" stop-color="#FFE7B3" stop-opacity=".7"/><stop offset="1" stop-color="#FFE7B3" stop-opacity="0"/></radialGradient><radialGradient id="tl${idx}"><stop offset="0" stop-color="#FF4A3D" stop-opacity=".5"/><stop offset="1" stop-color="#FF4A3D" stop-opacity="0"/></radialGradient>`;
+  svg.append(defs);
+  svg.append(el('path',{d:`M${vx-3} ${vy}L${vx+3} ${vy}L${W*0.5+half} ${by}L${W*0.5-half} ${by}Z`,fill:`url(#as${idx})`}));
+  const at=t=>{const p=Math.pow(t,1.9);return{x:W*0.5+(vx-W*0.5)*(1-p),y:vy+(by-vy)*p,s:0.06+0.94*p}};
+  const n=days.length;
+  days.forEach((d,i)=>{
+    const t0=1-(i+0.25)/(n+0.6), t1=1-(i+0.8)/(n+0.6);
+    const a=at(t0), b=at(t1);
+    svg.append(el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:d?'#EFE9DC':'#EFE9DC','stroke-opacity':d?0.95:0.16,'stroke-width':1+7*a.s,'stroke-linecap':'butt'}));
+  });
+  const lampT=1-Number(svg.dataset.lamp||0.8), lp=at(lampT);
+  const lx=lp.x+half*lp.s*1.25, lh=10+70*lp.s;
+  svg.append(el('line',{x1:lx,y1:lp.y,x2:lx,y2:lp.y-lh,stroke:'#2A3346','stroke-width':1+4*lp.s}));
+  svg.append(el('circle',{cx:lx,cy:lp.y-lh,r:4+12*lp.s,fill:`url(#lp${idx})`}));
+  svg.append(el('circle',{cx:lx,cy:lp.y-lh,r:1.5+5*lp.s,fill:'#FFE7B3'}));
+  const carT=svg.dataset.car?Number(svg.dataset.car):(n?1-(n+0.15)/(n+0.6):null);
+  if(carT!==null){
+    const c=at(Math.max(carT,0.12)), g=el('g',{class:'car'}), w=10+26*c.s;
+    g.append(el('circle',{cx:c.x-w*0.3,cy:c.y-3,r:1.2+2.4*c.s,fill:'#FF4A3D'}));
+    g.append(el('circle',{cx:c.x+w*0.3,cy:c.y-3,r:1.2+2.4*c.s,fill:'#FF4A3D'}));
+    svg.append(g);
+  }
+});
+</script>
+</body>
+</html>
