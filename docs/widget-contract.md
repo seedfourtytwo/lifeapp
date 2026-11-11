@@ -1,8 +1,10 @@
 # Widget contract
 
-Contract version 3 (stage 6b). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
+Contract version 4 (stage 6c). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
 
 SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
+
+Changes from version 3: the snapshot is version 3. A timer habit's `timer` gains `trackId` and `loop`, so the widget can start a session with its sound; the commitment's `ownLine` becomes `ownLines`, every line with the rule for which one shows, so the widget moves on to the next line at a lamp without the app.
 
 Changes from version 2: the snapshot is version 2. It gains `commitment` and `ride` at the top, a `sevenDays` strip on every tracker, a third tracker kind `commitment`, and the reasons `clear` and `slipped`. The queue gains two lines for urges, `urge_logged` and `urge_resolved`, with the drop reason `urge_missing`; a queue line's `trackerId` belongs to the tracker lines only.
 
@@ -38,7 +40,7 @@ The app writes `widget/snapshot.json.tmp`, then renames it over `widget/snapshot
 
 | Field | Type | Meaning |
 |---|---|---|
-| `version` | `2` | Format version. A reader that does not know the version shows nothing. |
+| `version` | `3` | Format version. A reader that does not know the version shows nothing. |
 | `generatedAt` | instant | When the file was built. |
 | `day.date` | local date | The app day described. The app day is the local calendar day; it turns at local midnight. |
 | `day.endsAt` | instant | The next local midnight. From then on the per-day fields below (`done`, `reason`, `total`, `streak`, `nextReminders`) describe yesterday. |
@@ -77,7 +79,9 @@ Habits only:
 | `timeRange` | `{start, end}` \| null | Local `HH:mm` window. |
 | `visibleOnlyInTimeRange` | boolean | The app hides the habit outside `timeRange`. |
 | `timer` | object \| null | Null for check-off habits. |
-| `timer.goal` | object | `{"type":"seconds","seconds":900}`, `{"type":"play_once","trackSeconds":912}` (done when the track ends; the widget cannot play it) or `{"type":"open"}` (done once any time is logged). |
+| `timer.goal` | object | `{"type":"seconds","seconds":900}`, `{"type":"play_once","trackSeconds":912}` (done when the track ends) or `{"type":"open"}` (done once any time is logged). |
+| `timer.trackId` | string \| null | The bundled track a session plays (`meditation15min`), or null for silence. With `loop` and `goal`, what the widget starts a session with. |
+| `timer.loop` | boolean | The track loops until the session ends (true), or plays once. |
 | `timer.session` | object \| null | The running or paused session, or null. |
 | `timer.session.startedAt` | instant | When it started (local midnight for one carried over from yesterday). |
 | `timer.session.pausedAt` | instant \| null | Set while paused. |
@@ -102,7 +106,7 @@ Counters only:
 | `clearSince` | instant | Time clear counts from here: the start, or the latest slip. Show `now - clearSince` ("2d 14h"). |
 | `lampsPassed` | integer | Milestones passed at `generatedAt`. Lamps fall at 24 h, 48 h, 72 h, 120 h, 168 h, 240 h and 336 h after `clearSince`, then every 168 h; a lamp is passed exactly at its hour. |
 | `nextLamp` | object | `at` (instant), `hours` (after `clearSince`) and a short `label` in the app's language (`"48h"`, `"5d"`). Past `at`, the next one is `hours` + the next step above. |
-| `ownLine` | string \| null | His own line for now, in his words, chosen by him to be seen; null when he wrote none. It changes at each lamp; one passed while the app is not running keeps this line until the app writes again. |
+| `ownLines` | array of strings | His own lines, in his words, in order, each chosen by him to be seen on the lock screen; empty when he wrote none. The one shown at `now` is `ownLines[lampsPassed(now) % ownLines.length]`, with `lampsPassed` counted from `clearSince` as above, so it moves on at each lamp with or without the app. |
 | `rideSeconds` | integer | How long an urge's ride lasts. An `urge_logged` not yet in a snapshot rides until its `at` + this. |
 | `urgesRiddenOut` | integer | Every urge ever ridden out. Nothing resets it, a slip included. |
 | `urgesToday` | integer | Urges logged on `day.date`. |

@@ -112,7 +112,7 @@ describe('the widget snapshot', () => {
     await settle();
 
     const snapshot = readSnapshot();
-    expect(snapshot.version).toBe(2);
+    expect(snapshot.version).toBe(3);
     // Written when the debounce window closes.
     expect(snapshot.generatedAt).toBe(new Date(2026, 2, 10, 9, 32, 0, 500).toISOString());
     expect(snapshot.day).toEqual({
@@ -152,7 +152,7 @@ describe('the widget snapshot', () => {
       total: 0,
       target: 900,
       unit: 'seconds',
-      timer: { goal: { type: 'seconds', seconds: 900 }, session: null },
+      timer: { goal: { type: 'seconds', seconds: 900 }, trackId: null, loop: true, session: null },
     });
     expect(trackerIn(snapshot, TRACKERS.breathing)).toMatchObject({
       timer: {
@@ -386,7 +386,8 @@ describe('the widget snapshot', () => {
       // Exactly 72 hours: the 3-day lamp is passed.
       lampsPassed: 3,
       nextLamp: { at: new Date(2026, 2, 12, 9, 30).toISOString(), hours: 120, label: '5d' },
-      ownLine: 'I sleep better',
+      // All of them, so the widget can move to the next one at a lamp by itself.
+      ownLines: ['Money for the trip', 'I sleep better'],
       rideSeconds: 600,
       urgesRiddenOut: 1,
       urgesToday: 1,

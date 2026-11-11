@@ -2,6 +2,7 @@ import {
   buildHabitTimerSound,
   formatHabitTimerSoundSummary,
   getHabitTimerPlaybackMode,
+  habitTimerTrack,
   hasHabitTimerSound,
 } from '../src/protocol/habitSound';
 
@@ -38,6 +39,21 @@ describe('getHabitTimerPlaybackMode', () => {
         playbackMode: 'play_once',
       }),
     ).toBe('play_once');
+  });
+});
+
+describe('habitTimerTrack', () => {
+  it('names the bundled track and whether it loops', () => {
+    expect(habitTimerTrack({ trackId: ' meditation15min ' })).toEqual({ trackId: 'meditation15min', loop: true });
+    expect(habitTimerTrack({ trackId: 'wimhofMorning', playbackMode: 'play_once' })).toEqual({
+      trackId: 'wimhofMorning',
+      loop: false,
+    });
+  });
+
+  it('plays nothing for no sound or a track that is not bundled', () => {
+    expect(habitTimerTrack(undefined)).toEqual({ trackId: null, loop: true });
+    expect(habitTimerTrack({ trackId: 'missing-track' })).toEqual({ trackId: null, loop: true });
   });
 });
 

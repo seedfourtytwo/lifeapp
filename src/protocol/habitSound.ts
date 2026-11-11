@@ -30,6 +30,17 @@ export function hasHabitTimerSound(sound: HabitTimerSound | undefined): boolean 
   return Boolean(trackId && isBundledHabitSoundId(trackId));
 }
 
+/** The bundled track a timer session plays, or null for silence, and whether it loops. */
+export function habitTimerTrack(sound: HabitTimerSound | undefined): {
+  trackId: string | null;
+  loop: boolean;
+} {
+  return {
+    trackId: hasHabitTimerSound(sound) ? (sound?.trackId?.trim() ?? null) : null,
+    loop: getHabitTimerPlaybackMode(sound) === 'loop',
+  };
+}
+
 export function formatHabitTimerSoundSummary(sound: HabitTimerSound | undefined): string | null {
   if (!hasHabitTimerSound(sound) || !sound) return null;
 

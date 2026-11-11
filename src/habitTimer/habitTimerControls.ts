@@ -2,9 +2,8 @@ import { Alert } from 'react-native';
 import { lifeCore } from '../core/lifeCore';
 import { i18n } from '../i18n';
 import {
-  getHabitTimerPlaybackMode,
   habitTimerGoal,
-  hasHabitTimerSound,
+  habitTimerTrack,
   isHabitElement,
   toDateString,
   type HabitConfig,
@@ -49,8 +48,7 @@ function startRequest(element: HabitElement): TimerStartRequest {
     lockScreenName: config.lockScreenName ?? null,
     iconKey: config.icon ?? null,
     goal: habitTimerGoal(config),
-    trackId: hasHabitTimerSound(config.timerSound) ? (config.timerSound?.trackId?.trim() ?? null) : null,
-    loop: getHabitTimerPlaybackMode(config.timerSound) === 'loop',
+    ...habitTimerTrack(config.timerSound),
     loggedSeconds: Math.floor(logged),
   };
 }

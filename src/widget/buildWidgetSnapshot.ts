@@ -1,9 +1,9 @@
 import {
   activeTimerElapsedSeconds,
-  currentOwnLine,
   dayOutcome,
   factsFromTotal,
   habitTimerGoal,
+  habitTimerTrack,
   isHabitScheduledOnDate,
   lampsPassed,
   nextLamp,
@@ -111,7 +111,7 @@ function habitTracker(
     unit: isTimer ? 'seconds' : 'ticks',
     timeRange: config.timeRange ?? null,
     visibleOnlyInTimeRange: config.visibleOnlyInTimeRange === true,
-    timer: isTimer ? { goal, session } : null,
+    timer: isTimer ? { goal, ...habitTimerTrack(config.timerSound), session } : null,
   };
 }
 
@@ -180,7 +180,7 @@ function commitmentBlock(
     clearSince: config.clearSince,
     lampsPassed: lampsPassed(config.clearSince, now),
     nextLamp: { at: lamp.at.toISOString(), hours: lamp.hours, label: input.lampLabel(lamp.hours) },
-    ownLine: currentOwnLine(config, now),
+    ownLines: config.ownLines,
     rideSeconds: config.rideSeconds,
     urgesRiddenOut: input.urges.riddenOutTotal,
     urgesToday: input.urges.urgesToday,

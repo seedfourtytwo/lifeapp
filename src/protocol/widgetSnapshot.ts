@@ -8,7 +8,7 @@ import { HabitScheduleSchema } from './schedule';
  * contract the native side is built against, and must change with this.
  */
 
-export const WIDGET_SNAPSHOT_VERSION = 2;
+export const WIDGET_SNAPSHOT_VERSION = 3;
 
 const IsoInstant = z.string().datetime();
 const LocalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -90,6 +90,10 @@ const HabitTrackerSchema = TrackerBaseSchema.extend({
   timer: z
     .object({
       goal: TimerGoalSchema,
+      /** The bundled track a session plays, or null for silence; what the widget starts with. */
+      trackId: z.string().min(1).nullable(),
+      /** The track loops until the session ends, or plays once. */
+      loop: z.boolean(),
       session: RunningSessionSchema.nullable(),
     })
     .nullable(),
@@ -129,8 +133,12 @@ const CommitmentSchema = z.object({
     /** Short, in the app's language: "48h", "5d". */
     label: z.string().min(1),
   }),
-  /** His own line for now, or null when he has written none. It may be shown on the lock screen. */
-  ownLine: z.string().nullable(),
+  /**
+   * All his own lines, in order; the one shown at a moment is
+   * `ownLines[lampsPassed % ownLines.length]`, so the widget moves on at a
+   * lamp by itself. Empty when he wrote none. Each may be shown on the lock screen.
+   */
+  ownLines: z.array(z.string().min(1)),
   /** How long an urge's ride lasts; for an `urge_logged` not yet in a snapshot. */
   rideSeconds: z.number().int().positive(),
   /** Every urge ever ridden out; nothing resets it. */

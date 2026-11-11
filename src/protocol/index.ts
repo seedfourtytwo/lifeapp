@@ -127,6 +127,7 @@ export {
   buildHabitTimerSound,
   formatHabitTimerSoundSummary,
   getHabitTimerPlaybackMode,
+  habitTimerTrack,
   hasHabitTimerSound,
 } from './habitSound';
 export {
