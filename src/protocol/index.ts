@@ -177,6 +177,7 @@ export {
   HABIT_TIME_SLOT_LABELS,
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
+  normalizeReminderTimes,
   isHabitDayComplete,
   getHabitTimerEffectiveTargetSeconds,
   completedDatesFromHabitEvents,

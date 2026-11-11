@@ -1,10 +1,14 @@
 import { i18n } from '../i18n';
-import type { ElementDefinition, HabitConfig } from '../protocol';
+import type { ElementDefinition } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
 import { DEFAULT_EVENING_CHECK_IN_TIME, parseEveningCheckInTime } from '../protocol/appSettings';
-import { isScheduleSupportedForReminders } from '../protocol/schedule';
 import { isElementArchived } from '../utils/dashboardElements';
-import { collectStartReminderFires } from './habitStartReminderTimes';
+import {
+  collectStartReminderFires,
+  fitFiresToBudget,
+  type StartReminderFire,
+} from './habitStartReminderTimes';
+import { NOTIFICATION_BUDGET } from './notificationBudget';
 import {
   cancelScheduledWithPrefix,
   getNotifications,
@@ -30,15 +34,6 @@ function enqueueHabitReminderWork(work: () => Promise<void>): Promise<void> {
   return next;
 }
 
-function canScheduleStartReminder(config: HabitConfig): boolean {
-  return (
-    config.timeRange !== undefined &&
-    config.remindMinutesBefore !== undefined &&
-    config.remindMinutesBefore >= 0 &&
-    isScheduleSupportedForReminders(config.schedule)
-  );
-}
-
 function parseCheckInHourMinute(timeHHmm: string): { hour: number; minute: number } {
   const parsed = parseEveningCheckInTime(timeHHmm) ?? DEFAULT_EVENING_CHECK_IN_TIME;
   const [hour, minute] = parsed.split(':').map(Number);
@@ -57,77 +52,73 @@ export async function cancelHabitStartReminders(): Promise<void> {
   await cancelHabitStartRemindersWith(Notifications);
 }
 
-async function scheduleStartRemindersForHabit(
-  notifications: NotificationsModule,
-  element: ElementDefinition,
-  config: HabitConfig,
-  doneToday: boolean,
-): Promise<void> {
-  const fires = collectStartReminderFires(config, { doneToday });
+type HabitReminderFire = StartReminderFire & { identifier: string; name: string };
 
-  await Promise.all(
-    fires.map((fire) =>
-      notifications.scheduleNotificationAsync({
-        identifier: `${REMINDER_PREFIX}${element.id}-${fire.dateStr}`,
-        content: {
-          title: i18n.t('notifications:habitReminder.title'),
-          body: i18n.t('notifications:habitReminder.body', { name: element.name }),
-        },
-        trigger: {
-          type: notifications.SchedulableTriggerInputTypes.DATE,
-          date: fire.when,
-          channelId: REMINDERS_CHANNEL_ID,
-        },
-      }),
-    ),
-  );
+function habitReminderId(elementId: string, fire: StartReminderFire): string {
+  return `${REMINDER_PREFIX}${elementId}-${fire.dateStr}-${fire.time.replace(':', '')}`;
 }
 
+function collectHabitReminderFires(
+  elements: readonly ElementDefinition[],
+  habitDoneToday: Record<string, boolean>,
+  now: Date,
+): HabitReminderFire[] {
+  const fires: HabitReminderFire[] = [];
+  for (const element of elements) {
+    if (element.kind !== 'habit' || isElementArchived(element)) continue;
+    const config = HabitConfigSchema.parse(element.config);
+    const doneToday = habitDoneToday[element.id] ?? false;
+    for (const fire of collectStartReminderFires(config, { now, doneToday })) {
+      fires.push({ ...fire, identifier: habitReminderId(element.id, fire), name: element.name });
+    }
+  }
+  return fitFiresToBudget(fires, NOTIFICATION_BUDGET.habitReminders);
+}
+
+/**
+ * Bring the pending habit reminders in line with the habits. Identifiers are
+ * stable (habit, day, time), so a re-sync replaces what is already pending and
+ * cancels only what no longer belongs: a time removed, a habit archived or
+ * deleted, a day already done, or everything when switched off.
+ */
 export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
   habitDoneToday: Record<string, boolean> = {},
+  now: Date = new Date(),
 ): Promise<void> {
   const run = async (): Promise<void> => {
-    if (!isNotificationsNativeAvailable()) {
-      return;
-    }
-
     const Notifications = await getNotifications();
     if (!Notifications) return;
 
     const generation = ++habitReminderSyncGeneration;
-    await cancelHabitStartRemindersWith(Notifications);
+    const granted = enabled && (await requestNotificationPermissions());
     if (generation !== habitReminderSyncGeneration) return;
 
-    if (!enabled) {
-      return;
-    }
+    const fires = granted ? collectHabitReminderFires(elements, habitDoneToday, now) : [];
+    const wanted = new Set(fires.map((fire) => fire.identifier));
+    await cancelScheduledWithPrefix(Notifications, REMINDER_PREFIX, {
+      keep: (id) => id === END_OF_DAY_REMINDER_ID || wanted.has(id),
+    });
 
-    const granted = await requestNotificationPermissions();
-    if (!granted || generation !== habitReminderSyncGeneration) return;
-
-    const habits = elements.filter(
-      (element) => element.kind === 'habit' && !isElementArchived(element),
-    );
-
-    for (const element of habits) {
+    for (const fire of fires) {
       if (generation !== habitReminderSyncGeneration) return;
-
-      const config = HabitConfigSchema.parse(element.config);
-      if (!canScheduleStartReminder(config)) continue;
-
-      await scheduleStartRemindersForHabit(
-        Notifications,
-        element,
-        config,
-        habitDoneToday[element.id] ?? false,
-      );
+      await Notifications.scheduleNotificationAsync({
+        identifier: fire.identifier,
+        content: {
+          title: i18n.t('notifications:habitReminder.title'),
+          body: i18n.t('notifications:habitReminder.body', { name: fire.name }),
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fire.when,
+          channelId: REMINDERS_CHANNEL_ID,
+        },
+      });
     }
   };
 
-  const next = enqueueHabitReminderWork(run);
-  await next;
+  await enqueueHabitReminderWork(run);
 }
 
 /**

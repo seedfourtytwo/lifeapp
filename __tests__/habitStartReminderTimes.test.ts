@@ -1,4 +1,7 @@
-import { collectStartReminderFires } from '../src/notifications/habitStartReminderTimes';
+import {
+  collectStartReminderFires,
+  fitFiresToBudget,
+} from '../src/notifications/habitStartReminderTimes';
 import type { HabitConfig } from '../src/protocol';
 import { parseEveningCheckInTime } from '../src/protocol/appSettings';
 
@@ -77,5 +80,32 @@ describe('parseEveningCheckInTime', () => {
     expect(parseEveningCheckInTime('25:00')).toBeNull();
     expect(parseEveningCheckInTime('abc')).toBeNull();
     expect(parseEveningCheckInTime('')).toBeNull();
+  });
+});
+
+describe('fitFiresToBudget', () => {
+  const fire = (dayOffset: number, hour: number) => ({
+    dayOffset,
+    when: new Date(2026, 10, 11 + dayOffset, hour, 0),
+  });
+
+  it('keeps everything that fits', () => {
+    const fires = [fire(0, 9), fire(1, 9)];
+    expect(fitFiresToBudget(fires, 2)).toEqual(fires);
+  });
+
+  it('drops whole days from the far end', () => {
+    const fires = [fire(0, 9), fire(0, 18), fire(1, 9), fire(1, 18), fire(2, 9)];
+    expect(fitFiresToBudget(fires, 4)).toEqual(fires.slice(0, 4));
+    expect(fitFiresToBudget(fires, 3)).toEqual(fires.slice(0, 2));
+  });
+
+  it('keeps the earliest of today when today alone is over budget', () => {
+    const fires = [fire(0, 18), fire(0, 9), fire(0, 12)];
+    expect(fitFiresToBudget(fires, 2).map((f) => f.when.getHours())).toEqual([9, 12]);
+  });
+
+  it('keeps nothing with no budget', () => {
+    expect(fitFiresToBudget([fire(0, 9)], 0)).toEqual([]);
   });
 });

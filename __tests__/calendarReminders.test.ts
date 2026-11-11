@@ -1,4 +1,5 @@
 import { expandOccurrences } from '../src/calendar/occurrences';
+import { NOTIFICATION_BUDGET } from '../src/notifications/notificationBudget';
 import { CalendarEventSchema, type Calendar, type CalendarEvent, type CalendarReminder } from '../src/calendar/types';
 
 type ScheduleArgs = {
@@ -212,7 +213,7 @@ describe('calendarReminders.native', () => {
     const mod = freshModule(true);
     const events: CalendarEvent[] = [];
     const reminders: CalendarReminder[] = [];
-    // 70 distinct events, each 1 hour apart, one reminder each — over the cap of 64.
+    // 70 distinct events, each 1 hour apart, one reminder each — over the calendar's share.
     for (let i = 0; i < 70; i++) {
       const id = `e${i}`;
       const start = new Date(now.getTime() + (i + 1) * 60 * 60 * 1000);
@@ -224,11 +225,14 @@ describe('calendarReminders.native', () => {
     await mod.syncCalendarReminders({ events, calendars: [calendar], reminders });
     jest.useRealTimers();
 
-    expect(mockScheduleNotificationAsync).toHaveBeenCalledTimes(64);
+    expect(mockScheduleNotificationAsync).toHaveBeenCalledTimes(
+      NOTIFICATION_BUDGET.calendarReminders,
+    );
     const scheduledTitles = mockScheduleNotificationAsync.mock.calls.map(
       (c) => c[0].content.body,
     );
-    // The 65th-earliest event onward must not appear.
+    // Only the earliest events get a reminder.
+    expect(scheduledTitles.some((body: string) => body.includes('Event e0 '))).toBe(true);
     expect(scheduledTitles.some((body: string) => body.includes('Event e69'))).toBe(false);
   });
 });

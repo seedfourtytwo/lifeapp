@@ -9,6 +9,7 @@ import {
   REMINDERS_CHANNEL_ID,
   type NotificationsModule,
 } from './notificationsBootstrap.native';
+import { NOTIFICATION_BUDGET } from './notificationBudget';
 
 export { isNotificationsNativeAvailable };
 
@@ -20,8 +21,6 @@ export { isNotificationsNativeAvailable };
 const REMINDER_PREFIX = 'cal-reminder-';
 /** Schedule fire times within this horizon (ms). */
 const SCHEDULE_HORIZON_MS = 90 * 24 * 60 * 60 * 1000;
-/** Cap scheduled notifications to stay under OS limits. */
-const MAX_SCHEDULED = 64;
 /** Bumped on each sync so overlapping runs don't restore stale schedules. */
 let reminderSyncGeneration = 0;
 /** Serialize syncs — concurrent callers await the latest chain. */
@@ -119,7 +118,7 @@ export async function syncCalendarReminders(input: {
     }
 
     fires.sort((a, b) => a.when.getTime() - b.when.getTime());
-    const toSchedule = fires.slice(0, MAX_SCHEDULED);
+    const toSchedule = fires.slice(0, NOTIFICATION_BUDGET.calendarReminders);
 
     for (const fire of toSchedule) {
       if (generation !== reminderSyncGeneration) return;
