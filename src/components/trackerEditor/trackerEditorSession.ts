@@ -13,6 +13,7 @@ export function newEditorSession(
     increments: '1, 5, 10',
     dailyTarget: '',
     targetLabel: '',
+    lockScreenName: '',
     habitTrackingMode: 'boolean',
     habitDailyGoalMinutes: '',
     habitSoundTrackId: '',
@@ -63,6 +64,7 @@ export function editorSessionFromHabit(
     name,
     icon: config.icon ?? null,
     targetLabel: config.targetLabel ?? '',
+    lockScreenName: config.lockScreenName ?? '',
     habitTrackingMode: config.trackingMode,
     habitDailyGoalMinutes: config.dailyTargetSeconds
       ? String(Math.round(config.dailyTargetSeconds / 60))

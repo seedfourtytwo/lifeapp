@@ -2,6 +2,7 @@ import type { TrackerEditorSaveData } from '../components/trackerEditor/types';
 import { i18n } from '../i18n';
 import {
   buildHabitTimerSound,
+  normalizeLockScreenName,
   isScheduleSupportedForReminders,
   type CounterInput,
   type HabitInput,
@@ -148,6 +149,7 @@ export function parseTrackerEditorSave(
       remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
       reminderTimes: parseReminderTimes(data),
       showStreakOnCard: data.showStreakOnCard,
+      lockScreenName: normalizeLockScreenName(data.lockScreenName),
     },
   };
 }

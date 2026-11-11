@@ -131,6 +131,7 @@ const habitState = Object.freeze({
   reminderTimes: habitSession.reminderTimes,
   reminderTimeDraft: habitSession.reminderTimeDraft,
   showStreakOnCard: habitSession.showStreakOnCard,
+  lockScreenName: habitSession.lockScreenName,
 });
 
 const KEYSTROKES = 8;

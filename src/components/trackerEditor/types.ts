@@ -31,6 +31,7 @@ export type TrackerEditorSession = {
   /** A time typed into the Reminders row but not yet added. */
   reminderTimeDraft: string;
   showStreakOnCard: boolean;
+  lockScreenName: string;
 };
 
 export type TrackerEditorSaveData =
@@ -64,6 +65,7 @@ export type TrackerEditorSaveData =
       reminderTimes: string[];
       reminderTimeDraft: string;
       showStreakOnCard: boolean;
+      lockScreenName: string;
     };
 
 export type HabitEditorFieldState = Pick<
@@ -86,4 +88,5 @@ export type HabitEditorFieldState = Pick<
   | 'reminderTimes'
   | 'reminderTimeDraft'
   | 'showStreakOnCard'
+  | 'lockScreenName'
 >;

@@ -188,6 +188,8 @@ export {
   HABIT_TIME_SLOT_LABELS,
   HABIT_TIME_SLOT_ORDER,
   buildHabitConfig,
+  LOCK_SCREEN_NAME_MAX,
+  normalizeLockScreenName,
   normalizeReminderTimes,
   shouldShowHabitOnHabitsPage,
   shouldShowHabitStreakOnCard,

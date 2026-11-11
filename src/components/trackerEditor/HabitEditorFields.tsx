@@ -10,7 +10,12 @@ import { FilledField } from '../sheet';
 import { typeScale } from '../../theme/typography';
 import type { TFunction } from 'i18next';
 import { getDateLocale } from '../../i18n';
-import { parseLocalDate, toDateString, type HabitTrackingMode } from '../../protocol';
+import {
+  LOCK_SCREEN_NAME_MAX,
+  parseLocalDate,
+  toDateString,
+  type HabitTrackingMode,
+} from '../../protocol';
 import { withReminderTime } from '../../utils/reminderTimes';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
@@ -226,6 +231,22 @@ function HabitEditorFields({ state, onChange }: Props) {
             onChangeText={(targetLabel) => onChange({ targetLabel })}
           />
         )}
+      </FormSection>
+
+      <FormSection
+        title={t('habitFields.lockScreenSectionTitle')}
+        description={t('habitFields.lockScreenSectionDescription')}
+        collapsible
+        defaultCollapsed
+        value={state.lockScreenName.trim() || t('habitFields.lockScreenNameOff')}
+      >
+        <FilledField
+          label={t('habitFields.lockScreenNameLabel')}
+          placeholder={t('habitFields.lockScreenNamePlaceholder')}
+          value={state.lockScreenName}
+          onChangeText={(lockScreenName) => onChange({ lockScreenName })}
+          maxLength={LOCK_SCREEN_NAME_MAX}
+        />
       </FormSection>
 
       <FormSection

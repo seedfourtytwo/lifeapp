@@ -25,6 +25,7 @@ const habitSaveData = (
   reminderTimes: [],
   reminderTimeDraft: '',
   showStreakOnCard: false,
+  lockScreenName: '',
   ...overrides,
 });
 
@@ -81,6 +82,14 @@ describe('parseTrackerEditorSave', () => {
       trackId: 'meditation15min',
       playbackMode: 'play_once',
     });
+  });
+
+  it('saves a lock-screen name, and none when it is left empty', () => {
+    const named = parseTrackerEditorSave(habitSaveData({ lockScreenName: '  Evening  ' }));
+    const unnamed = parseTrackerEditorSave(habitSaveData({ lockScreenName: '   ' }));
+
+    expect(named.kind === 'habit' && named.input.lockScreenName).toBe('Evening');
+    expect(unnamed.kind === 'habit' && unnamed.input.lockScreenName).toBeUndefined();
   });
 
   it('parses boolean streak display option', () => {

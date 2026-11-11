@@ -42,6 +42,7 @@ function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorF
     reminderTimes: session.reminderTimes,
     reminderTimeDraft: session.reminderTimeDraft,
     showStreakOnCard: session.showStreakOnCard,
+    lockScreenName: session.lockScreenName,
   };
 }
 

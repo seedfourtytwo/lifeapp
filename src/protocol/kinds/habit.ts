@@ -47,6 +47,15 @@ export function normalizeReminderTimes(times: readonly string[]): string[] {
   return [...new Set(times)].sort();
 }
 
+/** Longest lock-screen name kept; a locked phone has room for a word or two. */
+export const LOCK_SCREEN_NAME_MAX = 20;
+
+/** Trimmed and cut to fit, or undefined when nothing is left. */
+export function normalizeLockScreenName(name: string | undefined): string | undefined {
+  const trimmed = name?.trim().slice(0, LOCK_SCREEN_NAME_MAX).trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export const HabitConfigSchema = z.object({
   trackingMode: HabitTrackingModeSchema.default('boolean'),
   timeSlot: HabitTimeSlotSchema.default('anytime'),
@@ -72,6 +81,8 @@ export const HabitConfigSchema = z.object({
   showStreakOnCard: z.boolean().optional(),
   /** Optional curated Material Community Icon for Home / library identity. */
   icon: OptionalTrackerIconSchema,
+  /** A neutral short name to show on a locked phone in place of the real one. */
+  lockScreenName: z.string().optional().transform(normalizeLockScreenName),
 });
 
 export type HabitConfig = z.infer<typeof HabitConfigSchema>;
@@ -132,6 +143,7 @@ export type HabitInput = {
   reminderTimes?: readonly string[];
   showStreakOnCard?: boolean;
   icon?: TrackerIconId;
+  lockScreenName?: string;
 };
 
 export function shouldShowHabitStreakOnCard(config: HabitConfig): boolean {
@@ -142,6 +154,7 @@ export function shouldShowHabitStreakOnCard(config: HabitConfig): boolean {
 export function buildHabitConfig(
   input: Omit<HabitInput, 'name'>,
 ): HabitConfig {
+  const lockScreenName = normalizeLockScreenName(input.lockScreenName);
   return {
     trackingMode: input.trackingMode ?? 'boolean',
     timeSlot: input.timeSlot ?? 'anytime',
@@ -163,6 +176,7 @@ export function buildHabitConfig(
       ? { showStreakOnCard: false }
       : { showStreakOnCard: true }),
     ...(input.icon ? { icon: input.icon } : {}),
+    ...(lockScreenName ? { lockScreenName } : {}),
   };
 }
 
