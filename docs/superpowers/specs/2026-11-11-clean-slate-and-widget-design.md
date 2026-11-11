@@ -161,6 +161,12 @@ Still unchecked on a device: timer across midnight; status line after the folder
 - JS writes a small dated JSON snapshot after every change (today's items, done state, streaks, upcoming reminders, per-item data to recompute "today" after midnight). The widget reads only this.
 - A pending-actions queue the widget appends to; JS drains it into SQLite on start/foreground/broadcast. SQLite stays single-writer.
 
+**Stage 5 status (2026-11-11):** implemented by Opus on `clean-slate-stage-5` (ends 3d9ee53), reviewed by Fable; 155 suites / 1797 tests, type-check and lint green, two runs. `eventStore.ts` is now 77 lines over `src/store/events/`; timer glue lives in `src/habitTimer/`. The SQLite change listener is NOT used (fires per row, before commit, same connection only): writes re-query explicitly. The native side is written against `docs/widget-contract.md`.
+
+Checked on the phone (Life dev): `files/widget/snapshot.json` appears (4.5 KB, 11 trackers, zone Europe/Paris, paused session carried); a tick rewrites it; the same `counter_add` line queued twice is applied once on return to the app and the queue file is removed.
+
+For stage 6: timer actions in the queue assume the JS app is alive to run the clock and sound. With the app closed that cannot hold, so the native core must own a running timer and hand JS finished seconds; the contract's timer actions change accordingly. Also still open from the build: clear-data does not delete the widget files; an import that wipes settings loses the applied-actions log.
+
 ### Stage 6 — Craving button, commitments, widget
 
 Spike first (throwaway): one native widget with one broadcast button, added to the GrapheneOS lock-screen page, to confirm a tap works while locked and what size the surface gives. Reports are mixed.
