@@ -1,0 +1,35 @@
+import type {
+  CoreTimerState,
+  FinishOptions,
+  TimerSessionRecord,
+  TimerStartRequest,
+} from '../protocol/coreTimer';
+
+export interface LifeCoreSubscription {
+  remove: () => void;
+}
+
+/**
+ * What the app may ask of the native core. One session at a time: `start`
+ * for another tracker while one exists is refused, so the caller finishes
+ * the running one first and logs it.
+ */
+export interface LifeCore {
+  /** Starts a session, or resumes this tracker's paused one, or leaves its running one alone. */
+  start: (request: TimerStartRequest) => Promise<CoreTimerState>;
+  pause: () => Promise<CoreTimerState | null>;
+  resume: () => Promise<CoreTimerState | null>;
+  /**
+   * Ends the session and resolves to its record, which native has also
+   * appended to the pending-actions queue; null when there was none.
+   */
+  finish: (options: FinishOptions) => Promise<TimerSessionRecord | null>;
+  /** Ends the session and logs nothing. */
+  discard: () => Promise<void>;
+  getState: () => Promise<CoreTimerState | null>;
+  /** Every transition, whoever made it: the app, the notification, the track's end. */
+  addStateListener: (listener: (state: CoreTimerState | null) => void) => LifeCoreSubscription;
+  /** The habit editor's preview of a bundled track; false when it cannot play. */
+  previewSound: (trackId: string) => Promise<boolean>;
+  stopPreview: () => Promise<void>;
+}

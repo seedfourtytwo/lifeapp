@@ -1,0 +1,27 @@
+import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
+
+/**
+ * The Android side of the native core. Requests and states cross the bridge
+ * as JSON text so Kotlin reads and writes them with the same code it uses for
+ * `timer.json`; `src/core/lifeCore.ts` parses them with Zod.
+ */
+type LifeCoreEvents = {
+  /** Every timer transition; `state` is null when no session exists. */
+  onStateChange: (event: { state: string | null }) => void;
+};
+
+export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {
+  start(requestJson: string): Promise<string>;
+  pause(): Promise<string | null>;
+  resume(): Promise<string | null>;
+  finish(markComplete: boolean): Promise<string | null>;
+  discard(): Promise<void>;
+  getState(): Promise<string | null>;
+  previewSound(trackId: string): Promise<boolean>;
+  stopPreview(): Promise<void>;
+}
+
+/** Null where the module is not built in (web, Jest, an older dev client). */
+export function loadLifeCoreModule(): LifeCoreNativeModule | null {
+  return requireOptionalNativeModule<LifeCoreNativeModule>('LifeCore');
+}

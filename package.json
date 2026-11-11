@@ -38,6 +38,7 @@
     "expo-sqlite": "~16.0.9",
     "expo-status-bar": "~3.0.9",
     "i18next": "^26.3.6",
+    "life-core": "file:modules/life-core",
     "life-moonshine-dictation": "file:modules/life-moonshine-dictation",
     "react": "19.1.0",
     "react-dom": "19.1.0",
