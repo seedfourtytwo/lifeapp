@@ -4,10 +4,10 @@ jest.mock('../src/db/client', () => ({
 }));
 
 import { getDatabase } from '../src/db/client';
-import { exportProtocolBundle } from '../src/db/export';
+import { exportProtocolBundle, serializeBundle } from '../src/db/export';
 import * as elementRepo from '../src/db/repositories/elementRepository';
 import * as eventRepo from '../src/db/repositories/eventRepository';
-import { HabitConfigSchema, PROTOCOL_VERSION } from '../src/protocol';
+import { HabitConfigSchema, parseProtocolBundle, PROTOCOL_VERSION } from '../src/protocol';
 import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
 
 /**
@@ -72,4 +72,16 @@ it('counts the rows it could not read instead of looking complete', async () => 
 
   expect(bundle.events).toHaveLength(1);
   expect(skippedRows).toBe(2);
+});
+
+it('leaves out a Home row it could not read, so the file still imports', async () => {
+  testDb.raw
+    .prepare('INSERT INTO dashboard_items (id, element_id, sort_order) VALUES (?, ?, ?)')
+    .run('not-a-uuid', HABIT_ID, 0);
+
+  const { bundle, skippedRows } = await exportProtocolBundle();
+
+  expect(bundle.dashboard).toEqual([]);
+  expect(skippedRows).toBe(1);
+  expect(() => parseProtocolBundle(JSON.parse(serializeBundle(bundle)))).not.toThrow();
 });

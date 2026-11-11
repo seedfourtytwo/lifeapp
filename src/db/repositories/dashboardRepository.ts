@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { DashboardItem } from '../../protocol';
+import { DashboardItemSchema, type DashboardItem } from '../../protocol';
+import { readableRows } from './readableRows';
 
 interface DashboardRow {
   id: string;
@@ -8,18 +9,18 @@ interface DashboardRow {
 }
 
 function rowToDashboardItem(row: DashboardRow): DashboardItem {
-  return {
+  return DashboardItemSchema.parse({
     id: row.id,
     elementId: row.element_id,
     sortOrder: row.sort_order,
-  };
+  });
 }
 
 export async function getDashboardItems(db: SQLiteDatabase): Promise<DashboardItem[]> {
   const rows = await db.getAllAsync<DashboardRow>(
     'SELECT * FROM dashboard_items ORDER BY sort_order ASC',
   );
-  return rows.map(rowToDashboardItem);
+  return readableRows('dashboard_items', rows, rowToDashboardItem);
 }
 
 export async function insertDashboardItem(
