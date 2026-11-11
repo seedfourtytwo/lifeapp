@@ -181,6 +181,18 @@ describe('a session running past midnight', () => {
     expect(state().dailyTotals[HABIT]).toBe(20 * 60);
   });
 
+  it('marks Done on the day the session ends, and offers Undo for it', async () => {
+    await startAt(local(11, 10, 23, 50));
+    state().startHabitTimer(HABIT, config);
+    setNow(local(11, 11, 0, 20));
+
+    const undoable = await state().markHabitDone(HABIT, config);
+
+    const today = await eventRepo.getEventsForElementOnDate(testDb.db, HABIT, '2026-11-11');
+    expect(today.map((e) => e.meta?.source)).toEqual(['timer_session', 'manual_complete']);
+    expect(undoable).toBe(true);
+  });
+
   it('keeps running through the day change, with yesterday\'s part already logged', async () => {
     await startAt(local(11, 10, 23, 50));
     const { ensureCurrentDay } = require('../src/hooks/ensureCurrentDay') as typeof import('../src/hooks/ensureCurrentDay');

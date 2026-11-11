@@ -986,8 +986,10 @@ export const useEventStore = create<EventState>((set, get) => ({
   markHabitDone: async (elementId, config) => {
     const session = get().activeTimerSessions[elementId];
     if (session) {
+      // The mark goes on the day the session ends, which is not its start day after midnight.
+      const endDay = timerSessionParts(session, Date.now()).at(-1)?.date ?? session.calendarDate;
       await get().stopHabitTimer(elementId, config, undefined, { markComplete: true });
-      return doneOnlyByMark(elementId, config, session.calendarDate);
+      return doneOnlyByMark(elementId, config, endDay);
     }
     // A stop already under way (rollover, a natural end) lands first.
     await awaitHabitTimerStop(elementId);
