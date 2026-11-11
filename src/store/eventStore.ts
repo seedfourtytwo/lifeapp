@@ -89,6 +89,11 @@ interface EventState extends ResettableMirror {
   habitFailureStreaks: Record<string, number>;
   counterStreaks: Record<string, number>;
   activeTimerSessions: Record<string, ActiveTimerSession>;
+  /**
+   * The calendar day the day maps (totals, done, streaks) describe. Behind the
+   * clock after a midnight nobody refreshed — `ensureCurrentDay` brings it up.
+   */
+  dayMapsDate: string;
   /** True after at least one successful habit day-state load this process. */
   dayStateReady: boolean;
   /** True after at least one successful counter totals load this process. */
@@ -405,6 +410,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   habitFailureStreaks: {},
   counterStreaks: {},
   activeTimerSessions: {},
+  dayMapsDate: todayDate(),
   dayStateReady: false,
   counterTotalsReady: false,
 
@@ -419,6 +425,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       habitFailureStreaks: {},
       counterStreaks: {},
       activeTimerSessions: {},
+      dayMapsDate: todayDate(),
       dayStateReady: false,
       counterTotalsReady: false,
     });

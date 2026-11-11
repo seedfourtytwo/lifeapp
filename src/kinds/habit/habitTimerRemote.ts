@@ -5,6 +5,7 @@ import {
   setHabitTimerRemoteHandlers,
   stopHabitSound,
 } from '../../audio/habitTimerSound';
+import { ensureCurrentDay } from '../../hooks/ensureCurrentDay';
 import { i18n } from '../../i18n';
 import { getHabitTimerPlaybackMode, isActiveTimerPaused } from '../../protocol';
 import { useEventStore, whenActiveTimersReady } from '../../store/eventStore';
@@ -78,6 +79,14 @@ async function startOrToggleFocusedHabit(): Promise<void> {
  * so the morning routine can advance without unlocking.
  */
 async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
+  try {
+    await ensureCurrentDay();
+  } catch (error) {
+    // Acting on yesterday's queue could finish or focus the wrong habit; the
+    // rollover retries on the next foreground.
+    console.warn('Lock-screen skip ignored: day rollover failed', error);
+    return;
+  }
   const current = resolveFocusedHabit();
   if (!current) return;
 
@@ -113,26 +122,32 @@ async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
 export function installHabitTimerRemoteControls(): void {
   setHabitTimerRemoteHandlers({
     onPlayingChange: (playing) => {
-      const focused = resolveFocusedHabit();
-      if (!focused) return;
-      const { element, config } = focused;
-      const session = useEventStore.getState().activeTimerSessions[element.id];
+      void (async () => {
+        // A locked phone may have slept through midnight; act on today's maps.
+        await ensureCurrentDay();
+        const focused = resolveFocusedHabit();
+        if (!focused) return;
+        const { element, config } = focused;
+        const session = useEventStore.getState().activeTimerSessions[element.id];
 
-      if (playing) {
-        if (!session) {
-          void startOrToggleFocusedHabit();
+        if (playing) {
+          if (!session) {
+            await startOrToggleFocusedHabit();
+            return;
+          }
+          // Paused or OS-interrupted while session still "running" — (re)start audio.
+          resumeHabitTimerSession(element.id, config);
           return;
         }
-        // Paused or OS-interrupted while session still "running" — (re)start audio.
-        resumeHabitTimerSession(element.id, config);
-        return;
-      }
 
-      if (!session) return;
+        if (!session) return;
 
-      if (!isActiveTimerPaused(session)) {
-        pauseHabitTimerSession(element.id, config);
-      }
+        if (!isActiveTimerPaused(session)) {
+          pauseHabitTimerSession(element.id, config);
+        }
+      })().catch((error) => {
+        console.warn('Lock-screen play/pause failed', error);
+      });
     },
     onSkip: (direction) => {
       void enqueueSkip(() => skipHabit(direction));

@@ -18,6 +18,7 @@ type RemoteHandlers = { onPlayingChange?: ((playing: boolean) => void) | null };
 const HABIT_A = '550e8400-e29b-41d4-a716-446655440801';
 const HABIT_B = '550e8400-e29b-41d4-a716-446655440802';
 const YESTERDAY = '2026-03-09';
+const TODAY = '2026-03-10';
 
 let testDb: TestDb;
 let handlers: RemoteHandlers;
@@ -94,4 +95,23 @@ it('does not un-tick a done habit when play is pressed on it', async () => {
 
   expect(await eventsOn(HABIT_A, YESTERDAY)).toHaveLength(1);
   expect(eventStore().getState().habitDoneToday[HABIT_A]).toBe(true);
+});
+
+/**
+ * The phone sat locked overnight, so neither the midnight timer nor a
+ * foreground refreshed the day. The first press in the morning must act on
+ * today: both habits are open, so focus is the first in Home order — not
+ * whichever one yesterday's done-map put at the front of the queue.
+ */
+it('acts on today, not yesterday\'s maps, on the first press after midnight', async () => {
+  await eventStore().getState().toggleHabit(HABIT_A, tickConfig);
+  jest.setSystemTime(new Date(2026, 2, 10, 7, 0));
+
+  handlers.onPlayingChange?.(true);
+  await settle();
+
+  expect(await eventsOn(HABIT_A, TODAY)).toHaveLength(1);
+  expect(await eventsOn(HABIT_B, TODAY)).toHaveLength(0);
+  expect(await eventsOn(HABIT_A, YESTERDAY)).toHaveLength(1);
+  expect(eventStore().getState().habitDoneToday).toEqual({ [HABIT_A]: true, [HABIT_B]: false });
 });
