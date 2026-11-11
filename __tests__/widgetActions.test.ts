@@ -56,7 +56,7 @@ function events() {
 const pendingPath = () => `${mockFs.root}/widget/pending-actions.jsonl`;
 const drainingPath = () => `${mockFs.root}/widget/pending-actions.draining.jsonl`;
 
-type ActionFields = { type: string; trackerId: string; amount?: number; day?: string; at?: Date; id?: string } & Record<string, unknown>;
+type ActionFields = { type: string; trackerId?: string; amount?: number; day?: string; at?: Date; id?: string } & Record<string, unknown>;
 
 /** One action line, the way the widget writes it. */
 function action(fields: ActionFields): { id: string; at: string } & Record<string, unknown> {
@@ -361,5 +361,109 @@ describe('draining the widget queue', () => {
 
   it('does nothing when there is no queue', async () => {
     expect(await drain()).toEqual({ applied: 0, duplicates: 0, dropped: [], malformed: 0 });
+  });
+});
+
+describe('urge lines in the widget queue', () => {
+  function urgeRows(): Record<string, unknown>[] {
+    return testDb.raw.prepare('SELECT * FROM urges ORDER BY at').all() as Record<string, unknown>[];
+  }
+
+  function urges() {
+    return (require('../src/store/urgeStore') as typeof import('../src/store/urgeStore')).useUrgeStore.getState();
+  }
+
+  function logged(at = new Date(2026, 2, 10, 9, 25)) {
+    return action({ type: 'urge_logged', at });
+  }
+
+  function resolved(urgeId: string, outcome: string, at = new Date(2026, 2, 10, 9, 27)) {
+    return action({ type: 'urge_resolved', urgeId, outcome, at });
+  }
+
+  it('inserts an urge logged on the widget, open, under the line id', async () => {
+    const line = logged();
+    append(line);
+
+    const result = await drain();
+
+    expect(result).toMatchObject({ applied: 1, dropped: [], malformed: 0 });
+    expect(urgeRows()).toEqual([
+      expect.objectContaining({ id: line.id, at: line.at, day: TODAY, outcome: null, source: 'widget' }),
+    ]);
+    expect(urges().ride).toMatchObject({ urgeId: line.id, startedAt: line.at });
+  });
+
+  it('resolves it as used at the moment of the tap', async () => {
+    const line = logged();
+    append(line, resolved(line.id, 'used'));
+
+    await drain();
+
+    expect(urgeRows()[0]).toMatchObject({
+      outcome: 'used',
+      resolved_at: new Date(2026, 2, 10, 9, 27).toISOString(),
+    });
+    expect(urges().riddenOutTotal).toBe(0);
+  });
+
+  it('inserts and resolves once however often the lines arrive', async () => {
+    const line = logged();
+    const used = resolved(line.id, 'used');
+    append(line, line, used, used);
+    await drain();
+    append(line, used);
+
+    const again = await drain();
+
+    expect(urgeRows()).toHaveLength(1);
+    expect(again).toMatchObject({ applied: 0, duplicates: 2 });
+  });
+
+  it('applies a resolve written before its log in the same file', async () => {
+    const line = logged();
+    append(resolved(line.id, 'used'), line);
+
+    const result = await drain();
+
+    expect(result.dropped).toEqual([]);
+    expect(urgeRows()[0]).toMatchObject({ id: line.id, outcome: 'used' });
+  });
+
+  it('drops a resolve for an urge it has never seen, with the reason', async () => {
+    const stray = resolved('550e8400-e29b-41d4-a716-446655449000', 'used');
+    append(stray);
+
+    const result = await drain();
+
+    expect(result.dropped).toEqual([{ id: stray.id, reason: 'urge_missing' }]);
+    expect(urgeRows()).toEqual([]);
+  });
+
+  it('keeps the first outcome: a used tap after the ride was ridden out changes nothing', async () => {
+    const line = logged(new Date(2026, 2, 10, 9, 0));
+    append(line);
+    await drain();
+    await urges().refresh();
+    append(resolved(line.id, 'used', new Date(2026, 2, 10, 9, 25)));
+
+    await drain();
+
+    expect(urgeRows()[0]).toMatchObject({ outcome: 'rode_out' });
+    expect(urges().riddenOutTotal).toBe(1);
+  });
+
+  it('drops an urge logged on a day still to come', async () => {
+    const ahead = action({ type: 'urge_logged', day: '2026-03-11', at: new Date(2026, 2, 11, 9, 0) });
+    append(ahead);
+
+    expect((await drain()).dropped).toEqual([{ id: ahead.id, reason: 'future_day' }]);
+  });
+
+  it('skips a resolve line with an outcome it does not know', async () => {
+    const line = logged();
+    append(line, resolved(line.id, 'gave_in'));
+
+    expect(await drain()).toMatchObject({ applied: 1, malformed: 1 });
   });
 });

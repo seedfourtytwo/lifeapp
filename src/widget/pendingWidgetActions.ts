@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../db/client';
 import { withGuardedWrite } from '../db/dataGeneration';
 import * as elementRepo from '../db/repositories/elementRepository';
+import * as urgeRepo from '../db/repositories/urgeRepository';
 import {
   loadWidgetActionLog,
   saveWidgetActionLog,
@@ -11,10 +13,13 @@ import type { ElementDefinition } from '../protocol';
 import type { TimerSessionRecord } from '../protocol/coreTimer';
 import {
   WidgetActionSchema,
+  type TrackerAction,
+  type UrgeAction,
   type WidgetAction,
   type WidgetActionDropReason,
 } from '../protocol/widgetActions';
 import { useEventStore } from '../store/eventStore';
+import { useUrgeStore } from '../store/urgeStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { widgetDirectory } from './widgetFiles';
 
@@ -34,7 +39,11 @@ export interface DrainResult {
 
 type Verdict = { apply: () => Promise<unknown> } | { drop: WidgetActionDropReason };
 
-function judge(action: WidgetAction, element: ElementDefinition | null, today: string): Verdict {
+function judgeTrackerAction(
+  action: TrackerAction,
+  element: ElementDefinition | null,
+  today: string,
+): Verdict {
   if (!element) return { drop: 'tracker_missing' };
   if (element.archivedAt != null) return { drop: 'tracker_archived' };
   if (action.day > today) return { drop: 'future_day' };
@@ -70,6 +79,45 @@ function judge(action: WidgetAction, element: ElementDefinition | null, today: s
       throw new Error(`Unknown widget action ${JSON.stringify(unknown)}`);
     }
   }
+}
+
+async function judgeUrgeAction(
+  db: SQLiteDatabase,
+  action: UrgeAction,
+  today: string,
+): Promise<Verdict> {
+  if (action.day > today) return { drop: 'future_day' };
+  const { getState } = useUrgeStore;
+  switch (action.type) {
+    case 'urge_logged':
+      return {
+        apply: () =>
+          getState().recordLoggedUrge({ id: action.id, at: action.at, day: action.day }, 'widget'),
+      };
+    case 'urge_resolved':
+      if (!(await urgeRepo.urgeExists(db, action.urgeId))) return { drop: 'urge_missing' };
+      return { apply: () => getState().resolveUrge(action.urgeId, action.outcome, action.at) };
+    default: {
+      const unknown: never = action;
+      throw new Error(`Unknown widget action ${JSON.stringify(unknown)}`);
+    }
+  }
+}
+
+function isUrgeAction(action: WidgetAction): action is UrgeAction {
+  return action.type === 'urge_logged' || action.type === 'urge_resolved';
+}
+
+/**
+ * File order, except that resolves go last: a resolve can only follow its
+ * log, but a widget writing both in one burst may land them in either order.
+ * Nothing else depends on a resolve, so moving it later changes no other line.
+ */
+function applyOrder(actions: readonly WidgetAction[]): WidgetAction[] {
+  return [
+    ...actions.filter((action) => action.type !== 'urge_resolved'),
+    ...actions.filter((action) => action.type === 'urge_resolved'),
+  ];
 }
 
 function parseLines(text: string, result: DrainResult): WidgetAction[] {
@@ -109,13 +157,15 @@ async function applyActions(actions: readonly WidgetAction[], result: DrainResul
     await withGuardedWrite('protocol', () => saveWidgetActionLog(db, log));
   };
 
-  for (const action of actions) {
+  for (const action of applyOrder(actions)) {
     if (log.has(action.id)) {
       result.duplicates += 1;
       continue;
     }
-    const element = await elementRepo.getElementById(db, action.trackerId);
-    const verdict = judge(action, element, currentAppCalendarDate());
+    const today = currentAppCalendarDate();
+    const verdict = isUrgeAction(action)
+      ? await judgeUrgeAction(db, action, today)
+      : judgeTrackerAction(action, await elementRepo.getElementById(db, action.trackerId), today);
     if ('drop' in verdict) {
       result.dropped.push({ id: action.id, reason: verdict.drop });
       await record({ id: action.id, at: action.at, outcome: 'dropped', reason: verdict.drop });

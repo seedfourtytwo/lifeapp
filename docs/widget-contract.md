@@ -1,8 +1,10 @@
 # Widget contract
 
-Contract version 2 (stage 6a). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
+Contract version 3 (stage 6b). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
 
 SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
+
+Changes from version 2: two queue lines for urges, `urge_logged` and `urge_resolved`, with the drop reason `urge_missing`; the queue line's `trackerId` belongs to the tracker lines only.
 
 Changes from version 1: the running timer is owned by native code, so the five timer control lines (`timer_start`, `timer_pause`, `timer_resume`, `timer_done`, `timer_discard`) are gone and a drain skips them as unknown; native appends a `timer_session` line when a session ends; `timer.json` is new. `habit_complete` and `counter_add` are unchanged.
 
@@ -137,7 +139,7 @@ Active time is computed as in "A live clock without the app" below, with `paused
 
 ## Pending actions
 
-`src/protocol/widgetActions.ts` (`WidgetActionSchema`). Native appends one line per widget tap and one per finished timer session to `widget/pending-actions.jsonl`; JavaScript drains it on start, on every `refreshFromDb()` (each return to the app, and each timer state change the module reports). Each action goes through the same store command a tap in the app uses, with all its rules: a habit tap only ever completes, never un-ticks; writes are abandoned if an import or clear replaced the data; a session that ran past midnight gives each day its own seconds and records the goal in force.
+`src/protocol/widgetActions.ts` (`WidgetActionSchema`). Native appends one line per widget tap (an urge logged or resolved is a tap too) and one per finished timer session to `widget/pending-actions.jsonl`; JavaScript drains it on start, on every `refreshFromDb()` (each return to the app, and each timer state change the module reports). Each action goes through the same store command a tap in the app uses, with all its rules: a habit tap only ever completes, never un-ticks; writes are abandoned if an import or clear replaced the data; a session that ran past midnight gives each day its own seconds and records the goal in force.
 
 ### Line format
 
@@ -150,7 +152,7 @@ One JSON object per line, UTF-8, ending in `\n` (0x0A), no other newlines inside
 | `at` | instant | When the tap happened, UTC. |
 | `day` | local date | The app day on the phone at the tap (local calendar date in the phone's zone then). |
 | `type` | string | One of the types below. |
-| `trackerId` | UUID | A tracker `id` from the snapshot. |
+| `trackerId` | UUID | A tracker `id` from the snapshot. Tracker lines only (`habit_complete`, `counter_add`, `timer_session`); urge lines have none. |
 | `amount` | number | `counter_add` only: positive, at most 10000, usually one of `quickIncrements`. |
 
 | `type` | Tracker | Effect |
@@ -158,6 +160,24 @@ One JSON object per line, UTF-8, ending in `\n` (0x0A), no other newlines inside
 | `habit_complete` | check-off habit | Marks `day` done if it is not already; never un-ticks. A timer habit ends in a `timer_session`. |
 | `counter_add` | counter | Adds `amount` at `at`, on `day`. |
 | `timer_session` | timer habit | A session native finished; fields below. Logs its seconds, each day getting the seconds that happened on it, with `goalSecondsInForce` recorded; with `markComplete` the day it ended on is marked done unless the session already made it done. |
+| `urge_logged` | none | An urge, logged at `at` on `day`, open. The line's `id` becomes the urge's id. Its ride starts at `at` and lasts the commitment's `rideSeconds` (600 when there is none). |
+| `urge_resolved` | none | Resolves the urge `urgeId` at `at` with `outcome`; fields below. |
+
+`urge_resolved` fields (besides `v`, `id`, `at`, `day`, `type`; `id` is the line's own, new for each tap):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `urgeId` | UUID | The `id` of the `urge_logged` line that logged it. |
+| `outcome` | `"used"` \| `"rode_out"` | The widget writes `"used"` ("Used" pressed). Nobody needs to write `"rode_out"`: JavaScript resolves an urge still open at the end of its ride as ridden out, at the ride's end, the next time it runs. |
+
+An urge already resolved keeps its first outcome; a later `urge_resolved` for it is applied and changes nothing.
+
+Example:
+
+```
+{"v":1,"id":"7a0e4c2d-1b3f-4e5a-9c6d-8f2e1a3b4c5d","at":"2026-03-10T21:04:12.000Z","day":"2026-03-10","type":"urge_logged"}
+{"v":1,"id":"0b9d8c7e-6f5a-4b3c-8d2e-1f0a9b8c7d6e","at":"2026-03-10T21:07:40.000Z","day":"2026-03-10","type":"urge_resolved","urgeId":"7a0e4c2d-1b3f-4e5a-9c6d-8f2e1a3b4c5d","outcome":"used"}
+```
 
 `timer_session` fields (besides `v`, `id`, `trackerId`, `type`; `at` is when it was finished and `day` the app day then):
 
@@ -195,7 +215,7 @@ Append only. Never rewrite, truncate, rename or delete either queue file.
 1. If `pending-actions.draining.jsonl` exists, a drain died part-way: apply it first (step 3).
 2. Otherwise, if `pending-actions.jsonl` exists, rename it to `pending-actions.draining.jsonl`. New taps from here on create a fresh `pending-actions.jsonl`.
 3. Read the whole file. Text after the last newline is a line still being written or cut off; it is skipped (and counted), and the widget's step 4 writes it again if it was in flight. Each complete line that is not valid JSON, not version 1, not a known `type` or fails validation is skipped and counted; one bad line never stops the rest.
-4. Apply each action in file order, unless its id is in the applied log (the `widget_action_log` setting in SQLite, entries kept 30 days). Every action read ends up in the log, applied or dropped with its reason.
+4. Apply each action in file order, except that every `urge_resolved` goes after the rest (a widget writing a log and its resolve in one burst may land them in either order; nothing else depends on a resolve), unless its id is in the applied log (the `widget_action_log` setting in SQLite, entries kept 30 days). Every action read ends up in the log, applied or dropped with its reason.
 5. Delete `pending-actions.draining.jsonl`, then go back to step 1 once, for taps that arrived meanwhile.
 
 Each action is applied at most once, by its id:
@@ -203,6 +223,8 @@ Each action is applied at most once, by its id:
 - `counter_add` becomes an event whose id is the action's id; inserting it again finds it already there.
 - `habit_complete` is a no-op on a day already done.
 - `timer_session` becomes events whose ids are derived from the action's id and the day (`derivedId` in `src/utils/id.ts`), one per day plus the Done mark; inserting them again finds them there.
+- `urge_logged` inserts the urge under the line's id; inserting it again finds it there.
+- `urge_resolved` only resolves an urge that is still open.
 
 So every action is safe to repeat, and each is logged after it is applied. The log is what keeps an Undo standing: a Done mark removed by Undo is not put back by the same line arriving again. When the app itself finishes a session it applies the record at once and logs it; the copy native queued is then a duplicate.
 
@@ -223,5 +245,6 @@ Read, logged with the reason, and not applied:
 | `wrong_kind` | A counter action for a habit, a habit action for a counter, or `habit_complete` for a timer habit. |
 | `not_a_timer` | A `timer_session` for a check-off habit. |
 | `future_day` | `day` is after today on the phone (clock or zone changed). |
+| `urge_missing` | An `urge_resolved` for an urge never logged (its `urge_logged` line was lost or cut off). |
 
 An action for a day that has ended is applied to that day.
