@@ -135,6 +135,31 @@ describe('getDayFactsForElementsOnDate', () => {
   });
 });
 
+describe('the recorded goal', () => {
+  it('comes from the latest session of the day that recorded one, as in the rule', async () => {
+    const events = [
+      { ...event(HABIT, '2026-03-10', 300, { ...session(300), goalSeconds: 900 }), timestamp: '2026-03-10T07:00:00.000Z' },
+      { ...event(HABIT, '2026-03-10', 200, { ...session(200), goalSeconds: 600 }), timestamp: '2026-03-10T09:00:00.000Z' },
+      { ...event(HABIT, '2026-03-10', 60, session(60)), timestamp: '2026-03-10T10:00:00.000Z' },
+      { ...event(HABIT, '2026-03-09', 60, { ...session(60), goalSeconds: 300 }), timestamp: '2026-03-09T23:00:00.000Z' },
+    ];
+    await seed(events);
+
+    const onDate = await eventRepo.getDayFactsForElementsOnDate(testDb.db, [HABIT], '2026-03-10');
+    const since = await eventRepo.getDayFactsForElementsSince(testDb.db, [HABIT], '2026-03-09');
+
+    expect(onDate.get(HABIT)).toEqual({ ...EMPTY, total: 560, goalSeconds: 600 });
+    expect(onDate.get(HABIT)).toEqual(dayFactsFromEvents(events.slice(0, 3)));
+    expect(since.get(HABIT)?.map((d) => d.facts.goalSeconds)).toEqual([300, 600]);
+  });
+
+  it('is left out on a day no session recorded one', async () => {
+    await seed([event(HABIT, '2026-03-10', 60, session(60))]);
+    const onDate = await eventRepo.getDayFactsForElementsOnDate(testDb.db, [HABIT], '2026-03-10');
+    expect(onDate.get(HABIT)).not.toHaveProperty('goalSeconds');
+  });
+});
+
 describe('getDayFactsForElementsSince', () => {
   it('gives one entry per logged day from the since-date on, oldest first', async () => {
     await seed([

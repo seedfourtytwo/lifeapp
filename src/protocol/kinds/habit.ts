@@ -85,6 +85,8 @@ export const HabitEventMetaSchema = z.discriminatedUnion('source', [
     durationSeconds: z.number().nonnegative(),
     /** Set when a play_once track finished naturally (not manual Done). */
     trackCompleted: z.boolean().optional(),
+    /** The habit's seconds goal when this session was logged. */
+    goalSeconds: z.number().int().positive().optional(),
   }),
 ]);
 
@@ -241,11 +243,16 @@ export function buildTimerSessionPayload(
   return buildTimerSessionPayloadFromDuration(startedAt, endedAt, durationSeconds);
 }
 
+export interface TimerSessionOptions {
+  trackCompleted?: boolean;
+  goalSeconds?: number;
+}
+
 export function buildTimerSessionPayloadFromDuration(
   startedAt: Date,
   endedAt: Date,
   durationSeconds: number,
-  options?: { trackCompleted?: boolean },
+  options?: TimerSessionOptions,
 ): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
   const seconds = Math.max(1, durationSeconds);
   return {
@@ -256,6 +263,7 @@ export function buildTimerSessionPayloadFromDuration(
       endedAt: endedAt.toISOString(),
       durationSeconds: seconds,
       ...(options?.trackCompleted ? { trackCompleted: true } : {}),
+      ...(options?.goalSeconds === undefined ? {} : { goalSeconds: options.goalSeconds }),
     },
   };
 }
@@ -263,7 +271,7 @@ export function buildTimerSessionPayloadFromDuration(
 export function buildTimerSessionPayloadFromSession(
   session: ActiveTimerSession,
   endedAt = new Date(),
-  options?: { trackCompleted?: boolean },
+  options?: TimerSessionOptions,
 ): { value: number; meta: Extract<HabitEventMeta, { source: 'timer_session' }> } {
   const startedAt = new Date(session.startedAt);
   const durationSeconds = Math.max(1, activeTimerElapsedSeconds(session, endedAt.getTime()));

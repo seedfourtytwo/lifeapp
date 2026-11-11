@@ -206,7 +206,15 @@ const DAY_FACTS_COLUMNS = `
   COALESCE(SUM(value), 0) AS total,
   MAX(json_extract(${VALID_META}, '$.source') = 'timer_session'
       AND json_extract(${VALID_META}, '$.trackCompleted') = 1) AS track_completed,
-  MAX(json_extract(${VALID_META}, '$.source') = 'manual_complete') AS marked_complete`;
+  MAX(json_extract(${VALID_META}, '$.source') = 'manual_complete') AS marked_complete,
+  (SELECT json_extract(g.meta_json, '$.goalSeconds')
+     FROM events g
+    WHERE g.element_id = events.element_id AND g.date = events.date
+      AND json_valid(g.meta_json)
+      AND json_extract(g.meta_json, '$.source') = 'timer_session'
+      AND json_type(g.meta_json, '$.goalSeconds') IN ('integer', 'real')
+    ORDER BY g.timestamp DESC
+    LIMIT 1) AS goal_seconds`;
 
 interface DayFactsRow {
   element_id: string;
@@ -215,6 +223,7 @@ interface DayFactsRow {
   /** NULL when no event that day had JSON meta. */
   track_completed: number | null;
   marked_complete: number | null;
+  goal_seconds: number | null;
 }
 
 function rowToDayFacts(row: DayFactsRow): DayFacts {
@@ -222,6 +231,7 @@ function rowToDayFacts(row: DayFactsRow): DayFacts {
     total: row.total,
     trackCompleted: row.track_completed === 1,
     markedComplete: row.marked_complete === 1,
+    ...(row.goal_seconds === null ? {} : { goalSeconds: row.goal_seconds }),
   };
 }
 

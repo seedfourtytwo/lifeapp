@@ -17,6 +17,12 @@ export interface DayFacts {
   trackCompleted: boolean;
   /** The user pressed Done on a timed habit before its goal was reached. */
   markedComplete: boolean;
+  /**
+   * The seconds goal in force when the day's latest session was logged, so a
+   * goal edited later does not change which past days were done. Absent on
+   * days logged before goals were recorded; those use the current config.
+   */
+  goalSeconds?: number;
 }
 
 export type DayEvent = Pick<LifeEvent, 'value' | 'meta'>;
@@ -26,16 +32,26 @@ export function factsFromTotal(total: number): DayFacts {
   return { total, trackCompleted: false, markedComplete: false };
 }
 
+/** Events in the order they were logged: the last recorded goal wins. */
 export function dayFactsFromEvents(events: readonly DayEvent[]): DayFacts {
   let total = 0;
   let trackCompleted = false;
   let markedComplete = false;
+  let goalSeconds: number | undefined;
   for (const { value, meta } of events) {
     total += value;
-    if (meta?.source === 'timer_session' && meta.trackCompleted === true) trackCompleted = true;
+    if (meta?.source === 'timer_session') {
+      if (meta.trackCompleted === true) trackCompleted = true;
+      if (typeof meta.goalSeconds === 'number') goalSeconds = meta.goalSeconds;
+    }
     if (meta?.source === 'manual_complete') markedComplete = true;
   }
-  return { total, trackCompleted, markedComplete };
+  return {
+    total,
+    trackCompleted,
+    markedComplete,
+    ...(goalSeconds === undefined ? {} : { goalSeconds }),
+  };
 }
 
 /** What finishes a timed habit. */
@@ -93,7 +109,10 @@ function habitOutcome(config: HabitConfig, facts: DayFacts): DayOutcome {
   if (config.trackingMode === 'boolean') {
     natural = { total, done: total >= 1, reason: total >= 1 ? 'checked' : 'not_checked' };
   } else {
-    const goal = habitTimerGoal(config);
+    const goal: HabitTimerGoal =
+      facts.goalSeconds === undefined
+        ? habitTimerGoal(config)
+        : { type: 'seconds', seconds: facts.goalSeconds };
     switch (goal.type) {
       case 'seconds': {
         const met = total >= goal.seconds;

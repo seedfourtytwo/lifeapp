@@ -29,13 +29,21 @@ const counterNoTarget: CounterConfig = { unit: 'glasses', quickIncrements: [1] }
 
 const habit = (config: HabitConfig) => ({ kind: 'habit' as const, config });
 const counter = (config: CounterConfig) => ({ kind: 'counter' as const, config });
-const facts = (total: number, extra: { trackCompleted?: boolean; markedComplete?: boolean } = {}) => ({
+const facts = (
+  total: number,
+  extra: { trackCompleted?: boolean; markedComplete?: boolean; goalSeconds?: number } = {},
+) => ({
   total,
   trackCompleted: extra.trackCompleted ?? false,
   markedComplete: extra.markedComplete ?? false,
+  ...(extra.goalSeconds === undefined ? {} : { goalSeconds: extra.goalSeconds }),
 });
 
-function timerSession(seconds: number, trackCompleted?: boolean): Pick<LifeEvent, 'value' | 'meta'> {
+function timerSession(
+  seconds: number,
+  trackCompleted?: boolean,
+  goalSeconds?: number,
+): Pick<LifeEvent, 'value' | 'meta'> {
   return {
     value: seconds,
     meta: {
@@ -44,6 +52,7 @@ function timerSession(seconds: number, trackCompleted?: boolean): Pick<LifeEvent
       endedAt: '2026-03-10T08:15:00.000Z',
       durationSeconds: seconds,
       ...(trackCompleted ? { trackCompleted: true } : {}),
+      ...(goalSeconds === undefined ? {} : { goalSeconds }),
     },
   };
 }
@@ -91,6 +100,33 @@ describe('dayFactsFromEvents', () => {
     expect(dayFactsFromEvents([{ value: 1, meta: { source: 'habit_tick', trackCompleted: true } }])).toEqual(
       facts(1),
     );
+  });
+});
+
+describe('the goal recorded on the day', () => {
+  it('is read from the day\'s latest session that recorded one', () => {
+    expect(
+      dayFactsFromEvents([timerSession(300, false, 900), timerSession(200, false, 600), timerSession(60)]),
+    ).toEqual(facts(560, { goalSeconds: 600 }));
+  });
+
+  it('decides a past day, not the goal the habit has now', () => {
+    // The habit's goal is 15 minutes now; that day it was 10.
+    expect(dayOutcome(habit(secondsTimer), facts(700, { goalSeconds: 600 }))).toEqual({
+      total: 700,
+      done: true,
+      reason: 'target_met',
+      target: 600,
+    });
+    expect(dayOutcome(habit(secondsTimer), facts(800, { goalSeconds: 1200 })).done).toBe(false);
+  });
+
+  it('still decides the day after the seconds goal was removed', () => {
+    expect(dayOutcome(habit(openEnded), facts(300, { goalSeconds: 600 })).done).toBe(false);
+  });
+
+  it('falls back to the current goal for days logged before goals were recorded', () => {
+    expect(dayOutcome(habit(secondsTimer), facts(700)).done).toBe(false);
   });
 });
 

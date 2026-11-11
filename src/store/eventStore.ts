@@ -4,8 +4,9 @@ import {
   buildTimerSessionPayloadFromSession,
   createActiveTimerSession,
   dayFactsFromEvents,
-  factsFromTotal,
   dayOutcome,
+  factsFromTotal,
+  habitTimerGoal,
   isCounterElement,
   isHabitElement,
   PROTOCOL_VERSION,
@@ -789,7 +790,11 @@ export const useEventStore = create<EventState>((set, get) => ({
           // Read now, not at the start: a stop that joined while this one waited
           // (a play-once track ending after Done) may have added trackCompleted.
           const stopOpts = habitTimerStopOptions.get(elementId);
-          const { meta } = buildTimerSessionPayloadFromSession(session, endedAt, stopOpts);
+          const goal = habitTimerGoal(config);
+          const { meta } = buildTimerSessionPayloadFromSession(session, endedAt, {
+            trackCompleted: stopOpts?.trackCompleted,
+            ...(goal.type === 'seconds' ? { goalSeconds: goal.seconds } : {}),
+          });
           const db = await getDatabase();
           const existingEvents = await eventRepo.getEventsForElementOnDate(
             db,

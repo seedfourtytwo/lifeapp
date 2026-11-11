@@ -267,6 +267,39 @@ describe('stopHabitTimer', () => {
   });
 });
 
+describe('the goal in force', () => {
+  it('is written on a timer session for a habit with a seconds target', async () => {
+    state().startHabitTimer(TIMER_HABIT);
+    advance(5 * 60_000);
+    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+
+    expect((await eventsToday(TIMER_HABIT))[0]?.meta).toMatchObject({ goalSeconds: 600 });
+  });
+
+  it('is not written for a timer without a seconds target', async () => {
+    const openEnded = protocol.HabitConfigSchema.parse({ trackingMode: 'timer' });
+    state().startHabitTimer(TIMER_HABIT);
+    advance(5 * 60_000);
+    await state().stopHabitTimer(TIMER_HABIT, openEnded);
+
+    expect((await eventsToday(TIMER_HABIT))[0]?.meta).not.toHaveProperty('goalSeconds');
+  });
+
+  /** Raising the goal later must not turn yesterday, met at the old goal, into a miss. */
+  it('keeps a past day done after the goal is raised', async () => {
+    jest.setSystemTime(new Date(2026, 2, 9, 8, 0, 0));
+    state().startHabitTimer(TIMER_HABIT);
+    advance(10 * 60_000);
+    await state().stopHabitTimer(TIMER_HABIT, timerConfig);
+
+    jest.setSystemTime(MORNING);
+    const raised = protocol.HabitConfigSchema.parse({ trackingMode: 'timer', dailyTargetSeconds: 1200 });
+    await state().loadHabitStreaks([{ id: TIMER_HABIT, config: raised }]);
+
+    expect(state().habitStreaks[TIMER_HABIT]).toBe(1);
+  });
+});
+
 async function flushPromises(): Promise<void> {
   for (let i = 0; i < 20; i += 1) await Promise.resolve();
 }
