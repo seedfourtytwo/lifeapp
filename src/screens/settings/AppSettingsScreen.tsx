@@ -10,6 +10,7 @@ import SettingsGroup from '../../components/settings/SettingsGroup';
 import SettingsRow from '../../components/settings/SettingsRow';
 import SettingsSegmented from '../../components/settings/SettingsSegmented';
 import { useProtocolBackup } from '../../hooks/useProtocolBackup';
+import BackupFolderRow from './BackupFolderRow';
 import NotificationSettingsSection from './NotificationSettingsSection';
 import type { AppLanguage } from '../../protocol/appSettings';
 import type { JournalNotebook } from '../../protocol';
@@ -173,6 +174,7 @@ export default function AppSettingsScreen() {
           busy={busy}
           onPress={busy ? undefined : () => void handleExport()}
         />
+        <BackupFolderRow />
         <SettingsRow
           icon="cloud-download-outline"
           title={t('data.importTitle')}

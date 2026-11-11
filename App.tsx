@@ -28,6 +28,7 @@ import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
 import { useEveningCheckInSync } from './src/hooks/useEveningCheckInSync';
 import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useHabitTimerNotificationSync } from './src/hooks/useHabitTimerNotificationSync';
+import { useAutoBackup } from './src/hooks/useAutoBackup';
 import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
@@ -61,6 +62,7 @@ function ThemedApp() {
   useEveningCheckInSync();
   useHabitReminderSync();
   useHabitTimerNotificationSync();
+  useAutoBackup();
 
   useEffect(() => {
     if (!isLoaded) {

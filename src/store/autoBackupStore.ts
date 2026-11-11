@@ -70,7 +70,10 @@ export const useAutoBackupStore = create<AutoBackupStoreState>((set, get) => {
     loaded: false,
 
     load: async () => {
-      set({ ...(await readState()), loaded: true });
+      const state = await readState();
+      // Two readers can race at start-up; whichever lands second must not undo a change made since.
+      if (get().loaded) return;
+      set({ ...state, loaded: true });
     },
 
     setPhoneFolder: async (uri) => {
