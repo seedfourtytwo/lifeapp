@@ -26,5 +26,9 @@
     "eveningCheckInRebuildBody": "Le point du soir nécessite une nouvelle build de développement avec notifications. Exécutez : eas build --platform android --profile development",
     "blockedTitle": "Notifications bloquées",
     "blockedBody": "Activez les notifications dans les paramètres système pour recevoir le point du soir et les rappels d'habitudes."
+  },
+  "habitTimer": {
+    "title": "Minuteur terminé",
+    "body": "{{name}} : objectif du jour atteint"
   }
 }

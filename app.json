@@ -46,7 +46,8 @@
         "WAKE_LOCK",
         "ACCESS_COARSE_LOCATION",
         "RECORD_AUDIO",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.USE_EXACT_ALARM"
       ],
       "blockedPermissions": [
         "android.permission.ACCESS_FINE_LOCATION"
