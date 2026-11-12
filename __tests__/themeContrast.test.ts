@@ -18,6 +18,7 @@
  */
 import { appDarkTheme, appLightTheme } from '../src/theme/themes';
 import { getAppPalette } from '../src/theme/palette';
+import { nightColors as n } from '../src/ui/tokens';
 import { compositeOver, contrastRatio } from './support/contrast';
 
 const AA_TEXT = 4.5;
@@ -122,5 +123,42 @@ describe.each(THEMES)('$name palette', ({ name, theme }) => {
     ['surfaceVariant', c.surfaceVariant],
   ])('progress track is visible on %s', (_g, bg) => {
     expect(contrastRatio(palette.track, bg)).toBeGreaterThanOrEqual(1.3);
+  });
+});
+
+/**
+ * The Night road kit (`src/ui/`) is its own set of tokens, outside the Paper
+ * themes, and is held to the same floor. Text can land on any ground the kit
+ * paints: a glass surface anywhere along its gradient, or the night behind it
+ * anywhere from the top of the sky down through the horizon to the ground.
+ * The lights only ever draw rings and lines beside text, never text, so they
+ * are held to the 3:1 a control's edge needs against the glass it rings.
+ */
+describe('Night road kit', () => {
+  const grounds: [string, string][] = [
+    ['glass top', n.glassTop],
+    ['glass middle', n.glassMiddle],
+    ['glass bottom', n.glassBottom],
+    ...n.sky.map((stop, i): [string, string] => [`sky stop ${i}`, stop]),
+    ['ground', n.ground],
+  ];
+  const inks: [string, string][] = [
+    ['cream', n.cream],
+    ['dimmed cream', n.creamDim],
+  ];
+
+  it.each(inks.flatMap(([ink, fg]) => grounds.map(([g, bg]) => [`${ink} on ${g}`, fg, bg])))(
+    '%s clears AA',
+    (_label, fg, bg) => {
+      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+    },
+  );
+
+  it.each(
+    (['violet', 'teal', 'amber'] as const).flatMap((light) =>
+      (['glassTop', 'glassBottom'] as const).map((g) => [`${light} ring on ${g}`, n[light], n[g]]),
+    ),
+  )('%s clears 3:1', (_label, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
   });
 });

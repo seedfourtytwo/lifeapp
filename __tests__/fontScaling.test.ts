@@ -23,6 +23,10 @@ import '../src/i18n';
 import { TrackerCardTitle } from '../src/kinds/TrackerCardTitle';
 import { forecastStripStyles } from '../src/components/weather/WeatherForecastStrip';
 import { noteIconButtonStyles } from '../src/notes/NoteIconButton';
+import { glassSurfaceStyles } from '../src/ui/GlassSurface';
+import { pillButtonStyles } from '../src/ui/PillButton';
+import { roundButtonStyles } from '../src/ui/RoundButton';
+import { nightFieldStyles } from '../src/ui/NightField';
 
 type Style = Record<string, unknown>;
 
@@ -79,6 +83,29 @@ describe('boxes that hold text state a floor, not a fixed height', () => {
     expect(column.width).toBeUndefined();
     // Columns share the row evenly instead of each claiming 52pt.
     expect(column.flex).toBe(1);
+  });
+});
+
+describe('the Night road kit grows with the system font', () => {
+  it.each([
+    ['a pill button', pillButtonStyles.pill as Style],
+    ['a field', nightFieldStyles.field as Style],
+  ])('%s states a floor and no fixed height', (_label, style) => {
+    expect(style.minHeight).toBeGreaterThanOrEqual(48);
+    expect(style.height).toBeUndefined();
+  });
+
+  it('a glass surface takes the height of what it holds', () => {
+    const surface = glassSurfaceStyles.surface as Style;
+    expect(surface.height).toBeUndefined();
+    expect(surface.minHeight).toBeUndefined();
+  });
+
+  /** It holds an icon and no text: a touch target should not move with the font. */
+  it('a round button keeps one size, at least a touch target', () => {
+    const button = roundButtonStyles.button as Style;
+    expect(button.width).toBeGreaterThanOrEqual(48);
+    expect(button.height).toBe(button.width);
   });
 });
 
