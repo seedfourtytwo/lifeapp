@@ -67,7 +67,8 @@
     "counterAdded": "{{name}} +{{count}}",
     "timerReset": "{{name}} : temps du jour effacé",
     "markedDone": "{{name}} marqué comme fait",
-    "archived": "{{name}} est dans les archives"
+    "archived": "{{name}} est dans les archives",
+    "slipLogged": "Écart noté"
   },
   "editor": {
     "newCounterTitle": "Nouveau compteur",

@@ -156,6 +156,33 @@ describe('the commitment', () => {
     expect(events().dailyTotals[commitment().id]).toBe(1);
   });
 
+  it('undoes a slip logged by mistake: the slip gone, clear-since back where it was', async () => {
+    await elements().createCommitment(input);
+    const before = commitment().config.clearSince;
+    jest.setSystemTime(new Date(2026, 2, 12, 22, 0));
+
+    const undo = await elements().logSlip(commitment().id);
+    await undo();
+
+    expect(commitment().config.clearSince).toBe(before);
+    expect(slipRows()).toEqual([]);
+    expect(events().dailyTotals[commitment().id]).toBe(0);
+  });
+
+  it('an Undo after a later slip takes back only its own slip', async () => {
+    await elements().createCommitment(input);
+    jest.setSystemTime(new Date(2026, 2, 12, 22, 0));
+    const undoFirst = await elements().logSlip(commitment().id);
+    const later = new Date(2026, 2, 12, 23, 0);
+    jest.setSystemTime(later);
+    await elements().logSlip(commitment().id);
+
+    await undoFirst();
+
+    expect(commitment().config.clearSince).toBe(later.toISOString());
+    expect(slipRows()).toEqual([expect.objectContaining({ timestamp: later.toISOString() })]);
+  });
+
   it('never takes back an earlier slip or an urge ridden out', async () => {
     await elements().createCommitment(input);
     await urges().logUrge();

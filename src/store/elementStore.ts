@@ -195,7 +195,8 @@ interface ElementState {
   /** Keeps clear-since and the ride length; instead-habits must be timed habits on Home. */
   updateCommitment: (id: string, input: CommitmentInput) => Promise<void>;
   /** Append a slip now and move clear-since to it. Nothing else changes. */
-  logSlip: (id: string) => Promise<void>;
+  /** Logs a slip now; resolves to its Undo (the slip gone, clear-since back as it was). */
+  logSlip: (id: string) => Promise<() => Promise<void>>;
   archiveElement: (elementId: string) => Promise<void>;
   restoreElement: (elementId: string) => Promise<void>;
   deleteElement: (id: string) => Promise<void>;
@@ -390,15 +391,17 @@ export const useElementStore = create<ElementState>((set, get) => ({
   },
 
   logSlip: async (id) => {
+    const existing = get().elements.find((e) => e.id === id);
+    if (!existing || existing.kind !== 'commitment') {
+      throw new Error(i18n.t('common:errors.commitmentNotFound'));
+    }
+    const previousClearSince = existing.config.clearSince;
+    const slipId = newId();
+    const now = new Date();
     await withGuardedElementWrite(async () => {
       const db = await getDatabase();
-      const existing = get().elements.find((e) => e.id === id);
-      if (!existing || existing.kind !== 'commitment') {
-        throw new Error(i18n.t('common:errors.commitmentNotFound'));
-      }
-      const now = new Date();
       const slip: LifeEvent = {
-        id: newId(),
+        id: slipId,
         elementId: id,
         timestamp: now.toISOString(),
         date: currentAppCalendarDate(now),
@@ -416,6 +419,27 @@ export const useElementStore = create<ElementState>((set, get) => ({
       });
     });
     await useEventStore.getState().loadDayTotals([id]);
+
+    return async () => {
+      await withGuardedElementWrite(async () => {
+        const current = get().elements.find((e) => e.id === id);
+        if (!current || current.kind !== 'commitment') return;
+        const db = await getDatabase();
+        // A later slip (or an edit) moved clear-since since: it stays where that put it.
+        const config =
+          current.config.clearSince === now.toISOString()
+            ? { ...current.config, clearSince: previousClearSince }
+            : current.config;
+        await elementRepo.removeSlip(db, id, slipId, config);
+        invalidateElementLoads();
+        applyElementMutation(set, {
+          elements: get().elements.map((element) =>
+            element.id === id ? { ...current, config } : element,
+          ),
+        });
+      });
+      await useEventStore.getState().loadDayTotals([id]);
+    };
   },
 
   archiveElement: async (elementId) => {

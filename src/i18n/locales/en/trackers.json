@@ -67,7 +67,8 @@
     "counterAdded": "{{name}} +{{count}}",
     "timerReset": "{{name}}: today’s time cleared",
     "markedDone": "{{name}} marked done",
-    "archived": "{{name}} archived"
+    "archived": "{{name}} archived",
+    "slipLogged": "Slip logged"
   },
   "editor": {
     "newCounterTitle": "New counter",

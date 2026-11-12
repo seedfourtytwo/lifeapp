@@ -212,6 +212,27 @@ export async function restoreElementAndPin(
   return pin;
 }
 
+/**
+ * Take back a slip logged by mistake: its event goes, and clear-since
+ * returns to `config`'s, both or neither.
+ */
+export async function removeSlip(
+  db: SQLiteDatabase,
+  commitmentId: string,
+  slipId: string,
+  config: CommitmentConfig,
+): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    assertElementConfig('commitment', config);
+    await eventRepo.deleteEventsByIds(db, commitmentId, [slipId]);
+    await db.runAsync(
+      'UPDATE elements SET config_json = ? WHERE id = ?',
+      JSON.stringify(config),
+      commitmentId,
+    );
+  });
+}
+
 /** Append a slip and move the commitment's clear-since to it, both or neither. */
 export async function recordSlip(
   db: SQLiteDatabase,

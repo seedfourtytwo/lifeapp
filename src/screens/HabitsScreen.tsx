@@ -260,7 +260,12 @@ export default function HabitsScreen({
         }
       />
 
-      {commitment ? <CommitmentCard commitment={commitment} /> : null}
+      {commitment ? (
+        <CommitmentCard
+          commitment={commitment}
+          onOfferUndo={(message, undo) => setPendingUndo({ message, undo })}
+        />
+      ) : null}
 
       {emptyMessage ? (
         emptyWithCta ? (

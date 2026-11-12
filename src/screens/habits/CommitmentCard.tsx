@@ -14,7 +14,13 @@ import { useUrgeStore } from '../../store/urgeStore';
 const RIDE_TICK_MS = 1000;
 const CLOCK_TICK_MS = 30_000;
 
-export default function CommitmentCard({ commitment }: { commitment: CommitmentElement }) {
+type Props = {
+  commitment: CommitmentElement;
+  /** A slip logged by mistake can be taken back from the page's Undo bar. */
+  onOfferUndo: (message: string, undo: () => Promise<void>) => void;
+};
+
+export default function CommitmentCard({ commitment, onOfferUndo }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
@@ -49,7 +55,13 @@ export default function CommitmentCard({ commitment }: { commitment: CommitmentE
   const confirmSlip = () => {
     Alert.alert(t('commitment.slipConfirmTitle'), t('commitment.slipConfirmBody'), [
       { text: tCommon('actions.cancel'), style: 'cancel' },
-      { text: t('commitment.slipConfirm'), onPress: () => void logSlip(commitment.id).catch(fail) },
+      {
+        text: t('commitment.slipConfirm'),
+        onPress: () =>
+          void logSlip(commitment.id)
+            .then((undo) => onOfferUndo(t('undo.slipLogged'), undo))
+            .catch(fail),
+      },
     ]);
   };
 

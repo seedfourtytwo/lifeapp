@@ -368,7 +368,7 @@ describe('coming back to the app during a ride', () => {
 });
 
 describe('the commitment card', () => {
-  async function renderCard(): Promise<ReactTestInstance> {
+  async function renderCard(onOfferUndo: jest.Mock = jest.fn()): Promise<ReactTestInstance> {
     const { PaperProvider } = require('react-native-paper') as typeof import('react-native-paper');
     const CommitmentCard = (require('../src/screens/habits/CommitmentCard') as typeof import('../src/screens/habits/CommitmentCard')).default;
     const { useElementStore } = require('../src/store/elementStore') as typeof import('../src/store/elementStore');
@@ -376,12 +376,36 @@ describe('the commitment card', () => {
     if (commitment?.kind !== 'commitment') throw new Error('no commitment');
     await act(() => {
       mounted = TestRenderer.create(
-        React.createElement(PaperProvider, null, React.createElement(CommitmentCard, { commitment })),
+        React.createElement(PaperProvider, null, React.createElement(CommitmentCard, { commitment, onOfferUndo })),
       );
     });
     await flush();
     return mounted!.root;
   }
+
+  it('offers Undo after a slip, which puts clear-since back', async () => {
+    await addCommitment({});
+    const elementStore = (require('../src/store/elementStore') as typeof import('../src/store/elementStore')).useElementStore;
+    const clearSince = () => {
+      const found = elementStore.getState().elements.find((element) => element.id === COMMITMENT);
+      return found?.kind === 'commitment' ? found.config.clearSince : null;
+    };
+    const before = clearSince();
+    const { Alert } = require('react-native') as typeof import('react-native');
+    const alert = jest.spyOn(Alert, 'alert');
+    const offerUndo = jest.fn();
+    const root = await renderCard(offerUndo);
+    const { CommitmentWidget } = require('../src/kinds/commitment/CommitmentWidget') as typeof import('../src/kinds/commitment/CommitmentWidget');
+
+    await act(() => (root.findByType(CommitmentWidget).props.onLogSlip as () => void)());
+    await act(() => alert.mock.calls[0]![2]!.find((button) => button.text === 'Log it')!.onPress!());
+    await flush();
+    expect(clearSince()).not.toBe(before);
+
+    expect(offerUndo).toHaveBeenCalledWith('Slip logged', expect.any(Function));
+    await act(() => (offerUndo.mock.calls[0]![1] as () => Promise<void>)());
+    expect(clearSince()).toBe(before);
+  });
 
   it('logs the urge at once, then opens its ride', async () => {
     await addCommitment({});
