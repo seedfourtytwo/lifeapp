@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import expo.modules.lifecore.TimerCore
+import expo.modules.lifecore.VoiceNote
 import expo.modules.lifecore.reminders.ReminderNotification
 import java.time.ZoneId
 import java.util.UUID
@@ -52,6 +53,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
       TapEffect.ResumeTimer -> TimerCore.resume(context)
       TapEffect.FinishTimer -> TimerCore.finish(context, markComplete = true, trackCompleted = false)
       TapEffect.DiscardTimer -> TimerCore.discard(context)
+      TapEffect.PlayNote -> VoiceNote.play(context)
       TapEffect.Ignore -> Unit
     }
   }

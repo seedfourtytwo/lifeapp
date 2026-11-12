@@ -13,6 +13,12 @@
       android:exported="false"
       android:foregroundServiceType="mediaPlayback" />
 
+    <!-- Plays the voice note, from the app or the widget, locked or not. -->
+    <service
+      android:name="expo.modules.lifecore.VoiceNoteService"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback" />
+
     <!-- The lock-screen and home-screen widget. Exported so the widget host can update it. -->
     <receiver
       android:name="expo.modules.lifecore.widget.LifeWidgetProvider"

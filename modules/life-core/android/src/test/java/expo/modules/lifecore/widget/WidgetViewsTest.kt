@@ -22,7 +22,8 @@ class WidgetViewsTest {
     now: Long = tenAm,
     timer: TimerSession? = null,
     from: Snapshot? = snapshot,
-  ) = WidgetViews.build(from, timer, lines, now, paris, KeyguardLabels)
+    hasNote: Boolean = false,
+  ) = WidgetViews.build(from, timer, lines, now, paris, KeyguardLabels, hasNote)
 
   private fun homeScreen(lines: List<QueuedAction> = emptyList(), now: Long = tenAm, timer: TimerSession? = null) =
     WidgetViews.build(snapshot, timer, lines, now, paris, HomeScreenLabels)
@@ -124,6 +125,13 @@ class WidgetViewsTest {
     assertEquals(tenAm + 600_000, frame.redrawAtMs)
     // Once it ends, home again.
     assertTrue(keyguard(listOf(urge), tenAm + 600_000).view is WidgetView.Home)
+  }
+
+  @Test
+  fun aRideOffersHisVoiceNoteOnlyWhenThereIsOne() {
+    val urge = QueuedAction.UrgeLogged(id(), tenAm, march10)
+    assertFalse((keyguard(listOf(urge), tenAm + 1000).view as WidgetView.Riding).note)
+    assertTrue((keyguard(listOf(urge), tenAm + 1000, hasNote = true).view as WidgetView.Riding).note)
   }
 
   @Test

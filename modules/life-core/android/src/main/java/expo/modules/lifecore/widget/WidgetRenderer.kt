@@ -195,6 +195,8 @@ class WidgetRenderer(private val context: Context) {
       setContentDescription(R.id.life_core_widget_ride_instead, context.getString(R.string.life_core_widget_start_a11y, spoken(it.label)))
       tap(R.id.life_core_widget_ride_instead, Tap.StartTimer(it.trackerId))
     }
+    show(R.id.life_core_widget_ride_note, view.note)
+    if (view.note) tap(R.id.life_core_widget_ride_note, Tap.PlayNote)
     setContentDescription(R.id.life_core_widget_ride_used, context.getString(R.string.life_core_widget_used_a11y))
     tap(R.id.life_core_widget_ride_used, Tap.Used(view.ride.urgeId))
   }

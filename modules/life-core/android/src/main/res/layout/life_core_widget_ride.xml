@@ -2,7 +2,8 @@
 <!--
   An urge's ride: "Ride it to the lamp", a count-down Chronometer to the
   ride's end, the road with the lamp coming closer, then the first
-  instead-habit (the one light: an amber ring) and a small, quiet "Used".
+  instead-habit (the one light: an amber ring), "Play my note" when there
+  is one, and a small, quiet "Used".
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/life_core_widget_root"
@@ -83,6 +84,22 @@
           android:textColor="@color/life_core_widget_cream"
           android:textSize="15sp" />
       </LinearLayout>
+
+      <TextView
+        android:id="@+id/life_core_widget_ride_note"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/life_core_widget_pill_quiet"
+        android:gravity="center"
+        android:maxLines="1"
+        android:minHeight="48dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:text="@string/life_core_widget_play_note"
+        android:textColor="@color/life_core_widget_cream"
+        android:textSize="14sp"
+        android:visibility="gone" />
 
       <TextView
         android:id="@+id/life_core_widget_ride_used"

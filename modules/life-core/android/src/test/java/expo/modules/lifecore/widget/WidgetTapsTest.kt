@@ -121,6 +121,12 @@ class WidgetTapsTest {
   }
 
   @Test
+  fun playMyNotePlaysItWithOrWithoutATimer() {
+    assertEquals(TapEffect.PlayNote, decide(Tap.PlayNote))
+    assertEquals(TapEffect.PlayNote, decide(Tap.PlayNote, timer = WidgetFixtures.timerSession().resume(tenAm), from = null))
+  }
+
+  @Test
   fun anUrgeWorksWithoutACommitmentOrASnapshot() {
     assertTrue(decide(Tap.Urge, from = snapshot.copy(commitment = null, trackers = snapshot.trackers.filter { it.id != COMMITMENT })) is TapEffect.Queue)
     assertTrue(decide(Tap.Urge, from = null) is TapEffect.Queue)
@@ -139,7 +145,7 @@ class WidgetTapsTest {
   fun eachButtonCarriesItsTapAndOnlyThat() {
     val all = listOf(
       Tap.Tick(KEFIR), Tap.Add(WATER, 2.0), Tap.Add(WATER, 0.5), Tap.StartTimer(MEDITATION),
-      Tap.Pause, Tap.Resume, Tap.Done, Tap.Discard, Tap.Urge, Tap.Used("7a0e4c2d-1b3f-4e5a-9c6d-8f2e1a3b4c5d"),
+      Tap.Pause, Tap.Resume, Tap.Done, Tap.Discard, Tap.Urge, Tap.Used("7a0e4c2d-1b3f-4e5a-9c6d-8f2e1a3b4c5d"), Tap.PlayNote,
     )
     for (tap in all) assertEquals(tap, TapCodec.decode(TapCodec.encode(tap)))
     assertEquals(all.size, all.map(TapCodec::encode).toSet().size)

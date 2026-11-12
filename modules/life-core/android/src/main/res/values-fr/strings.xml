@@ -43,4 +43,8 @@
   <string name="life_core_widget_discard">Arrêter sans compter</string>
   <string name="life_core_widget_done">Terminé, le compter</string>
   <string name="life_core_widget_open">Ouvrir Life</string>
+  <string name="life_core_widget_play_note">Écouter ma note</string>
+  <string name="life_core_note_channel">Note vocale</string>
+  <string name="life_core_note_playing">Lecture de votre note</string>
+  <string name="life_core_note_stop">Arrêter</string>
 </resources>

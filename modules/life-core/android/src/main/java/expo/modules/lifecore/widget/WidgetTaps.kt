@@ -18,6 +18,8 @@ sealed interface Tap {
   data object Discard : Tap
   data object Urge : Tap
   data class Used(val urgeId: String) : Tap
+  /** "Play my note" on the ride. */
+  data object PlayNote : Tap
 }
 
 /**
@@ -35,6 +37,7 @@ object TapCodec {
     Tap.Discard -> "discard"
     Tap.Urge -> "urge"
     is Tap.Used -> "used/${tap.urgeId}"
+    Tap.PlayNote -> "note"
   }
 
   fun decode(text: String): Tap? {
@@ -47,6 +50,7 @@ object TapCodec {
         "done" -> Tap.Done
         "discard" -> Tap.Discard
         "urge" -> Tap.Urge
+        "note" -> Tap.PlayNote
         else -> null
       }
       2 -> id?.let {
@@ -72,6 +76,8 @@ sealed interface TapEffect {
   /** Done: the day counts as done even short of the goal. */
   data object FinishTimer : TapEffect
   data object DiscardTimer : TapEffect
+  /** Plays the voice note; the timer's sound ducks under it. */
+  data object PlayNote : TapEffect
   /** A double tap, or a stale widget: a tracker gone, a day already done, a ride over. */
   data object Ignore : TapEffect
 }
@@ -110,6 +116,7 @@ class WidgetTaps(private val newId: () -> String) {
       is Tap.Used -> today?.ride
         ?.takeIf { it.urgeId == tap.urgeId }
         ?.let { TapEffect.Queue(QueuedAction.UrgeResolved(newId(), nowMs, day, tap.urgeId)) }
+      Tap.PlayNote -> TapEffect.PlayNote
     } ?: TapEffect.Ignore
   }
 

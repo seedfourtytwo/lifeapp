@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import expo.modules.lifecore.TimerCore
+import expo.modules.lifecore.VoiceNote
 import expo.modules.lifecore.reminders.Reminders
 import java.time.ZoneId
 
@@ -127,6 +128,7 @@ object LifeWidget {
     val snapshot = files.snapshot()
     val queued = files.queued()
     val timer = TimerCore.state(context)
+    val hasNote = VoiceNote.exists(context)
     val nowMs = System.currentTimeMillis()
     val zone = ZoneId.systemDefault()
     val renderer = WidgetRenderer(context)
@@ -135,9 +137,9 @@ object LifeWidget {
       val options = manager.getAppWidgetOptions(id)
       // Only the keyguard's frame is built from lock-screen labels; anything else could hold a real name.
       val frame: WidgetFrame<Label> = if (isKeyguard(options)) {
-        WidgetViews.build(snapshot, timer, queued, nowMs, zone, KeyguardLabels)
+        WidgetViews.build(snapshot, timer, queued, nowMs, zone, KeyguardLabels, hasNote)
       } else {
-        WidgetViews.build(snapshot, timer, queued, nowMs, zone, HomeScreenLabels)
+        WidgetViews.build(snapshot, timer, queued, nowMs, zone, HomeScreenLabels, hasNote)
       }
       val (width, height) = size(options)
       manager.updateAppWidget(id, renderer.render(frame, width, height))

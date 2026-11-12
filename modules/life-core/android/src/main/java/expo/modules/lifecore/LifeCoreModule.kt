@@ -33,6 +33,8 @@ class LifeCoreModule : Module() {
 
   private val onQueued: () -> Unit = { sendEvent(EVENT_QUEUE_CHANGE, emptyMap<String, Any>()) }
 
+  private val onNote: (Boolean) -> Unit = { playing -> sendEvent(EVENT_NOTE_CHANGE, mapOf("playing" to playing)) }
+
   private fun stopPreview() {
     preview?.release()
     preview = null
@@ -41,16 +43,18 @@ class LifeCoreModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("LifeCore")
 
-    Events(EVENT_STATE_CHANGE, EVENT_QUEUE_CHANGE)
+    Events(EVENT_STATE_CHANGE, EVENT_QUEUE_CHANGE, EVENT_NOTE_CHANGE)
 
     OnCreate {
       TimerCore.addListener(onChange)
       WidgetEvents.addListener(onQueued)
+      VoiceNote.addListener(onNote)
     }
 
     OnDestroy {
       TimerCore.removeListener(onChange)
       WidgetEvents.removeListener(onQueued)
+      VoiceNote.removeListener(onNote)
       // The preview player belongs to the main thread it was made on.
       Handler(Looper.getMainLooper()).post(::stopPreview)
     }
@@ -73,6 +77,10 @@ class LifeCoreModule : Module() {
 
     // JavaScript wrote a new snapshot: the widget draws from it now.
     AsyncFunction("snapshotWritten") { LifeWidget.requestRefresh(context) }
+
+    AsyncFunction("playNote") { -> VoiceNote.play(context) }
+
+    AsyncFunction("stopNote") { -> VoiceNote.stop(context) }
 
     // JavaScript wrote a new reminder plan: arm the next reminder from it.
     AsyncFunction("remindersChanged") { Reminders.arm(context) }
@@ -100,5 +108,7 @@ class LifeCoreModule : Module() {
     const val EVENT_STATE_CHANGE = "onStateChange"
     /** The widget queued a tap: drain now. */
     const val EVENT_QUEUE_CHANGE = "onQueueChange"
+    /** The voice note started or stopped playing. */
+    const val EVENT_NOTE_CHANGE = "onNoteChange"
   }
 }

@@ -41,6 +41,9 @@ class TimerService : Service() {
 
   private val onChange: (TimerSession?) -> Unit = { session -> main.post { follow(session) } }
 
+  /** The voice note plays over the track: duck it, and bring it back after. */
+  private val onNote: (Boolean) -> Unit = { main.post(::applyVolume) }
+
   private val heartbeat = object : Runnable {
     override fun run() {
       TimerCore.heartbeat(this@TimerService)
@@ -71,6 +74,7 @@ class TimerService : Service() {
       })
     }
     TimerCore.addListener(onChange)
+    VoiceNote.addListener(onNote)
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,6 +99,7 @@ class TimerService : Service() {
 
   override fun onDestroy() {
     TimerCore.removeListener(onChange)
+    VoiceNote.removeListener(onNote)
     main.removeCallbacksAndMessages(null)
     cancelGoalAlarm()
     player.release()
@@ -153,10 +158,19 @@ class TimerService : Service() {
     // A habit's track takes the audio focus, so a call or other media pauses
     // the session; the silent keepalive must not stop someone's music.
     player.setAudioAttributes(mediaAttributes(), !keepalive)
-    player.volume = if (keepalive) 0f else 1f
+    applyVolume()
     player.repeatMode = if (source.second) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     player.setMediaItem(MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(source.first)), startMs)
     player.prepare()
+  }
+
+  /** Silent for the keepalive; under the voice note while it plays; else full. */
+  private fun applyVolume() {
+    player.volume = when {
+      loaded?.first == HabitSounds.keepalive -> 0f
+      VoiceNote.playing -> DUCKED_VOLUME
+      else -> 1f
+    }
   }
 
   private val trackListener = object : Player.Listener {
@@ -228,5 +242,6 @@ class TimerService : Service() {
     const val ACTION_DONE = "expo.modules.lifecore.DONE"
     const val ACTION_GOAL = "expo.modules.lifecore.GOAL"
     private const val REQUEST_GOAL = 10
+    private const val DUCKED_VOLUME = 0.2f
   }
 }

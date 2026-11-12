@@ -42,4 +42,8 @@
   <string name="life_core_widget_discard">Stop and throw away</string>
   <string name="life_core_widget_done">Done, count it</string>
   <string name="life_core_widget_open">Open Life</string>
+  <string name="life_core_widget_play_note">Play my note</string>
+  <string name="life_core_note_channel">Voice note</string>
+  <string name="life_core_note_playing">Playing your note</string>
+  <string name="life_core_note_stop">Stop</string>
 </resources>

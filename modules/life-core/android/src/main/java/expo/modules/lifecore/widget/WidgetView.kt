@@ -92,7 +92,8 @@ sealed interface WidgetView<out L : Label> {
     val goalMs: Long?,
   ) : WidgetView<L>
 
-  data class Riding<out L : Label>(val ride: Ride, val road: Road, val instead: InsteadButton<L>?) : WidgetView<L>
+  /** `note`: a voice note exists, so "Play my note" shows. */
+  data class Riding<out L : Label>(val ride: Ride, val road: Road, val instead: InsteadButton<L>?, val note: Boolean) : WidgetView<L>
 
   data class Home<out L : Label>(val top: HomeTop, val road: Road, val note: RoadNote?, val next: NextUp<L>) : WidgetView<L>
 
@@ -119,13 +120,14 @@ object WidgetViews {
     nowMs: Long,
     zone: ZoneId,
     labels: Labels<L>,
+    hasNote: Boolean = false,
   ): WidgetFrame<L> {
     val today = snapshot?.let { WidgetToday.of(it, queued, nowMs, zone) }
     val redraw = today?.let(::redrawAt)
     if (timer != null) return WidgetFrame(timerView(timer, nowMs, labels), redraw)
     if (today == null) return WidgetFrame(WidgetView.Empty, null)
     val ride = today.ride
-    return if (ride != null) WidgetFrame(rideView(today, ride, labels), redraw) else WidgetFrame(homeView(today, labels), redraw)
+    return if (ride != null) WidgetFrame(rideView(today, ride, labels, hasNote), redraw) else WidgetFrame(homeView(today, labels), redraw)
   }
 
   private fun <L : Label> timerView(session: TimerSession, nowMs: Long, labels: Labels<L>): WidgetView.Timer<L> {
@@ -136,7 +138,7 @@ object WidgetViews {
     return WidgetView.Timer(labels.of(request), session.activeMs(nowMs), !session.isPaused, goalMs)
   }
 
-  private fun <L : Label> rideView(today: Today, ride: Ride, labels: Labels<L>): WidgetView.Riding<L> {
+  private fun <L : Label> rideView(today: Today, ride: Ride, labels: Labels<L>, hasNote: Boolean): WidgetView.Riding<L> {
     val progress = ((today.nowMs - ride.startedAtMs).toDouble() / (ride.endsAtMs - ride.startedAtMs)).coerceIn(0.0, 1.0)
     val instead = today.commitment?.source?.insteadHabits.orEmpty().firstNotNullOfOrNull { habit ->
       today.tracker(habit.id)?.source?.takeIf { it.timer != null }?.let { tracker ->
@@ -145,7 +147,7 @@ object WidgetViews {
     }
     // The days behind stay on the road; the lamp comes closer as the ride goes on.
     val days = today.commitment?.sevenDays.orEmpty().map(::level)
-    return WidgetView.Riding(ride, Road(days, lampAt(1 - progress), CAR_AT), instead)
+    return WidgetView.Riding(ride, Road(days, lampAt(1 - progress), CAR_AT), instead, hasNote)
   }
 
   private fun lampAt(distance: Double) = CAR_AT + (LAMP_FARTHEST - CAR_AT) * distance.coerceIn(0.0, 1.0)
