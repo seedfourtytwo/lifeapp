@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { useStackScreenOptions } from './useStackScreenOptions';
+import { nightColors } from '../ui/tokens';
 import HomeScreen from '../screens/HomeScreen';
 import TrackersScreen from '../screens/TrackersScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
@@ -14,6 +15,7 @@ import JournalScreen from '../screens/JournalScreen';
 import TodoHistoryScreen from '../screens/TodoHistoryScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
+import UrgeScreen from '../screens/UrgeScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -91,6 +93,11 @@ export default function AppNavigator() {
             ? t('calendar:editEvent')
             : t('calendar:newEvent'),
         })}
+      />
+      <Stack.Screen
+        name="Urge"
+        component={UrgeScreen}
+        options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: nightColors.ground } }}
       />
     </Stack.Navigator>
   );

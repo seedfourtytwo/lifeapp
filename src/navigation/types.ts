@@ -18,4 +18,6 @@ export type RootStackParamList = {
   TodoHistory: undefined;
   Calendar: undefined;
   CalendarEventEditor: { eventId?: string; seedDate?: string };
+  /** The ride of the open urge; closes itself when there is none. */
+  Urge: undefined;
 };

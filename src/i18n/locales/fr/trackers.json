@@ -258,5 +258,19 @@
     "insteadSectionTitle": "À la place",
     "insteadSectionDescription": "Jusqu’à deux habitudes minutées à lancer à la place de l’envie.",
     "insteadNoTimedHabits": "Pas encore d’habitude minutée. Ajoutez-en une dans Habitudes pour la proposer ici."
+  },
+  "urge": {
+    "rideTitle": "La laisser passer jusqu’à la lampe",
+    "minutesLeft_one": "Encore 1 minute",
+    "minutesLeft_other": "Encore {{count}} minutes",
+    "roadA11y": "{{percent}} % du chemin jusqu’à la lampe",
+    "instead": "{{minutes}} min · {{name}}",
+    "timerOf": "sur {{time}}",
+    "noteQuestion": "Qu’est-ce qui y a mené ?",
+    "skip": "Passer",
+    "riddenOut": "Envie traversée.",
+    "total_one": "Ça fait 1.",
+    "total_other": "Ça fait {{count}}.",
+    "closeA11y": "Fermer. Le trajet continue."
   }
 }

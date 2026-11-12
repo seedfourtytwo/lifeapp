@@ -258,5 +258,19 @@
     "insteadSectionTitle": "Instead",
     "insteadSectionDescription": "Up to two timed habits to start in place of the urge.",
     "insteadNoTimedHabits": "No timed habits yet. Add one under Habits to offer it here."
+  },
+  "urge": {
+    "rideTitle": "Ride it to the lamp",
+    "minutesLeft_one": "1 minute left",
+    "minutesLeft_other": "{{count}} minutes left",
+    "roadA11y": "{{percent}} percent of the way to the lamp",
+    "instead": "{{minutes}} min · {{name}}",
+    "timerOf": "of {{time}}",
+    "noteQuestion": "What led to it?",
+    "skip": "Skip",
+    "riddenOut": "Ridden out.",
+    "total_one": "That's 1.",
+    "total_other": "That's {{count}}.",
+    "closeA11y": "Close. The ride keeps going."
   }
 }

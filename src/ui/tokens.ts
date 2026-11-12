@@ -86,6 +86,12 @@ export const nightType = {
     lineHeight: 22,
     fontWeight: '500',
   },
+  /** A plain statement that ends something: "Ridden out." */
+  statement: {
+    fontSize: 44,
+    lineHeight: 52,
+    fontWeight: '300',
+  },
   /** His own words: light, a size up from everything around them. */
   ownWords: {
     fontSize: 26,

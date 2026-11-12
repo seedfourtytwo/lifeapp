@@ -1,5 +1,5 @@
 import { applyAppLanguage } from '../src/i18n';
-import { formatLampLabel, formatTimeClear } from '../src/utils/commitmentFormat';
+import { formatLampLabel, formatRideLeft, formatTimeClear } from '../src/utils/commitmentFormat';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -41,5 +41,18 @@ describe('time clear', () => {
     expect(formatTimeClear(2 * DAY + 14 * HOUR)).toBe('2 j 14 h');
     expect(formatLampLabel(120)).toBe('5 j');
     await applyAppLanguage('en');
+  });
+});
+
+describe('formatRideLeft', () => {
+  it.each([
+    [600, '10:00'],
+    [522, '08:42'],
+    [0.2, '00:01'],
+    [0, '00:00'],
+    [-5, '00:00'],
+    [3600, '60:00'],
+  ])('%s seconds read %s', (seconds, expected) => {
+    expect(formatRideLeft(seconds)).toBe(expected);
   });
 });

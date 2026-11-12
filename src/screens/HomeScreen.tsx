@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from 'react-native-paper';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { getDatabase } from '../db/client';
@@ -23,6 +24,7 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
 import { useRefreshFromDb } from '../hooks/useRefreshFromDb';
+import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost, useNoteEditorSession, type HomeNotebookChip } from '../notes';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -84,6 +86,7 @@ export default function HomeScreen() {
   const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: pageWidth } = useWindowDimensions();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const pagerRef = useRef<ScrollView>(null);
   const tabRef = useRef<HomeTab>('habits');
   /**
@@ -163,7 +166,9 @@ export default function HomeScreen() {
     if (tab !== 'more') moreOpenedFrom.current = tab;
   }, [tab]);
 
-  useRefreshFromDb();
+  // Home is always at the bottom of the stack, so it is what opens a running ride.
+  const openRide = useCallback(() => navigation.navigate('Urge'), [navigation]);
+  useRefreshFromDb(openRide);
 
   useFocusEffect(
     useCallback(() => {

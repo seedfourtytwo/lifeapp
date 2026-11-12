@@ -32,3 +32,10 @@ export function formatLampLabel(hours: number): string {
     ? i18n.t('trackers:commitment.lampHours', { count: hours })
     : i18n.t('trackers:commitment.lampDays', { count: Math.round(hours / 24) });
 }
+
+/** A ride's time left as the widget's clock shows it: "08:42", rounded up, never below "00:00". */
+export function formatRideLeft(seconds: number): string {
+  const whole = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.floor(whole / 60);
+  return `${String(minutes).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`;
+}
