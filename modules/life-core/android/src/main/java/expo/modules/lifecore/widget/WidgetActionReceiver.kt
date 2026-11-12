@@ -25,8 +25,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
     if (WidgetAlarm.isRedraw(intent)) return LifeWidget.refresh(context)
     if (intent.action != ACTION_TAP && intent.action != ACTION_REMINDER_DONE) return
     val tap = intent.data?.schemeSpecificPart?.let(TapCodec::decode) ?: return
-    // Done on a reminder is the widget's tick, and the reminder goes once it is pressed.
-    if (intent.action == ACTION_REMINDER_DONE && tap is Tap.Tick) ReminderNotification.cancel(context, tap.trackerId)
+    // Done on a reminder is the widget's tick; either way a ticked habit's reminder goes.
+    if (tap is Tap.Tick) ReminderNotification.cancel(context, tap.trackerId)
     val nowMs = System.currentTimeMillis()
     if (!guard.accept(tap, nowMs)) return
     val files = WidgetFiles(context)
