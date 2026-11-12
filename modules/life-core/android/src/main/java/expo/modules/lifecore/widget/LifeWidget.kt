@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import expo.modules.lifecore.TimerCore
+import expo.modules.lifecore.reminders.Reminders
 import java.time.ZoneId
 
 /**
@@ -35,10 +36,16 @@ class LifeWidgetProvider : AppWidgetProvider() {
   }
 }
 
-/** Boot, a clock or time-zone change, a new language, an app update: draw again, as the day may be another. */
+/**
+ * Boot, a clock or time-zone change, a new language, an app update: draw
+ * again, as the day may be another, and arm the next reminder (an update or
+ * a reboot clears alarms, and a clock change moves the moment).
+ */
 class WidgetSystemReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    if (intent.action in ACTIONS) LifeWidget.refresh(context)
+    if (intent.action !in ACTIONS) return
+    LifeWidget.refresh(context)
+    Reminders.arm(context)
   }
 
   private companion object {

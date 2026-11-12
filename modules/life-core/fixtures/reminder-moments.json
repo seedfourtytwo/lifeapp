@@ -1,0 +1,83 @@
+{
+  "about": "The moments a habit reminds at on a local date, from its schedule and reminder times (contract: Reminder plan). Run by __tests__/reminderMomentFixtures.test.ts and ReminderRulesTest.kt. Zone Europe/Paris; 2026 clocks change on 29 March and 25 October.",
+  "zone": "Europe/Paris",
+  "cases": [
+    {
+      "name": "daily, one time",
+      "schedule": { "type": "daily" },
+      "reminderTimes": ["09:00"],
+      "date": "2026-03-10",
+      "moments": ["2026-03-10T08:00:00.000Z"]
+    },
+    {
+      "name": "daily, twice a day",
+      "schedule": { "type": "daily" },
+      "reminderTimes": ["08:00", "20:00"],
+      "date": "2026-03-10",
+      "moments": ["2026-03-10T07:00:00.000Z", "2026-03-10T19:00:00.000Z"]
+    },
+    {
+      "name": "no reminder times",
+      "schedule": { "type": "daily" },
+      "reminderTimes": [],
+      "date": "2026-03-10",
+      "moments": []
+    },
+    {
+      "name": "just after midnight belongs to its own date",
+      "schedule": { "type": "daily" },
+      "reminderTimes": ["00:15"],
+      "date": "2026-03-11",
+      "moments": ["2026-03-10T23:15:00.000Z"]
+    },
+    {
+      "name": "spring forward: a time the clock skips fires an hour later",
+      "schedule": { "type": "daily" },
+      "reminderTimes": ["02:30", "09:00"],
+      "date": "2026-03-29",
+      "moments": ["2026-03-29T01:30:00.000Z", "2026-03-29T07:00:00.000Z"]
+    },
+    {
+      "name": "autumn back: a time that happens twice fires the first time",
+      "schedule": { "type": "daily" },
+      "reminderTimes": ["02:30", "09:00"],
+      "date": "2026-10-25",
+      "moments": ["2026-10-25T00:30:00.000Z", "2026-10-25T08:00:00.000Z"]
+    },
+    {
+      "name": "weekdays on a Monday",
+      "schedule": { "type": "weekdays", "days": [1, 2, 3, 4, 5] },
+      "reminderTimes": ["07:45"],
+      "date": "2026-03-09",
+      "moments": ["2026-03-09T06:45:00.000Z"]
+    },
+    {
+      "name": "weekdays on a Saturday",
+      "schedule": { "type": "weekdays", "days": [1, 2, 3, 4, 5] },
+      "reminderTimes": ["07:45"],
+      "date": "2026-03-14",
+      "moments": []
+    },
+    {
+      "name": "every 3 days, three days after the anchor, across the spring change",
+      "schedule": { "type": "every_n_days", "interval": 3, "anchorDate": "2026-03-27" },
+      "reminderTimes": ["21:00"],
+      "date": "2026-03-30",
+      "moments": ["2026-03-30T19:00:00.000Z"]
+    },
+    {
+      "name": "every 3 days, between two due days",
+      "schedule": { "type": "every_n_days", "interval": 3, "anchorDate": "2026-03-27" },
+      "reminderTimes": ["21:00"],
+      "date": "2026-03-29",
+      "moments": []
+    },
+    {
+      "name": "every 3 days, before the anchor",
+      "schedule": { "type": "every_n_days", "interval": 3, "anchorDate": "2026-03-27" },
+      "reminderTimes": ["21:00"],
+      "date": "2026-03-24",
+      "moments": []
+    }
+  ]
+}

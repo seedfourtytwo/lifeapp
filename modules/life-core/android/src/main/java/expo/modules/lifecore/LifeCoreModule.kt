@@ -12,6 +12,7 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.lifecore.reminders.Reminders
 import expo.modules.lifecore.widget.LifeWidget
 import expo.modules.lifecore.widget.WidgetEvents
 
@@ -72,6 +73,9 @@ class LifeCoreModule : Module() {
 
     // JavaScript wrote a new snapshot: the widget draws from it now.
     AsyncFunction("snapshotWritten") { LifeWidget.requestRefresh(context) }
+
+    // JavaScript wrote a new reminder plan: arm the next reminder from it.
+    AsyncFunction("remindersChanged") { Reminders.arm(context) }
 
     // The habit editor's preview: the tracks live in this module's resources.
     AsyncFunction("previewSound") { trackId: String ->

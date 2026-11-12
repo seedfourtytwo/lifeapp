@@ -8,6 +8,10 @@
   <string name="life_core_timer_pause">Pause</string>
   <string name="life_core_timer_resume">Resume</string>
   <string name="life_core_timer_done">Done</string>
+  <string name="life_core_reminder_channel">Habit reminders</string>
+  <string name="life_core_reminder_title">Habit reminder</string>
+  <string name="life_core_reminder_body">Time for %1$s</string>
+  <string name="life_core_reminder_done">Done</string>
   <string name="life_core_widget_clear_minutes">%1$dm</string>
   <string name="life_core_widget_clear_hours_minutes">%1$dh %2$dm</string>
   <string name="life_core_widget_clear_days_hours">%1$dd %2$dh</string>

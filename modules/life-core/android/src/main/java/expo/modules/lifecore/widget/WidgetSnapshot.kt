@@ -95,7 +95,7 @@ object SnapshotJson {
     else -> throw IllegalArgumentException("Unknown timer goal $type")
   }
 
-  private fun schedule(json: JSONObject): Schedule = when (val type = json.getString("type")) {
+  internal fun schedule(json: JSONObject): Schedule = when (val type = json.getString("type")) {
     "daily" -> Schedule.Daily
     "weekdays" -> json.getJSONArray("days").let { days -> Schedule.Weekdays((0 until days.length()).map(days::getInt).toSet()) }
     "every_n_days" -> Schedule.EveryNDays(json.getInt("interval"), LocalDate.parse(json.getString("anchorDate")))
