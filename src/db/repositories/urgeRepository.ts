@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { UrgeSchema, type Urge, type UrgeOutcome } from '../../protocol/urge';
+import { UrgeOutcomeSchema, UrgeSchema, type Urge, type UrgeInput, type UrgeOutcome } from '../../protocol/urge';
 
 interface UrgeRow {
   id: string;
@@ -8,6 +8,7 @@ interface UrgeRow {
   outcome: string | null;
   resolved_at: string | null;
   source: string;
+  note: string | null;
 }
 
 /** Rows that fail validation are skipped, like every other repository's. */
@@ -21,6 +22,7 @@ function collect(rows: UrgeRow[]): Urge[] {
       outcome: row.outcome,
       resolvedAt: row.resolved_at,
       source: row.source,
+      note: row.note,
     });
     if (parsed.success) urges.push(parsed.data);
     else console.warn(`Skipping unreadable urge ${row.id}`);
@@ -29,18 +31,31 @@ function collect(rows: UrgeRow[]): Urge[] {
 }
 
 /** Inserts the urge unless one with its id is there already: logging it twice adds one. */
-export async function insertUrge(db: SQLiteDatabase, urge: Urge): Promise<void> {
-  UrgeSchema.parse(urge);
+export async function insertUrge(db: SQLiteDatabase, input: UrgeInput): Promise<void> {
+  const urge = UrgeSchema.parse(input);
   await db.runAsync(
-    `INSERT OR IGNORE INTO urges (id, at, day, outcome, resolved_at, source)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO urges (id, at, day, outcome, resolved_at, source, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     urge.id,
     urge.at,
     urge.day,
     urge.outcome,
     urge.resolvedAt,
     urge.source,
+    urge.note,
   );
+}
+
+/** Sets or clears what led to the urge. */
+export async function setUrgeNote(db: SQLiteDatabase, id: string, note: string | null): Promise<void> {
+  await db.runAsync('UPDATE urges SET note = ? WHERE id = ?', note, id);
+}
+
+/** How the urge ended: null while open, or when there is no such urge. */
+export async function getUrgeOutcome(db: SQLiteDatabase, id: string): Promise<UrgeOutcome | null> {
+  const row = await db.getFirstAsync<{ outcome: string | null }>('SELECT outcome FROM urges WHERE id = ?', id);
+  const parsed = UrgeOutcomeSchema.safeParse(row?.outcome);
+  return parsed.success ? parsed.data : null;
 }
 
 /** Resolves an open urge; one already resolved keeps its first outcome. */

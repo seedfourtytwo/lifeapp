@@ -27,7 +27,7 @@ function indexNames(raw: DatabaseSync, table: string) {
   return (raw.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=? ORDER BY name").all(table) as {name:string}[]).map(r=>r.name);
 }
 
-it.each([1, 7, 12, 15, 18, 20, 21, 22])('upgrades a v%i database', async (from) => {
+it.each([1, 7, 12, 15, 18, 20, 21, 22, 23])('upgrades a v%i database', async (from) => {
   const raw = new DatabaseSync(':memory:');
   const db = wrap(raw);
   raw.exec('CREATE TABLE schema_version (version INTEGER NOT NULL)');
@@ -35,7 +35,7 @@ it.each([1, 7, 12, 15, 18, 20, 21, 22])('upgrades a v%i database', async (from) 
   raw.exec('CREATE TABLE app_settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)');
   await runMigrations(db);
   const v = raw.prepare('SELECT version FROM schema_version').get() as {version:number};
-  expect(v.version).toBe(23);
+  expect(v.version).toBe(24);
   expect(tables(raw)).toEqual([
     'app_settings','calendar_events','calendar_occurrence_clears','calendar_reminders','calendars',
     'daily_journals','dashboard_items','day_notes','elements','events','food_items','food_log',
@@ -133,5 +133,23 @@ it('rebuilds a pre-v16 daily_journals table', async () => {
   expect(rows[0]!.notebook_id).toEqual(expect.any(String));
   const share = raw.prepare('SELECT entry_id FROM note_share_state').all() as {entry_id:string}[];
   expect(share).toHaveLength(1);
+  raw.close();
+});
+
+it('gives the urges of a v23 database a note, keeping them', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const db = wrap(raw);
+  raw.exec('CREATE TABLE schema_version (version INTEGER NOT NULL)');
+  raw.prepare('INSERT INTO schema_version (version) VALUES (?)').run(23);
+  raw.exec(`CREATE TABLE urges (
+    id TEXT PRIMARY KEY NOT NULL, at TEXT NOT NULL, day TEXT NOT NULL,
+    outcome TEXT, resolved_at TEXT, source TEXT NOT NULL)`);
+  raw.prepare("INSERT INTO urges (id, at, day, outcome, resolved_at, source) VALUES ('u1', '2026-03-10T09:00:00.000Z', '2026-03-10', 'used', '2026-03-10T09:02:00.000Z', 'app')").run();
+
+  await runMigrations(db);
+
+  expect(raw.prepare('SELECT * FROM urges').all()).toEqual([
+    expect.objectContaining({ id: 'u1', outcome: 'used', note: null }),
+  ]);
   raw.close();
 });

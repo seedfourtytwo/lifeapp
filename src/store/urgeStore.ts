@@ -6,6 +6,7 @@ import * as elementRepo from '../db/repositories/elementRepository';
 import * as urgeRepo from '../db/repositories/urgeRepository';
 import {
   DEFAULT_RIDE_SECONDS,
+  normalizeUrgeNote,
   ridesEnded,
   rideEndsAt,
   type UrgeOutcome,
@@ -44,6 +45,10 @@ interface UrgeState extends ResettableMirror {
   recordLoggedUrge: (logged: LoggedUrge, source: UrgeSource) => Promise<void>;
   /** Resolve an open urge at `at` (now by default); a resolved one keeps its first outcome. */
   resolveUrge: (id: string, outcome: UrgeOutcome, at?: string) => Promise<void>;
+  /** Keep what led to the urge, on one line; empty text keeps nothing. */
+  noteUrge: (id: string, text: string) => Promise<void>;
+  /** How an urge ended (null while open, or gone); read from SQLite, not mirrored. */
+  readOutcome: (id: string) => Promise<UrgeOutcome | null>;
 }
 
 type UrgeMirror = Pick<UrgeState, 'ride' | 'urgesToday' | 'riddenOutTotal' | 'loaded'>;
@@ -128,5 +133,13 @@ export const useUrgeStore = create<UrgeState>((set) => {
         await urgeRepo.resolveUrge(db, id, outcome, at ?? now.toISOString());
       });
     },
+
+    noteUrge: async (id, text) => {
+      await writeAndShow(async (db) => {
+        await urgeRepo.setUrgeNote(db, id, normalizeUrgeNote(text));
+      });
+    },
+
+    readOutcome: async (id) => urgeRepo.getUrgeOutcome(await getDatabase(), id),
   };
 });

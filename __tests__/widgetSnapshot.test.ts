@@ -330,6 +330,16 @@ describe('the widget snapshot', () => {
     expect(fsModule.moveAsync).not.toHaveBeenCalled();
   });
 
+  it('never carries what led to an urge', async () => {
+    const urgeStore = (require('../src/store/urgeStore') as typeof import('../src/store/urgeStore')).useUrgeStore;
+    const id = await urgeStore.getState().logUrge();
+    await urgeStore.getState().resolveUrge(id!, 'used');
+    await urgeStore.getState().noteUrge(id!, 'Payday at the corner shop');
+    await settle();
+
+    expect(fs.readFileSync(snapshotPath(), 'utf8')).not.toMatch(/Payday|corner shop/);
+  });
+
   it('describes the commitment, its ride and its fortnight, and never a tracker name beside them', async () => {
     const protocol = require('../src/protocol') as typeof import('../src/protocol');
     const elementRepo = require('../src/db/repositories/elementRepository') as typeof import('../src/db/repositories/elementRepository');

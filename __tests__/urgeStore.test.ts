@@ -10,6 +10,10 @@ import { createMigratedTestDb, type TestDb } from './support/sqliteTestDb';
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
+// The raw copy before a wipe is native; its own tests cover it.
+jest.mock('../src/db/safetyCopy', () => ({
+  takeSafetyCopy: jest.fn(async () => undefined),
+}));
 
 /** Tuesday 10 March 2026, 09:00 local. */
 const NOW = new Date(2026, 2, 10, 9, 0);
@@ -182,6 +186,65 @@ describe('urges', () => {
 
     expect(rows()[0]).toMatchObject({ outcome: 'rode_out' });
     expect(urges().riddenOutTotal).toBe(1);
+  });
+
+  it('keeps what led to a used urge as its note, on one line', async () => {
+    const id = await urges().logUrge();
+    await urges().resolveUrge(id!, 'used');
+
+    await urges().noteUrge(id!, '  Long day\n at work  ');
+
+    expect(rows()[0]).toMatchObject({ outcome: 'used', note: 'Long day at work' });
+  });
+
+  it('saves no note for an empty line', async () => {
+    const id = await urges().logUrge();
+
+    await urges().noteUrge(id!, '   ');
+
+    expect(rows()[0]).toMatchObject({ note: null });
+  });
+
+  it('cuts a note at its length limit', async () => {
+    const { URGE_NOTE_MAX_LENGTH } = require('../src/protocol/urge') as typeof import('../src/protocol/urge');
+    const id = await urges().logUrge();
+
+    await urges().noteUrge(id!, 'a'.repeat(URGE_NOTE_MAX_LENGTH + 20));
+
+    expect(rows()[0]!.note).toBe('a'.repeat(URGE_NOTE_MAX_LENGTH));
+  });
+
+  it('logs an urge with no note', async () => {
+    await urges().logUrge();
+
+    expect(rows()[0]).toMatchObject({ note: null });
+  });
+
+  it('carries the note through a backup, and reads an older backup with none', async () => {
+    const id = await urges().logUrge();
+    await urges().resolveUrge(id!, 'used');
+    await urges().noteUrge(id!, 'Payday');
+    const { exportProtocolBundle, importProtocolBundle } = require('../src/db/export') as typeof import('../src/db/export');
+
+    const { bundle } = await exportProtocolBundle();
+    expect(bundle.urges).toEqual([expect.objectContaining({ id, note: 'Payday' })]);
+    await importProtocolBundle(JSON.parse(JSON.stringify(bundle)));
+    expect(rows()).toEqual([expect.objectContaining({ id, note: 'Payday' })]);
+
+    const older = JSON.parse(JSON.stringify(bundle)) as { urges: Record<string, unknown>[] };
+    delete older.urges[0]!.note;
+    await importProtocolBundle(older);
+    expect(rows()).toEqual([expect.objectContaining({ id, outcome: 'used', note: null })]);
+  });
+
+  it('reads back how an urge ended', async () => {
+    const used = await urges().logUrge();
+    await urges().resolveUrge(used!, 'used');
+    const open = await urges().logUrge();
+
+    expect(await urges().readOutcome(used!)).toBe('used');
+    expect(await urges().readOutcome(open!)).toBeNull();
+    expect(await urges().readOutcome('550e8400-e29b-41d4-a716-446655443199')).toBeNull();
   });
 
   it('blanks itself on reset', async () => {

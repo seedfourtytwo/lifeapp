@@ -22,7 +22,7 @@ import {
   ensureWeatherDailySchema,
 } from './schemaIntegrity';
 
-const CURRENT_SCHEMA_VERSION = 23;
+const CURRENT_SCHEMA_VERSION = 24;
 /** v7: empty hop so devices that skipped archived_at still advance; ensureElementsSchema repairs columns. */
 /** v8: weather_daily snapshots for ambient Home weather + future habit correlation. */
 /** v9: weather_daily.precip_probability for rain-chance correlation. */
@@ -46,6 +46,7 @@ const CURRENT_SCHEMA_VERSION = 23;
  *  drop a table constraint in place — and adds sort_order. Existing rows all
  *  survive; each notebook day's rows are numbered by created_at. */
 /** v23: urges. */
+/** v24: urges gain a note (what led to a used one). */
 
 interface HabitElementRow {
   id: string;
@@ -242,6 +243,9 @@ const MIGRATIONS: Record<number, (db: SQLiteDatabase) => Promise<void>> = {
     await ensureDailyJournalsSchema(db);
   },
   23: async (db) => {
+    await ensureUrgeSchema(db);
+  },
+  24: async (db) => {
     await ensureUrgeSchema(db);
   },
 };

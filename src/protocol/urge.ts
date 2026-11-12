@@ -12,6 +12,15 @@ export const DEFAULT_RIDE_SECONDS = 600;
 export const UrgeOutcomeSchema = z.enum(['rode_out', 'used']);
 export type UrgeOutcome = z.infer<typeof UrgeOutcomeSchema>;
 
+/** "What led to it?": one short line, kept with the urge and never shown on the lock screen. */
+export const URGE_NOTE_MAX_LENGTH = 200;
+
+/** A note as stored: on one line, trimmed, cut at the limit; null when nothing is left. */
+export function normalizeUrgeNote(text: string): string | null {
+  const line = text.replace(/\s+/g, ' ').trim().slice(0, URGE_NOTE_MAX_LENGTH).trim();
+  return line === '' ? null : line;
+}
+
 export const UrgeSourceSchema = z.enum(['widget', 'app']);
 export type UrgeSource = z.infer<typeof UrgeSourceSchema>;
 
@@ -27,12 +36,16 @@ export const UrgeSchema = z
     /** When it was resolved: the ride's end for one ridden out. */
     resolvedAt: z.string().datetime().nullable(),
     source: UrgeSourceSchema,
+    /** What led to it, if he said. Optional in backups made before notes existed. */
+    note: z.string().min(1).max(URGE_NOTE_MAX_LENGTH).nullable().default(null),
   })
   .refine((urge) => (urge.outcome === null) === (urge.resolvedAt === null), {
     message: 'An urge has an outcome exactly when it has a resolved time',
   });
 
 export type Urge = z.infer<typeof UrgeSchema>;
+/** An urge as written: the note may be left out. */
+export type UrgeInput = z.input<typeof UrgeSchema>;
 
 export function rideEndsAt(urge: Pick<Urge, 'at'>, rideSeconds: number): Date {
   return new Date(Date.parse(urge.at) + rideSeconds * 1000);

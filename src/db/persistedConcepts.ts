@@ -19,6 +19,7 @@ import {
   repairFoodItems,
   repairFoodLog,
   repairJournalNotebooks,
+  repairUrges,
   repairWeatherDaily,
 } from './schemaRepairs';
 
@@ -390,11 +391,14 @@ CREATE TABLE IF NOT EXISTS urges (
   -- NULL while the ride is open; then 'rode_out' or 'used'.
   outcome TEXT,
   resolved_at TEXT,
-  source TEXT NOT NULL
+  source TEXT NOT NULL,
+  -- What led to it, when he said; never written to the widget's files.
+  note TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_urges_day ON urges(day);
 CREATE INDEX IF NOT EXISTS idx_urges_outcome ON urges(outcome);`,
+    repair: repairUrges,
     clear: {
       // Day facts like events: they go with the history, and with definitions,
       // which always take all history with them.

@@ -42,6 +42,11 @@ export async function repairWeatherDaily(db: SQLiteDatabase): Promise<void> {
   await addMissingColumns(db, 'weather_daily', { precip_probability: 'INTEGER' });
 }
 
+/** v24: an urge's note. */
+export async function repairUrges(db: SQLiteDatabase): Promise<void> {
+  await addMissingColumns(db, 'urges', { note: 'TEXT' });
+}
+
 /** Drop orphans left behind if foreign_keys were off during an older wipe. */
 export async function repairDayNotes(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM day_notes WHERE element_id NOT IN (SELECT id FROM elements)');
