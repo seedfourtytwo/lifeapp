@@ -2,13 +2,15 @@
 <!--
   One widget, for the lock-screen page (one fixed 447 x 298 dp box on the
   Pixel 9) and the home screen. It redraws on taps, snapshot writes, timer
-  changes and its own alarms, so the host never polls it.
+  changes and its own alarms, so the host never polls it. The picker shows
+  the home state drawn by scripts/widget-preview.sh (sample data only).
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
   android:description="@string/life_core_widget_description"
   android:initialKeyguardLayout="@layout/life_core_widget_empty"
   android:initialLayout="@layout/life_core_widget_empty"
   android:minWidth="300dp"
+  android:previewImage="@drawable/life_core_widget_preview"
   android:minHeight="200dp"
   android:resizeMode="horizontal|vertical"
   android:targetCellWidth="5"

@@ -4,7 +4,7 @@ Contract version 4 (stage 6c). What the JavaScript app writes for the lock-scree
 
 SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
 
-Changes from version 3: the snapshot is version 3. A timer habit's `timer` gains `trackId` and `loop`, so the widget can start a session with its sound; the commitment's `ownLine` becomes `ownLines`, every line with the rule for which one shows, so the widget moves on to the next line at a lamp without the app.
+Changes from version 3: the snapshot is version 3. A timer habit's `timer` gains `trackId` and `loop`, so the widget can start a session with its sound; the commitment's `ownLine` becomes `ownLines`, every line with the rule for which one shows, so the widget moves on to the next line at a lamp without the app. The app tells the module after each snapshot write, and the module tells the app when the widget queues a line (see "The widget"). Queue lines are unchanged.
 
 Changes from version 2: the snapshot is version 2. It gains `commitment` and `ride` at the top, a `sevenDays` strip on every tracker, a third tracker kind `commitment`, and the reasons `clear` and `slipped`. The queue gains two lines for urges, `urge_logged` and `urge_resolved`, with the drop reason `urge_missing`; a queue line's `trackerId` belongs to the tracker lines only.
 
@@ -29,6 +29,8 @@ Text is UTF-8 with no byte order mark. Instants are ISO-8601 in UTC with millise
 `src/protocol/widgetSnapshot.ts` (`WidgetSnapshotSchema`). One JSON object: 6.3 KB for seven habits and two counters, 7.8 KB with a commitment and an open ride.
 
 ### When it is written
+
+After every write the app calls the module's `snapshotWritten()`, and the widget redraws from the new file at once.
 
 After any change to what it shows (a tick, a counter tap, a timer start, pause, resume, stop or Done, an urge logged or resolved, a slip, an edit, an archive, a delete, a reorder, a day rollover), and after every `refreshFromDb()` (each time the app comes to the front). Changes within 500 ms of the first share one write. A timer's 30-second heartbeat alone does not cause a write: the session fields below let the widget run the clock itself.
 
@@ -258,6 +260,18 @@ If the app dies:
 - part-way through: actions already logged are skipped; one applied but not yet logged is found by its event ids and adds nothing.
 - after the last action, before the delete: every action is in the log; the next drain skips them all and deletes the file.
 
+### The widget's overlay
+
+The widget (`modules/life-core/.../widget/WidgetToday.kt`) shows a tap before JavaScript applies it. It reads `pending-actions.draining.jsonl`, `pending-actions.jsonl` and the last lines its own process appended (which cover the moment between a drain deleting its file and the snapshot that follows), and counts each line, once by `id`, when its `at` is after the snapshot's `generatedAt`. Lines whose `day` is not today change no tracker; urge lines still start and end rides.
+
+- `habit_complete` → that check-off is done.
+- `counter_add` → `total` += `amount`, done once it reaches `target`.
+- `timer_session` → `total` += `activeSeconds`; done with `markComplete`, `trackCompleted`, or a seconds goal reached.
+- `urge_logged` → `urgesToday` + 1 (on its day); a ride from `at` for the commitment's `rideSeconds` (600 without one).
+- `urge_resolved` → that ride ends, and is not counted as ridden out.
+
+Any ride, from the snapshot or a line, that reached its end unresolved adds one to `urgesRiddenOut` on the widget, app or no app.
+
 ### Dropped actions
 
 Read, logged with the reason, and not applied:
@@ -272,3 +286,12 @@ Read, logged with the reason, and not applied:
 | `urge_missing` | An `urge_resolved` for an urge never logged (its `urge_logged` line was lost or cut off). |
 
 An action for a day that has ended is applied to that day.
+
+## The widget
+
+`modules/life-core/android/src/main/java/expo/modules/lifecore/widget/`. One app widget, `widgetCategory="home_screen|keyguard"`, drawn natively from the snapshot, `timer.json` and the overlay above. It never opens SQLite and never writes the snapshot.
+
+- Its buttons are broadcasts to `WidgetActionReceiver`, in the app's process and not exported. A tick appends `habit_complete`; a counter button `counter_add`; Urge `urge_logged`; "I used" `urge_resolved` with `outcome: "used"`; play, pause, resume, Done (`markComplete: true`) and discard go to the timer core, which appends the `timer_session` line as for any other finish. Play builds the core's start request from the snapshot tracker: `name`, `lockScreenName`, `icon`, `timer.goal`, `timer.trackId`, `timer.loop`, and today's seconds so far (the overlay included) as `loggedSeconds`.
+- Each tap is checked against what is true when it lands, not what the widget showed: a tracker gone, a check-off already done, an amount that is not one of `quickIncrements`, a ride already over or another timer running makes it do nothing, and the same button twice within 0.7 s is one press.
+- After a tap that queued a line the module emits `onQueueChange`, and a running app drains at once. With the app not running the line waits for the next drain; the overlay shows it meanwhile.
+- On a locked phone (`OPTION_APPWIDGET_HOST_CATEGORY` includes keyguard) it shows lock-screen names, icons, numbers, the commitment's lock-screen name and the own line, never a tracker's `name`.
