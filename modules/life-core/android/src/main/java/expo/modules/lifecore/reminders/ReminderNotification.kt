@@ -87,4 +87,11 @@ object ReminderNotification {
   fun cancel(context: Context, habitId: String) {
     NotificationManagerCompat.from(context).cancel(habitId, ID)
   }
+
+  /** The habits whose reminder is on screen now, as the system holds them (so a new process knows too). */
+  fun posted(context: Context): Set<String> =
+    context.getSystemService(NotificationManager::class.java).activeNotifications
+      .filter { it.id == ID }
+      .mapNotNull { it.tag }
+      .toSet()
 }

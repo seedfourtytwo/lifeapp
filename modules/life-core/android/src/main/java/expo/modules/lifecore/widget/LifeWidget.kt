@@ -116,21 +116,26 @@ object LifeWidget {
     main.post { refresh(app) }
   }
 
-  /** Draws every widget as things stand now, and sets the alarm for the next change. On the main thread. */
+  /**
+   * Draws every widget as things stand now, and sets the alarm for the next
+   * change; first takes away the reminders of habits now settled. On the main thread.
+   */
   fun refresh(context: Context) {
+    val files = WidgetFiles(context)
+    val snapshot = files.snapshot()
+    val queued = files.queued()
+    val timer = TimerCore.state(context)
+    val nowMs = System.currentTimeMillis()
+    val zone = ZoneId.systemDefault()
+    // Every snapshot write and timer change comes through here, widget or not.
+    Reminders.clearSettled(context, snapshot?.let { WidgetToday.of(it, queued, nowMs, zone) }, timer)
     val ids = ids(context)
     if (ids.isEmpty()) {
       WidgetAlarm.set(context, null)
       return
     }
     val manager = AppWidgetManager.getInstance(context)
-    val files = WidgetFiles(context)
-    val snapshot = files.snapshot()
-    val queued = files.queued()
-    val timer = TimerCore.state(context)
     val hasNote = VoiceNote.exists(context)
-    val nowMs = System.currentTimeMillis()
-    val zone = ZoneId.systemDefault()
     val renderer = WidgetRenderer(context)
     var redrawAtMs: Long? = null
     for (id in ids) {

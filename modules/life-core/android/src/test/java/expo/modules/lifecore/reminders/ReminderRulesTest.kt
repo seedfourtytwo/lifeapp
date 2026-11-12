@@ -185,4 +185,46 @@ class ReminderRulesTest {
     assertNull(ReminderPlanJson.parse(text.replace("\"version\":1", "\"version\":2")))
     assertNull(ReminderPlanJson.parse("{"))
   }
+
+  // Reminders already on screen, once the app or the widget settles their habit.
+
+  private val posted = setOf(KEFIR, MEDITATION, FACE)
+  private val reminding = plan(habit(KEFIR, "10:00"), habit(MEDITATION, "10:00"), habit(FACE, "20:45"))
+
+  private fun clear(today: expo.modules.lifecore.widget.Today?, timer: expo.modules.lifecore.TimerSession? = null, from: ReminderPlan? = reminding) =
+    ReminderRules.toClear(posted, from, today, timer)
+
+  @Test
+  fun aHabitTickedInTheAppLosesItsReminder() {
+    val ticked = snapshot.copy(trackers = snapshot.trackers.map { if (it.id == KEFIR) it.copy(done = true) else it })
+    assertEquals(setOf(KEFIR), clear(WidgetToday.of(ticked, emptyList(), tenAm, paris)))
+  }
+
+  @Test
+  fun aTimerFinishedOrRunningLosesItsReminder() {
+    val finished = QueuedAction.TimerSessionDone(id(), tenAm - 1000, march10, MEDITATION, 60, trackCompleted = false, markComplete = true)
+    assertEquals(setOf(MEDITATION), clear(WidgetToday.of(snapshot, listOf(finished), tenAm, paris)))
+    val session = WidgetFixtures.timerSession().let { it.copy(request = it.request.copy(trackerId = MEDITATION)) }
+    assertEquals(setOf(MEDITATION), clear(WidgetToday.of(snapshot, emptyList(), tenAm, paris), session))
+  }
+
+  @Test
+  fun aHabitStillToDoKeepsItsReminderAndNothingIsEverReposted() {
+    // Un-ticked again: not done, so nothing to clear; posting is only ever the alarm's.
+    assertTrue(clear(WidgetToday.of(snapshot, emptyList(), tenAm, paris)).isEmpty())
+    assertTrue(clear(null).isEmpty())
+  }
+
+  @Test
+  fun aHabitArchivedOrDeletedLosesItsReminder() {
+    val withoutFace = plan(habit(KEFIR, "10:00"), habit(MEDITATION, "10:00"))
+    val gone = snapshot.copy(trackers = snapshot.trackers.filter { it.id != FACE })
+    assertEquals(setOf(FACE), clear(WidgetToday.of(gone, emptyList(), tenAm, paris), from = withoutFace))
+  }
+
+  @Test
+  fun noPlanOrRemindersOffClearsThemAll() {
+    assertEquals(posted, clear(null, from = null))
+    assertEquals(posted, clear(null, from = reminding.copy(enabled = false)))
+  }
 }

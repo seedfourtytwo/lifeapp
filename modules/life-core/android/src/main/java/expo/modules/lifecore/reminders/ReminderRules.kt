@@ -57,6 +57,20 @@ object ReminderRules {
     if (!plan.enabled) null else plan.habits.mapNotNull { firstAfter(it, afterMs, zone) }.minOrNull()
 
   /**
+   * Which reminders already on screen to take away: a habit now done or
+   * with its timer session, one gone from the plan (archived, deleted, no
+   * longer reminding), and all of them when there is no plan or reminders
+   * are off. Nothing is ever posted again from here; only the alarm posts.
+   */
+  fun toClear(posted: Set<String>, plan: ReminderPlan?, today: Today?, timer: TimerSession?): Set<String> {
+    if (plan == null || !plan.enabled) return posted
+    val planned = plan.habits.map { it.id }.toSet()
+    return posted.filterTo(mutableSetOf()) { id ->
+      id !in planned || timer?.request?.trackerId == id || today?.tracker(id)?.done == true
+    }
+  }
+
+  /**
    * What to post when the alarm armed for `armedForMs` goes off at `nowMs`:
    * every habit with a moment between the two (one post each, however many
    * moments), unless it is done today or its timer is running, and nothing

@@ -8,7 +8,6 @@ import android.net.Uri
 import android.util.Log
 import expo.modules.lifecore.TimerCore
 import expo.modules.lifecore.VoiceNote
-import expo.modules.lifecore.reminders.ReminderNotification
 import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
@@ -25,8 +24,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
     if (WidgetAlarm.isRedraw(intent)) return LifeWidget.refresh(context)
     if (intent.action != ACTION_TAP && intent.action != ACTION_REMINDER_DONE) return
     val tap = intent.data?.schemeSpecificPart?.let(TapCodec::decode) ?: return
-    // Done on a reminder is the widget's tick; either way a ticked habit's reminder goes.
-    if (tap is Tap.Tick) ReminderNotification.cancel(context, tap.trackerId)
     val nowMs = System.currentTimeMillis()
     if (!guard.accept(tap, nowMs)) return
     val files = WidgetFiles(context)
@@ -38,7 +35,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
       // The timer core refused (another session began meanwhile): the tap does nothing.
       Log.w(TAG, "Widget tap not applied", error)
     }
-    // Drawn at once from the files, before JavaScript (if it runs at all) hears of it.
+    // Drawn at once from the files, before JavaScript (if it runs at all) hears of it;
+    // the redraw also takes away the reminder of a habit this tick settled.
     LifeWidget.refresh(context)
   }
 

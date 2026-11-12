@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import expo.modules.lifecore.TimerCore
+import expo.modules.lifecore.TimerSession
+import expo.modules.lifecore.widget.Today
 import expo.modules.lifecore.widget.WidgetFiles
 import expo.modules.lifecore.widget.WidgetToday
 import java.io.File
@@ -56,6 +58,17 @@ object Reminders {
     } else {
       alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, intent)
     }
+  }
+
+  /**
+   * Takes away the reminders on screen whose habit is settled now, as the
+   * widget's view of today says: after every snapshot write and widget redraw,
+   * so a tick or a finished timer in the app clears them as the widget's do.
+   */
+  fun clearSettled(context: Context, today: Today?, timer: TimerSession?) {
+    val posted = ReminderNotification.posted(context)
+    if (posted.isEmpty()) return
+    for (id in ReminderRules.toClear(posted, plan(context), today, timer)) ReminderNotification.cancel(context, id)
   }
 
   internal fun isFire(intent: Intent) = intent.action == ACTION_FIRE

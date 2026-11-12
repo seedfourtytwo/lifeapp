@@ -225,7 +225,7 @@ Phone check owed (6d):
 - Clear-data deletes the widget files; an import that wipes settings keeps the applied-actions log safe (stage 5 leftovers).
 - Second widget "Next up" (a short list with one-tap done) only if the single widget proves too small in real use.
 
-**Stage 6e status (2026-11-12):** implemented by Opus on `clean-slate-stage-6e` (7e2b06c … this note), not yet reviewed or run on a device. JS 167 suites / 2017 tests, type-check and lint green; Kotlin 103 JVM tests (`cd android && ./gradlew :life-core:testDebugUnitTest`); `assembleDebug` (arm64) builds. Contract v5 in `docs/widget-contract.md` (the reminder plan and the voice note file).
+**Stage 6e status (2026-11-12):** implemented by Opus on `clean-slate-stage-6e` (7e2b06c … this note), not yet reviewed or run on a device. JS 167 suites / 2017 tests, type-check and lint green; Kotlin 108 JVM tests (`cd android && ./gradlew :life-core:testDebugUnitTest`); `assembleDebug` (arm64) builds. Contract v5 in `docs/widget-contract.md` (the reminder plan and the voice note file).
 
 - **Habit reminders, native.** JavaScript writes `files/widget/reminders.json` (`src/protocol/reminderPlan.ts`, built by `src/notifications/reminderPlan.ts`, written by `useHabitReminderSync` whenever the switch, the permission, the language or a habit's name, config or archive changes, and once per launch) and calls `remindersChanged()`. Native (`modules/life-core/.../reminders/`): `ReminderRules` (pure: the moments on a date, the next moment, what to post), `Reminders` (one exact `RTC_WAKEUP` allow-while-idle alarm, re-armed after it fires, on `remindersChanged()`, and from the 6c system receiver on boot, clock, zone and update), `ReminderNotification`. At the moment it posts only for a habit the widget's own view of today (snapshot + queue overlay + the day worked out without the app) says is not done and whose timer is not running, so a tick on the widget silences it and reminders go on for weeks without the app. The moments on a date are one fixture for both languages (`fixtures/reminder-moments.json`, also used by the snapshot's `nextReminders`).
 - **The notification**: channel `life_core_reminders` ("Habit reminders", high importance as the `reminders` channel), one per habit (tag = habit id), "Habit reminder · Time for {name}" in the app's language. Public version: the same words with the lock-screen name; a habit without one has none, so the system shows its hidden line as before. Tap opens the app. A check-off habit in the snapshot gets **Done**: the widget's own tick (`habit_complete` through `WidgetActionReceiver`), with `setAuthenticationRequired(false)`, on the private and the public version; a tick on the widget also clears that habit's reminder.
@@ -243,7 +243,7 @@ Decisions and differences:
 - The plan carries the habit's real name, as the snapshot already does, inside the app's private files.
 - The plan is written once per launch even if unchanged, so a force-stop (which clears the app's alarms) is mended by the next open; until then nothing reminds.
 - Reminder Done uses the widget's tap guard and tick rules: a habit already done, or not a check-off in the snapshot, gets no new line.
-- When the app ticks a habit, a reminder already posted for it stays until swiped (JavaScript has no way to cancel a native notification); the next one is not posted.
+- A reminder on screen goes as soon as its habit is settled, wherever: every snapshot write (`snapshotWritten()`), timer change and widget redraw runs `ReminderRules.toClear` on the reminders the system shows (`getActiveNotifications`, so a new process knows them too) and takes away those whose habit the widget's view of today says is done, whose timer session exists, or that left the plan (archived, deleted); all of them when reminders are off. Un-ticking never posts one again.
 - The widget's own words still follow the phone's language: its fixed strings are inflated by the host from the layout, so only a renderer-wide change could move them; left as it was.
 - The voice note is deleted only with the trackers (it is not history); a preferences or activity clear keeps it.
 - The small icon of the reminder and note notifications is the timer's (`life_core_timer`); no new artwork.
@@ -260,38 +260,39 @@ Install the dev build from `clean-slate-stage-6e`. Phone locked with "hide sensi
 4. Press Done on the locked phone. Expect: no unlock asked (if it asks, note it), the notification goes, the widget shows the habit ticked at once; unlock and open the app: the habit is done today, logged once.
 5. Give a second check-off habit no lock-screen name and a reminder a minute ahead; lock. Expect: the locked notification shows only the system's hidden-content line; unlocked, it names the habit.
 6. Tick a third habit on the widget before its reminder time. Expect: no reminder at that time.
-7. Change the app language to French (FR), give a habit a reminder a minute ahead, lock. Expect: "Rappel d'habitude · C'est l'heure pour …" and "Fait". Then start a timer from the widget: its notification reads "En cours", "Pause", "Terminé".
-8. Back in English. Widget: play a timed habit while locked. Expect: its sound; the notification with a chronometer, Pause and Done; its public version shows the lock-screen name (or "Timer").
-9. Pause, then resume, from the notification and then from the widget, still locked. Expect: the sound stops and starts, both chronometers stop and run, the progress line moves on within 30 s.
-10. Let a short seconds goal pass with the screen off. Expect: the chime at the goal; the timer keeps running.
-11. Call the phone (or play other media) during a timer; then unplug headphones during another. Expect: each pauses the session, which waits for Resume.
-12. Press Done on the widget. Expect: the session logged once (History), the day done if the goal or Done says so. Start another and discard it: nothing logged.
-13. Start a timer, force-stop Life from settings, reopen. Expect: the timer paused at its last heartbeat (within 30 s of the stop), resumable; Done logs it once.
-14. A play-once habit: let its track end. Expect: the chime, the session logged with the track finished, the day done.
-15. Start a timer and swipe Life away from recents. Expect: the sound and the notification go on (the foreground service keeps the process).
-16. The habit editor: Preview sound, let the track end. Expect: the button reads "Preview sound" again by itself. Preview another and press Stop preview: it stops.
-17. Commitment editor: set the clock to yesterday 21:00, the ride to 5 min, save. Expect: the card's time clear counts from yesterday 21:00. Try a time an hour ahead: refused, "The clock cannot start in the future".
-18. Commitment editor, Voice note: press Record. Expect: the microphone prompt (first time only); "Recording 0:05 of 1:00" counting; it stops by itself at 1:00 if left. Play: you hear it. Record again replaces it; Delete asks, then removes it. Leave one note recorded.
-19. On the card, press Urge. Expect: the urge screen opens with the 5-minute countdown, his line, the instead buttons, and "Play my note"; it plays and its button reads "Stop my note" until it ends.
-20. Start an instead-habit with sound from the urge screen, then press Play my note. Expect: the track drops quieter under the note, the timer keeps counting, the track comes back to full when the note ends; nothing pauses.
-21. Lock the phone during the ride. Expect on the widget: "Ride it to the lamp", the countdown, the instead button, "Play my note", "I used". Press Play my note: it plays locked, with a "Playing your note" notification and Stop.
-22. Press "I used" on the widget. Expect: the ride ends, home again; unlock: the app shows the urge used, not ridden out, and offers nothing else.
-23. Press Urge on the widget, unlock straight away. Expect: the app opens on the ride with the same time left as the widget.
-24. Let a ride run to its end with the app closed. Expect: the widget turns to home and counts it ridden out; opening the app: "Ridden out. That's N." if the screen was open, the total right on the card.
-25. On the card's menu, Log a slip, confirm. Expect: time clear restarts, an Undo bar. Press Undo: time clear back to yesterday 21:00 and no slip in History. Log a slip again and let it stand.
-26. Habits page: "N of M" counts the commitment; its History shows the kept days and the slipped one.
-27. Close the screen during a ride (× and back), leave the app and return. Expect: the ride keeps going, the screen comes back on return.
-28. On the urge screen, the status bar icons are light on the night background, in the light app theme too.
-29. A habit with a weekdays or every-3-days schedule and a reminder time: on a day it is not due, no reminder; on its next due day, the reminder (check over the next days, without opening the app for at least two days, to see that reminders and the widget's day go on alone).
-30. After midnight without opening the app: the widget's counts reset, due-today follows the schedules, the commitment's new day is kept, a lamp passed shows the next own line; the morning's reminders come for habits not done.
-31. Leave a timer running across midnight, then Done. Expect: two events in History, each day with its own seconds.
-32. Change the phone's time zone, then the clock by an hour, then reboot (unlock once). Expect: the widget redraws each time; the next reminder still comes at its local time; before the first unlock after the reboot the widget shows its last layout.
-33. Settings → Clear data → activity only (all time). Expect: the widget shows "Open Life" briefly, then today from the app again; the voice note and reminders stay. Clear trackers too: the note is gone (the urge screen has no Play my note), no reminder alarm is left.
-34. Export, then import that file. Expect: the commitment, its slips, urges and notes come back; the voice note is not in the file; a widget tap queued just before the import is not applied twice.
-35. TalkBack on: the widget's buttons, the urge screen, the editor's Record/Play/Delete and the clock fields are read. At the largest font size nothing is clipped. Reduced motion: the car on the urge screen steps.
-36. Look at `docs/mockups/widget-preview/*.png` next to the real widget: say how close they are.
-37. Add the widget to the home screen too. Expect: real names there, at the size the launcher gives; never on the lock screen.
-38. Switch the app to French once more and walk the widget, the urge screen, the commitment editor and the notifications (FR): no English left.
+7. Let a reminder arrive for a check-off habit and leave it; unlock and tick the habit in the app. Expect: the reminder disappears within a second. Again with a timed habit: start its timer in the app, and the reminder goes; un-tick a habit: no reminder comes back.
+8. Change the app language to French (FR), give a habit a reminder a minute ahead, lock. Expect: "Rappel d'habitude · C'est l'heure pour …" and "Fait". Then start a timer from the widget: its notification reads "En cours", "Pause", "Terminé".
+9. Back in English. Widget: play a timed habit while locked. Expect: its sound; the notification with a chronometer, Pause and Done; its public version shows the lock-screen name (or "Timer").
+10. Pause, then resume, from the notification and then from the widget, still locked. Expect: the sound stops and starts, both chronometers stop and run, the progress line moves on within 30 s.
+11. Let a short seconds goal pass with the screen off. Expect: the chime at the goal; the timer keeps running.
+12. Call the phone (or play other media) during a timer; then unplug headphones during another. Expect: each pauses the session, which waits for Resume.
+13. Press Done on the widget. Expect: the session logged once (History), the day done if the goal or Done says so. Start another and discard it: nothing logged.
+14. Start a timer, force-stop Life from settings, reopen. Expect: the timer paused at its last heartbeat (within 30 s of the stop), resumable; Done logs it once.
+15. A play-once habit: let its track end. Expect: the chime, the session logged with the track finished, the day done.
+16. Start a timer and swipe Life away from recents. Expect: the sound and the notification go on (the foreground service keeps the process).
+17. The habit editor: Preview sound, let the track end. Expect: the button reads "Preview sound" again by itself. Preview another and press Stop preview: it stops.
+18. Commitment editor: set the clock to yesterday 21:00, the ride to 5 min, save. Expect: the card's time clear counts from yesterday 21:00. Try a time an hour ahead: refused, "The clock cannot start in the future".
+19. Commitment editor, Voice note: press Record. Expect: the microphone prompt (first time only); "Recording 0:05 of 1:00" counting; it stops by itself at 1:00 if left. Play: you hear it. Record again replaces it; Delete asks, then removes it. Leave one note recorded.
+20. On the card, press Urge. Expect: the urge screen opens with the 5-minute countdown, his line, the instead buttons, and "Play my note"; it plays and its button reads "Stop my note" until it ends.
+21. Start an instead-habit with sound from the urge screen, then press Play my note. Expect: the track drops quieter under the note, the timer keeps counting, the track comes back to full when the note ends; nothing pauses.
+22. Lock the phone during the ride. Expect on the widget: "Ride it to the lamp", the countdown, the instead button, "Play my note", "I used". Press Play my note: it plays locked, with a "Playing your note" notification and Stop.
+23. Press "I used" on the widget. Expect: the ride ends, home again; unlock: the app shows the urge used, not ridden out, and offers nothing else.
+24. Press Urge on the widget, unlock straight away. Expect: the app opens on the ride with the same time left as the widget.
+25. Let a ride run to its end with the app closed. Expect: the widget turns to home and counts it ridden out; opening the app: "Ridden out. That's N." if the screen was open, the total right on the card.
+26. On the card's menu, Log a slip, confirm. Expect: time clear restarts, an Undo bar. Press Undo: time clear back to yesterday 21:00 and no slip in History. Log a slip again and let it stand.
+27. Habits page: "N of M" counts the commitment; its History shows the kept days and the slipped one.
+28. Close the screen during a ride (× and back), leave the app and return. Expect: the ride keeps going, the screen comes back on return.
+29. On the urge screen, the status bar icons are light on the night background, in the light app theme too.
+30. A habit with a weekdays or every-3-days schedule and a reminder time: on a day it is not due, no reminder; on its next due day, the reminder (check over the next days, without opening the app for at least two days, to see that reminders and the widget's day go on alone).
+31. After midnight without opening the app: the widget's counts reset, due-today follows the schedules, the commitment's new day is kept, a lamp passed shows the next own line; the morning's reminders come for habits not done.
+32. Leave a timer running across midnight, then Done. Expect: two events in History, each day with its own seconds.
+33. Change the phone's time zone, then the clock by an hour, then reboot (unlock once). Expect: the widget redraws each time; the next reminder still comes at its local time; before the first unlock after the reboot the widget shows its last layout.
+34. Settings → Clear data → activity only (all time). Expect: the widget shows "Open Life" briefly, then today from the app again; the voice note and reminders stay. Clear trackers too: the note is gone (the urge screen has no Play my note), no reminder alarm is left.
+35. Export, then import that file. Expect: the commitment, its slips, urges and notes come back; the voice note is not in the file; a widget tap queued just before the import is not applied twice.
+36. TalkBack on: the widget's buttons, the urge screen, the editor's Record/Play/Delete and the clock fields are read. At the largest font size nothing is clipped. Reduced motion: the car on the urge screen steps.
+37. Look at `docs/mockups/widget-preview/*.png` next to the real widget: say how close they are.
+38. Add the widget to the home screen too. Expect: real names there, at the size the launcher gives; never on the lock screen.
+39. Switch the app to French once more and walk the widget, the urge screen, the commitment editor and the notifications (FR): no English left.
 
 ## Order, branches, checks
 
