@@ -64,7 +64,7 @@ sealed interface NextButton {
 }
 
 sealed interface NextUp<out L : Label> {
-  data class Action<L : Label>(val label: L, val button: NextButton) : NextUp<L>
+  data class Action<out L : Label>(val label: L, val button: NextButton) : NextUp<L>
   /** Nothing more is due today: his own line instead. */
   data class OwnLine(val text: String) : NextUp<Nothing>
   data object AllDone : NextUp<Nothing>
@@ -80,11 +80,11 @@ sealed interface HomeTop {
 /** The line under the road: the next lamp, how long until it, urges ridden out. */
 data class RoadNote(val lamp: LampLabel, val until: ClearTime, val riddenOut: Int)
 
-data class InsteadButton<L : Label>(val trackerId: String, val label: L, val goalSeconds: Int?)
+data class InsteadButton<out L : Label>(val trackerId: String, val label: L, val goalSeconds: Int?)
 
 /** Everything the widget shows, for one host. `L` is that host's [Label]. */
 sealed interface WidgetView<out L : Label> {
-  data class Timer<L : Label>(
+  data class Timer<out L : Label>(
     val label: L,
     val activeMs: Long,
     val running: Boolean,
@@ -92,9 +92,9 @@ sealed interface WidgetView<out L : Label> {
     val goalMs: Long?,
   ) : WidgetView<L>
 
-  data class Riding<L : Label>(val ride: Ride, val road: Road, val instead: InsteadButton<L>?) : WidgetView<L>
+  data class Riding<out L : Label>(val ride: Ride, val road: Road, val instead: InsteadButton<L>?) : WidgetView<L>
 
-  data class Home<L : Label>(val top: HomeTop, val road: Road, val note: RoadNote?, val next: NextUp<L>) : WidgetView<L>
+  data class Home<out L : Label>(val top: HomeTop, val road: Road, val note: RoadNote?, val next: NextUp<L>) : WidgetView<L>
 
   /** No snapshot to read: the app icon and "Open Life". */
   data object Empty : WidgetView<Nothing>
@@ -104,9 +104,10 @@ sealed interface WidgetView<out L : Label> {
 data class WidgetFrame<out L : Label>(val view: WidgetView<L>, val redrawAtMs: Long?)
 
 object WidgetViews {
-  /** Where the tail lights sit on the road (0 = near edge, 1 = horizon). */
-  const val CAR_AT = 0.1
-  private const val LAMP_FARTHEST = 0.9
+  /** Where the tail lights sit on the road: 0 is its near edge, 1 the horizon; the days behind are nearer. */
+  const val CAR_AT = 0.6
+  /** Where the next lamp stands when it is as far as it gets. */
+  const val LAMP_FARTHEST = 0.95
   private const val DIM = 0.16
   private const val MINUTE_MS = 60_000L
   private const val DAY_MS = 24 * 60 * MINUTE_MS

@@ -11,6 +11,19 @@
       android:exported="false"
       android:foregroundServiceType="mediaPlayback" />
 
+    <!-- The lock-screen and home-screen widget. Exported so the widget host can update it. -->
+    <receiver
+      android:name="expo.modules.lifecore.widget.LifeWidgetProvider"
+      android:exported="true"
+      android:label="@string/life_core_widget_name">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/life_core_widget_info" />
+    </receiver>
+
     <!-- Every widget button: this app's own PendingIntents only. -->
     <receiver
       android:name="expo.modules.lifecore.widget.WidgetActionReceiver"

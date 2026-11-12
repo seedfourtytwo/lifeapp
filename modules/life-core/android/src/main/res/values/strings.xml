@@ -13,4 +13,29 @@
   <string name="life_core_widget_clear_days_hours">%1$dd %2$dh</string>
   <string name="life_core_widget_lamp_hours">%1$dh</string>
   <string name="life_core_widget_lamp_days">%1$dd</string>
+  <string name="life_core_widget_name">Life</string>
+  <string name="life_core_widget_description">Time clear, today and the next thing to do, with one-tap buttons. Made for the lock screen: it shows lock-screen names only.</string>
+  <string name="life_core_widget_today">Today</string>
+  <string name="life_core_widget_in_a_row">In a row</string>
+  <string name="life_core_widget_note">Next %1$s in %2$s</string>
+  <plurals name="life_core_widget_ridden_out">
+    <item quantity="one">%d ridden out</item>
+    <item quantity="other">%d ridden out</item>
+  </plurals>
+  <string name="life_core_widget_urge">Urge</string>
+  <string name="life_core_widget_urge_a11y">Log an urge</string>
+  <string name="life_core_widget_used">I used</string>
+  <string name="life_core_widget_used_a11y">I used: end this ride</string>
+  <string name="life_core_widget_ride_title">Ride it to the lamp</string>
+  <string name="life_core_widget_minutes">%1$d min</string>
+  <string name="life_core_widget_start">Start</string>
+  <string name="life_core_widget_start_a11y">Start %1$s</string>
+  <string name="life_core_widget_tick_a11y">Mark %1$s done</string>
+  <string name="life_core_widget_add_a11y">Add %1$s to %2$s</string>
+  <string name="life_core_widget_next">Next</string>
+  <string name="life_core_widget_all_done">Nothing left today</string>
+  <string name="life_core_widget_paused">%1$s · paused</string>
+  <string name="life_core_widget_discard">Stop and throw away</string>
+  <string name="life_core_widget_done">Done, count it</string>
+  <string name="life_core_widget_open">Open Life</string>
 </resources>

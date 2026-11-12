@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The glass tile: a dark gradient body, a hairline edge and a 1 dp highlight along the top. No blur, no glow. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item>
+    <shape android:shape="rectangle">
+      <corners android:radius="28dp" />
+      <gradient
+        android:angle="315"
+        android:startColor="@color/life_core_widget_glass_top"
+        android:endColor="@color/life_core_widget_glass_bottom" />
+      <stroke android:width="1dp" android:color="@color/life_core_widget_hairline" />
+    </shape>
+  </item>
+  <item android:left="28dp" android:right="28dp" android:gravity="top" android:height="1dp">
+    <shape android:shape="rectangle">
+      <solid android:color="@color/life_core_widget_highlight" />
+    </shape>
+  </item>
+</layer-list>

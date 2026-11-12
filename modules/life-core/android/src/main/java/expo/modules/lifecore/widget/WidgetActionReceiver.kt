@@ -33,6 +33,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
       // The timer core refused (another session began meanwhile): the tap does nothing.
       Log.w(TAG, "Widget tap not applied", error)
     }
+    // Drawn at once from the files, before JavaScript (if it runs at all) hears of it.
+    LifeWidget.refresh(context)
   }
 
   private fun apply(context: Context, files: WidgetFiles, effect: TapEffect) {

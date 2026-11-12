@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One widget, for the lock-screen page (one fixed 447 x 298 dp box on the
+  Pixel 9) and the home screen. It redraws on taps, snapshot writes, timer
+  changes and its own alarms, so the host never polls it.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+  android:description="@string/life_core_widget_description"
+  android:initialKeyguardLayout="@layout/life_core_widget_empty"
+  android:initialLayout="@layout/life_core_widget_empty"
+  android:minWidth="300dp"
+  android:minHeight="200dp"
+  android:resizeMode="horizontal|vertical"
+  android:targetCellWidth="5"
+  android:targetCellHeight="3"
+  android:updatePeriodMillis="0"
+  android:widgetCategory="home_screen|keyguard" />

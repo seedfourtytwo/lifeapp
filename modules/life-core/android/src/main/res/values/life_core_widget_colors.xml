@@ -1,0 +1,14 @@
+<resources>
+  <!-- Night road, flat. Cream text; one light per state, only as a thin ring or line. -->
+  <color name="life_core_widget_cream">#FFEFE9DC</color>
+  <!-- Cream laid over the glass at 62 %, as a solid colour: secondary text is never dimmed with alpha. -->
+  <color name="life_core_widget_cream_quiet">#FF9C9A95</color>
+  <color name="life_core_widget_violet">#FF8B7CFF</color>
+  <color name="life_core_widget_teal">#FF4FD6C6</color>
+  <color name="life_core_widget_amber">#FFF2B35B</color>
+  <color name="life_core_widget_glass_top">#EB1A2030</color>
+  <color name="life_core_widget_glass_bottom">#E6070A10</color>
+  <color name="life_core_widget_hairline">#14FFFFFF</color>
+  <color name="life_core_widget_highlight">#29FFFFFF</color>
+  <color name="life_core_widget_track">#24EFE9DC</color>
+</resources>

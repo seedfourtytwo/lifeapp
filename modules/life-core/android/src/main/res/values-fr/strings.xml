@@ -13,4 +13,30 @@
   <string name="life_core_widget_clear_days_hours">%1$d j %2$d h</string>
   <string name="life_core_widget_lamp_hours">%1$d h</string>
   <string name="life_core_widget_lamp_days">%1$d j</string>
+  <string name="life_core_widget_name">Life</string>
+  <string name="life_core_widget_description">Temps tenu, aujourd’hui et la prochaine chose à faire, avec des boutons en un geste. Fait pour l’écran verrouillé : seuls les noms d’écran verrouillé y apparaissent.</string>
+  <string name="life_core_widget_today">Aujourd’hui</string>
+  <string name="life_core_widget_in_a_row">D’affilée</string>
+  <string name="life_core_widget_note">Prochaine étape %1$s dans %2$s</string>
+  <plurals name="life_core_widget_ridden_out">
+    <item quantity="one">%d envie traversée</item>
+    <item quantity="many">%d envies traversées</item>
+    <item quantity="other">%d envies traversées</item>
+  </plurals>
+  <string name="life_core_widget_urge">Envie</string>
+  <string name="life_core_widget_urge_a11y">Noter une envie</string>
+  <string name="life_core_widget_used">J’ai consommé</string>
+  <string name="life_core_widget_used_a11y">J’ai consommé : terminer</string>
+  <string name="life_core_widget_ride_title">La laisser passer jusqu’à la lampe</string>
+  <string name="life_core_widget_minutes">%1$d min</string>
+  <string name="life_core_widget_start">Lancer</string>
+  <string name="life_core_widget_start_a11y">Lancer %1$s</string>
+  <string name="life_core_widget_tick_a11y">Marquer %1$s comme fait</string>
+  <string name="life_core_widget_add_a11y">Ajouter %1$s à %2$s</string>
+  <string name="life_core_widget_next">Ensuite</string>
+  <string name="life_core_widget_all_done">Plus rien pour aujourd’hui</string>
+  <string name="life_core_widget_paused">%1$s · en pause</string>
+  <string name="life_core_widget_discard">Arrêter sans compter</string>
+  <string name="life_core_widget_done">Terminé, le compter</string>
+  <string name="life_core_widget_open">Ouvrir Life</string>
 </resources>

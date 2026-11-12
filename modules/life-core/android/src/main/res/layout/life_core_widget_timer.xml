@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A timer running or paused: its lock-screen name, the clock (a Chronometer,
+  so it ticks with nothing posted per second), "of 13:00" and a thin teal
+  progress line, then discard, pause or resume (the lit one) and Done.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/life_core_widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/life_core_widget_tile">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="18dp">
+
+    <LinearLayout
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+
+      <ImageView
+        android:id="@+id/life_core_widget_timer_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no" />
+
+      <TextView
+        android:id="@+id/life_core_widget_timer_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:textColor="@color/life_core_widget_cream_quiet"
+        android:textSize="14sp" />
+    </LinearLayout>
+
+    <Chronometer
+      android:id="@+id/life_core_widget_timer_clock"
+      android:layout_width="wrap_content"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:fontFamily="sans-serif-light"
+      android:gravity="center"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:textColor="@color/life_core_widget_cream"
+      android:textSize="64dp" />
+
+    <TextView
+      android:id="@+id/life_core_widget_timer_goal"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:maxLines="1"
+      android:textColor="@color/life_core_widget_cream_quiet"
+      android:textSize="13sp" />
+
+    <ProgressBar
+      android:id="@+id/life_core_widget_timer_progress"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="3dp"
+      android:layout_marginStart="24dp"
+      android:layout_marginTop="10dp"
+      android:layout_marginEnd="24dp"
+      android:max="1000"
+      android:progressDrawable="@drawable/life_core_widget_progress" />
+
+    <LinearLayout
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+
+      <FrameLayout
+        android:id="@+id/life_core_widget_timer_discard"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/life_core_widget_round_quiet"
+        android:contentDescription="@string/life_core_widget_discard">
+
+        <ImageView
+          android:layout_width="20dp"
+          android:layout_height="20dp"
+          android:layout_gravity="center"
+          android:importantForAccessibility="no"
+          android:src="@drawable/life_core_widget_stop" />
+      </FrameLayout>
+
+      <FrameLayout
+        android:id="@+id/life_core_widget_timer_toggle"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/life_core_widget_round_teal">
+
+        <ImageView
+          android:id="@+id/life_core_widget_timer_toggle_glyph"
+          android:layout_width="24dp"
+          android:layout_height="24dp"
+          android:layout_gravity="center"
+          android:importantForAccessibility="no" />
+      </FrameLayout>
+
+      <FrameLayout
+        android:id="@+id/life_core_widget_timer_done"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/life_core_widget_round_quiet"
+        android:contentDescription="@string/life_core_widget_done">
+
+        <ImageView
+          android:layout_width="22dp"
+          android:layout_height="22dp"
+          android:layout_gravity="center"
+          android:importantForAccessibility="no"
+          android:src="@drawable/life_core_widget_check" />
+      </FrameLayout>
+    </LinearLayout>
+  </LinearLayout>
+</FrameLayout>

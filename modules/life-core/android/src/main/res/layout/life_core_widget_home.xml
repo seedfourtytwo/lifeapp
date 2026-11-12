@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Home, for the 447 x 298 dp lock-screen box: time clear and today's count
+  on top, the road in the middle (it gives up height first), the next thing
+  to do and Urge at the bottom. Violet is the one light: the Urge ring.
+  Big numbers are sized in dp (they already fill their row); labels are sp
+  and keep to one line, so a large font scale shrinks the road, never clips.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/life_core_widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/life_core_widget_tile">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="16dp">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:baselineAligned="false"
+      android:orientation="horizontal">
+
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+          android:id="@+id/life_core_widget_home_big"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-light"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:textColor="@color/life_core_widget_cream"
+          android:textSize="44dp" />
+
+        <TextView
+          android:id="@+id/life_core_widget_home_big_label"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="2dp"
+          android:ellipsize="end"
+          android:maxLines="1"
+          android:textColor="@color/life_core_widget_cream_quiet"
+          android:textSize="13sp" />
+      </LinearLayout>
+
+      <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="vertical">
+
+        <TextView
+          android:id="@+id/life_core_widget_home_side"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-light"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:paddingTop="10dp"
+          android:textColor="@color/life_core_widget_cream"
+          android:textSize="28dp" />
+
+        <TextView
+          android:id="@+id/life_core_widget_home_side_label"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="2dp"
+          android:maxLines="1"
+          android:textColor="@color/life_core_widget_cream_quiet"
+          android:textSize="13sp" />
+      </LinearLayout>
+    </LinearLayout>
+
+    <ImageView
+      android:id="@+id/life_core_widget_home_road"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:importantForAccessibility="no"
+      android:scaleType="fitCenter" />
+
+    <TextView
+      android:id="@+id/life_core_widget_home_note"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:ellipsize="end"
+      android:maxLines="1"
+      android:textColor="@color/life_core_widget_cream_quiet"
+      android:textSize="13sp" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:gravity="center_vertical"
+      android:minHeight="52dp"
+      android:orientation="horizontal">
+
+      <ImageView
+        android:id="@+id/life_core_widget_home_next_icon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginEnd="10dp"
+        android:importantForAccessibility="no" />
+
+      <TextView
+        android:id="@+id/life_core_widget_home_next_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="@color/life_core_widget_cream"
+        android:textSize="15sp" />
+
+      <FrameLayout
+        android:id="@+id/life_core_widget_home_next_button"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/life_core_widget_round_quiet">
+
+        <ImageView
+          android:id="@+id/life_core_widget_home_next_glyph"
+          android:layout_width="22dp"
+          android:layout_height="22dp"
+          android:layout_gravity="center"
+          android:importantForAccessibility="no" />
+
+        <TextView
+          android:id="@+id/life_core_widget_home_next_amount"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_gravity="center"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:textColor="@color/life_core_widget_cream"
+          android:textSize="15dp" />
+      </FrameLayout>
+
+      <TextView
+        android:id="@+id/life_core_widget_home_urge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:background="@drawable/life_core_widget_pill_violet"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:maxLines="1"
+        android:minWidth="96dp"
+        android:minHeight="48dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:text="@string/life_core_widget_urge"
+        android:textColor="@color/life_core_widget_cream"
+        android:textSize="15sp" />
+    </LinearLayout>
+  </LinearLayout>
+</FrameLayout>

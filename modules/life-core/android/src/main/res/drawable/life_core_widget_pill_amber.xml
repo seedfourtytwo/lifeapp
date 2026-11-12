@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A glass pill, lit by a thin amber ring. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <corners android:radius="24dp" />
+  <gradient
+    android:angle="315"
+    android:startColor="@color/life_core_widget_glass_top"
+    android:endColor="@color/life_core_widget_glass_bottom" />
+  <stroke android:width="1.5dp" android:color="@color/life_core_widget_amber" />
+</shape>

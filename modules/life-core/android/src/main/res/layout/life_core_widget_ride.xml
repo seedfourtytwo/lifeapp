@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  An urge's ride: "Ride it to the lamp", a count-down Chronometer to the
+  ride's end, the road with the lamp coming closer, then the first
+  instead-habit (the one light: an amber ring) and a small, quiet "Used".
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/life_core_widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/life_core_widget_tile">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="16dp">
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:maxLines="1"
+      android:text="@string/life_core_widget_ride_title"
+      android:textColor="@color/life_core_widget_cream_quiet"
+      android:textSize="14sp" />
+
+    <Chronometer
+      android:id="@+id/life_core_widget_ride_clock"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:fontFamily="sans-serif-light"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:paddingTop="4dp"
+      android:textColor="@color/life_core_widget_cream"
+      android:textSize="52dp" />
+
+    <ImageView
+      android:id="@+id/life_core_widget_ride_road"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:importantForAccessibility="no"
+      android:scaleType="fitCenter" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+
+      <LinearLayout
+        android:id="@+id/life_core_widget_ride_instead"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="@drawable/life_core_widget_pill_amber"
+        android:gravity="center"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <ImageView
+          android:id="@+id/life_core_widget_ride_instead_icon"
+          android:layout_width="18dp"
+          android:layout_height="18dp"
+          android:layout_marginEnd="8dp"
+          android:importantForAccessibility="no" />
+
+        <TextView
+          android:id="@+id/life_core_widget_ride_instead_text"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:textColor="@color/life_core_widget_cream"
+          android:textSize="15sp" />
+      </LinearLayout>
+
+      <TextView
+        android:id="@+id/life_core_widget_ride_used"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:minWidth="72dp"
+        android:minHeight="48dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="@string/life_core_widget_used"
+        android:textColor="@color/life_core_widget_cream_quiet"
+        android:textSize="14sp" />
+    </LinearLayout>
+  </LinearLayout>
+</FrameLayout>
