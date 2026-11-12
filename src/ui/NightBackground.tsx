@@ -9,7 +9,7 @@ const [SKY_0, SKY_1, SKY_2, SKY_3] = nightColors.sky;
 export function NightBackground() {
   const id = `night${useId().replace(/[^A-Za-z0-9]/g, '')}`;
   return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={SKY_0} />
