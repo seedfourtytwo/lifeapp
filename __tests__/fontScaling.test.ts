@@ -26,7 +26,14 @@ import { noteIconButtonStyles } from '../src/notes/NoteIconButton';
 import { glassSurfaceStyles } from '../src/ui/GlassSurface';
 import { pillButtonStyles } from '../src/ui/PillButton';
 import { roundButtonStyles } from '../src/ui/RoundButton';
-import { nightFieldStyles } from '../src/ui/NightField';
+import { nightRadius, roundSize } from '../src/ui/tokens';
+import { fieldStyles } from '../src/ui/Field';
+import { chipStyles } from '../src/ui/Chip';
+import { rowStyles } from '../src/ui/Row';
+import { screenHeaderStyles } from '../src/ui/ScreenHeader';
+import { segmentedStyles } from '../src/ui/Segmented';
+import { textButtonStyles } from '../src/ui/TextButton';
+import { undoBarStyles } from '../src/ui/UndoBar';
 
 type Style = Record<string, unknown>;
 
@@ -89,10 +96,25 @@ describe('boxes that hold text state a floor, not a fixed height', () => {
 describe('the Night road kit grows with the system font', () => {
   it.each([
     ['a pill button', pillButtonStyles.pill as Style],
-    ['a field', nightFieldStyles.field as Style],
+    ['a field', fieldStyles.field as Style],
+    ['a row', rowStyles.row as Style],
+    ['a segment', segmentedStyles.segment as Style],
+    ['a text button', textButtonStyles.button as Style],
+    ['the undo bar', undoBarStyles.bar as Style],
+    ['a screen header', screenHeaderStyles.header as Style],
   ])('%s states a floor and no fixed height', (_label, style) => {
     expect(style.minHeight).toBeGreaterThanOrEqual(48);
     expect(style.height).toBeUndefined();
+  });
+
+  /** Smaller to the eye; its slop makes up the touch target. */
+  it.each([
+    ['a chip', chipStyles.chip as Style],
+    ['a compact pill', pillButtonStyles.compact as Style],
+  ])('%s states a floor and no fixed height or width', (_label, style) => {
+    expect(style.minHeight).toBeGreaterThanOrEqual(40);
+    expect(style.height).toBeUndefined();
+    expect(style.width).toBeUndefined();
   });
 
   it('a glass surface takes the height of what it holds', () => {
@@ -101,11 +123,21 @@ describe('the Night road kit grows with the system font', () => {
     expect(surface.minHeight).toBeUndefined();
   });
 
-  /** It holds an icon and no text: a touch target should not move with the font. */
-  it('a round button keeps one size, at least a touch target', () => {
-    const button = roundButtonStyles.button as Style;
-    expect(button.width).toBeGreaterThanOrEqual(48);
-    expect(button.height).toBe(button.width);
+  /**
+   * With an icon it holds no text: a touch target should not move with the
+   * font, and every size reaches one. With characters ("+1") it states a
+   * floor instead, and grows into a capsule.
+   */
+  it.each(Object.entries(roundSize))('a %s round button keeps one size, at least a touch target', (_size, { box }) => {
+    expect(box).toBeGreaterThanOrEqual(48);
+    expect(roundButtonStyles.button.borderRadius).toBe(nightRadius.pill);
+  });
+
+  it('a round button with characters states a floor and grows', () => {
+    const characters = roundButtonStyles.characters as Style;
+    expect(characters.height).toBeUndefined();
+    expect(characters.width).toBeUndefined();
+    expect(characters.paddingHorizontal).toEqual(expect.any(Number));
   });
 });
 

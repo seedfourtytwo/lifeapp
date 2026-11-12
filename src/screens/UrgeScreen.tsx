@@ -20,15 +20,15 @@ import { useEventStore } from '../store/eventStore';
 import { todayDate } from '../store/events/state';
 import { useUrgeStore } from '../store/urgeStore';
 import { useVoiceNoteStore } from '../store/voiceNoteStore';
-import { space } from '../theme/spacing';
 import { GlassSurface } from '../ui/GlassSurface';
 import { NightBackground } from '../ui/NightBackground';
-import { NightField } from '../ui/NightField';
+import { Field } from '../ui/Field';
 import { NightText } from '../ui/NightText';
 import { PillButton } from '../ui/PillButton';
 import { Road } from '../ui/Road';
 import { RIDE_LAMP_AT, rideCarAt, rideProgress } from '../ui/roadScene';
 import { RoundButton } from '../ui/RoundButton';
+import { space } from '../ui/tokens';
 import { formatRideLeft } from '../utils/commitmentFormat';
 import { getActiveCommitment } from '../utils/dashboardElements';
 import { InsteadTimer } from './urge/InsteadTimer';
@@ -179,7 +179,7 @@ export default function UrgeScreen({ navigation }: Props) {
     body = (
       <View style={styles.noting}>
         <NightText kind="body">{t('urge.noteQuestion')}</NightText>
-        <NightField
+        <Field
           value={note}
           onChangeText={setNote}
           maxLength={URGE_NOTE_MAX_LENGTH}
@@ -217,7 +217,7 @@ export default function UrgeScreen({ navigation }: Props) {
           <RoundButton icon="close" onPress={close} accessibilityLabel={t('urge.closeA11y')} />
         </View>
         <GlassSurface style={styles.ride}>
-          <NightText kind="label" tone="dim" style={styles.centred}>
+          <NightText kind="caption" tone="dim" style={styles.centred}>
             {t('urge.rideTitle')}
           </NightText>
           <NightText

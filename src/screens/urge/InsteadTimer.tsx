@@ -9,10 +9,10 @@ import {
   type ActiveTimerSession,
   type HabitElement,
 } from '../../protocol';
-import { space } from '../../theme/spacing';
 import { GlassSurface } from '../../ui/GlassSurface';
 import { NightText } from '../../ui/NightText';
 import { RoundButton } from '../../ui/RoundButton';
+import { space } from '../../ui/tokens';
 
 type Props = {
   habit: HabitElement;
@@ -42,7 +42,7 @@ export function InsteadTimer({ habit, session, loggedSeconds, nowMs, onPauseOrRe
         {elapsed}
       </NightText>
       {goalLeft > 0 ? (
-        <NightText kind="label" tone="dim">
+        <NightText kind="caption" tone="dim">
           {t('urge.timerOf', { time: formatHabitTimerDuration(goalLeft) })}
         </NightText>
       ) : null}

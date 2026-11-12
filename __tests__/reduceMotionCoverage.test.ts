@@ -71,4 +71,11 @@ describe('animated modules respect reduced motion', () => {
   it('has no animated module that ignores the setting', () => {
     expect(ignoring).toEqual([]);
   });
+
+  /** The kit is held to the rule like everything else, not exempted from it. */
+  it('covers every moving part of the Night road kit', () => {
+    expect(animated).toEqual(
+      expect.arrayContaining(['src/ui/SheetFrame.tsx', 'src/ui/Toggle.tsx', 'src/ui/UndoBar.tsx']),
+    );
+  });
 });

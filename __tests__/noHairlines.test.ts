@@ -45,10 +45,12 @@ describe('source', () => {
   });
 
   // Paper's Divider is StyleSheet.hairlineWidth tall: the same haze by another name.
+  // The kit's own Divider is a full 1dp line and passes.
   it("never renders Paper's Divider", () => {
-    const offenders = walk(join(__dirname, '../src')).filter((file) =>
-      /<Divider\b/.test(readFileSync(file, 'utf8')),
-    );
+    const offenders = walk(join(__dirname, '../src')).filter((file) => {
+      const body = readFileSync(file, 'utf8');
+      return /<Divider\b/.test(body) && /import\s*\{[^}]*\bDivider\b[^}]*\}\s*from\s*'react-native-paper'/.test(body);
+    });
     expect(offenders).toEqual([]);
   });
 });

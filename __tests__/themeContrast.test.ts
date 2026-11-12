@@ -128,37 +128,85 @@ describe.each(THEMES)('$name palette', ({ name, theme }) => {
 
 /**
  * The Night road kit (`src/ui/`) is its own set of tokens, outside the Paper
- * themes, and is held to the same floor. Text can land on any ground the kit
- * paints: a glass surface anywhere along its gradient, or the night behind it
- * anywhere from the top of the sky down through the horizon to the ground.
- * The lights only ever draw rings and lines beside text, never text, so they
- * are held to the 3:1 a control's edge needs against the glass it rings.
+ * themes, and is held to the same floor. These are the pairs the kit really
+ * renders: cream and dimmed cream land on any ground it paints (a glass
+ * surface anywhere along its gradient, the well of a field, the night from
+ * the top of the sky down through the horizon to the ground). A light tints
+ * text only inside glass (a lit action, a Restore, the undo bar's action), so
+ * there it is held to the text floor; danger likewise, plus the open night,
+ * where the Settings rows sit on their glass but a ConfirmSheet's line could
+ * not. The rest of the colours only draw marks and are held to what a mark
+ * needs to be seen.
  */
 describe('Night road kit', () => {
-  const grounds: [string, string][] = [
+  const glass: [string, string][] = [
     ['glass top', n.glassTop],
     ['glass middle', n.glassMiddle],
     ['glass bottom', n.glassBottom],
+    ['well', n.well],
+  ];
+  const night: [string, string][] = [
     ...n.sky.map((stop, i): [string, string] => [`sky stop ${i}`, stop]),
     ['ground', n.ground],
   ];
-  const inks: [string, string][] = [
-    ['cream', n.cream],
-    ['dimmed cream', n.creamDim],
-  ];
+  const pairs = (inks: [string, string][], grounds: [string, string][]) =>
+    inks.flatMap(([ink, fg]) => grounds.map(([g, bg]): [string, string, string] => [`${ink} on ${g}`, fg, bg]));
 
-  it.each(inks.flatMap(([ink, fg]) => grounds.map(([g, bg]) => [`${ink} on ${g}`, fg, bg])))(
-    '%s clears AA',
-    (_label, fg, bg) => {
-      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
-    },
-  );
+  it.each([
+    ...pairs(
+      [
+        ['cream', n.cream],
+        ['dimmed cream', n.creamDim],
+        ['danger', n.danger],
+      ],
+      [...glass, ...night],
+    ),
+    ...pairs(
+      [
+        ['violet text', n.violet],
+        ['teal text', n.teal],
+        ['amber text', n.amber],
+      ],
+      glass,
+    ),
+  ])('%s clears AA', (_label, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
 
+  /** A lit ring, a done dash and an on toggle's ring are a control's state: 3:1 against the glass. */
   it.each(
-    (['violet', 'teal', 'amber'] as const).flatMap((light) =>
-      (['glassTop', 'glassBottom'] as const).map((g) => [`${light} ring on ${g}`, n[light], n[g]]),
+    pairs(
+      [
+        ['violet', n.violet],
+        ['teal', n.teal],
+        ['amber', n.amber],
+        ['done dash', n.cream],
+        ['danger ring', n.danger],
+      ],
+      glass,
     ),
   )('%s clears 3:1', (_label, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
+  /** A missed day is information too: visible on the glass, and plainly not a done one. */
+  it.each(glass)('a missed dash shows on %s and reads apart from a done one', (_g, bg) => {
+    expect(contrastRatio(n.missed, bg)).toBeGreaterThanOrEqual(2);
+    expect(contrastRatio(n.cream, n.missed)).toBeGreaterThanOrEqual(3);
+  });
+
+  /** An empty track has to show on the glass it sits in, not vanish into it. */
+  it.each(glass)('the progress track and an off toggle show on %s', (_g, bg) => {
+    expect(contrastRatio(n.track, bg)).toBeGreaterThanOrEqual(1.3);
+  });
+
+  /** The knob of a toggle sits on its track: dimmed cream off, cream on the tint. */
+  it.each([
+    ['off knob on the track', n.creamDim, n.track],
+    ['on knob on the violet tint', n.cream, n.violetTint],
+    ['on knob on the teal tint', n.cream, n.tealTint],
+    ['on knob on the amber tint', n.cream, n.amberTint],
+  ])('%s clears 3:1', (_label, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
   });
 });

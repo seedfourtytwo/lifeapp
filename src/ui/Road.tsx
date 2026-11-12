@@ -2,10 +2,13 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polygon } from 'react-native-svg';
 import { useReduceMotion } from '../hooks/useReduceMotion';
+import { roadDashes, type DayMark } from './dayMarks';
 import { ROAD_BOX, roadScene, shownCarAt, type RoadSceneInput } from './roadScene';
 import { nightColors } from './tokens';
 
-type Props = RoadSceneInput & {
+type Props = Omit<RoadSceneInput, 'dashes'> & {
+  /** The days behind the car, oldest first: a bright dash kept, a dim one missed, none when it did not count. */
+  days?: readonly DayMark[];
   /** What the picture says, for a screen reader. */
   accessibilityLabel: string;
 };
@@ -15,9 +18,9 @@ type Props = RoadSceneInput & {
  * clock moves the car, so it cannot drift from the time; under reduced
  * motion the car moves in whole steps.
  */
-export function Road({ carAt, lampAt = null, dashes, accessibilityLabel }: Props) {
+export function Road({ carAt, lampAt = null, days = [], accessibilityLabel }: Props) {
   const reduceMotion = useReduceMotion();
-  const scene = roadScene({ carAt: shownCarAt(carAt, lampAt, reduceMotion), lampAt, dashes });
+  const scene = roadScene({ carAt: shownCarAt(carAt, lampAt, reduceMotion), lampAt, dashes: roadDashes(days) });
   return (
     <View style={roadStyles.box} accessible accessibilityRole="image" accessibilityLabel={accessibilityLabel}>
       <Svg
