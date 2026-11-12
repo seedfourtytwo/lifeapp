@@ -257,7 +257,18 @@
     "ownLinesLockScreenNote": "The line showing now can appear on your lock screen.",
     "insteadSectionTitle": "Instead",
     "insteadSectionDescription": "Up to two timed habits to start in place of the urge.",
-    "insteadNoTimedHabits": "No timed habits yet. Add one under Habits to offer it here."
+    "insteadNoTimedHabits": "No timed habits yet. Add one under Habits to offer it here.",
+    "voiceNoteSectionTitle": "Voice note",
+    "voiceNoteSectionDescription": "One short note in your own voice, up to a minute. It plays on the urge screen and on the lock screen during a ride.",
+    "voiceNoteRecord": "Record",
+    "voiceNoteRecordAgain": "Record again",
+    "voiceNoteStop": "Stop",
+    "voiceNotePlay": "Play",
+    "voiceNoteDelete": "Delete",
+    "voiceNoteDeleteTitle": "Delete the voice note?",
+    "voiceNoteRecording": "Recording {{time}} of {{max}}",
+    "voiceNoteMicDenied": "Recording needs the microphone. Allow it for Life in the phone settings.",
+    "voiceNoteNotExported": "Kept on this phone only: exports leave it out."
   },
   "urge": {
     "rideTitle": "Ride it to the lamp",
@@ -271,6 +282,8 @@
     "riddenOut": "Ridden out.",
     "total_one": "That's 1.",
     "total_other": "That's {{count}}.",
-    "closeA11y": "Close. The ride keeps going."
+    "closeA11y": "Close. The ride keeps going.",
+    "playNote": "Play my note",
+    "stopNote": "Stop my note"
   }
 }

@@ -17,6 +17,7 @@ import { getActiveHabits } from '../../utils/dashboardElements';
 import { typeScale } from '../../theme/typography';
 import FormSection, { formSectionStyles as styles } from './FormSection';
 import type { CommitmentEditorFieldState } from './types';
+import VoiceNoteSection from './VoiceNoteSection';
 
 type Props = {
   state: CommitmentEditorFieldState;
@@ -150,6 +151,7 @@ function CommitmentEditorFields({ state, onChange }: Props) {
       </FormSection>
       <OwnLinesSection state={state} onChange={onChange} />
       <InsteadHabitsSection state={state} onChange={onChange} />
+      <VoiceNoteSection />
     </>
   );
 }

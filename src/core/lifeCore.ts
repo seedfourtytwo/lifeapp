@@ -35,6 +35,10 @@ export function nativeLifeCore(module: LifeCoreNativeModule): LifeCore {
     snapshotWritten: () => module.snapshotWritten(),
     remindersChanged: () => module.remindersChanged(),
     addQueueListener: (listener) => module.addListener('onQueueChange', () => listener()),
+    playNote: () => module.playNote(),
+    stopNote: () => module.stopNote(),
+    addNoteListener: (listener) =>
+      module.addListener('onNoteChange', ({ playing }) => listener(playing)),
     previewSound: (trackId) => module.previewSound(trackId),
     stopPreview: () => module.stopPreview(),
   };

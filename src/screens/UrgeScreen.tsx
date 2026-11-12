@@ -19,6 +19,7 @@ import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
 import { todayDate } from '../store/events/state';
 import { useUrgeStore } from '../store/urgeStore';
+import { useVoiceNoteStore } from '../store/voiceNoteStore';
 import { space } from '../theme/spacing';
 import { GlassSurface } from '../ui/GlassSurface';
 import { NightBackground } from '../ui/NightBackground';
@@ -51,6 +52,8 @@ export default function UrgeScreen({ navigation }: Props) {
   const sessions = useEventStore((s) => s.activeTimerSessions);
   const dailyTotals = useEventStore((s) => s.dailyTotals);
   const dayMapsDate = useEventStore((s) => s.dayMapsDate);
+  const noteExists = useVoiceNoteStore((s) => s.exists);
+  const notePlaying = useVoiceNoteStore((s) => s.playing);
   // The ride this screen carries: the one running when it opened.
   const [ride] = useState(storeRide);
   const [noting, setNoting] = useState(false);
@@ -79,6 +82,10 @@ export default function UrgeScreen({ navigation }: Props) {
   useEffect(() => {
     if (!ride) close();
   }, [ride, close]);
+
+  useEffect(() => {
+    void useVoiceNoteStore.getState().refresh();
+  }, []);
 
   const open = ride !== null && storeRide?.urgeId === ride.urgeId;
 
@@ -257,6 +264,15 @@ export default function UrgeScreen({ navigation }: Props) {
             />
           ))
         )}
+        {noteExists ? (
+          <PillButton
+            variant="quiet"
+            label={notePlaying ? t('urge.stopNote') : t('urge.playNote')}
+            onPress={() =>
+              void (notePlaying ? useVoiceNoteStore.getState().stop() : useVoiceNoteStore.getState().play())
+            }
+          />
+        ) : null}
         <View style={styles.grow} />
         {open ? (
           <View style={styles.usedButton}>

@@ -273,6 +273,24 @@ describe('the urge screen', () => {
     expect(texts(root)).not.toContain('Ridden out.');
   });
 
+  it('offers his voice note only when there is one, and plays it in the native core', async () => {
+    await addCommitment({});
+    await urges().logUrge();
+    let root = await render();
+    expect(pressable(root, 'Play my note')).toBeUndefined();
+    await act(() => mounted!.unmount());
+
+    fs.writeFileSync(`${mockFs.root}/widget/voice-note.m4a`, 'note');
+    root = await render();
+    const { lifeCore } = require('../src/core/lifeCore') as typeof import('../src/core/lifeCore');
+    const played = jest.spyOn(lifeCore, 'playNote');
+    await press(root, 'Play my note');
+    expect(played).toHaveBeenCalledTimes(1);
+
+    await press(root, 'Stop my note');
+    expect(pressable(root, 'Play my note')).toBeDefined();
+  });
+
   it('shows nothing in place of a missing own line or instead-habit', async () => {
     await addCommitment({ ownLines: [], insteadHabitIds: [] });
     await urges().logUrge();

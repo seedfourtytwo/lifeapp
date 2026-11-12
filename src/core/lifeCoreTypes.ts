@@ -35,6 +35,15 @@ export interface LifeCore {
   remindersChanged: () => Promise<void>;
   /** The lock-screen widget appended a tap to the pending-actions queue: time to drain. */
   addQueueListener: (listener: () => void) => LifeCoreSubscription;
+  /**
+   * Plays the voice note in the native core (so it plays from a locked
+   * phone too), with a running timer's sound ducked under it; false when
+   * there is no note.
+   */
+  playNote: () => Promise<boolean>;
+  stopNote: () => Promise<void>;
+  /** The note started or stopped playing, whoever asked. */
+  addNoteListener: (listener: (playing: boolean) => void) => LifeCoreSubscription;
   /** The habit editor's preview of a bundled track; false when it cannot play. */
   previewSound: (trackId: string) => Promise<boolean>;
   stopPreview: () => Promise<void>;

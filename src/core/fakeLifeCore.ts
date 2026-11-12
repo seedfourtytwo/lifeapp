@@ -13,7 +13,7 @@ import type { LifeCore } from './lifeCoreTypes';
  * The native core's behaviour without Android: the stage 5 timer reducer
  * keeps the session, and finishing hands back the record native would queue.
  * Used on the web and in Jest. There is no sound, no notification and no
- * goal alarm, so `goalReachedAt` stays null, and a reload of the page loses
+ * goal alarm (the voice note "plays" until stopped), so `goalReachedAt` stays null, and a reload of the page loses
  * the session.
  */
 export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
@@ -22,6 +22,15 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
   let sessions: TimerSessions = {};
   let heartbeatAt = '';
   const listeners = new Set<(state: CoreTimerState | null) => void>();
+  const noteListeners = new Set<(playing: boolean) => void>();
+  let notePlaying = false;
+
+  /** The note plays until stopped: the fake has no file and no end. */
+  const setNotePlaying = (playing: boolean) => {
+    if (playing === notePlaying) return;
+    notePlaying = playing;
+    for (const listener of noteListeners) listener(playing);
+  };
 
   const current = (): CoreTimerState | null => {
     const session = request ? sessions[request.trackerId] : undefined;
@@ -118,6 +127,18 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
     snapshotWritten: async () => undefined,
     remindersChanged: async () => undefined,
     addQueueListener: () => ({ remove: () => undefined }),
+
+    playNote: async () => {
+      setNotePlaying(true);
+      return true;
+    },
+
+    stopNote: async () => setNotePlaying(false),
+
+    addNoteListener: (listener) => {
+      noteListeners.add(listener);
+      return { remove: () => noteListeners.delete(listener) };
+    },
 
     previewSound: async () => false,
 

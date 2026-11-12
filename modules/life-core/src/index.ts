@@ -10,6 +10,8 @@ type LifeCoreEvents = {
   onStateChange: (event: { state: string | null }) => void;
   /** The widget appended a line to the pending-actions queue. */
   onQueueChange: () => void;
+  /** The voice note started or stopped playing. */
+  onNoteChange: (event: { playing: boolean }) => void;
 };
 
 export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {
@@ -23,6 +25,9 @@ export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {
   snapshotWritten(): Promise<void>;
   /** The reminder plan was just replaced; native re-arms the next reminder from it. */
   remindersChanged(): Promise<void>;
+  /** Plays `files/widget/voice-note.m4a` in the native core; false when there is none. */
+  playNote(): Promise<boolean>;
+  stopNote(): Promise<void>;
   previewSound(trackId: string): Promise<boolean>;
   stopPreview(): Promise<void>;
 }

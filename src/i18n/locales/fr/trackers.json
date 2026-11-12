@@ -257,7 +257,18 @@
     "ownLinesLockScreenNote": "La phrase affichée en ce moment peut apparaître sur l’écran verrouillé.",
     "insteadSectionTitle": "À la place",
     "insteadSectionDescription": "Jusqu’à deux habitudes minutées à lancer à la place de l’envie.",
-    "insteadNoTimedHabits": "Pas encore d’habitude minutée. Ajoutez-en une dans Habitudes pour la proposer ici."
+    "insteadNoTimedHabits": "Pas encore d’habitude minutée. Ajoutez-en une dans Habitudes pour la proposer ici.",
+    "voiceNoteSectionTitle": "Note vocale",
+    "voiceNoteSectionDescription": "Une courte note de votre voix, une minute au plus. Elle se joue sur l’écran d’envie et sur l’écran verrouillé pendant un trajet.",
+    "voiceNoteRecord": "Enregistrer",
+    "voiceNoteRecordAgain": "Réenregistrer",
+    "voiceNoteStop": "Arrêter",
+    "voiceNotePlay": "Écouter",
+    "voiceNoteDelete": "Supprimer",
+    "voiceNoteDeleteTitle": "Supprimer la note vocale ?",
+    "voiceNoteRecording": "Enregistrement {{time}} sur {{max}}",
+    "voiceNoteMicDenied": "L’enregistrement a besoin du micro. Autorisez-le pour Life dans les réglages du téléphone.",
+    "voiceNoteNotExported": "Gardée sur ce téléphone seulement : les exports ne l’incluent pas."
   },
   "urge": {
     "rideTitle": "La laisser passer jusqu’à la lampe",
@@ -271,6 +282,8 @@
     "riddenOut": "Envie traversée.",
     "total_one": "Ça fait 1.",
     "total_other": "Ça fait {{count}}.",
-    "closeA11y": "Fermer. Le trajet continue."
+    "closeA11y": "Fermer. Le trajet continue.",
+    "playNote": "Écouter ma note",
+    "stopNote": "Arrêter ma note"
   }
 }

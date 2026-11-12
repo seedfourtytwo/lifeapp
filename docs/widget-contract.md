@@ -4,7 +4,7 @@ Contract version 5 (stage 6e). What the JavaScript app writes for the lock-scree
 
 SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot and the reminder plan, owns `timer.json`, and appends to the pending-actions queue, nothing else.
 
-Changes from version 4: the reminder plan (`reminders.json`) is new, and habit reminders are posted natively from it (see "Reminder plan"); the app no longer queues them in expo-notifications. The snapshot and the queue lines are unchanged.
+Changes from version 4: the reminder plan (`reminders.json`) is new, and habit reminders are posted natively from it (see "Reminder plan"); the app no longer queues them in expo-notifications. The voice note (`voice-note.m4a`) is new: at most a minute of AAC in MPEG-4, never exported; the widget's ride shows "Play my note" while the file exists. The snapshot and the queue lines are unchanged.
 
 Changes from version 3: the snapshot is version 3. A timer habit's `timer` gains `trackId` and `loop`, so the widget can start a session with its sound; the commitment's `ownLine` becomes `ownLines`, every line with the rule for which one shows, so the widget moves on to the next line at a lamp without the app. The app tells the module after each snapshot write, and the module tells the app when the widget queues a line (see "The widget"). Queue lines are unchanged.
 
@@ -22,6 +22,7 @@ Both files live in the app's private files directory, in a `widget` folder:
 | Timer | `File(context.filesDir, "widget/timer.json")` | native core | widget, JavaScript (through the module) |
 | Pending actions | `File(context.filesDir, "widget/pending-actions.jsonl")` | native (append) | JavaScript |
 | Reminder plan | `File(context.filesDir, "widget/reminders.json")` | JavaScript | native reminder scheduler, native notifications (language) |
+| Voice note | `File(context.filesDir, "widget/voice-note.m4a")` | JavaScript (a finished expo-audio recording, moved in) | native core (`VoiceNoteService` plays it) |
 
 `context.filesDir` is `/data/user/0/<package>/files` (`com.lifeapp.dashboard`, or `com.lifeapp.dashboard.dev` for the dev build). The folder may not exist before the app's first write; create it if the widget writes first.
 
