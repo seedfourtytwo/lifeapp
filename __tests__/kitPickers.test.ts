@@ -19,6 +19,7 @@ import {
   parseTypedDate,
   timeAsDate,
 } from '../src/ui/pickerFormat';
+import { pickTime } from '../src/ui/phonePicker';
 import { TimeField } from '../src/ui/TimeField';
 
 describe('what the fields show', () => {
@@ -146,6 +147,18 @@ describe('on the phone', () => {
     expect(args.minimumDate).toBeUndefined();
     await answer({ type: 'set' }, new Date(2026, 10, 3, 12));
     expect(onChange).toHaveBeenCalledWith('2026-11-03');
+  });
+
+  it('picks a time for a chip straight from the clock, or nothing when dismissed', async () => {
+    const added = pickTime(null);
+    const args = open.mock.calls[0]![0] as { value: Date; onChange: (e: Answer, d?: Date) => void };
+    expect(args.value.getMinutes()).toBe(0);
+    args.onChange({ type: 'set' }, new Date(2026, 10, 12, 6, 45));
+    await expect(added).resolves.toBe('06:45');
+
+    const dismissed = pickTime('06:45');
+    (open.mock.calls[1]![0] as { onChange: (e: Answer) => void }).onChange({ type: 'dismissed' });
+    await expect(dismissed).resolves.toBeNull();
   });
 });
 

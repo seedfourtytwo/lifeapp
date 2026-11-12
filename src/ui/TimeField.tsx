@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { parseTimeHHmm } from '../utils/time';
 import { Field } from './Field';
-import { hasPhonePicker, pickWithPhone } from './phonePicker';
-import { dateAsTime, formatPickedTime, timeAsDate } from './pickerFormat';
+import { hasPhonePicker, pickTime } from './phonePicker';
+import { formatPickedTime } from './pickerFormat';
 
 type Props = {
   label: string;
@@ -49,8 +49,8 @@ export function TimeField({ label, value, onChange, placeholder, disabled }: Pro
       placeholder={placeholder}
       disabled={disabled}
       onPress={() =>
-        void pickWithPhone({ mode: 'time', value: timeAsDate(value, new Date()) }).then((picked) => {
-          if (picked) onChange(dateAsTime(picked));
+        void pickTime(value).then((picked) => {
+          if (picked) onChange(picked);
         })
       }
     />

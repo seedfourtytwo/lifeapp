@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { Field } from './Field';
-import { hasPhonePicker, pickWithPhone } from './phonePicker';
-import { dateAsDay, dayAsDate, formatPickedDate, parseTypedDate } from './pickerFormat';
+import { hasPhonePicker, pickDate } from './phonePicker';
+import { formatPickedDate, parseTypedDate } from './pickerFormat';
 
 type Props = {
   label: string;
@@ -54,13 +54,8 @@ export function DateField({ label, value, onChange, minimumDate, maximumDate, pl
       placeholder={placeholder}
       disabled={disabled}
       onPress={() =>
-        void pickWithPhone({
-          mode: 'date',
-          value: dayAsDate(value, today),
-          minimumDate: minimumDate ? dayAsDate(minimumDate, today) : undefined,
-          maximumDate: maximumDate ? dayAsDate(maximumDate, today) : undefined,
-        }).then((picked) => {
-          if (picked) onChange(dateAsDay(picked));
+        void pickDate(value, today, { minimumDate, maximumDate }).then((picked) => {
+          if (picked) onChange(picked);
         })
       }
     />
