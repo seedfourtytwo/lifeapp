@@ -3,6 +3,8 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 export type SettingsStackParamList = {
   AppSettingsHome: undefined;
   WeatherLocation: undefined;
+  /** The Night road kit, every part in every state. Development builds only. */
+  KitGallery: undefined;
 };
 
 export type RootStackParamList = {

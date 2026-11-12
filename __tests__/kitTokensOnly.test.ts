@@ -23,6 +23,7 @@ const TOKENS = join(UI, 'tokens.ts');
 const REBUILT = [
   'src/screens/UrgeScreen.tsx',
   'src/screens/urge/InsteadTimer.tsx',
+  'src/screens/dev/KitGallery.tsx',
 ];
 
 function sourceFiles(dir: string): string[] {

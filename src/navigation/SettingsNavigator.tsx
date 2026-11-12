@@ -7,6 +7,7 @@ import type { RootStackParamList, SettingsStackParamList } from './types';
 import { useStackScreenOptions } from './useStackScreenOptions';
 import AppSettingsScreen from '../screens/settings/AppSettingsScreen';
 import WeatherLocationScreen from '../screens/settings/WeatherLocationScreen';
+import { DEV_SETTINGS_SCREENS } from './devRoutes';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -40,6 +41,14 @@ export default function SettingsNavigator() {
         component={WeatherLocationScreen}
         options={{ title: t('weather.locationTitle') }}
       />
+      {DEV_SETTINGS_SCREENS.map((screen) => (
+        <Stack.Screen
+          key={screen.name}
+          name={screen.name}
+          getComponent={screen.getComponent}
+          options={{ headerShown: false }}
+        />
+      ))}
     </Stack.Navigator>
   );
 }

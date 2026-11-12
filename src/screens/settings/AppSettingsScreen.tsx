@@ -207,6 +207,17 @@ export default function AppSettingsScreen() {
         />
       </SettingsGroup>
 
+      {__DEV__ ? (
+        <SettingsGroup title="Development">
+          <SettingsRow
+            icon="palette-swatch-outline"
+            title="Kit gallery"
+            chevron
+            onPress={() => navigation.navigate('KitGallery')}
+          />
+        </SettingsGroup>
+      ) : null}
+
       <View style={styles.about}>
         <Image source={APP_ICON} style={styles.aboutIcon} accessibilityIgnoresInvertColors />
         <Text style={[typeScale.caption, { color: theme.colors.onSurfaceVariant }]}>
