@@ -114,7 +114,8 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
       return { remove: () => listeners.delete(listener) };
     },
 
-    // No widget off Android: nothing is ever queued.
+    // No widget off Android: nobody to tell of a snapshot, and nothing is ever queued.
+    snapshotWritten: async () => undefined,
     addQueueListener: () => ({ remove: () => undefined }),
 
     previewSound: async () => false,

@@ -12,7 +12,7 @@ import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
- * Every widget button lands here, in the app's process, whether or not the
+ * Every widget button lands here, and the widget's redraw alarm, in the app's process, whether or not the
  * React Native app is running. Not exported: only this app's own
  * PendingIntents reach it. It works synchronously, inside the window a
  * user's tap grants, which is what lets it start the timer's foreground
@@ -20,6 +20,7 @@ import java.util.concurrent.CopyOnWriteArraySet
  */
 class WidgetActionReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
+    if (WidgetAlarm.isRedraw(intent)) return LifeWidget.refresh(context)
     if (intent.action != ACTION_TAP) return
     val tap = intent.data?.schemeSpecificPart?.let(TapCodec::decode) ?: return
     val nowMs = System.currentTimeMillis()

@@ -1,11 +1,18 @@
 package expo.modules.lifecore.widget
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.appwidget.AppWidgetProviderInfo
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import expo.modules.lifecore.TimerCore
 import java.time.ZoneId
 
@@ -16,11 +23,62 @@ import java.time.ZoneId
  */
 class LifeWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-    LifeWidget.refresh(context, ids)
+    LifeWidget.refresh(context)
   }
 
   override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
-    LifeWidget.refresh(context, intArrayOf(id))
+    LifeWidget.refresh(context)
+  }
+
+  override fun onDisabled(context: Context) {
+    WidgetAlarm.set(context, null)
+  }
+}
+
+/** Boot, a clock or time-zone change, a new language, an app update: draw again, as the day may be another. */
+class WidgetSystemReceiver : BroadcastReceiver() {
+  override fun onReceive(context: Context, intent: Intent) {
+    if (intent.action in ACTIONS) LifeWidget.refresh(context)
+  }
+
+  private companion object {
+    val ACTIONS = setOf(
+      Intent.ACTION_BOOT_COMPLETED,
+      Intent.ACTION_TIME_CHANGED,
+      Intent.ACTION_TIMEZONE_CHANGED,
+      Intent.ACTION_LOCALE_CHANGED,
+      Intent.ACTION_MY_PACKAGE_REPLACED,
+    )
+  }
+}
+
+/**
+ * One alarm at the next moment the clock alone changes the widget: local
+ * midnight, a lamp, a ride's end, the next minute or hour of a clock's
+ * words. Exact, and allowed while idle, but not a wakeup: a screen that is
+ * off shows nothing, and the alarm fires as soon as the phone wakes.
+ */
+object WidgetAlarm {
+  private const val ACTION_REDRAW = "expo.modules.lifecore.widget.REDRAW"
+
+  private fun pendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+    context,
+    0,
+    Intent(context, WidgetActionReceiver::class.java).setAction(ACTION_REDRAW),
+    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+  )
+
+  fun isRedraw(intent: Intent): Boolean = intent.action == ACTION_REDRAW
+
+  fun set(context: Context, atMs: Long?) {
+    val alarms = context.getSystemService(AlarmManager::class.java)
+    val intent = pendingIntent(context)
+    when {
+      atMs == null -> alarms.cancel(intent)
+      Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms() ->
+        alarms.setExactAndAllowWhileIdle(AlarmManager.RTC, atMs, intent)
+      else -> alarms.setAndAllowWhileIdle(AlarmManager.RTC, atMs, intent)
+    }
   }
 }
 
@@ -42,10 +100,21 @@ object LifeWidget {
     return if (width > 0 && height > 0) width to height else BOX_WIDTH_DP to BOX_HEIGHT_DP
   }
 
-  /** Draws these widgets (all of them by default) as things stand now. */
-  @Synchronized
-  fun refresh(context: Context, ids: IntArray = ids(context)) {
-    if (ids.isEmpty()) return
+  private val main = Handler(Looper.getMainLooper())
+
+  /** Draws every widget soon, on the main thread; for callers inside the timer core's lock. */
+  fun requestRefresh(context: Context) {
+    val app = context.applicationContext
+    main.post { refresh(app) }
+  }
+
+  /** Draws every widget as things stand now, and sets the alarm for the next change. On the main thread. */
+  fun refresh(context: Context) {
+    val ids = ids(context)
+    if (ids.isEmpty()) {
+      WidgetAlarm.set(context, null)
+      return
+    }
     val manager = AppWidgetManager.getInstance(context)
     val files = WidgetFiles(context)
     val snapshot = files.snapshot()
@@ -54,6 +123,7 @@ object LifeWidget {
     val nowMs = System.currentTimeMillis()
     val zone = ZoneId.systemDefault()
     val renderer = WidgetRenderer(context)
+    var redrawAtMs: Long? = null
     for (id in ids) {
       val options = manager.getAppWidgetOptions(id)
       // Only the keyguard's frame is built from lock-screen labels; anything else could hold a real name.
@@ -64,6 +134,8 @@ object LifeWidget {
       }
       val (width, height) = size(options)
       manager.updateAppWidget(id, renderer.render(frame, width, height))
+      redrawAtMs = listOfNotNull(redrawAtMs, frame.redrawAtMs).minOrNull()
     }
+    WidgetAlarm.set(context, redrawAtMs)
   }
 }

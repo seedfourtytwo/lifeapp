@@ -3,6 +3,7 @@ package expo.modules.lifecore
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import expo.modules.lifecore.widget.LifeWidget
 import expo.modules.lifecore.widget.QueueMemory
 import expo.modules.lifecore.widget.QueuedAction
 import java.io.File
@@ -58,6 +59,7 @@ object TimerCore {
     session = next
     if (next == null) timerFile(context).delete() else timerFile(context).write(next)
     for (listener in listeners) listener(next)
+    LifeWidget.requestRefresh(context)
   }
 
   /** Asks the service to bring sound, alarm and notification in line. */
@@ -110,6 +112,8 @@ object TimerCore {
     if (next === current) return
     session = next
     timerFile(context).write(next)
+    // The widget's progress line moves on with the heartbeat; its clock ticks by itself.
+    LifeWidget.requestRefresh(context)
   }
 
   /** True when this call is the one that reached the goal. */

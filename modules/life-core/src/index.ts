@@ -19,6 +19,8 @@ export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {
   finish(markComplete: boolean): Promise<string | null>;
   discard(): Promise<void>;
   getState(): Promise<string | null>;
+  /** The widget snapshot was just replaced; the widget redraws from it. */
+  snapshotWritten(): Promise<void>;
   previewSound(trackId: string): Promise<boolean>;
   stopPreview(): Promise<void>;
 }

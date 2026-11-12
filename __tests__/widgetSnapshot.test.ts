@@ -211,6 +211,16 @@ describe('the widget snapshot', () => {
     });
   });
 
+  it('tells the native widget once the new file is in place', async () => {
+    const { lifeCore } = require('../src/core/lifeCore') as typeof import('../src/core/lifeCore');
+    const told = jest.spyOn(lifeCore, 'snapshotWritten').mockImplementation(async () => {
+      // The widget reads the file the moment it hears: it must be whole already.
+      expect(fs.existsSync(snapshotPath())).toBe(true);
+    });
+    await settle();
+    expect(told).toHaveBeenCalledTimes(1);
+  });
+
   it('is rewritten after a tick', async () => {
     await settle();
     expect(trackerIn(readSnapshot(), TRACKERS.creatine).done).toBe(false);

@@ -3,6 +3,7 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
   <application>
     <!-- Owns the running habit timer: its sound, goal alarm and notification. -->
@@ -24,7 +25,20 @@
         android:resource="@xml/life_core_widget_info" />
     </receiver>
 
-    <!-- Every widget button: this app's own PendingIntents only. -->
+    <!-- Redraws the widget after boot, a clock, zone or language change, and an update. Only protected system broadcasts. -->
+    <receiver
+      android:name="expo.modules.lifecore.widget.WidgetSystemReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+
+    <!-- Every widget button and the redraw alarm: this app's own PendingIntents only. -->
     <receiver
       android:name="expo.modules.lifecore.widget.WidgetActionReceiver"
       android:exported="false" />

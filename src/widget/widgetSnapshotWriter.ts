@@ -1,3 +1,4 @@
+import { lifeCore } from '../core/lifeCore';
 import { getDatabase } from '../db/client';
 import * as dashboardRepo from '../db/repositories/dashboardRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
@@ -82,6 +83,7 @@ async function writeSnapshotNow(): Promise<void> {
     }),
   );
   await replaceWidgetFile(WIDGET_SNAPSHOT_FILE, JSON.stringify(snapshot));
+  await lifeCore.snapshotWritten();
 }
 
 let pending: Promise<void> | null = null;

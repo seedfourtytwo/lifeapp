@@ -12,6 +12,7 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.lifecore.widget.LifeWidget
 import expo.modules.lifecore.widget.WidgetEvents
 
 /**
@@ -68,6 +69,9 @@ class LifeCoreModule : Module() {
     AsyncFunction("discard") { -> TimerCore.discard(context) }
 
     AsyncFunction("getState") { -> TimerCore.state(context)?.let(TimerJson::encodeSession) }
+
+    // JavaScript wrote a new snapshot: the widget draws from it now.
+    AsyncFunction("snapshotWritten") { LifeWidget.requestRefresh(context) }
 
     // The habit editor's preview: the tracks live in this module's resources.
     AsyncFunction("previewSound") { trackId: String ->
