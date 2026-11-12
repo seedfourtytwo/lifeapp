@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CoreTimerStateSchema, TimerSessionRecordSchema } from '../src/protocol/coreTimer';
+import { WidgetSnapshotSchema } from '../src/protocol/widgetSnapshot';
 
 /** The same files `SharedFixturesTest.kt` reads: Kotlin and Zod agree on the JSON. */
 function fixture(name: string): unknown {
@@ -18,5 +19,10 @@ describe('the JSON shared with the native core', () => {
   it('reads a timer_session line as Kotlin writes it', () => {
     const raw = fixture('timer-session-line.json');
     expect(TimerSessionRecordSchema.parse(raw)).toEqual(raw);
+  });
+
+  it('writes the snapshot the widget tests read', () => {
+    const raw = fixture('widget-snapshot.json');
+    expect(WidgetSnapshotSchema.parse(raw)).toEqual(raw);
   });
 });

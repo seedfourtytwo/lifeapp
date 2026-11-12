@@ -1,0 +1,436 @@
+{
+  "version": 3,
+  "generatedAt": "2026-03-10T08:30:00.500Z",
+  "day": {
+    "date": "2026-03-10",
+    "endsAt": "2026-03-10T23:00:00.000Z",
+    "timeZone": "Europe/Paris",
+    "utcOffsetMinutes": 60
+  },
+  "trackers": [
+    {
+      "kind": "habit",
+      "id": "550e8400-e29b-41d4-a716-446655441001",
+      "name": "Meditation",
+      "lockScreenName": "Sit",
+      "icon": "meditation",
+      "dueToday": true,
+      "done": false,
+      "reason": "under_target",
+      "total": 120,
+      "target": 900,
+      "streak": 2,
+      "schedule": {
+        "type": "daily"
+      },
+      "reminderTimes": [
+        "07:30"
+      ],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "not_done"
+        }
+      ],
+      "trackingMode": "timer",
+      "unit": "seconds",
+      "timeRange": null,
+      "visibleOnlyInTimeRange": false,
+      "timer": {
+        "goal": {
+          "type": "seconds",
+          "seconds": 900
+        },
+        "trackId": "meditation15min",
+        "loop": true,
+        "session": null
+      }
+    },
+    {
+      "kind": "habit",
+      "id": "550e8400-e29b-41d4-a716-446655441002",
+      "name": "Burp the kefir",
+      "lockScreenName": null,
+      "icon": "bottle-tonic-plus-outline",
+      "dueToday": true,
+      "done": false,
+      "reason": "not_checked",
+      "total": 0,
+      "target": null,
+      "streak": 3,
+      "schedule": {
+        "type": "daily"
+      },
+      "reminderTimes": [
+        "08:00"
+      ],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "not_done"
+        }
+      ],
+      "trackingMode": "boolean",
+      "unit": "ticks",
+      "timeRange": null,
+      "visibleOnlyInTimeRange": false,
+      "timer": null
+    },
+    {
+      "kind": "habit",
+      "id": "550e8400-e29b-41d4-a716-446655441006",
+      "name": "Mobility",
+      "lockScreenName": "Move",
+      "icon": null,
+      "dueToday": true,
+      "done": true,
+      "reason": "checked",
+      "total": 1,
+      "target": null,
+      "streak": 1,
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "reminderTimes": [],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "not_due"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "not_due"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "done"
+        }
+      ],
+      "trackingMode": "boolean",
+      "unit": "ticks",
+      "timeRange": null,
+      "visibleOnlyInTimeRange": false,
+      "timer": null
+    },
+    {
+      "kind": "habit",
+      "id": "550e8400-e29b-41d4-a716-446655441007",
+      "name": "Face routine",
+      "lockScreenName": null,
+      "icon": null,
+      "dueToday": true,
+      "done": false,
+      "reason": "not_checked",
+      "total": 0,
+      "target": null,
+      "streak": 0,
+      "schedule": {
+        "type": "daily"
+      },
+      "reminderTimes": [
+        "20:45"
+      ],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "not_done"
+        }
+      ],
+      "trackingMode": "boolean",
+      "unit": "ticks",
+      "timeRange": {
+        "start": "21:00",
+        "end": "23:00"
+      },
+      "visibleOnlyInTimeRange": true,
+      "timer": null
+    },
+    {
+      "kind": "counter",
+      "id": "550e8400-e29b-41d4-a716-446655441008",
+      "name": "Water",
+      "lockScreenName": null,
+      "icon": "water",
+      "dueToday": true,
+      "done": false,
+      "reason": "under_target",
+      "total": 5,
+      "target": 8,
+      "streak": 0,
+      "schedule": {
+        "type": "daily"
+      },
+      "reminderTimes": [],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "not_done"
+        }
+      ],
+      "unit": "glasses",
+      "quickIncrements": [
+        1,
+        2
+      ]
+    },
+    {
+      "kind": "commitment",
+      "id": "550e8400-e29b-41d4-a716-446655441301",
+      "name": "No buying",
+      "lockScreenName": "Clear",
+      "icon": null,
+      "dueToday": true,
+      "done": true,
+      "reason": "clear",
+      "total": 0,
+      "target": null,
+      "streak": 3,
+      "schedule": {
+        "type": "daily"
+      },
+      "reminderTimes": [],
+      "sevenDays": [
+        {
+          "date": "2026-03-04",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-05",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-06",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-07",
+          "state": "not_done"
+        },
+        {
+          "date": "2026-03-08",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-09",
+          "state": "done"
+        },
+        {
+          "date": "2026-03-10",
+          "state": "done"
+        }
+      ],
+      "unit": "slips"
+    }
+  ],
+  "commitment": {
+    "id": "550e8400-e29b-41d4-a716-446655441301",
+    "lockScreenName": "Clear",
+    "clearSince": "2026-03-07T08:30:00.000Z",
+    "lampsPassed": 3,
+    "nextLamp": {
+      "at": "2026-03-12T08:30:00.000Z",
+      "hours": 120,
+      "label": "5d"
+    },
+    "ownLines": [
+      "Money for the trip",
+      "I sleep better"
+    ],
+    "rideSeconds": 600,
+    "urgesRiddenOut": 12,
+    "urgesToday": 1,
+    "insteadHabits": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655441001",
+        "lockScreenName": "Sit",
+        "icon": "meditation",
+        "goalSeconds": 900
+      }
+    ],
+    "days": [
+      {
+        "date": "2026-02-25",
+        "state": "not_counted"
+      },
+      {
+        "date": "2026-02-26",
+        "state": "not_counted"
+      },
+      {
+        "date": "2026-02-27",
+        "state": "done"
+      },
+      {
+        "date": "2026-02-28",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-01",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-02",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-03",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-04",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-05",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-06",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-07",
+        "state": "slip"
+      },
+      {
+        "date": "2026-03-08",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-09",
+        "state": "done"
+      },
+      {
+        "date": "2026-03-10",
+        "state": "done"
+      }
+    ]
+  },
+  "ride": null,
+  "nextReminders": [
+    {
+      "trackerId": "550e8400-e29b-41d4-a716-446655441007",
+      "time": "20:45",
+      "at": "2026-03-10T19:45:00.000Z"
+    }
+  ]
+}
