@@ -49,6 +49,24 @@ export function resolveActivityDeleteBeforeDate(
   return period.date;
 }
 
+/**
+ * The widget files a clear takes with it (`files/widget/`). All of the
+ * history, or the trackers: the snapshot and the taps still queued, which
+ * belong to it; a clear that keeps recent days keeps today's taps. The
+ * trackers: the reminder plan too. The voice note goes with the trackers,
+ * through its store.
+ */
+export function widgetFilesClearedBy(options: ClearAppDataOptions): string[] {
+  const wholeHistory =
+    options.definitions || (options.activityHistory && options.activityPeriod.kind === 'all');
+  return [
+    ...(wholeHistory
+      ? ['snapshot.json', 'pending-actions.jsonl', 'pending-actions.draining.jsonl']
+      : []),
+    ...(options.definitions ? ['reminders.json'] : []),
+  ];
+}
+
 export function clearOptionsAreEmpty(options: ClearAppDataOptions): boolean {
   return (
     !options.activityHistory &&

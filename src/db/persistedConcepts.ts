@@ -9,6 +9,7 @@ import * as foodRepo from './repositories/foodRepository';
 import * as noteShareRepo from './repositories/noteShareStateRepository';
 import * as todoRepo from './repositories/todoRepository';
 import * as urgeRepo from './repositories/urgeRepository';
+import { WIDGET_ACTION_LOG_KEY } from './repositories/widgetActionLogRepository';
 import * as weatherRepo from './repositories/weatherRepository';
 import {
   rebuildDailyJournals,
@@ -438,7 +439,12 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
 );`,
-    clear: ambientOnly('preferences', deleteAllFrom('app_settings')),
+    // The widget's applied log is this phone's record of which queue lines it
+    // already applied, not a preference: a clear or an import that dropped it
+    // would apply an old line still in the queue a second time.
+    clear: ambientOnly('preferences', async (db) => {
+      await db.runAsync('DELETE FROM app_settings WHERE key != ?', WIDGET_ACTION_LOG_KEY);
+    }),
     bundleKey: 'settings',
   },
   {

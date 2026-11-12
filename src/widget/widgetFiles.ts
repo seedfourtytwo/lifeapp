@@ -24,6 +24,15 @@ export function ensureWidgetDirectory(directory: string): Promise<void> {
   return directoryReady;
 }
 
+/** Remove these files from the widget directory; one already gone is fine. */
+export async function deleteWidgetFiles(names: readonly string[]): Promise<void> {
+  const directory = widgetDirectory();
+  if (!directory) return;
+  for (const name of names) {
+    await FileSystem.deleteAsync(`${directory}${name}`, { idempotent: true });
+  }
+}
+
 /**
  * Replace `name` in the widget directory in one step: the text goes to a
  * temporary file first, which is then renamed over the old one. On Android

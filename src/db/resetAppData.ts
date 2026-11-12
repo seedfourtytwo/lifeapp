@@ -12,12 +12,16 @@ import * as settingsRepo from './repositories/settingsRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
+  widgetFilesClearedBy,
   type ClearAppDataOptions,
 } from './clearDataPlan';
 import { bumpDataGeneration } from './dataGeneration';
 import { withDbWriteLock } from './writeLock';
 import { takeSafetyCopy } from './safetyCopy';
+import { lifeCore } from '../core/lifeCore';
 import { awaitPendingEventWrites, useEventStore } from '../store/eventStore';
+import { useVoiceNoteStore } from '../store/voiceNoteStore';
+import { deleteWidgetFiles } from '../widget/widgetFiles';
 
 export type { ActivityClearPeriod, ClearAppDataOptions } from './clearDataPlan';
 export {
@@ -158,6 +162,14 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     // Invalidate writers that captured the mid-clear generation while waiting on this lock.
     bumpClearedScopes(options);
   });
+
+  const files = widgetFilesClearedBy(options);
+  if (files.length > 0) {
+    await deleteWidgetFiles(files);
+    // Drawn from what is left until the app writes a new snapshot.
+    await lifeCore.snapshotWritten();
+  }
+  if (options.definitions) await useVoiceNoteStore.getState().remove();
 }
 
 /** Wipe all local app data — elements, events, dashboard, calendar, weather, preferences. */

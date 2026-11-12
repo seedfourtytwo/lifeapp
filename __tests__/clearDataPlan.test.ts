@@ -3,6 +3,7 @@ import {
   DEFAULT_CLEAR_OPTIONS,
   describeClearPlan,
   resolveActivityDeleteBeforeDate,
+  widgetFilesClearedBy,
 } from '../src/db/clearDataPlan';
 
 describe('clearDataPlan', () => {
@@ -85,5 +86,16 @@ describe('clearDataPlan', () => {
       activityPeriod: { kind: 'beforeDate', date: '' },
     });
     expect(lines.join(' ')).toMatch(/YYYY-MM-DD/);
+  });
+});
+
+describe('widgetFilesClearedBy', () => {
+  it('keeps the snapshot and today’s queued taps when recent days are kept', () => {
+    expect(
+      widgetFilesClearedBy({
+        ...DEFAULT_CLEAR_OPTIONS,
+        activityPeriod: { kind: 'keepLastDays', days: 7 },
+      }),
+    ).toEqual([]);
   });
 });

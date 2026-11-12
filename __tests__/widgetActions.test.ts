@@ -13,6 +13,10 @@ import type { HabitConfig, LifeEvent } from '../src/protocol';
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(),
 }));
+// The raw copy before a wipe is native; its own tests cover it.
+jest.mock('../src/db/safetyCopy', () => ({
+  takeSafetyCopy: jest.fn(async () => undefined),
+}));
 let mockFs: FakeFileSystem;
 jest.mock('expo-file-system/legacy', () => mockFs.module);
 
@@ -465,5 +469,66 @@ describe('urge lines in the widget queue', () => {
     append(line, resolved(line.id, 'gave_in'));
 
     expect(await drain()).toMatchObject({ applied: 1, malformed: 1 });
+  });
+});
+
+describe('clearing data and the widget files', () => {
+  function clear(): typeof import('../src/db/resetAppData') {
+    return require('../src/db/resetAppData');
+  }
+
+  const options = (fields: Partial<import('../src/db/clearDataPlan').ClearAppDataOptions>) => ({
+    activityHistory: false,
+    activityPeriod: { kind: 'all' as const },
+    calendar: false,
+    weather: false,
+    preferences: false,
+    definitions: false,
+    ...fields,
+  });
+
+  const files = ['snapshot.json', 'pending-actions.jsonl', 'pending-actions.draining.jsonl', 'reminders.json', 'voice-note.m4a'];
+  const left = () => files.filter((name) => fs.existsSync(`${mockFs.root}/widget/${name}`));
+
+  beforeEach(() => {
+    for (const name of files) fs.writeFileSync(`${mockFs.root}/widget/${name}`, '{}');
+  });
+
+  it('a clear of activity takes the snapshot and the queued taps with the history', async () => {
+    await clear().clearAppData(options({ activityHistory: true }));
+    expect(left()).toEqual(['reminders.json', 'voice-note.m4a']);
+  });
+
+  it('a clear of the trackers takes the reminder plan and the voice note too', async () => {
+    await clear().clearAppData(options({ definitions: true }));
+    expect(left()).toEqual([]);
+  });
+
+  it('a clear of the calendar or the weather leaves them all', async () => {
+    await clear().clearAppData(options({ calendar: true, weather: true }));
+    expect(left()).toEqual(files);
+  });
+
+  it('keeps the applied log through a clear of preferences, so an old line is not applied again', async () => {
+    fs.rmSync(`${mockFs.root}/widget/pending-actions.jsonl`);
+    fs.rmSync(`${mockFs.root}/widget/pending-actions.draining.jsonl`);
+    const tap = action({ type: 'counter_add', trackerId: TRACKERS.water, amount: 2 });
+    append(tap);
+    await drain();
+
+    await clear().clearAppData(options({ preferences: true }));
+    append(tap);
+
+    expect(await drain()).toMatchObject({ applied: 0, duplicates: 1 });
+  });
+
+  it('keeps the applied log when an import replaces the settings', async () => {
+    const logRepo = require('../src/db/repositories/widgetActionLogRepository') as typeof import('../src/db/repositories/widgetActionLogRepository');
+    const tap = action({ type: 'habit_complete', trackerId: TRACKERS.kefir });
+    await logRepo.saveWidgetActionLog(testDb.db, new Map([[tap.id, { id: tap.id, at: tap.at, outcome: 'applied' as const }]]));
+
+    await clear().clearDataForImport(testDb.db, (key) => key === 'settings');
+
+    expect([...(await logRepo.loadWidgetActionLog(testDb.db)).keys()]).toEqual([tap.id]);
   });
 });

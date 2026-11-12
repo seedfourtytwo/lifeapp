@@ -382,7 +382,7 @@ describe('protocol backup settings', () => {
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM events');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM dashboard_items');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM elements');
-    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM app_settings');
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM app_settings WHERE key != ?', 'widget_action_log');
   });
 
   it('replaces every todo on import, open ones included', async () => {
@@ -442,7 +442,7 @@ describe('protocol backup settings', () => {
 
     await importProtocolBundle(bundle);
 
-    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM app_settings');
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM app_settings WHERE key != ?', 'widget_action_log');
     expect(settingsRepo.setSetting).toHaveBeenCalledWith(db, 'theme_mode', 'light');
   });
 });
