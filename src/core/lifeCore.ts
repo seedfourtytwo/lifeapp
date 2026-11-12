@@ -41,6 +41,7 @@ export function nativeLifeCore(module: LifeCoreNativeModule): LifeCore {
       module.addListener('onNoteChange', ({ playing }) => listener(playing)),
     previewSound: (trackId) => module.previewSound(trackId),
     stopPreview: () => module.stopPreview(),
+    addPreviewEndListener: (listener) => module.addListener('onPreviewEnd', () => listener()),
   };
 }
 

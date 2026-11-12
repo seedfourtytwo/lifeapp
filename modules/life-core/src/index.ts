@@ -12,6 +12,8 @@ type LifeCoreEvents = {
   onQueueChange: () => void;
   /** The voice note started or stopped playing. */
   onNoteChange: (event: { playing: boolean }) => void;
+  /** The editor's preview track played to its end. */
+  onPreviewEnd: () => void;
 };
 
 export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {

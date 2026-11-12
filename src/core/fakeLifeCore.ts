@@ -143,5 +143,8 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
     previewSound: async () => false,
 
     stopPreview: async () => undefined,
+
+    // The fake plays no preview, so none ever ends.
+    addPreviewEndListener: () => ({ remove: () => undefined }),
   };
 }

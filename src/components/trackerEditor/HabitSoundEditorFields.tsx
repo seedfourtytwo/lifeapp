@@ -44,6 +44,15 @@ export default function HabitSoundEditorFields({
 
   useEffect(() => stopPreview, [stopPreview]);
 
+  // A track that plays to its end leaves nothing to stop.
+  useEffect(() => {
+    const subscription = lifeCore.addPreviewEndListener(() => {
+      previewSessionRef.current += 1;
+      setPreviewPlaying(false);
+    });
+    return () => subscription.remove();
+  }, []);
+
   const hasSound = Boolean(sound.habitSoundTrackId.trim());
 
   /** The track plays natively, from the app's own files, apart from any running timer. */

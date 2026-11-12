@@ -6,6 +6,7 @@ import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.datasource.RawResourceDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import expo.modules.kotlin.exception.Exceptions
@@ -26,6 +27,7 @@ class LifeCoreModule : Module() {
     get() = appContext.reactContext?.applicationContext ?: throw Exceptions.ReactContextLost()
 
   private var preview: ExoPlayer? = null
+  private val main = Handler(Looper.getMainLooper())
 
   private val onChange: (TimerSession?) -> Unit = { session ->
     sendEvent(EVENT_STATE_CHANGE, mapOf("state" to session?.let(TimerJson::encodeSession)))
@@ -43,7 +45,7 @@ class LifeCoreModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("LifeCore")
 
-    Events(EVENT_STATE_CHANGE, EVENT_QUEUE_CHANGE, EVENT_NOTE_CHANGE)
+    Events(EVENT_STATE_CHANGE, EVENT_QUEUE_CHANGE, EVENT_NOTE_CHANGE, EVENT_PREVIEW_END)
 
     OnCreate {
       TimerCore.addListener(onChange)
@@ -56,7 +58,7 @@ class LifeCoreModule : Module() {
       WidgetEvents.removeListener(onQueued)
       VoiceNote.removeListener(onNote)
       // The preview player belongs to the main thread it was made on.
-      Handler(Looper.getMainLooper()).post(::stopPreview)
+      main.post(::stopPreview)
     }
 
     AsyncFunction("start") { requestJson: String ->
@@ -95,6 +97,14 @@ class LifeCoreModule : Module() {
           true,
         )
         setMediaItem(MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(track)))
+        addListener(object : Player.Listener {
+          override fun onPlaybackStateChanged(state: Int) {
+            if (state != Player.STATE_ENDED) return
+            // Released after this callback returns, unless another preview took its place.
+            main.post { if (preview === this@apply) stopPreview() }
+            sendEvent(EVENT_PREVIEW_END, emptyMap<String, Any>())
+          }
+        })
         prepare()
         play()
       }
@@ -110,5 +120,7 @@ class LifeCoreModule : Module() {
     const val EVENT_QUEUE_CHANGE = "onQueueChange"
     /** The voice note started or stopped playing. */
     const val EVENT_NOTE_CHANGE = "onNoteChange"
+    /** The editor's preview track ended by itself. */
+    const val EVENT_PREVIEW_END = "onPreviewEnd"
   }
 }

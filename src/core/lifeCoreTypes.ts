@@ -47,4 +47,6 @@ export interface LifeCore {
   /** The habit editor's preview of a bundled track; false when it cannot play. */
   previewSound: (trackId: string) => Promise<boolean>;
   stopPreview: () => Promise<void>;
+  /** The preview's track played to its end by itself. */
+  addPreviewEndListener: (listener: () => void) => LifeCoreSubscription;
 }
