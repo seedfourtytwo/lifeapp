@@ -189,6 +189,35 @@ One screen, reached from the Urge button in the app or by opening the app while 
 - When the ride ends untouched: "Ridden out. That's N." and the count.
 - No debate, no feed of quotes, no options menu. Simple wins in a craving.
 
+**Stage 6d status (2026-11-12):** implemented by Opus on `clean-slate-stage-6d` (fa16afa … this note), not yet reviewed or run on a device. JS 164 suites / 2009 tests, type-check and lint green; the Android JS bundle exports. No Kotlin touched. Kit in `src/ui/`: `tokens.ts` (Night road colours, type roles, strokes, radii), `GlassFill`, `GlassSurface`, `NightBackground`, `NightText`, `NightField`, `PillButton` (primary ring / quiet edge), `RoundButton`, `Road` with `roadScene.ts` (the geometry of `RoadScene.kt`, the car placed from the clock). Screen: `src/screens/UrgeScreen.tsx` (route `Urge`, no header) and `screens/urge/InsteadTimer.tsx`. Urge note: column `urges.note` (schema v24, repair through `PERSISTED_CONCEPTS`, in export/import, optional in older backups, never in the snapshot). Opening: the card's Urge logs then navigates; `useRefreshFromDb` drains and refreshes after start-up and on every return to the front, then opens a running ride (from Home, always at the bottom of the stack).
+
+Decisions:
+- **Fonts**: the system font (Roboto on Android) at Light 300 for numbers, Medium 500 for names, Light 300 a size up for his own words. No Inter: the widget cannot use a bundled font (6c), so the system font is what makes the screen and the widget the same object; it also needs no new dependency and no font gate, and the rules keep body text off webfonts. No dependency added (gradients through the installed react-native-svg).
+- The kit's tokens are separate from the Paper themes; no other screen changes look. Dimmed cream is a colour (`#B5B0A6`), clearing 4.5:1 on every glass stop, every sky stop including the horizon `#3E3280`, and the ground. The three lights clear 3:1 as rings on glass.
+- The road: lamp fixed near the horizon, the car driving from near to the lamp over the ride (the widget instead keeps the car still and brings the lamp closer; same picture, more visible motion here). The commitment's seven days are not drawn on the screen's road (that would need a new read for one screen); `Road` takes them as a prop for the redesign. Nothing animates: the car is redrawn on the screen's one-second tick; under reduced motion it moves in steps of 5 % of the road, and still shows arriving at the lamp.
+- The instead button reads "15 min · Meditation" with the habit's real name (the phone is unlocked here); a habit without a seconds goal shows its name only. No icon on it.
+- The running timer shows this session's time and "of" what is left of today's goal, as the widget's timer does; pause/resume (teal ring) and Done. Any instead-habit already running (started from the widget) shows as the running timer.
+- The ride ends at the lamp or when that timer ends, whichever is later. The urge is still counted ridden out at the lamp (as in 6b); between the lamp and the timer's end the countdown reads 00:00 and "I used" is gone, since a ridden-out urge keeps its outcome.
+- "I used" leaves a running instead-habit running. The note is one line, at most 200 characters, newlines folded to spaces; an empty Save is a Skip. It is set on the urge whatever its outcome (only reachable after "I used").
+- If the urge is settled elsewhere while the screen is open (the widget's "I used", a wipe), the screen closes; it reads the urge's outcome to tell that from a ride ridden out. Opened with no ride, it closes at once.
+- The countdown is a `timer` with a spoken label ("8:42 left in the ride"); TalkBack hears "N minutes left" once a minute and "Ridden out. That's N." at the end, nothing per second. The big countdown shrinks to fit one line rather than capping the font scale; the screen scrolls at large font sizes.
+- Card: during a ride the Urge button becomes the time left ("07:42", road icon) and opens the screen; the in-card instead buttons and "I used" are gone (string `commitment.rideCaption` removed).
+- Auto-open happens after start-up and on each return to the front, also if he closed the screen earlier in the same ride (that is what "opens while a ride is running" means); not at midnight or on in-app refreshes.
+
+Not checked here: the screen was not seen rendered (the browser pane was hidden, so no screenshot); layout, spacing and the glass gradient are unverified by eye.
+
+Phone check owed (6d):
+- Urge on the lock-screen widget → unlock → the app opens straight on the ride (urge drained first, countdown matching the widget's).
+- Urge on the card: logged, screen opens; close (×, back button): ride keeps running, card shows its time left, tapping it returns.
+- App to the background and back during a ride: the screen comes back.
+- An instead-habit: one tap starts it with its sound; timer runs on the screen; pause, resume, Done; the notification agrees; started past the lamp's time, "Ridden out" waits for Done.
+- A ride left alone: car reaches the lamp at 00:00, "Ridden out." and the right total; Done closes.
+- "I used": one tap, the line, Skip and Save; the note survives export → import; it never shows on the widget.
+- TalkBack: every control read; minute announcements; at the largest font scale nothing clipped, the screen scrolls.
+- Remove animations on: the car steps rather than creeps.
+- Status bar icons light on the night background, in the light app theme too.
+- French strings.
+
 ## 6e — Finish
 
 - Voice note: record once (unlock required, microphone permission asked then), stored in the app's files, played by the service from the widget's ride state and the urge screen.
