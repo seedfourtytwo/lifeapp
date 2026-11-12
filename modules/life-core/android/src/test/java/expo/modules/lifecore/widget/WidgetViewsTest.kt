@@ -119,6 +119,7 @@ class WidgetViewsTest {
     assertEquals("Sit", view.instead?.label?.lockScreenName)
     assertEquals(900, view.instead?.goalSeconds)
     // Half way: the lamp is half way down the road.
+    assertEquals(listOf(1.0, 1.0, 1.0, 0.16, 1.0, 1.0, 1.0), view.road.dashes)
     assertEquals(WidgetViews.CAR_AT + (WidgetViews.LAMP_FARTHEST - WidgetViews.CAR_AT) * 0.5, requireNotNull(view.road.lampAt), 1e-9)
     assertEquals(tenAm + 600_000, frame.redrawAtMs)
     // Once it ends, home again.

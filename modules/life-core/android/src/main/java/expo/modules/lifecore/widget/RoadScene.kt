@@ -25,10 +25,10 @@ object RoadScene {
 
   /** The SVG mockup's drawing box; everything scales from it. */
   private const val BOX_W = 300f
-  private const val BOX_H = 120f
-  private const val HORIZON_Y = 24f
+  private const val BOX_H = 96f
+  private const val HORIZON_Y = 22f
   private const val VANISH_X = 0.56f
-  private const val HALF_ROAD = 0.30f
+  private const val HALF_ROAD = 0.46f
   private const val DEPTH = 1.9
 
   private fun alpha(color: Int, alpha: Double): Int = ((alpha * 255).toInt().coerceIn(0, 255) shl 24) or (color and 0xFFFFFF)

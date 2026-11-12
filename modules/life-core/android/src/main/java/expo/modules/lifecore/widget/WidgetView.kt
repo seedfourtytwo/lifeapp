@@ -143,7 +143,9 @@ object WidgetViews {
         InsteadButton(tracker.id, labels.of(tracker), (tracker.timer?.goal as? TimerGoal.Seconds)?.seconds)
       }
     }
-    return WidgetView.Riding(ride, Road(emptyList(), lampAt(1 - progress), CAR_AT), instead)
+    // The days behind stay on the road; the lamp comes closer as the ride goes on.
+    val days = today.commitment?.sevenDays.orEmpty().map(::level)
+    return WidgetView.Riding(ride, Road(days, lampAt(1 - progress), CAR_AT), instead)
   }
 
   private fun lampAt(distance: Double) = CAR_AT + (LAMP_FARTHEST - CAR_AT) * distance.coerceIn(0.0, 1.0)
