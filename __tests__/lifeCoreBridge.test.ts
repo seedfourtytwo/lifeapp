@@ -23,6 +23,7 @@ const state = {
 
 function moduleReturning(json: Partial<Record<keyof LifeCoreNativeModule, unknown>>) {
   const listeners: ((event: { state: string | null }) => void)[] = [];
+  const queueListeners: (() => void)[] = [];
   const module = {
     start: jest.fn(async (_requestJson: string) => json.start),
     pause: jest.fn(async () => json.pause ?? null),
@@ -32,12 +33,13 @@ function moduleReturning(json: Partial<Record<keyof LifeCoreNativeModule, unknow
     getState: jest.fn(async () => json.getState ?? null),
     previewSound: jest.fn(async () => true),
     stopPreview: jest.fn(async () => undefined),
-    addListener: jest.fn((_name: string, listener: (event: { state: string | null }) => void) => {
-      listeners.push(listener);
+    addListener: jest.fn((name: string, listener: (event: { state: string | null }) => void) => {
+      if (name === 'onQueueChange') queueListeners.push(() => listener({ state: null }));
+      else listeners.push(listener);
       return { remove: jest.fn() };
     }),
   };
-  return { module: module as unknown as LifeCoreNativeModule, raw: module, listeners };
+  return { module: module as unknown as LifeCoreNativeModule, raw: module, listeners, queueListeners };
 }
 
 describe('the native core bridge', () => {
@@ -101,8 +103,20 @@ describe('the native core bridge', () => {
     expect(seen).toEqual([state, null]);
   });
 
+  it('tells listeners when the widget queues a tap', () => {
+    const { module, queueListeners } = moduleReturning({});
+    const heard = jest.fn();
+    nativeLifeCore(module).addQueueListener(heard);
+
+    queueListeners[0]!();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
   it('is the fake where the module is not built in, as in Jest', async () => {
     await expect(lifeCore.getState()).resolves.toBeNull();
     await expect(lifeCore.previewSound('meditation15min')).resolves.toBe(false);
+    // The fake has no widget: nothing is ever queued, and removing the listener is safe.
+    expect(() => lifeCore.addQueueListener(jest.fn()).remove()).not.toThrow();
   });
 });

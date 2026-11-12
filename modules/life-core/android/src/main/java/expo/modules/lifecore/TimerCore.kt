@@ -3,6 +3,8 @@ package expo.modules.lifecore
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import expo.modules.lifecore.widget.QueueMemory
+import expo.modules.lifecore.widget.QueuedAction
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
@@ -128,6 +130,7 @@ object TimerCore {
     // Queued before the session goes: a crash in between leaves the session
     // to finish again, and its line carries the same id, so it is logged once.
     queue(context).append(TimerJson.encodeRecord(record))
+    QueueMemory.remember(QueuedAction.TimerSessionDone.of(record))
     change(context, null)
     return record
   }

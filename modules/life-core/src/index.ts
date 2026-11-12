@@ -8,6 +8,8 @@ import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
 type LifeCoreEvents = {
   /** Every timer transition; `state` is null when no session exists. */
   onStateChange: (event: { state: string | null }) => void;
+  /** The widget appended a line to the pending-actions queue. */
+  onQueueChange: () => void;
 };
 
 export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {

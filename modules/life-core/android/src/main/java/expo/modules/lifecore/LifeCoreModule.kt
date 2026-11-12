@@ -12,6 +12,7 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.lifecore.widget.WidgetEvents
 
 /**
  * The native core's bridge to JavaScript (`src/core/lifeCore.ts`). The
@@ -28,6 +29,8 @@ class LifeCoreModule : Module() {
     sendEvent(EVENT_STATE_CHANGE, mapOf("state" to session?.let(TimerJson::encodeSession)))
   }
 
+  private val onQueued: () -> Unit = { sendEvent(EVENT_QUEUE_CHANGE, emptyMap<String, Any>()) }
+
   private fun stopPreview() {
     preview?.release()
     preview = null
@@ -36,12 +39,16 @@ class LifeCoreModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("LifeCore")
 
-    Events(EVENT_STATE_CHANGE)
+    Events(EVENT_STATE_CHANGE, EVENT_QUEUE_CHANGE)
 
-    OnCreate { TimerCore.addListener(onChange) }
+    OnCreate {
+      TimerCore.addListener(onChange)
+      WidgetEvents.addListener(onQueued)
+    }
 
     OnDestroy {
       TimerCore.removeListener(onChange)
+      WidgetEvents.removeListener(onQueued)
       // The preview player belongs to the main thread it was made on.
       Handler(Looper.getMainLooper()).post(::stopPreview)
     }
@@ -83,5 +90,7 @@ class LifeCoreModule : Module() {
 
   private companion object {
     const val EVENT_STATE_CHANGE = "onStateChange"
+    /** The widget queued a tap: drain now. */
+    const val EVENT_QUEUE_CHANGE = "onQueueChange"
   }
 }

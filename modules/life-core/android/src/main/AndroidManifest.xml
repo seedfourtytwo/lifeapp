@@ -10,5 +10,10 @@
       android:name="expo.modules.lifecore.TimerService"
       android:exported="false"
       android:foregroundServiceType="mediaPlayback" />
+
+    <!-- Every widget button: this app's own PendingIntents only. -->
+    <receiver
+      android:name="expo.modules.lifecore.widget.WidgetActionReceiver"
+      android:exported="false" />
   </application>
 </manifest>

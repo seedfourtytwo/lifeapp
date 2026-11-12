@@ -1,6 +1,7 @@
 package expo.modules.lifecore.widget
 
 import expo.modules.lifecore.TimerJson
+import expo.modules.lifecore.TimerSessionRecord
 import org.json.JSONException
 import org.json.JSONObject
 import java.time.DateTimeException
@@ -37,7 +38,19 @@ sealed interface QueuedAction {
     val activeSeconds: Long,
     val trackCompleted: Boolean,
     val markComplete: Boolean,
-  ) : QueuedAction
+  ) : QueuedAction {
+    companion object {
+      fun of(record: TimerSessionRecord) = TimerSessionDone(
+        record.id,
+        record.atMs,
+        LocalDate.parse(record.day),
+        record.trackerId,
+        record.activeSeconds,
+        record.trackCompleted,
+        record.markComplete,
+      )
+    }
+  }
 
   data class UrgeLogged(override val id: String, override val atMs: Long, override val day: LocalDate) : QueuedAction
 

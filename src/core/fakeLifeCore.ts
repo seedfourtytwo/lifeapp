@@ -114,6 +114,9 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
       return { remove: () => listeners.delete(listener) };
     },
 
+    // No widget off Android: nothing is ever queued.
+    addQueueListener: () => ({ remove: () => undefined }),
+
     previewSound: async () => false,
 
     stopPreview: async () => undefined,

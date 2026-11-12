@@ -36,8 +36,8 @@ function warnStartupFailure(step: string): (error: unknown) => void {
 /**
  * Loads settings, elements, todos and habit streaks at app start, mirrors the
  * native timer, and follows it: every transition the core reports (a tap in
- * the app, the notification's Pause or Done, a track's end) drains the queue
- * and refreshes from SQLite.
+ * the app, the notification's Pause or Done, a track's end) and every tap
+ * the widget queues drains the queue and refreshes from SQLite.
  */
 export function useAppBootstrap(): void {
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
@@ -69,7 +69,14 @@ export function useAppBootstrap(): void {
         .then(refreshFromDb)
         .catch(warnStartupFailure('timer state change'));
     });
-    return () => subscription.remove();
+    // A widget tap while the app runs: drain it now, not at the next return to the app.
+    const queued = lifeCore.addQueueListener(() => {
+      refreshFromDb().catch(warnStartupFailure('widget tap'));
+    });
+    return () => {
+      subscription.remove();
+      queued.remove();
+    };
   }, []);
 
   useEffect(() => installWidgetSnapshotWriter(), []);

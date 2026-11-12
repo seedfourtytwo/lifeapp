@@ -29,6 +29,8 @@ export interface LifeCore {
   getState: () => Promise<CoreTimerState | null>;
   /** Every transition, whoever made it: the app, the notification, the track's end. */
   addStateListener: (listener: (state: CoreTimerState | null) => void) => LifeCoreSubscription;
+  /** The lock-screen widget appended a tap to the pending-actions queue: time to drain. */
+  addQueueListener: (listener: () => void) => LifeCoreSubscription;
   /** The habit editor's preview of a bundled track; false when it cannot play. */
   previewSound: (trackId: string) => Promise<boolean>;
   stopPreview: () => Promise<void>;
