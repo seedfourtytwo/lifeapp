@@ -1,15 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { pressHabitTimer } from '../../habitTimer/habitTimerControls';
 import { refreshFromDb } from '../../hooks/refreshFromDb';
 import { CommitmentWidget } from '../../kinds/commitment/CommitmentWidget';
 import type { RootStackParamList } from '../../navigation/types';
-import { usableInsteadHabits, type CommitmentElement } from '../../protocol';
+import type { CommitmentElement } from '../../protocol';
 import { useElementStore } from '../../store/elementStore';
-import { useEventStore } from '../../store/eventStore';
 import { useUrgeStore } from '../../store/urgeStore';
 
 /** While a ride counts down the card ticks each second; otherwise each half minute is enough. */
@@ -20,9 +18,7 @@ export default function CommitmentCard({ commitment }: { commitment: CommitmentE
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
-  const elements = useElementStore((s) => s.elements);
   const logSlip = useElementStore((s) => s.logSlip);
-  const sessions = useEventStore((s) => s.activeTimerSessions);
   const ride = useUrgeStore((s) => s.ride);
   const riddenOutTotal = useUrgeStore((s) => s.riddenOutTotal);
   const [now, setNow] = useState(() => new Date());
@@ -42,16 +38,6 @@ export default function CommitmentCard({ commitment }: { commitment: CommitmentE
     );
     return () => clearTimeout(timer);
   }, [ride]);
-
-  // A habit already running is left out: pressing it again would pause it.
-  const insteadHabits = useMemo(
-    () =>
-      usableInsteadHabits(commitment.config, elements).filter((habit) => {
-        const session = sessions[habit.id];
-        return !session || session.pausedAt !== null;
-      }),
-    [commitment.config, elements, sessions],
-  );
 
   const fail = (error: unknown) => {
     Alert.alert(
@@ -73,13 +59,18 @@ export default function CommitmentCard({ commitment }: { commitment: CommitmentE
       now={now}
       riddenOutTotal={riddenOutTotal}
       ride={ride}
-      insteadHabits={insteadHabits}
       onUrge={() => {
         setNow(new Date());
-        void useUrgeStore.getState().logUrge().catch(fail);
+        // Logged first, asking nothing; then its ride opens.
+        useUrgeStore
+          .getState()
+          .logUrge()
+          .then((id) => {
+            if (id) navigation.navigate('Urge');
+          })
+          .catch(fail);
       }}
-      onStartInstead={(habitId) => void pressHabitTimer(habitId)}
-      onUsed={(urgeId) => void useUrgeStore.getState().resolveUrge(urgeId, 'used').catch(fail)}
+      onOpenRide={() => navigation.navigate('Urge')}
       onLogSlip={confirmSlip}
       onOpenDetails={() => navigation.navigate('TrackerHistory', { elementId: commitment.id })}
     />

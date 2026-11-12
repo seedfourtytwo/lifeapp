@@ -2,17 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import QuietText from '../../components/QuietText';
-import {
-  formatHabitTimerDuration,
-  nextLamp,
-  type CommitmentElement,
-  type HabitElement,
-} from '../../protocol';
+import { nextLamp, type CommitmentElement } from '../../protocol';
 import type { UrgeRide } from '../../store/urgeStore';
-import { space } from '../../theme/spacing';
-import { typeScale } from '../../theme/typography';
-import { formatLampLabel, formatTimeClear } from '../../utils/commitmentFormat';
+import { formatLampLabel, formatRideLeft, formatTimeClear } from '../../utils/commitmentFormat';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
 import { TrackerCardTitle } from '../TrackerCardTitle';
@@ -24,29 +16,25 @@ export type CommitmentWidgetProps = {
   riddenOutTotal: number;
   /** The open urge's ride, or null. */
   ride: UrgeRide | null;
-  /** Instead-habits that can be started now, in the order chosen. */
-  insteadHabits: readonly HabitElement[];
   onUrge: () => void;
-  onStartInstead: (habitId: string) => void;
-  onUsed: (urgeId: string) => void;
+  /** Back to the ride's own screen. */
+  onOpenRide: () => void;
   onLogSlip: () => void;
   onOpenDetails: () => void;
 };
 
 /**
  * The commitment on Habits: time clear as a short clock, the next lamp and
- * the urges ridden out, and the Urge button. During a ride: its countdown,
- * the habits to start instead, and a small quiet "I used".
+ * the urges ridden out, and the Urge button. During a ride, in its place,
+ * the ride's time left, which opens the ride's screen.
  */
 export function CommitmentWidget({
   element,
   now,
   riddenOutTotal,
   ride,
-  insteadHabits,
   onUrge,
-  onStartInstead,
-  onUsed,
+  onOpenRide,
   onLogSlip,
   onOpenDetails,
 }: CommitmentWidgetProps) {
@@ -74,7 +62,17 @@ export function CommitmentWidget({
           >
             {timeClear}
           </Text>
-          {riding ? null : (
+          {riding ? (
+            <Button
+              mode="contained-tonal"
+              compact
+              icon="road-variant"
+              onPress={onOpenRide}
+              accessibilityLabel={t('commitment.openRideA11y', { time: formatRideLeft(rideLeftSeconds) })}
+            >
+              {formatRideLeft(rideLeftSeconds)}
+            </Button>
+          ) : (
             <Button
               mode="contained-tonal"
               compact
@@ -108,45 +106,6 @@ export function CommitmentWidget({
           </Menu>
         </View>
       </View>
-
-      {riding && ride ? (
-        <View style={local.rideRow}>
-          <View style={local.rideClock}>
-            <QuietText style={typeScale.caption}>{t('commitment.rideCaption')}</QuietText>
-            <Text
-              style={[styles.timerLabel, { color: theme.colors.onSurface }]}
-              accessibilityLabel={t('commitment.rideLeftA11y', {
-                time: formatHabitTimerDuration(rideLeftSeconds),
-              })}
-            >
-              {formatHabitTimerDuration(rideLeftSeconds)}
-            </Text>
-          </View>
-          <View style={local.rideActions}>
-            {insteadHabits.map((habit) => (
-              <Button
-                key={habit.id}
-                mode="contained-tonal"
-                compact
-                icon="play"
-                onPress={() => onStartInstead(habit.id)}
-                accessibilityLabel={t('commitment.startInsteadA11y', { name: habit.name })}
-              >
-                {habit.name}
-              </Button>
-            ))}
-            <Button
-              mode="text"
-              compact
-              textColor={theme.colors.onSurfaceVariant}
-              onPress={() => onUsed(ride.urgeId)}
-              accessibilityLabel={t('commitment.usedA11y')}
-            >
-              {t('commitment.used')}
-            </Button>
-          </View>
-        </View>
-      ) : null}
     </TrackerCard>
   );
 }
@@ -154,24 +113,5 @@ export function CommitmentWidget({
 const local = StyleSheet.create({
   menuButton: {
     margin: 0,
-  },
-  rideRow: {
-    gap: space.sm,
-    paddingLeft: space.md,
-    paddingRight: space.sm,
-    paddingBottom: space.md,
-  },
-  rideClock: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: space.sm,
-    paddingRight: space.sm,
-  },
-  rideActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: space.sm,
   },
 });

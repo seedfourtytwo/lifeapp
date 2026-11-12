@@ -16,6 +16,12 @@ jest.mock('../src/db/client', () => ({
 }));
 let mockFs: FakeFileSystem;
 jest.mock('expo-file-system/legacy', () => mockFs.module);
+// The commitment card finds the stack itself; the screen is handed it.
+const mockCardNavigation = { navigate: jest.fn() };
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useNavigation: () => mockCardNavigation,
+}));
 
 /** Tuesday 10 March 2026, 21:00 local. */
 const NOW = new Date(2026, 2, 10, 21, 0);
@@ -45,6 +51,7 @@ beforeEach(async () => {
   (require('../src/db/client').getDatabase as jest.Mock).mockResolvedValue(testDb.db);
   await seedRealisticTrackers(testDb.db);
   navigation = { goBack: jest.fn(), canGoBack: jest.fn(() => true), navigate: jest.fn() };
+  mockCardNavigation.navigate.mockClear();
 });
 
 afterEach(async () => {
@@ -339,5 +346,44 @@ describe('coming back to the app during a ride', () => {
     });
 
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe('the commitment card', () => {
+  async function renderCard(): Promise<ReactTestInstance> {
+    const { PaperProvider } = require('react-native-paper') as typeof import('react-native-paper');
+    const CommitmentCard = (require('../src/screens/habits/CommitmentCard') as typeof import('../src/screens/habits/CommitmentCard')).default;
+    const { useElementStore } = require('../src/store/elementStore') as typeof import('../src/store/elementStore');
+    const commitment = useElementStore.getState().elements.find((element) => element.id === COMMITMENT);
+    if (commitment?.kind !== 'commitment') throw new Error('no commitment');
+    await act(() => {
+      mounted = TestRenderer.create(
+        React.createElement(PaperProvider, null, React.createElement(CommitmentCard, { commitment })),
+      );
+    });
+    await flush();
+    return mounted!.root;
+  }
+
+  it('logs the urge at once, then opens its ride', async () => {
+    await addCommitment({});
+    const root = await renderCard();
+
+    await press(root, 'Log an urge');
+
+    expect(urgeRows()).toEqual([expect.objectContaining({ outcome: null, source: 'app' })]);
+    expect(mockCardNavigation.navigate).toHaveBeenCalledWith('Urge');
+  });
+
+  it('shows only the time left of a running ride, and returns to it when pressed', async () => {
+    await addCommitment({ insteadHabitIds: [TRACKERS.meditation] });
+    await urges().logUrge();
+    const root = await renderCard();
+
+    expect(pressable(root, 'Log an urge')).toBeUndefined();
+    expect(pressable(root, 'Start Meditation')).toBeUndefined();
+    await press(root, '10:00 left in the ride. Open it');
+
+    expect(mockCardNavigation.navigate).toHaveBeenCalledWith('Urge');
   });
 });
