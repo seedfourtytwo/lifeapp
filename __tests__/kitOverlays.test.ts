@@ -29,8 +29,9 @@ const METRICS = {
 
 let tree: ReactTestRenderer | null = null;
 
-function render(element: React.ReactElement): ReactTestInstance {
-  act(() => {
+/** Mounted, with the reduce-motion query and the icon font settled. */
+async function render(element: React.ReactElement): Promise<ReactTestInstance> {
+  await act(async () => {
     tree = TestRenderer.create(
       React.createElement(SafeAreaProvider, { initialMetrics: METRICS }, React.createElement(KitHost, null, element)),
     );
@@ -84,29 +85,29 @@ describe('Sheet', () => {
     );
   }
 
-  it('shows what it holds above the screen, in the sheet layer', () => {
-    const root = render(React.createElement(Harness, { onClose: jest.fn() }));
+  it('shows what it holds above the screen, in the sheet layer', async () => {
+    const root = await render(React.createElement(Harness, { onClose: jest.fn() }));
     expect(texts(root)).toContain('Inside the sheet');
     expect(inLayer(root, nightLayer.sheet).length).toBeGreaterThan(0);
   });
 
-  it('closes from the scrim, and is gone once it has fallen', () => {
+  it('closes from the scrim, and is gone once it has fallen', async () => {
     const onClose = jest.fn();
-    const root = render(React.createElement(Harness, { onClose }));
+    const root = await render(React.createElement(Harness, { onClose }));
     tap(root, 'Close');
     expect(onClose).toHaveBeenCalledTimes(1);
     settle();
     expect(texts(root)).not.toContain('Inside the sheet');
   });
 
-  it('closes on Android back, and lets back through once closed', () => {
+  it('closes on Android back, and lets back through once closed', async () => {
     const onClose = jest.fn();
     const listeners: (() => boolean)[] = [];
     const spy = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, handler) => {
       listeners.push(handler as () => boolean);
       return { remove: () => listeners.splice(listeners.indexOf(handler as () => boolean), 1) };
     });
-    render(React.createElement(Harness, { onClose }));
+    await render(React.createElement(Harness, { onClose }));
     let handled = false;
     act(() => {
       handled = listeners[listeners.length - 1]!();
@@ -118,14 +119,14 @@ describe('Sheet', () => {
   });
 
   /** How far a pull must go is `sheetGesture.ts`, tested with the editor sheet; here, only the grabber takes it. */
-  it('takes a pull on the grabber only, so the body scrolls freely', () => {
-    const root = render(React.createElement(Harness, { onClose: jest.fn() }));
+  it('takes a pull on the grabber only, so the body scrolls freely', async () => {
+    const root = await render(React.createElement(Harness, { onClose: jest.fn() }));
     const pulls = root.findAll((node) => typeof node.type === 'string' && typeof node.props.onMoveShouldSetResponder === 'function');
     expect(pulls.map((node) => node.props.testID)).toEqual(['sheet-grabber']);
   });
 
-  it('hides the screen under it from a screen reader while open', () => {
-    const root = render(React.createElement(Harness, { onClose: jest.fn() }));
+  it('hides the screen under it from a screen reader while open', async () => {
+    const root = await render(React.createElement(Harness, { onClose: jest.fn() }));
     const screens = () =>
       root.findAll((node) => typeof node.type === 'string' && node.props.accessibilityElementsHidden === true && flat(node.props.style).flex === 1);
     expect(screens()).toHaveLength(1);
@@ -135,7 +136,7 @@ describe('Sheet', () => {
     expect(screens()).toEqual([]);
   });
 
-  it('needs a KitHost above it, and says so', () => {
+  it('needs a KitHost above it, and says so', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() =>
       act(() => {
@@ -154,7 +155,7 @@ describe('ConfirmSheet and useConfirm', () => {
   }
 
   it('resolves true only for the action itself', async () => {
-    const root = render(React.createElement(Asker));
+    const root = await render(React.createElement(Asker));
     let answer: Promise<boolean>;
     act(() => {
       answer = confirm({ title: 'Erase everything?', line: 'This cannot be undone.', action: 'Erase' });
@@ -167,7 +168,7 @@ describe('ConfirmSheet and useConfirm', () => {
   });
 
   it.each(['Cancel', 'Close'])('resolves false from %s', async (way) => {
-    const root = render(React.createElement(Asker));
+    const root = await render(React.createElement(Asker));
     let answer: Promise<boolean>;
     act(() => {
       answer = confirm({ title: 'Delete Water?', action: 'Delete' });
@@ -177,7 +178,7 @@ describe('ConfirmSheet and useConfirm', () => {
   });
 
   it('asks one thing at a time: a new question answers the old one with no', async () => {
-    const root = render(React.createElement(Asker));
+    const root = await render(React.createElement(Asker));
     let first: Promise<boolean>;
     let second: Promise<boolean>;
     act(() => {
@@ -194,7 +195,7 @@ describe('ConfirmSheet and useConfirm', () => {
   });
 
   it('answers no when the host goes away with a question open', async () => {
-    render(React.createElement(Asker));
+    await render(React.createElement(Asker));
     let answer: Promise<boolean>;
     act(() => {
       answer = confirm({ title: 'Delete?', action: 'Delete' });
@@ -204,8 +205,8 @@ describe('ConfirmSheet and useConfirm', () => {
     await expect(answer!).resolves.toBe(false);
   });
 
-  it('draws in the confirm layer, above a sheet', () => {
-    const root = render(
+  it('draws in the confirm layer, above a sheet', async () => {
+    const root = await render(
       React.createElement(ConfirmSheet, {
         visible: true,
         title: 'Delete?',
@@ -226,9 +227,9 @@ describe('the undo bar', () => {
     return null;
   }
 
-  it('says what happened, offers Undo, and goes once pressed', () => {
+  it('says what happened, offers Undo, and goes once pressed', async () => {
     const onUndo = jest.fn();
-    const root = render(React.createElement(Shower));
+    const root = await render(React.createElement(Shower));
     act(() => bar.show({ message: 'Water +2', onUndo }));
     expect(texts(root)).toEqual(expect.arrayContaining(['Water +2', 'Undo']));
     tap(root, 'Undo');
@@ -236,9 +237,9 @@ describe('the undo bar', () => {
     expect(texts(root)).not.toContain('Water +2');
   });
 
-  it('leaves by itself after its time, and Undo is not run', () => {
+  it('leaves by itself after its time, and Undo is not run', async () => {
     const onUndo = jest.fn();
-    const root = render(React.createElement(Shower));
+    const root = await render(React.createElement(Shower));
     act(() => bar.show({ message: 'Water +2', onUndo }));
     act(() => {
       jest.advanceTimersByTime(nightMotion.undoMs - 1);
@@ -251,10 +252,10 @@ describe('the undo bar', () => {
     expect(onUndo).not.toHaveBeenCalled();
   });
 
-  it('shows one at a time: a new one replaces the old and gets its own full time', () => {
+  it('shows one at a time: a new one replaces the old and gets its own full time', async () => {
     const first = jest.fn();
     const second = jest.fn();
-    const root = render(React.createElement(Shower));
+    const root = await render(React.createElement(Shower));
     act(() => bar.show({ message: 'Water +2', onUndo: first }));
     act(() => {
       jest.advanceTimersByTime(nightMotion.undoMs - 1000);
@@ -272,8 +273,8 @@ describe('the undo bar', () => {
     expect(first).not.toHaveBeenCalled();
   });
 
-  it('is a plain notice with no action when there is nothing to undo', () => {
-    const root = render(React.createElement(Shower));
+  it('is a plain notice with no action when there is nothing to undo', async () => {
+    const root = await render(React.createElement(Shower));
     act(() => bar.show({ message: 'Could not save' }));
     expect(texts(root)).toContain('Could not save');
     expect(texts(root)).not.toContain('Undo');
@@ -281,9 +282,9 @@ describe('the undo bar', () => {
     expect(texts(root)).not.toContain('Could not save');
   });
 
-  it('is said to a screen reader when it appears', () => {
+  it('is said to a screen reader when it appears', async () => {
     const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
-    render(React.createElement(Shower));
+    await render(React.createElement(Shower));
     act(() => bar.show({ message: 'Water +2' }));
     expect(announce).toHaveBeenCalledWith('Water +2');
     announce.mockRestore();

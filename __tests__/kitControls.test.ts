@@ -29,8 +29,9 @@ function flat(style: unknown): Record<string, unknown> {
   return (StyleSheet.flatten(style as never) ?? {}) as Record<string, unknown>;
 }
 
-function render(element: React.ReactElement): ReactTestInstance {
-  act(() => {
+/** Mounted, with the reduce-motion query and the icon font settled. */
+async function render(element: React.ReactElement): Promise<ReactTestInstance> {
+  await act(async () => {
     tree = TestRenderer.create(element);
   });
   return tree!.root;
@@ -74,8 +75,8 @@ describe('Segmented', () => {
     { value: 'timer', label: 'Timer' },
   ] as const;
 
-  it('says which one is chosen, as radios in a group', () => {
-    const root = render(
+  it('says which one is chosen, as radios in a group', async () => {
+    const root = await render(
       React.createElement(Segmented<'check' | 'timer'>, {
         options,
         value: 'timer',
@@ -88,9 +89,9 @@ describe('Segmented', () => {
     expect(control(root, 'Check-off').props.accessibilityState).toMatchObject({ checked: false });
   });
 
-  it('hands back the other option, and nothing for the one already chosen', () => {
+  it('hands back the other option, and nothing for the one already chosen', async () => {
     const onChange = jest.fn();
-    const root = render(
+    const root = await render(
       React.createElement(Segmented<'check' | 'timer'>, { options, value: 'timer', onChange, accessibilityLabel: 'Type' }),
     );
     tap(root, 'Timer');
@@ -101,8 +102,8 @@ describe('Segmented', () => {
 });
 
 describe('Chip', () => {
-  it('says whether it is chosen, and only when it is a choice', () => {
-    const root = render(
+  it('says whether it is chosen, and only when it is a choice', async () => {
+    const root = await render(
       React.createElement(React.Fragment, null, [
         React.createElement(Chip, { key: 'a', label: 'Every day', selected: true, onPress: jest.fn() }),
         React.createElement(Chip, { key: 'b', label: 'Pick days', selected: false, onPress: jest.fn() }),
@@ -114,8 +115,8 @@ describe('Chip', () => {
     expect(control(root, '07:30').props.accessibilityState).toEqual(expect.not.objectContaining({ selected: expect.anything() }));
   });
 
-  it('draws the chosen one with a lit ring and the others with a quiet edge', () => {
-    const root = render(
+  it('draws the chosen one with a lit ring and the others with a quiet edge', async () => {
+    const root = await render(
       React.createElement(React.Fragment, null, [
         React.createElement(Chip, { key: 'a', label: 'On', selected: true, light: 'amber', onPress: jest.fn() }),
         React.createElement(Chip, { key: 'b', label: 'Off', selected: false, onPress: jest.fn() }),
@@ -126,9 +127,9 @@ describe('Chip', () => {
     expect(ring('Off')).toBe(nightColors.quietEdge);
   });
 
-  it('the "+" chip shows no words but is said by its label', () => {
+  it('the "+" chip shows no words but is said by its label', async () => {
     const onPress = jest.fn();
-    const root = render(React.createElement(Chip, { add: true, accessibilityLabel: 'Add a reminder', onPress }));
+    const root = await render(React.createElement(Chip, { add: true, accessibilityLabel: 'Add a reminder', onPress }));
     tap(root, 'Add a reminder');
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(root.findAll((node) => node.type === 'Text' && node.props.children === 'Add a reminder')).toEqual([]);
@@ -136,18 +137,18 @@ describe('Chip', () => {
 });
 
 describe('Toggle', () => {
-  it('is a switch that says on or off, and flips', () => {
+  it('is a switch that says on or off, and flips', async () => {
     const onValueChange = jest.fn();
-    const root = render(React.createElement(Toggle, { value: false, onValueChange, accessibilityLabel: 'Reminders' }));
+    const root = await render(React.createElement(Toggle, { value: false, onValueChange, accessibilityLabel: 'Reminders' }));
     expect(control(root, 'Reminders').props.accessibilityRole).toBe('switch');
     expect(control(root, 'Reminders').props.accessibilityState).toMatchObject({ checked: false });
     press(root, 'Reminders');
     expect(onValueChange).toHaveBeenCalledWith(true);
   });
 
-  it('says when it cannot be changed, and takes no press then', () => {
+  it('says when it cannot be changed, and takes no press then', async () => {
     const onValueChange = jest.fn();
-    const root = render(React.createElement(Toggle, { value: true, onValueChange, accessibilityLabel: 'Weather', disabled: true }));
+    const root = await render(React.createElement(Toggle, { value: true, onValueChange, accessibilityLabel: 'Weather', disabled: true }));
     expect(control(root, 'Weather').props.accessibilityState).toMatchObject({ checked: true, disabled: true });
     press(root, 'Weather');
     expect(onValueChange).not.toHaveBeenCalled();
@@ -155,9 +156,9 @@ describe('Toggle', () => {
 });
 
 describe('buttons', () => {
-  it('say when they are disabled and take no press then', () => {
+  it('say when they are disabled and take no press then', async () => {
     const onPress = jest.fn();
-    const root = render(
+    const root = await render(
       React.createElement(React.Fragment, null, [
         React.createElement(PillButton, { key: 'p', variant: 'primary', label: 'Save', onPress, disabled: true }),
         React.createElement(RoundButton, { key: 'r', icon: 'delete-outline', accessibilityLabel: 'Delete', onPress, disabled: true }),
@@ -171,22 +172,22 @@ describe('buttons', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('a small round button still reaches the touch minimum through its slop', () => {
-    const root = render(React.createElement(RoundButton, { icon: 'cog-outline', size: 'sm', accessibilityLabel: 'Settings', onPress: jest.fn() }));
+  it('a small round button still reaches the touch minimum through its slop', async () => {
+    const root = await render(React.createElement(RoundButton, { icon: 'cog-outline', size: 'sm', accessibilityLabel: 'Settings', onPress: jest.fn() }));
     const host = control(root, 'Settings');
     const box = flat(host.props.style);
     expect(box.width).toBeGreaterThanOrEqual(48);
   });
 
-  it('a round button with characters grows rather than clipping them', () => {
-    const root = render(React.createElement(RoundButton, { label: '+10', accessibilityLabel: 'Add 10', onPress: jest.fn() }));
+  it('a round button with characters grows rather than clipping them', async () => {
+    const root = await render(React.createElement(RoundButton, { label: '+10', accessibilityLabel: 'Add 10', onPress: jest.fn() }));
     const box = flat(control(root, 'Add 10').props.style);
     expect(box.width).toBeUndefined();
     expect(box.minWidth).toBeGreaterThanOrEqual(48);
   });
 
-  it('a danger pill is ringed and worded in the danger colour', () => {
-    const root = render(React.createElement(PillButton, { variant: 'danger', label: 'Erase', onPress: jest.fn() }));
+  it('a danger pill is ringed and worded in the danger colour', async () => {
+    const root = await render(React.createElement(PillButton, { variant: 'danger', label: 'Erase', onPress: jest.fn() }));
     const box = flat(control(root, 'Erase').props.style);
     expect(box.borderColor).toBe(nightColors.danger);
     const words = root.findAll((node) => node.type === 'Text' && node.props.children === 'Erase')[0]!;
@@ -195,10 +196,10 @@ describe('buttons', () => {
 });
 
 describe('Dock', () => {
-  it('lights and selects the place on screen, and never the "+"', () => {
+  it('lights and selects the place on screen, and never the "+"', async () => {
     const onSelect = jest.fn();
     const onAdd = jest.fn();
-    const root = render(
+    const root = await render(
       React.createElement(Dock<'today' | 'road'>, {
         places: [
           { key: 'today', icon: 'calendar-today', label: 'Today' },
@@ -220,16 +221,16 @@ describe('Dock', () => {
 });
 
 describe('Field', () => {
-  it('shows a value and opens what changes it, said as label and value', () => {
+  it('shows a value and opens what changes it, said as label and value', async () => {
     const onPress = jest.fn();
-    const root = render(React.createElement(Field, { label: 'Goal', value: '15 min', onPress }));
+    const root = await render(React.createElement(Field, { label: 'Goal', value: '15 min', onPress }));
     tap(root, 'Goal, 15 min');
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('takes only digits in a number field', () => {
+  it('takes only digits in a number field', async () => {
     const onChangeText = jest.fn();
-    const root = render(React.createElement(Field, { label: 'Goal a day', value: '', onChangeText, numeric: true, unit: 'glasses' }));
+    const root = await render(React.createElement(Field, { label: 'Goal a day', value: '', onChangeText, numeric: true, unit: 'glasses' }));
     const input = root.findAll((node) => node.props.keyboardType === 'number-pad')[0]!;
     act(() => (input.props.onChangeText as (text: string) => void)('1a2.'));
     expect(onChangeText).toHaveBeenCalledWith('12');
@@ -237,15 +238,15 @@ describe('Field', () => {
 });
 
 describe('rows, sections and tiles', () => {
-  it('a row that opens something says its label and value as one button', () => {
+  it('a row that opens something says its label and value as one button', async () => {
     const onPress = jest.fn();
-    const root = render(React.createElement(Row, { label: 'Language', value: 'English', chevron: true, onPress }));
+    const root = await render(React.createElement(Row, { label: 'Language', value: 'English', chevron: true, onPress }));
     tap(root, 'Language, English');
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('a grouped section puts a divider between rows, not around them', () => {
-    const root = render(
+  it('a grouped section puts a divider between rows, not around them', async () => {
+    const root = await render(
       React.createElement(Section, {
         label: 'Notifications',
         grouped: true,
@@ -261,16 +262,16 @@ describe('rows, sections and tiles', () => {
     expect(label.props.accessibilityRole).toBe('header');
   });
 
-  it('a pressable tile is one button with its label', () => {
+  it('a pressable tile is one button with its label', async () => {
     const onPress = jest.fn();
-    const root = render(React.createElement(GlassSurface, { onPress, accessibilityLabel: 'Counter', children: null }));
+    const root = await render(React.createElement(GlassSurface, { onPress, accessibilityLabel: 'Counter', children: null }));
     tap(root, 'Counter');
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('a pushed screen has a back button; a place does not', () => {
+  it('a pushed screen has a back button; a place does not', async () => {
     const onBack = jest.fn();
-    const root = render(React.createElement(ScreenHeader, { title: 'Settings', back: { label: 'Back', onPress: onBack } }));
+    const root = await render(React.createElement(ScreenHeader, { title: 'Settings', back: { label: 'Back', onPress: onBack } }));
     tap(root, 'Back');
     expect(onBack).toHaveBeenCalledTimes(1);
     act(() => tree!.update(React.createElement(ScreenHeader, { title: 'Journal' })));
@@ -279,8 +280,8 @@ describe('rows, sections and tiles', () => {
 });
 
 describe('progress', () => {
-  it('a progress line says how far, held to 0–100', () => {
-    const root = render(
+  it('a progress line says how far, held to 0–100', async () => {
+    const root = await render(
       React.createElement(React.Fragment, null, [
         React.createElement(ProgressLine, { key: 'a', value: 0.625, light: 'amber', accessibilityLabel: 'Water' }),
         React.createElement(ProgressLine, { key: 'b', value: 3, light: 'teal', accessibilityLabel: 'Over' }),
@@ -292,8 +293,8 @@ describe('progress', () => {
     expect(control(root, 'Nonsense').props.accessibilityValue).toMatchObject({ now: 0 });
   });
 
-  it('week dashes draw kept, missed, not counted and today each their own way', () => {
-    const root = render(
+  it('week dashes draw kept, missed, not counted and today each their own way', async () => {
+    const root = await render(
       React.createElement(WeekDashes, {
         days: ['done', 'missed', 'notCounted', 'done', 'done', 'missed', 'today'],
         light: 'teal',
@@ -315,7 +316,7 @@ describe('under reduced motion', () => {
     const reduce = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
     const timing = jest.spyOn(Animated, 'timing');
     const props = { onValueChange: jest.fn(), accessibilityLabel: 'Reminders' };
-    render(React.createElement(Toggle, { ...props, value: false }));
+    await render(React.createElement(Toggle, { ...props, value: false }));
     await act(async () => undefined);
     timing.mockClear();
     act(() => tree!.update(React.createElement(Toggle, { ...props, value: true })));
