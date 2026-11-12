@@ -21,6 +21,7 @@ const TOKENS = join(UI, 'tokens.ts');
 
 /** Screens rebuilt on the kit. */
 const REBUILT = [
+  'src/screens/UrgeScreen.tsx',
   'src/screens/urge/InsteadTimer.tsx',
 ];
 

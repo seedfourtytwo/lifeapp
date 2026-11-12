@@ -31,6 +31,7 @@ import { useAutoBackup } from './src/hooks/useAutoBackup';
 import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
+import { KitHost } from './src/ui/KitHost';
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavigationDefaultTheme,
@@ -90,7 +91,9 @@ function ThemedApp() {
   return (
     <PaperProvider theme={paperTheme}>
       <NavigationContainer theme={navigationTheme}>
-        <AppNavigator />
+        <KitHost>
+          <AppNavigator />
+        </KitHost>
         <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       </NavigationContainer>
     </PaperProvider>

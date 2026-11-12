@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, ScrollView, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -23,6 +23,7 @@ import { useVoiceNoteStore } from '../store/voiceNoteStore';
 import { GlassSurface } from '../ui/GlassSurface';
 import { NightBackground } from '../ui/NightBackground';
 import { Field } from '../ui/Field';
+import { useUndoBar } from '../ui/KitHost';
 import { NightText } from '../ui/NightText';
 import { PillButton } from '../ui/PillButton';
 import { Road } from '../ui/Road';
@@ -69,14 +70,13 @@ export default function UrgeScreen({ navigation }: Props) {
     else navigation.navigate('Home');
   }, [navigation]);
 
+  const { show: showBar } = useUndoBar();
   const fail = useCallback(
     (error: unknown) => {
-      Alert.alert(
-        tCommon('alerts.couldNotSave'),
-        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-      );
+      console.warn('Urge screen write failed', error);
+      showBar({ message: tCommon('alerts.couldNotSave') });
     },
-    [tCommon],
+    [tCommon, showBar],
   );
 
   useEffect(() => {

@@ -104,6 +104,7 @@ async function flush(): Promise<void> {
 async function render(): Promise<ReactTestInstance> {
   const { SafeAreaProvider } = require('react-native-safe-area-context') as typeof import('react-native-safe-area-context');
   const UrgeScreen = (require('../src/screens/UrgeScreen') as typeof import('../src/screens/UrgeScreen')).default;
+  const { KitHost } = require('../src/ui/KitHost') as typeof import('../src/ui/KitHost');
   await act(async () => {
     mounted = TestRenderer.create(
       React.createElement(
@@ -114,10 +115,14 @@ async function render(): Promise<ReactTestInstance> {
             insets: { top: 24, left: 0, right: 0, bottom: 24 },
           },
         },
-        React.createElement(UrgeScreen, {
-          navigation,
-          route: { key: 'urge', name: 'Urge' },
-        } as never),
+        React.createElement(
+          KitHost,
+          null,
+          React.createElement(UrgeScreen, {
+            navigation,
+            route: { key: 'urge', name: 'Urge' },
+          } as never),
+        ),
       ),
     );
   });
@@ -271,6 +276,27 @@ describe('the urge screen', () => {
     expect(urgeRows()[0]).toMatchObject({ outcome: 'used', note: 'Long day' });
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
     expect(texts(root)).not.toContain('Ridden out.');
+  });
+
+  it('says plainly on the undo bar when a write fails, with no system pop-up', async () => {
+    await addCommitment({});
+    await urges().logUrge();
+    const root = await render();
+    await press(root, 'I used: end this ride');
+    const { useUrgeStore } = require('../src/store/urgeStore') as typeof import('../src/store/urgeStore');
+    useUrgeStore.setState({ noteUrge: jest.fn().mockRejectedValue(new Error('disk full')) });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const field = root.findAll((node) => node.props.accessibilityLabel === 'What led to it?' && typeof node.props.onChangeText === 'function')[0]!;
+    await act(async () => {
+      (field.props.onChangeText as (text: string) => void)('Long day');
+    });
+    await press(root, 'Save');
+    await flush();
+
+    expect(texts(root)).toContain('Could not save');
+    expect(warn).toHaveBeenCalledWith('Urge screen write failed', expect.any(Error));
+    warn.mockRestore();
   });
 
   it('offers his voice note only when there is one, and plays it in the native core', async () => {
