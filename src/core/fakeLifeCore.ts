@@ -114,8 +114,9 @@ export function createFakeLifeCore(now: () => number = Date.now): LifeCore {
       return { remove: () => listeners.delete(listener) };
     },
 
-    // No widget off Android: nobody to tell of a snapshot, and nothing is ever queued.
+    // No widget or native scheduler off Android: nobody to tell of a file, and nothing is ever queued.
     snapshotWritten: async () => undefined,
+    remindersChanged: async () => undefined,
     addQueueListener: () => ({ remove: () => undefined }),
 
     previewSound: async () => false,

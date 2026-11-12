@@ -21,6 +21,8 @@ export declare class LifeCoreNativeModule extends NativeModule<LifeCoreEvents> {
   getState(): Promise<string | null>;
   /** The widget snapshot was just replaced; the widget redraws from it. */
   snapshotWritten(): Promise<void>;
+  /** The reminder plan was just replaced; native re-arms the next reminder from it. */
+  remindersChanged(): Promise<void>;
   previewSound(trackId: string): Promise<boolean>;
   stopPreview(): Promise<void>;
 }

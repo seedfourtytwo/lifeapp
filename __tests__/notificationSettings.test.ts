@@ -5,14 +5,18 @@
  * notifications turned off for Life. The real stores and permission code run
  * against the faked expo-notifications module.
  */
+import * as fs from 'node:fs';
 import type { ReactTestRenderer } from 'react-test-renderer';
 import { habitElement } from './support/elements';
+import { createFakeFileSystem, type FakeFileSystem } from './support/fakeFileSystem';
 import type { FakeNotifications } from './support/fakeNotifications';
 
 jest.mock('expo-notifications', () =>
   require('./support/fakeNotifications').createFakeNotifications(),
 );
 jest.mock('../src/db/client', () => ({ getDatabase: jest.fn() }));
+let mockFs: FakeFileSystem;
+jest.mock('expo-file-system/legacy', () => mockFs.module);
 
 type Settings = typeof import('../src/store/settingsStore').useSettingsStore;
 type Permission = typeof import('../src/store/notificationPermissionStore').useNotificationPermissionStore;
@@ -25,6 +29,7 @@ let openSettings: jest.SpyInstance;
 
 beforeEach(() => {
   jest.resetModules();
+  mockFs = createFakeFileSystem();
   fake = require('expo-notifications');
   permission = require('./support/fakeNotifications').permission;
   settings = require('../src/store/settingsStore').useSettingsStore;
@@ -179,7 +184,17 @@ it('sends the user to system settings when the phone will not ask again', async 
   expect(openSettings).toHaveBeenCalled();
 });
 
-it('re-syncs habit reminders once permission is granted', async () => {
+afterEach(() => {
+  mockFs.cleanup();
+});
+
+/** Whether the reminder plan the native scheduler reads says reminders are on. */
+function planEnabled(): boolean | null {
+  const file = `${mockFs.root}/widget/reminders.json`;
+  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as { enabled: boolean }).enabled : null;
+}
+
+it('turns habit reminders on once permission is granted', async () => {
   fake.state.permission = permission('denied', true);
   fake.state.answer = permission('denied', true);
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
@@ -197,7 +212,7 @@ it('re-syncs habit reminders once permission is granted', async () => {
     });
     const stop = require('../src/hooks/useHabitReminderSync').watchHabitReminders();
     await flush();
-    expect(fake.pending.size).toBe(0);
+    expect(planEnabled()).toBe(false);
 
     fake.state.answer = permission('granted');
     await permissionStore.getState().request();
@@ -205,7 +220,7 @@ it('re-syncs habit reminders once permission is granted', async () => {
     await flush();
     stop();
 
-    expect(fake.pending.size).toBeGreaterThan(0);
+    expect(planEnabled()).toBe(true);
   } finally {
     jest.useRealTimers();
   }

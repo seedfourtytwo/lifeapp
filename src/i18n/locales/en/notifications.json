@@ -2,10 +2,6 @@
   "channel": {
     "remindersName": "Reminders"
   },
-  "habitReminder": {
-    "title": "Habit reminder",
-    "body": "Time for {{name}}"
-  },
   "eveningCheckIn": {
     "title": "Evening check-in",
     "bodyGeneric": "Review what's still open today",

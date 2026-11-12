@@ -25,8 +25,8 @@ import {
   type WidgetSnapshotTracker,
 } from '../protocol/widgetSnapshot';
 import {
-  collectStartReminderFires,
   habitReminderClockTimes,
+  reminderMomentsOn,
 } from '../notifications/habitStartReminderTimes';
 
 export interface WidgetSnapshotInput {
@@ -227,12 +227,12 @@ export function buildWidgetSnapshot(input: WidgetSnapshotInput): WidgetSnapshot 
     .flatMap((tracker) => {
       if (tracker.kind !== 'habit') return [];
       const shown = trackers.find((item) => item.id === tracker.id);
-      if (!shown?.dueToday) return [];
-      return collectStartReminderFires(tracker.config, {
-        now,
-        doneToday: shown.done,
-        horizonDays: 1,
-      }).map((fire) => ({ trackerId: tracker.id, time: fire.time, at: fire.when.toISOString() }));
+      if (!shown?.dueToday || shown.done) return [];
+      return shown.reminderTimes.flatMap((time) =>
+        reminderMomentsOn(tracker.config.schedule, [time], today)
+          .filter((moment) => moment.getTime() > now.getTime())
+          .map((moment) => ({ trackerId: tracker.id, time, at: moment.toISOString() })),
+      );
     })
     .sort((a, b) => a.at.localeCompare(b.at));
 

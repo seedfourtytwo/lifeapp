@@ -4,12 +4,11 @@
  * expo-notifications sets one AlarmManager alarm per pending notification,
  * and Android refuses an app more than 500 concurrent alarms (AOSP
  * AlarmManagerService, max_alarms_per_uid, default 500; it throws once that is
- * reached). The shares add up to 266, leaving room for whatever else the app
- * or a future widget sets. A family that would exceed its share schedules
- * fewer days ahead rather than leaving an item out.
+ * reached). Habit reminders are not here: the native scheduler keeps one
+ * alarm for all of them. A family that would exceed its share schedules
+ * fewer reminders rather than failing.
  */
 export const NOTIFICATION_BUDGET = {
-  habitReminders: 200,
   calendarReminders: 64,
   eveningCheckIn: 1,
   habitTimer: 1,

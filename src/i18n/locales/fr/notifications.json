@@ -2,10 +2,6 @@
   "channel": {
     "remindersName": "Rappels"
   },
-  "habitReminder": {
-    "title": "Rappel d'habitude",
-    "body": "C'est l'heure pour {{name}}"
-  },
   "eveningCheckIn": {
     "title": "Point du soir",
     "bodyGeneric": "Voir ce qu'il reste à faire aujourd'hui",

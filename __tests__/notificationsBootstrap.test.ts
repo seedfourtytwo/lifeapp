@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- each test loads fresh modules after resetModules() */
 import type { FakeNotifications } from './support/fakeNotifications';
-import { habitElement } from './support/elements';
 
 jest.mock('expo-notifications', () =>
   require('./support/fakeNotifications').createFakeNotifications(),
@@ -68,23 +67,9 @@ describe('reminders channel', () => {
     expect(fake.setNotificationChannelAsync).toHaveBeenCalledTimes(1);
   });
 
-  it('sends every habit, evening and calendar reminder on that channel', async () => {
+  it('sends the evening and calendar reminders on that channel', async () => {
     const habit = require('../src/notifications/habitReminders.native');
     const calendar = require('../src/notifications/calendarReminders.native');
-    await habit.syncHabitReminders(
-      [
-        habitElement({
-          id: 'h1',
-          name: 'Meditate',
-          config: {
-            schedule: { type: 'daily' },
-            timeRange: { start: '07:00', end: '08:00' },
-            remindMinutesBefore: 10,
-          },
-        }),
-      ],
-      true,
-    );
     await habit.scheduleEndOfDayReminder(true, '20:00');
     const eventId = '550e8400-e29b-41d4-a716-446655440701';
     const calendarId = '550e8400-e29b-41d4-a716-446655440702';

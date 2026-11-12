@@ -1,6 +1,3 @@
-import type { ElementDefinition, HabitConfig } from '../src/protocol';
-import { habitElement as buildHabit } from './support/elements';
-
 type ScheduleArgs = {
   identifier: string;
   content: { title: string; body: string };
@@ -32,21 +29,6 @@ jest.mock('expo-notifications', () => ({
   SchedulableTriggerInputTypes: { DATE: 'date', DAILY: 'daily' },
   IosAuthorizationStatus: { PROVISIONAL: 'provisional' },
 }));
-
-function habitElement(overrides: Partial<HabitConfig> = {}, id = 'h1'): ElementDefinition {
-  return buildHabit({
-    id,
-    name: 'Meditate',
-    config: {
-      timeSlot: 'morning',
-      trackingMode: 'boolean',
-      schedule: { type: 'daily' },
-      timeRange: { start: '07:00', end: '08:00' },
-      remindMinutesBefore: 10,
-      ...overrides,
-    },
-  });
-}
 
 /**
  * jest-expo registers the same native modules expo-notifications does, so
@@ -95,88 +77,6 @@ describe('habitReminders.native', () => {
     });
   });
 
-  describe('syncHabitReminders', () => {
-    it('no-ops entirely when the native notifications module is unavailable', async () => {
-      const mod = freshModule(false);
-
-      await mod.syncHabitReminders([habitElement()], true);
-
-      expect(mockGetAllScheduledNotificationsAsync).not.toHaveBeenCalled();
-      expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
-    });
-
-    it('cancels existing reminders but schedules nothing when disabled', async () => {
-      const mod = freshModule(true);
-      mockGetAllScheduledNotificationsAsync.mockResolvedValue([
-        { identifier: 'habit-reminder-h1-2025-01-01' },
-      ]);
-
-      await mod.syncHabitReminders([habitElement()], false);
-
-      expect(mockCancelScheduledNotificationAsync).toHaveBeenCalledWith(
-        'habit-reminder-h1-2025-01-01',
-      );
-      expect(mockRequestPermissionsAsync).not.toHaveBeenCalled();
-      expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
-    });
-
-    it('schedules nothing when permission is denied', async () => {
-      const mod = freshModule(true);
-      mockGetPermissionsAsync.mockResolvedValue({ granted: false, ios: undefined });
-      mockRequestPermissionsAsync.mockResolvedValue({ granted: false, ios: undefined });
-
-      await mod.syncHabitReminders([habitElement()], true);
-
-      expect(mockRequestPermissionsAsync).toHaveBeenCalledTimes(1);
-      expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
-    });
-
-    it('schedules one DATE start reminder per day in the horizon for a daily habit', async () => {
-      const mod = freshModule(true);
-
-      await mod.syncHabitReminders([habitElement()], true);
-
-      // Daily schedule over the 14-day reminder horizon — every fire is
-      // a distinct per-day identifier, all DATE-triggered.
-      expect(mockScheduleNotificationAsync.mock.calls.length).toBeGreaterThan(1);
-      for (const [call] of mockScheduleNotificationAsync.mock.calls) {
-        expect(call.identifier).toMatch(/^habit-reminder-h1-/);
-        expect(call.trigger.type).toBe('date');
-      }
-      const identifiers = mockScheduleNotificationAsync.mock.calls.map((c) => c[0].identifier);
-      expect(new Set(identifiers).size).toBe(identifiers.length);
-    });
-
-    it('skips a habit with no remindMinutesBefore configured', async () => {
-      const mod = freshModule(true);
-      const element = habitElement({ remindMinutesBefore: undefined });
-
-      await mod.syncHabitReminders([element], true);
-
-      expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
-    });
-
-    it('skips archived habits and non-habit elements', async () => {
-      const mod = freshModule(true);
-      const archived: ElementDefinition = {
-        ...habitElement({}, 'h2'),
-        archivedAt: '2025-06-01T00:00:00.000Z',
-      };
-      const counter: ElementDefinition = {
-        id: 'c1',
-        kind: 'counter',
-        name: 'Pushups',
-        protocolVersion: 1,
-        createdAt: '2025-01-01T00:00:00.000Z',
-        config: { unit: 'reps', quickIncrements: [5] },
-      };
-
-      await mod.syncHabitReminders([archived, counter], true);
-
-      expect(mockScheduleNotificationAsync).not.toHaveBeenCalled();
-    });
-  });
-
   describe('scheduleEndOfDayReminder', () => {
     it('cancels the previous evening reminder before scheduling a new DAILY one', async () => {
       const mod = freshModule(true);
@@ -214,23 +114,20 @@ describe('habitReminders.native', () => {
     });
   });
 
-  describe('cancelAllHabitReminders', () => {
-    it('cancels both habit-prefixed reminders and the evening check-in', async () => {
+  describe('cancelHabitStartReminders', () => {
+    it('cancels the habit reminders the old scheduler queued, and keeps the evening check-in', async () => {
       const mod = freshModule(true);
       mockGetAllScheduledNotificationsAsync.mockResolvedValue([
-        { identifier: 'habit-reminder-h1-2025-01-01' },
+        { identifier: 'habit-reminder-h1-2025-01-01-0900' },
+        { identifier: 'habit-reminder-eod' },
         { identifier: 'cal-reminder-something' },
       ]);
 
-      await mod.cancelAllHabitReminders();
+      await mod.cancelHabitStartReminders();
 
-      expect(mockCancelScheduledNotificationAsync).toHaveBeenCalledWith(
-        'habit-reminder-h1-2025-01-01',
-      );
-      expect(mockCancelScheduledNotificationAsync).toHaveBeenCalledWith('habit-reminder-eod');
-      expect(mockCancelScheduledNotificationAsync).not.toHaveBeenCalledWith(
-        'cal-reminder-something',
-      );
+      expect(mockCancelScheduledNotificationAsync.mock.calls).toEqual([
+        ['habit-reminder-h1-2025-01-01-0900'],
+      ]);
     });
   });
 });

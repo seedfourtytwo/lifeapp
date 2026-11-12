@@ -1,8 +1,10 @@
 # Widget contract
 
-Contract version 4 (stage 6c). What the JavaScript app writes for the lock-screen widget, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`) are the same contract in code, and the two change together.
+Contract version 5 (stage 6e). What the JavaScript app writes for the lock-screen widget and the native reminder scheduler, what the native core (`modules/life-core`) writes about the running timer, and what native may write back. The Zod schemas in `src/protocol/` (`widgetSnapshot.ts`, `widgetActions.ts`, `coreTimer.ts`, `reminderPlan.ts`) are the same contract in code, and the two change together.
 
-SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot, owns `timer.json`, and appends to the pending-actions queue, nothing else.
+SQLite has one writer: the JavaScript app. Native code never opens the database. It reads the snapshot and the reminder plan, owns `timer.json`, and appends to the pending-actions queue, nothing else.
+
+Changes from version 4: the reminder plan (`reminders.json`) is new, and habit reminders are posted natively from it (see "Reminder plan"); the app no longer queues them in expo-notifications. The snapshot and the queue lines are unchanged.
 
 Changes from version 3: the snapshot is version 3. A timer habit's `timer` gains `trackId` and `loop`, so the widget can start a session with its sound; the commitment's `ownLine` becomes `ownLines`, every line with the rule for which one shows, so the widget moves on to the next line at a lamp without the app. The app tells the module after each snapshot write, and the module tells the app when the widget queues a line (see "The widget"). Queue lines are unchanged.
 
@@ -19,6 +21,7 @@ Both files live in the app's private files directory, in a `widget` folder:
 | Snapshot | `File(context.filesDir, "widget/snapshot.json")` | JavaScript | widget |
 | Timer | `File(context.filesDir, "widget/timer.json")` | native core | widget, JavaScript (through the module) |
 | Pending actions | `File(context.filesDir, "widget/pending-actions.jsonl")` | native (append) | JavaScript |
+| Reminder plan | `File(context.filesDir, "widget/reminders.json")` | JavaScript | native reminder scheduler, native notifications (language) |
 
 `context.filesDir` is `/data/user/0/<package>/files` (`com.lifeapp.dashboard`, or `com.lifeapp.dashboard.dev` for the dev build). The folder may not exist before the app's first write; create it if the widget writes first.
 
@@ -162,6 +165,26 @@ The app may not run after midnight. Compute "today" at render time from the phon
 | `heartbeatAt` | instant | Last moment a live process was running it. |
 
 Active time is computed as in "A live clock without the app" below, with `pausedMs` for `pausedMs`. A process that has just started and finds a running session knows the process that ran it died (the timer service lives in the app's process): it treats the session as paused at `heartbeatAt` and writes that, so the dead time is never counted and the session stays resumable. A reader in a live process (the widget) never applies this rule; it reads the file as it is.
+
+## Reminder plan
+
+`src/protocol/reminderPlan.ts` (`ReminderPlanSchema`), read by `modules/life-core/.../reminders/ReminderPlan.kt`. Replaced atomically like the snapshot (`reminders.json.tmp`, then a rename) whenever what it holds changes, and once each time the app starts; after each write the app calls the module's `remindersChanged()`.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `version` | `1` | Format version. A reader that does not know it reminds of nothing. |
+| `enabled` | boolean | The Habit reminders switch is on and notifications were allowed when it was written. False: no alarm, nothing posted. |
+| `language` | `"en"` \| `"fr"` | The app's language (its setting, resolved). Every native notification (reminders, the timer) is worded in it; without a plan, in the phone's. |
+| `habits` | array | Every habit not archived that has at least one reminder time; see below. |
+
+Each habit: `id` (UUID, as in the snapshot), `name` (the real name: only in the notification's private version), `lockScreenName` (string or null), `schedule` (as the snapshot's), `reminderTimes` (local `HH:mm`, earliest first, once each; the habit's own times plus the one before its time window).
+
+What native does with it:
+
+- **One alarm.** An exact, allow-while-idle, wakeup (`RTC_WAKEUP`) alarm at the next moment any habit reminds at: each `reminderTimes` entry on each local date its `schedule` is due (as "Working out today without the app"; a time the spring change skips fires an hour later, one the autumn change repeats fires the first time). Re-armed after it goes off, after each `remindersChanged()`, and on boot, a clock or zone change and an app update. The cases are shared with the app in `modules/life-core/fixtures/reminder-moments.json`.
+- **At the moment**, for each habit with a moment since the alarm was armed for (and within the last hour): post its reminder unless the widget's view of today (the snapshot, the overlay of queued lines and the day worked out without the app) says it is done, or its timer session is running or paused. A habit not in the snapshot is still to do.
+- **The notification**: channel `life_core_reminders` ("Habit reminders", high importance), one per habit (tag = habit id). Private version "Habit reminder · Time for {name}"; public version (a locked phone that hides content) the same words with `lockScreenName`, or none when it is null, so the system shows its "contents hidden" line. Tapping opens the app. A check-off habit in the snapshot gets **Done**: the widget's tick (`habit_complete` through `WidgetActionReceiver`), sent without asking for the unlock first, and the reminder is cleared.
+- Nothing is posted while the phone has notifications for the app turned off.
 
 ## Pending actions
 
