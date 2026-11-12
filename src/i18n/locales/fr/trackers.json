@@ -41,7 +41,9 @@
     "timeRangeFormat": "Entrez des heures valides au format HH:mm, ex. 06:00",
     "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité",
     "reminderTimeFormat": "Saisissez une heure comme 08:00",
-    "ownLineTooLong": "Gardez chaque phrase sous {{max}} caractères"
+    "ownLineTooLong": "Gardez chaque phrase sous {{max}} caractères",
+    "clearSinceInFuture": "Le compteur ne peut pas partir du futur",
+    "clearSinceFormat": "Saisissez la date au format AAAA-MM-JJ et l’heure au format HH:mm"
   },
   "confirm": {
     "deleteTitle": "Supprimer {{kind}} ?",
@@ -269,7 +271,14 @@
     "voiceNoteDeleteTitle": "Supprimer la note vocale ?",
     "voiceNoteRecording": "Enregistrement {{time}} sur {{max}}",
     "voiceNoteMicDenied": "L’enregistrement a besoin du micro. Autorisez-le pour Life dans les réglages du téléphone.",
-    "voiceNoteNotExported": "Gardée sur ce téléphone seulement : les exports ne l’incluent pas."
+    "voiceNoteNotExported": "Gardée sur ce téléphone seulement : les exports ne l’incluent pas.",
+    "clockSectionTitle": "Compteur",
+    "clockSectionDescription": "Le moment d’où compte le temps sans écart, jamais après maintenant. Laissez les deux vides pour partir de maintenant.",
+    "clearSinceDateLabel": "Date (AAAA-MM-JJ)",
+    "clearSinceTimeLabel": "Heure (HH:mm)",
+    "rideSectionTitle": "Durée du trajet",
+    "rideSectionDescription": "Combien de temps dure le compte à rebours après une envie.",
+    "rideMinutes": "{{count}} min"
   },
   "urge": {
     "rideTitle": "La laisser passer jusqu’à la lampe",

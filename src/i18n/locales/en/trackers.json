@@ -41,7 +41,9 @@
     "timeRangeFormat": "Enter valid times in HH:mm format, e.g. 06:00",
     "timeRangeRequiredForVisibility": "Set a time range before limiting visibility",
     "reminderTimeFormat": "Enter a time like 08:00",
-    "ownLineTooLong": "Keep each line to {{max}} characters"
+    "ownLineTooLong": "Keep each line to {{max}} characters",
+    "clearSinceInFuture": "The clock cannot start in the future",
+    "clearSinceFormat": "Enter the date as YYYY-MM-DD and the time as HH:mm"
   },
   "confirm": {
     "deleteTitle": "Delete {{kind}}?",
@@ -269,7 +271,14 @@
     "voiceNoteDeleteTitle": "Delete the voice note?",
     "voiceNoteRecording": "Recording {{time}} of {{max}}",
     "voiceNoteMicDenied": "Recording needs the microphone. Allow it for Life in the phone settings.",
-    "voiceNoteNotExported": "Kept on this phone only: exports leave it out."
+    "voiceNoteNotExported": "Kept on this phone only: exports leave it out.",
+    "clockSectionTitle": "Clock",
+    "clockSectionDescription": "When time clear counts from, never later than now. Leave both empty to start it now.",
+    "clearSinceDateLabel": "Date (YYYY-MM-DD)",
+    "clearSinceTimeLabel": "Time (HH:mm)",
+    "rideSectionTitle": "Ride length",
+    "rideSectionDescription": "How long the countdown after an urge runs.",
+    "rideMinutes": "{{count}} min"
   },
   "urge": {
     "rideTitle": "Ride it to the lamp",

@@ -17,6 +17,8 @@ export const OWN_LINE_MAX_LENGTH = 80;
 export const INSTEAD_HABITS_MAX = 2;
 export const RIDE_SECONDS_MIN = 60;
 export const RIDE_SECONDS_MAX = 3600;
+/** The ride lengths the editor offers, in minutes. */
+export const RIDE_MINUTE_CHOICES = [5, 10, 15, 20, 25, 30] as const;
 
 export const CommitmentConfigSchema = z.object({
   /** Always set: a commitment is shown on a locked phone by this name only. */
@@ -55,19 +57,22 @@ export type CommitmentInput = {
   lockScreenName?: string;
   ownLines: readonly string[];
   insteadHabitIds: readonly string[];
+  /** A chosen start of the clock, never in the future; unset keeps the one it has (a new one: now). */
+  clearSince?: string;
+  rideSeconds?: number;
 };
 
-/** A new commitment's config, or an edited one keeping its clear-since and ride. */
+/** A new commitment's config, or an edited one; clear-since and ride stay unless chosen. */
 export function buildCommitmentConfig(
   input: Omit<CommitmentInput, 'name'>,
   existing: Pick<CommitmentConfig, 'clearSince' | 'rideSeconds'>,
 ): CommitmentConfig {
   return CommitmentConfigSchema.parse({
     lockScreenName: input.lockScreenName,
-    clearSince: existing.clearSince,
+    clearSince: input.clearSince ?? existing.clearSince,
     ownLines: input.ownLines.map((line) => line.trim()).filter((line) => line !== ''),
     insteadHabitIds: input.insteadHabitIds,
-    rideSeconds: existing.rideSeconds,
+    rideSeconds: input.rideSeconds ?? existing.rideSeconds,
   });
 }
 

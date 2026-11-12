@@ -125,6 +125,16 @@ describe('the commitment', () => {
     expect(commitment().config.insteadHabitIds).toEqual([TRACKERS.meditation]);
   });
 
+  it('moves its clock and ride length when the editor chose them', async () => {
+    await elements().createCommitment(input);
+    const earlier = new Date(2026, 2, 8, 21, 30).toISOString();
+
+    await elements().updateCommitment(commitment().id, { ...input, clearSince: earlier, rideSeconds: 1500 });
+    await elements().load();
+
+    expect(commitment().config).toMatchObject({ clearSince: earlier, rideSeconds: 1500 });
+  });
+
   it('keeps its clear-since when edited', async () => {
     await elements().createCommitment(input);
     jest.setSystemTime(new Date(2026, 2, 12, 9, 0));

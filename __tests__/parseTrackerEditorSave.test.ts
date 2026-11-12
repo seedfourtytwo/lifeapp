@@ -172,6 +172,10 @@ describe('parseTrackerEditorSave — commitment', () => {
     ownLines: ['I sleep better'],
     ownLineDraft: '',
     insteadHabitIds: [],
+    clearSinceAt: null as string | null,
+    clearSinceDate: '',
+    clearSinceTime: '',
+    rideMinutes: 10,
   };
 
   it('keeps a line still in the field, so Save does not lose it', () => {
@@ -182,6 +186,8 @@ describe('parseTrackerEditorSave — commitment', () => {
         lockScreenName: '',
         ownLines: ['I sleep better', 'Money for the trip'],
         insteadHabitIds: [],
+        clearSince: undefined,
+        rideSeconds: 600,
       },
     });
   });
@@ -190,5 +196,55 @@ describe('parseTrackerEditorSave — commitment', () => {
     expect(() => parseTrackerEditorSave({ ...commitment, ownLineDraft: 'x'.repeat(81) })).toThrow(
       'Keep each line to 80 characters',
     );
+  });
+
+  describe('when the clock started', () => {
+    const previousTz = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = 'Europe/Paris';
+      jest.useFakeTimers({ now: new Date('2026-03-10T20:00:00.000Z') });
+    });
+    afterAll(() => {
+      jest.useRealTimers();
+      process.env.TZ = previousTz;
+    });
+
+    const clock = (fields: Partial<typeof commitment>) =>
+      (parseTrackerEditorSave({ ...commitment, ...fields }) as { input: { clearSince?: string } }).input.clearSince;
+
+    it('leaves it alone when both fields are empty (a new one starts now)', () => {
+      expect(clock({})).toBeUndefined();
+    });
+
+    it('takes a local date and time in the past', () => {
+      expect(clock({ clearSinceDate: '2026-03-08', clearSinceTime: '22:30' })).toBe('2026-03-08T21:30:00.000Z');
+    });
+
+    it('keeps the exact instant when the fields still show it', () => {
+      const at = '2026-03-08T21:30:42.123Z';
+      expect(clock({ clearSinceAt: at, clearSinceDate: '2026-03-08', clearSinceTime: '22:30' })).toBe(at);
+    });
+
+    it('refuses a moment still to come', () => {
+      expect(() => clock({ clearSinceDate: '2026-03-10', clearSinceTime: '21:30' })).toThrow(
+        'The clock cannot start in the future',
+      );
+    });
+
+    it('refuses a date or time it cannot read', () => {
+      expect(() => clock({ clearSinceDate: '2026-02-30', clearSinceTime: '10:00' })).toThrow(
+        'Enter the date as YYYY-MM-DD and the time as HH:mm',
+      );
+      expect(() => clock({ clearSinceDate: '2026-03-08', clearSinceTime: '' })).toThrow(
+        'Enter the date as YYYY-MM-DD and the time as HH:mm',
+      );
+    });
+  });
+
+  it('carries the ride length in seconds', () => {
+    expect(
+      (parseTrackerEditorSave({ ...commitment, rideMinutes: 25 }) as { input: { rideSeconds?: number } }).input
+        .rideSeconds,
+    ).toBe(1500);
   });
 });

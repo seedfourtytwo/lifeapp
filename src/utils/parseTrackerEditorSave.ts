@@ -11,7 +11,8 @@ import {
   type HabitSchedule,
 } from '../protocol';
 import { withReminderTime } from './reminderTimes';
-import { parseTimeHHmm } from './time';
+import { toDateString } from '../protocol/event';
+import { formatLocalClockTime, parseTimeHHmm } from './time';
 
 function parseIncrements(raw: string): number[] {
   const values = raw
@@ -92,12 +93,37 @@ function parseReminderTimes(data: Extract<TrackerEditorSaveData, { mode: 'habit'
 }
 
 /** The listed lines, plus one still in the field so Save does not lose it. */
-function parseOwnLines(data: Extract<TrackerEditorSaveData, { mode: 'commitment' }>): string[] {
+function parseOwnLines(data: CommitmentSaveData): string[] {
   const lines = [...data.ownLines, data.ownLineDraft].map((line) => line.trim()).filter(Boolean);
   if (lines.some((line) => line.length > OWN_LINE_MAX_LENGTH)) {
     throw new Error(i18n.t('trackers:validation.ownLineTooLong', { max: OWN_LINE_MAX_LENGTH }));
   }
   return lines;
+}
+
+type CommitmentSaveData = Extract<TrackerEditorSaveData, { mode: 'commitment' }>;
+
+/**
+ * When the clock starts: unset when both fields are empty, the instant it
+ * already had when the fields still show it (to the minute), else the local
+ * moment typed, which may not be in the future.
+ */
+function parseClearSince(data: CommitmentSaveData, now: Date): string | undefined {
+  const date = data.clearSinceDate.trim();
+  const time = parseTimeHHmm(data.clearSinceTime);
+  if (date === '' && data.clearSinceTime.trim() === '') return undefined;
+  const at = data.clearSinceAt ? new Date(data.clearSinceAt) : null;
+  if (at && toDateString(at) === date && formatLocalClockTime(at) === time) return data.clearSinceAt!;
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = (time ?? '').split(':').map(Number);
+  const moment = new Date(year, month - 1, day, hour, minute);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || time === null || toDateString(moment) !== date) {
+    throw new Error(i18n.t('trackers:validation.clearSinceFormat'));
+  }
+  if (moment.getTime() > now.getTime()) {
+    throw new Error(i18n.t('trackers:validation.clearSinceInFuture'));
+  }
+  return moment.toISOString();
 }
 
 export type ParsedTrackerEditorSave =
@@ -114,6 +140,8 @@ export function parseTrackerEditorSave(data: TrackerEditorSaveData): ParsedTrack
         lockScreenName: data.lockScreenName,
         ownLines: parseOwnLines(data),
         insteadHabitIds: data.insteadHabitIds,
+        clearSince: parseClearSince(data, new Date()),
+        rideSeconds: data.rideMinutes * 60,
       },
     };
   }

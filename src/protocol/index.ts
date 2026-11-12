@@ -185,6 +185,7 @@ export {
   lampsPassed,
   nextLamp,
   usableInsteadHabits,
+  RIDE_MINUTE_CHOICES,
 } from './kinds/commitment';
 export type { CommitmentConfig, CommitmentInput, NextLamp } from './kinds/commitment';
 

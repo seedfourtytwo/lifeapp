@@ -38,6 +38,13 @@ export type TrackerEditorSession = {
   ownLineDraft: string;
   /** A commitment's timed habits offered instead of the urge. */
   insteadHabitIds: string[];
+  /** The commitment's clear-since when the editor opened; null for a new one. */
+  clearSinceAt: string | null;
+  /** Local `YYYY-MM-DD` and `HH:mm` of the clock's start; both empty: unchanged (a new one: now). */
+  clearSinceDate: string;
+  clearSinceTime: string;
+  /** An urge's ride, in minutes: one of `RIDE_MINUTE_CHOICES`. */
+  rideMinutes: number;
 };
 
 export type TrackerEditorSaveData =
@@ -77,7 +84,14 @@ export type TrackerEditorSaveData =
 
 export type CommitmentEditorFieldState = Pick<
   TrackerEditorSession,
-  'lockScreenName' | 'ownLines' | 'ownLineDraft' | 'insteadHabitIds'
+  | 'lockScreenName'
+  | 'ownLines'
+  | 'ownLineDraft'
+  | 'insteadHabitIds'
+  | 'clearSinceAt'
+  | 'clearSinceDate'
+  | 'clearSinceTime'
+  | 'rideMinutes'
 >;
 
 export type HabitEditorFieldState = Pick<

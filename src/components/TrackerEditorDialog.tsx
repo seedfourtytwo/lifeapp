@@ -54,6 +54,10 @@ function commitmentFieldStateFromSession(session: TrackerEditorSession): Commitm
     ownLines: session.ownLines,
     ownLineDraft: session.ownLineDraft,
     insteadHabitIds: session.insteadHabitIds,
+    clearSinceAt: session.clearSinceAt,
+    clearSinceDate: session.clearSinceDate,
+    clearSinceTime: session.clearSinceTime,
+    rideMinutes: session.rideMinutes,
   };
 }
 

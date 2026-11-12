@@ -1,3 +1,5 @@
+import { DEFAULT_RIDE_SECONDS } from '../../protocol/urge';
+import { formatLocalClockTime } from '../../utils/time';
 import {
   getHabitTimerPlaybackMode,
   toDateString,
@@ -40,6 +42,10 @@ export function newEditorSession(
     ownLines: [],
     ownLineDraft: '',
     insteadHabitIds: [],
+    clearSinceAt: null,
+    clearSinceDate: '',
+    clearSinceTime: '',
+    rideMinutes: DEFAULT_RIDE_SECONDS / 60,
     ...overrides,
   };
 }
@@ -111,5 +117,9 @@ export function editorSessionFromCommitment(
     lockScreenName: config.lockScreenName,
     ownLines: [...config.ownLines],
     insteadHabitIds: [...config.insteadHabitIds],
+    clearSinceAt: config.clearSince,
+    clearSinceDate: toDateString(new Date(config.clearSince)),
+    clearSinceTime: formatLocalClockTime(new Date(config.clearSince)),
+    rideMinutes: Math.round(config.rideSeconds / 60),
   });
 }

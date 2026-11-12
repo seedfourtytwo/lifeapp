@@ -11,6 +11,7 @@ import {
   LOCK_SCREEN_NAME_MAX,
   OWN_LINES_MAX,
   OWN_LINE_MAX_LENGTH,
+  RIDE_MINUTE_CHOICES,
 } from '../../protocol';
 import { useElementStore } from '../../store/elementStore';
 import { getActiveHabits } from '../../utils/dashboardElements';
@@ -77,6 +78,60 @@ function OwnLinesSection({ state, onChange }: Props) {
       <QuietText style={[typeScale.caption, styles.hint]}>
         {t('commitmentFields.ownLinesLockScreenNote')}
       </QuietText>
+    </FormSection>
+  );
+}
+
+/** When time clear counts from, typed as a local date and time; empty starts it now. */
+function ClockSection({ state, onChange }: Props) {
+  const { t } = useTranslation('trackers');
+  return (
+    <FormSection
+      title={t('commitmentFields.clockSectionTitle')}
+      description={t('commitmentFields.clockSectionDescription')}
+    >
+      <View style={styles.timeRow}>
+        <FilledField
+          label={t('commitmentFields.clearSinceDateLabel')}
+          placeholder="2026-03-08"
+          value={state.clearSinceDate}
+          onChangeText={(clearSinceDate) => onChange({ clearSinceDate })}
+          keyboardType="numbers-and-punctuation"
+          maxLength={10}
+          style={styles.timeField}
+        />
+        <FilledField
+          label={t('commitmentFields.clearSinceTimeLabel')}
+          placeholder="21:30"
+          value={state.clearSinceTime}
+          onChangeText={(clearSinceTime) => onChange({ clearSinceTime })}
+          keyboardType="numbers-and-punctuation"
+          maxLength={5}
+          style={styles.timeField}
+        />
+      </View>
+    </FormSection>
+  );
+}
+
+/** How long an urge's countdown runs: five to thirty minutes. */
+function RideSection({ state, onChange }: Props) {
+  const { t } = useTranslation('trackers');
+  return (
+    <FormSection
+      title={t('commitmentFields.rideSectionTitle')}
+      description={t('commitmentFields.rideSectionDescription')}
+    >
+      <View style={styles.chipRow}>
+        {RIDE_MINUTE_CHOICES.map((minutes) => (
+          <ChoiceChip
+            key={minutes}
+            label={t('commitmentFields.rideMinutes', { count: minutes })}
+            selected={state.rideMinutes === minutes}
+            onPress={() => onChange({ rideMinutes: minutes })}
+          />
+        ))}
+      </View>
     </FormSection>
   );
 }
@@ -149,6 +204,8 @@ function CommitmentEditorFields({ state, onChange }: Props) {
           maxLength={LOCK_SCREEN_NAME_MAX}
         />
       </FormSection>
+      <ClockSection state={state} onChange={onChange} />
+      <RideSection state={state} onChange={onChange} />
       <OwnLinesSection state={state} onChange={onChange} />
       <InsteadHabitsSection state={state} onChange={onChange} />
       <VoiceNoteSection />

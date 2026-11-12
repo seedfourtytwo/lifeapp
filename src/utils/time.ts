@@ -38,3 +38,8 @@ export function isWithinTimeRange(now: Date, start: string, end: string): boolea
 export function formatTimeRange(start: string, end: string): string {
   return `${start}–${end}`;
 }
+
+/** A moment's local wall-clock time as `HH:mm`. */
+export function formatLocalClockTime(at: Date): string {
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
