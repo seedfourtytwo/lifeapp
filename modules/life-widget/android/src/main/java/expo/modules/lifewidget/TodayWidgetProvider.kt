@@ -135,9 +135,9 @@ internal object WidgetActions {
 
   /**
    * Inexact alarm (no exact-alarm permission): just after the next local
-   * midnight, or earlier at the next habit visibility-window boundary. While a
-   * timer runs, every minute, so its row's minutes keep up (RTC, not a wake-up:
-   * it only fires while the phone is awake to show it).
+   * midnight, or earlier at the next habit visibility-window boundary. Nothing
+   * shorter is worth asking for: the system stretches an inexact window to ten
+   * minutes, which is why a running timer's live time is a Chronometer.
    */
   fun scheduleNextRefresh(context: Context, snapshot: WidgetSnapshot) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
@@ -151,15 +151,7 @@ internal object WidgetActions {
         if (at > System.currentTimeMillis() && at < triggerAt) triggerAt = at
       }
     }
-    var window = 10 * 60 * 1000L
-    val timerRunning = snapshot is WidgetSnapshot.Ready && snapshot.model.rows.any {
-      it is WidgetRow.Habit && it.runningSinceMs != null && it.pausedElapsedMs == null
-    }
-    if (timerRunning) {
-      triggerAt = minOf(triggerAt, System.currentTimeMillis() + 60_000L)
-      window = 20_000L
-    }
-    alarmManager.setWindow(AlarmManager.RTC, triggerAt, window, alarmPendingIntent(context))
+    alarmManager.setWindow(AlarmManager.RTC, triggerAt, 10 * 60 * 1000L, alarmPendingIntent(context))
   }
 
   fun cancelRefresh(context: Context) {

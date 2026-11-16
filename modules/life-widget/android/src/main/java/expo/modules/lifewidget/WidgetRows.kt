@@ -123,7 +123,16 @@ internal class WidgetRows(private val context: Context, private val date: String
       running -> context.getString(R.string.life_widget_started_at, clockTime(row.startedAtMs ?: 0))
       else -> null
     }
-    views.setTextViewText(R.id.row_meta, if (status != null) "$status · $minutes" else minutes)
+    // A running timer's minutes would go stale between redraws; the pinned bar has the live clock.
+    val live = running && !paused && !row.inApp
+    views.setTextViewText(
+      R.id.row_meta,
+      when {
+        status == null -> minutes
+        live -> status
+        else -> "$status · $minutes"
+      },
+    )
     views.setViewVisibility(R.id.row_meta, View.VISIBLE)
     if (target != null && target > 0) {
       views.setProgressBar(R.id.row_progress, target, row.timerMinutes.coerceAtMost(target), false)
