@@ -138,7 +138,6 @@
     "toPlaceholder": "09:00",
     "onlyShowDuringWindowLabel": "Afficher uniquement pendant cette plage",
     "onlyShowDuringWindowHint": "Masquée en dehors de cette plage dans Habitudes",
-    "everyNDaysReminderUnavailableHint": "Les rappels ne sont pas encore disponibles pour les programmations tous-les-N-jours.",
     "reminderBeforeStartLabel": "Rappel avant le début",
     "minutesBeforeLabel": "Minutes avant",
     "minutesBeforePlaceholder": "15",

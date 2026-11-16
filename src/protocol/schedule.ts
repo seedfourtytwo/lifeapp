@@ -94,11 +94,6 @@ export function formatScheduleDescription(schedule: HabitSchedule): string {
   }
 }
 
-/** Daily and weekday schedules support recurring local reminders. */
-export function isScheduleSupportedForReminders(schedule: HabitSchedule): boolean {
-  return schedule.type === 'daily' || schedule.type === 'weekdays';
-}
-
 /** Expo notifications use 1 = Sunday … 7 = Saturday. */
 export function toExpoWeekday(jsDay: number): number {
   return jsDay + 1;

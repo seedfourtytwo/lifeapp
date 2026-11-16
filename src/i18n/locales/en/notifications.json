@@ -1,7 +1,7 @@
 {
   "habitReminder": {
     "title": "Habit reminder",
-    "body": "Time for {{name}}"
+    "body": "{{name}} starts at {{start}} (until {{end}})"
   },
   "eveningCheckIn": {
     "title": "Evening check-in",

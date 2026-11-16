@@ -1,7 +1,7 @@
 {
   "habitReminder": {
     "title": "Rappel d'habitude",
-    "body": "C'est l'heure pour {{name}}"
+    "body": "{{name}} commence à {{start}} (jusqu'à {{end}})"
   },
   "eveningCheckIn": {
     "title": "Point du soir",

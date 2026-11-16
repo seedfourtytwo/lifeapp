@@ -330,33 +330,25 @@ function HabitEditorFields({ state, onChange }: Props) {
                 accessibilityLabel={t('habitFields.onlyShowDuringWindowLabel')}
               />
             </View>
-            {state.scheduleType === 'every_n_days' ? (
-              <QuietText style={[typeScale.caption, styles.hint]}>
-                {t('habitFields.everyNDaysReminderUnavailableHint')}
-              </QuietText>
-            ) : (
-              <>
-                <View style={styles.switchRow}>
-                  <Text style={[typeScale.body, styles.switchLabel]}>
-                    {t('habitFields.reminderBeforeStartLabel')}
-                  </Text>
-                  <SettingsSwitch
-                    value={state.useReminder}
-                    onValueChange={(useReminder) => onChange({ useReminder })}
-                    accessibilityLabel={t('habitFields.reminderBeforeStartLabel')}
-                  />
-                </View>
-                {state.useReminder ? (
-                  <FilledField
-                    label={t('habitFields.minutesBeforeLabel')}
-                    placeholder={t('habitFields.minutesBeforePlaceholder')}
-                    value={state.remindMinutesBefore}
-                    onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
-                    keyboardType="number-pad"
-                  />
-                ) : null}
-              </>
-            )}
+            <View style={styles.switchRow}>
+              <Text style={[typeScale.body, styles.switchLabel]}>
+                {t('habitFields.reminderBeforeStartLabel')}
+              </Text>
+              <SettingsSwitch
+                value={state.useReminder}
+                onValueChange={(useReminder) => onChange({ useReminder })}
+                accessibilityLabel={t('habitFields.reminderBeforeStartLabel')}
+              />
+            </View>
+            {state.useReminder ? (
+              <FilledField
+                label={t('habitFields.minutesBeforeLabel')}
+                placeholder={t('habitFields.minutesBeforePlaceholder')}
+                value={state.remindMinutesBefore}
+                onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
+                keyboardType="number-pad"
+              />
+            ) : null}
           </View>
         ) : null}
       </FormSection>

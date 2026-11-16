@@ -2,7 +2,6 @@ import {
   daysBetween,
   formatScheduleDescription,
   isScheduleActiveOnDate,
-  isScheduleSupportedForReminders,
   isTimeRangeStartingSoon,
   toExpoWeekday,
 } from '../src/protocol/schedule';
@@ -80,20 +79,6 @@ describe('isTimeRangeStartingSoon', () => {
     const now = new Date('2025-06-29T10:00:00');
     expect(
       isTimeRangeStartingSoon({ start: '08:00', end: '09:00' }, now, 2),
-    ).toBe(false);
-  });
-});
-
-describe('isScheduleSupportedForReminders', () => {
-  it('supports daily and weekdays only', () => {
-    expect(isScheduleSupportedForReminders({ type: 'daily' })).toBe(true);
-    expect(isScheduleSupportedForReminders({ type: 'weekdays', days: [1] })).toBe(true);
-    expect(
-      isScheduleSupportedForReminders({
-        type: 'every_n_days',
-        interval: 2,
-        anchorDate: '2025-01-01',
-      }),
     ).toBe(false);
   });
 });

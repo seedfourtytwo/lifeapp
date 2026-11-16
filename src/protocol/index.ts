@@ -205,7 +205,7 @@ export {
   createActiveTimerSession,
   isActiveTimerPaused,
 } from './activeTimerSession';
-export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
+export { isScheduleActiveOnDate } from './schedule';
 export {
   filterHabitsDueToday,
   orderHabitsList,

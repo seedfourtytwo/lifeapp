@@ -65,6 +65,34 @@ describe('collectStartReminderFires', () => {
   });
 });
 
+describe('collectStartReminderFires every_n_days', () => {
+  it('fires only on interval days from the anchor', () => {
+    const everyThird: HabitConfig = {
+      ...dailyTimed,
+      schedule: { type: 'every_n_days', interval: 3, anchorDate: '2025-01-15' },
+    };
+    const fires = collectStartReminderFires(everyThird, {
+      now: new Date(2025, 0, 15, 6, 0, 0),
+      doneToday: false,
+      horizonDays: 8,
+    });
+    expect(fires.map((f) => f.dateStr)).toEqual(['2025-01-15', '2025-01-18', '2025-01-21']);
+  });
+
+  it('does not fire before the anchor date', () => {
+    const future: HabitConfig = {
+      ...dailyTimed,
+      schedule: { type: 'every_n_days', interval: 2, anchorDate: '2025-01-18' },
+    };
+    const fires = collectStartReminderFires(future, {
+      now: new Date(2025, 0, 15, 6, 0, 0),
+      doneToday: false,
+      horizonDays: 7,
+    });
+    expect(fires.map((f) => f.dateStr)).toEqual(['2025-01-18', '2025-01-20']);
+  });
+});
+
 describe('parseEveningCheckInTime', () => {
   it('accepts flexible clock input', () => {
     expect(parseEveningCheckInTime('8:00')).toBe('08:00');

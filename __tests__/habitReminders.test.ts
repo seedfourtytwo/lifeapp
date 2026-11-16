@@ -129,6 +129,46 @@ describe('habitReminders.native', () => {
       expect(new Set(identifiers).size).toBe(identifiers.length);
     });
 
+    it('never asks for permission when no habit has a schedulable reminder', async () => {
+      const mod = freshModule(true);
+      mockGetPermissionsAsync.mockResolvedValue({ granted: false, ios: undefined });
+
+      await mod.syncHabitReminders(
+        [habitElement({ remindMinutesBefore: undefined }), habitElement({ timeRange: undefined }, 'h2')],
+        true,
+      );
+      await mod.syncHabitReminders([], true);
+
+      expect(mockGetPermissionsAsync).not.toHaveBeenCalled();
+      expect(mockRequestPermissionsAsync).not.toHaveBeenCalled();
+    });
+
+    it('schedules every_n_days habits only on matching days, with name and window in the body', async () => {
+      const mod = freshModule(true);
+      const today = new Date();
+      const anchor = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // Reminder is 06:50; make "now" irrelevant by scheduling for a date window in the future.
+      await mod.syncHabitReminders(
+        [habitElement({ schedule: { type: 'every_n_days', interval: 3, anchorDate: anchor } })],
+        true,
+      );
+
+      const dates = mockScheduleNotificationAsync.mock.calls.map((c) => c[0].identifier.slice(-10));
+      expect(dates.length).toBeGreaterThan(0);
+      for (const d of dates) {
+        const [y, m, day] = d.split('-').map(Number);
+        const [ay, am, ad] = anchor.split('-').map(Number);
+        const diff = Math.round(
+          (new Date(y, m - 1, day).getTime() - new Date(ay, am - 1, ad).getTime()) / 86_400_000,
+        );
+        expect(diff % 3).toBe(0);
+      }
+      const body = mockScheduleNotificationAsync.mock.calls[0][0].content.body;
+      expect(body).toContain('Meditate');
+      expect(body).toContain('07:00');
+      expect(body).toContain('08:00');
+    });
+
     it('skips a habit with no remindMinutesBefore configured', async () => {
       const mod = freshModule(true);
       const element = habitElement({ remindMinutesBefore: undefined });

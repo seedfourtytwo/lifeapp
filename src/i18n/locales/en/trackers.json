@@ -138,7 +138,6 @@
     "toPlaceholder": "09:00",
     "onlyShowDuringWindowLabel": "Only show during this window",
     "onlyShowDuringWindowHint": "Hidden outside this time on Habits",
-    "everyNDaysReminderUnavailableHint": "Reminders are not available for every-N-days schedules yet.",
     "reminderBeforeStartLabel": "Reminder before start",
     "minutesBeforeLabel": "Minutes before",
     "minutesBeforePlaceholder": "15",

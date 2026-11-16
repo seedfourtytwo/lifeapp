@@ -2,7 +2,6 @@ import type { TrackerEditorSaveData } from '../components/trackerEditor/types';
 import { i18n } from '../i18n';
 import {
   buildHabitTimerSound,
-  isScheduleSupportedForReminders,
   type CounterInput,
   type HabitInput,
   type HabitSchedule,
@@ -64,10 +63,8 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
 function parseRemindMinutes(
   data: Extract<TrackerEditorSaveData, { mode: 'habit' }>,
   hasTimeRange: boolean,
-  schedule: HabitSchedule,
 ): number | undefined {
   if (!hasTimeRange || !data.useReminder) return undefined;
-  if (!isScheduleSupportedForReminders(schedule)) return undefined;
   const trimmed = data.remindMinutesBefore.trim();
   if (!trimmed) return undefined;
   const minutes = parseInt(trimmed, 10);
@@ -134,7 +131,7 @@ export function parseTrackerEditorSave(
       timeRange,
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,
-      remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
+      remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange)),
       showStreakOnCard: data.showStreakOnCard,
     },
   };
