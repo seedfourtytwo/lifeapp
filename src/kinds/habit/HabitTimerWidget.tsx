@@ -88,7 +88,8 @@ export function HabitTimerWidget({
   const displayTotal = liveTimerTotalSeconds(todayTotal, activeTimerSession);
   // play_once without a seconds goal: only store "track finished" counts as done.
   // Seconds goals use live total so the wash/colors update during the session.
-  const isComplete = isPlayOnceTarget
+  // "Any session counts": done once a session is banked, not the second one starts.
+  const isComplete = isPlayOnceTarget || config.anySessionCounts
     ? Boolean(isDone)
     : isHabitDayComplete(displayTotal, config);
 
@@ -98,12 +99,15 @@ export function HabitTimerWidget({
    * - Seconds target: only after the goal is reached (keep going for overtime,
    *   then Done to save). Under target: Play/Pause only; Reset clears the day.
    * - play_once track goal: never — only natural track end completes.
+   * - "Any session counts": anytime — banking a short session is the point.
    */
   const secondsTarget = config.dailyTargetSeconds ?? 0;
   const showManualDone =
     isRunning &&
     Boolean(onTimerFinish) &&
-    (!hasCompletionTarget || (hasSecondsTarget && displayTotal >= secondsTarget));
+    (Boolean(config.anySessionCounts) ||
+      !hasCompletionTarget ||
+      (hasSecondsTarget && displayTotal >= secondsTarget));
 
   useEffect(() => {
     if (!hasSecondsTarget || !isRunning || isPaused || chimePlayedRef.current) return;

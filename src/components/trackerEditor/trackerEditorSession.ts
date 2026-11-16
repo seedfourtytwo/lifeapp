@@ -29,6 +29,7 @@ export function newEditorSession(
     useReminder: false,
     remindMinutesBefore: '15',
     showStreakOnCard: true,
+    anySessionCounts: false,
     ...overrides,
   };
 }
@@ -84,5 +85,6 @@ export function editorSessionFromHabit(
     remindMinutesBefore:
       config.remindMinutesBefore !== undefined ? String(config.remindMinutesBefore) : '15',
     showStreakOnCard: config.showStreakOnCard !== false,
+    anySessionCounts: config.anySessionCounts === true,
   });
 }

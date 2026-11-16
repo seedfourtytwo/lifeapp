@@ -155,6 +155,8 @@
   "habitSoundFields": {
     "dailyGoalLabel": "Daily goal (minutes)",
     "dailyGoalPlaceholder": "e.g. 15",
+    "anySessionCountsLabel": "Any session counts",
+    "anySessionCountsHint": "Done for the day after any time logged, even below the goal or before the track ends",
     "soundWhileRunningLabel": "Sound while running",
     "soundHint": "Choose a bundled meditation or focus track.",
     "noTracksBundledHint": "No tracks bundled yet. Add MP3 files to assets/sounds/ in the project, then rebuild the app.",

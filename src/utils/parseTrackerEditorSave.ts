@@ -135,6 +135,7 @@ export function parseTrackerEditorSave(
           ? parseDailyGoalSeconds(data.habitDailyGoalMinutes)
           : undefined,
       timerSound,
+      anySessionCounts: data.habitTrackingMode === 'timer' && data.anySessionCounts,
       timeRange,
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,

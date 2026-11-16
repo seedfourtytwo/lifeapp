@@ -440,6 +440,20 @@ class TodayRulesTest {
   }
 
   @Test
+  fun anySessionCountsCompletesBelowTheGoalAndAllowsQuickLog() {
+    val goal = habit("""{"trackingMode":"timer","dailyTargetSeconds":900,"anySessionCounts":true}""")
+    assertTrue(TodayRules.isHabitDayComplete(goal, DayFacts(total = 120.0)))
+    assertFalse(TodayRules.isHabitDayComplete(goal, DayFacts.EMPTY))
+    val track = habit(
+      """{"trackingMode":"timer","anySessionCounts":true,"timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}""",
+    )
+    assertTrue(TodayRules.isHabitDayComplete(track, DayFacts(total = 120.0)))
+    assertTrue(TodayRules.canQuickLog(track))
+    // Means nothing on a tick habit.
+    assertFalse(habit("""{"anySessionCounts":true}""").anySessionCounts)
+  }
+
+  @Test
   fun writesValuesTheAppAccepts() {
     assertEquals("2026-11-16T08:05:03.007Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03.007Z")))
     assertEquals("2026-11-16T08:05:03.000Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03Z")))

@@ -477,6 +477,7 @@ describe('editor', () => {
       useReminder: false,
       remindMinutesBefore: '15',
       showStreakOnCard: true,
+      anySessionCounts: session.anySessionCounts,
     });
     expect(saved).toMatchObject({ kind: 'habit', input: { schedule: weekly(4) } });
   });

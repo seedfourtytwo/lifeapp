@@ -155,6 +155,8 @@
   "habitSoundFields": {
     "dailyGoalLabel": "Objectif quotidien (minutes)",
     "dailyGoalPlaceholder": "ex. 15",
+    "anySessionCountsLabel": "Toute séance compte",
+    "anySessionCountsHint": "Terminé pour la journée dès qu’un temps est enregistré, même sous l’objectif ou avant la fin de la piste",
     "soundWhileRunningLabel": "Son pendant l'exécution",
     "soundHint": "Choisissez une piste de méditation ou de concentration intégrée.",
     "noTracksBundledHint": "Aucune piste intégrée pour le moment. Ajoutez des fichiers MP3 dans assets/sounds/ du projet, puis reconstruisez l'application.",

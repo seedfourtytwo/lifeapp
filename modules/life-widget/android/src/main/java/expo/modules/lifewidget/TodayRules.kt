@@ -39,6 +39,8 @@ data class HabitRules(
    * session finished the track (`trackCompleted`), never on logged seconds.
    */
   val playOnceTrackSeconds: Int? = null,
+  /** `anySessionCounts`: any logged time completes the day, whatever the goal or track. */
+  val anySessionCounts: Boolean = false,
   /** The habit's bundled timer sound (`hasHabitTimerSound`), or null. */
   val soundTrackId: String? = null,
   /** `getHabitTimerPlaybackMode`: loop unless the habit says play_once. */
@@ -254,6 +256,7 @@ object TodayRules {
       visibleOnlyInTimeRange = visibleOnly,
       dailyTargetSeconds = target,
       playOnceTrackSeconds = playOnce,
+      anySessionCounts = timer && config["anySessionCounts"] == true,
       soundTrackId = soundTrackId,
       soundLoops = soundLoops,
     )
@@ -337,6 +340,7 @@ object TodayRules {
   /** `isHabitDayComplete` (src/protocol/kinds/habit.ts). */
   fun isHabitDayComplete(rules: HabitRules, facts: DayFacts): Boolean {
     if (rules.timer) {
+      if (rules.anySessionCounts) return facts.total > 0
       val target = rules.dailyTargetSeconds
       if (target != null && target > 0) return facts.total >= target
       if (rules.playOnceTrackSeconds != null) return facts.trackCompleted
@@ -615,7 +619,8 @@ object TodayRules {
    * finishes (`trackCompleted`), which logged minutes never set: it has to be played.
    */
   fun canQuickLog(rules: HabitRules): Boolean =
-    rules.timer && (rules.playOnceTrackSeconds == null || rules.dailyTargetSeconds != null)
+    rules.timer &&
+      (rules.playOnceTrackSeconds == null || rules.dailyTargetSeconds != null || rules.anySessionCounts)
 
   /** Two chunk sizes that fit the goal: small ones for short goals, bigger ones for long. */
   fun timerQuickMinutes(targetMinutes: Int?): List<Int> =

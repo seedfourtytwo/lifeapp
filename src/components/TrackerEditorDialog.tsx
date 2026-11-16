@@ -41,6 +41,7 @@ function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorF
     useReminder: session.useReminder,
     remindMinutesBefore: session.remindMinutesBefore,
     showStreakOnCard: session.showStreakOnCard,
+    anySessionCounts: session.anySessionCounts,
   };
 }
 

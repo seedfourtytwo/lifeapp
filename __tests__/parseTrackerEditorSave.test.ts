@@ -24,6 +24,7 @@ const habitSaveData = (
   useReminder: false,
   remindMinutesBefore: '15',
   showStreakOnCard: false,
+  anySessionCounts: false,
   ...overrides,
 });
 
@@ -138,6 +139,16 @@ describe('parseTrackerEditorSave', () => {
     expect(result.kind).toBe('habit');
     if (result.kind !== 'habit') return;
     expect(result.input.icon).toBe('meditation');
+  });
+
+  it('saves "any session counts" for a timer habit only', () => {
+    const timer = parseTrackerEditorSave(
+      habitSaveData({ habitTrackingMode: 'timer', habitDailyGoalMinutes: '15', anySessionCounts: true }),
+    );
+    expect(timer.kind === 'habit' && timer.input.anySessionCounts).toBe(true);
+
+    const tick = parseTrackerEditorSave(habitSaveData({ anySessionCounts: true }));
+    expect(tick.kind === 'habit' && tick.input.anySessionCounts).toBe(false);
   });
 
   it('rejects invalid increments', () => {

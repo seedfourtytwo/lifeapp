@@ -223,6 +223,29 @@ describe('HabitEventMetaSchema', () => {
 });
 
 describe('isHabitDayComplete', () => {
+  it('counts any logged time when the habit says any session counts', () => {
+    const goal = HabitConfigSchema.parse({
+      trackingMode: 'timer',
+      dailyTargetSeconds: 900,
+      anySessionCounts: true,
+    });
+    expect(isHabitDayComplete(0, goal)).toBe(false);
+    expect(isHabitDayComplete(120, goal)).toBe(true);
+
+    // A play-once track stopped early also counts, without a finished-track event.
+    const track = HabitConfigSchema.parse({
+      trackingMode: 'timer',
+      timerSound: { trackId: 'meditation15min', playbackMode: 'play_once' },
+      anySessionCounts: true,
+    });
+    expect(isHabitDayComplete(120, track, [])).toBe(true);
+    expect(isHabitDayComplete(0, track, [])).toBe(false);
+
+    // The flag means nothing on a tick habit.
+    const tick = HabitConfigSchema.parse({ anySessionCounts: true });
+    expect(isHabitDayComplete(0, tick)).toBe(false);
+  });
+
   it('marks boolean habit complete at one or more', () => {
     const config = HabitConfigSchema.parse({ timeSlot: 'anytime' });
     expect(isHabitDayComplete(1, config)).toBe(true);

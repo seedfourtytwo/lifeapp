@@ -159,9 +159,11 @@ function HabitEditorFields({ state, onChange }: Props) {
               habitSoundTrackId: state.habitSoundTrackId,
               habitSoundPlaybackMode: state.habitSoundPlaybackMode,
             }}
+            anySessionCounts={state.anySessionCounts}
             onDailyGoalMinutesChange={(habitDailyGoalMinutes) =>
               onChange({ habitDailyGoalMinutes })
             }
+            onAnySessionCountsChange={(anySessionCounts) => onChange({ anySessionCounts })}
             onSoundChange={(patch) => onChange(patch)}
           />
         ) : (

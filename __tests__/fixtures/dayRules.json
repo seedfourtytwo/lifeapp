@@ -900,6 +900,43 @@
     "note": "No target and no play-once sound: any logged second completes the day."
   },
   {
+    "name": "timer habit with a target where any session counts",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "timer",
+      "dailyTargetSeconds": 600,
+      "anySessionCounts": true,
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-14",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-14": {
+        "total": 600
+      },
+      "2026-11-15": {
+        "total": 300
+      },
+      "2026-11-17": {
+        "total": 60
+      },
+      "2026-11-18": {
+        "total": 120
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 2,
+      "streakUnit": "days",
+      "score": 19
+    },
+    "note": "anySessionCounts: any logged second completes the day even below dailyTargetSeconds; the 16th has nothing and breaks the run."
+  },
+  {
     "name": "boolean habit counts a day with any tick",
     "kind": "habit",
     "config": {
