@@ -5,33 +5,47 @@ import {
   isHabitScheduledOnDate,
   toDateString,
 } from '../protocol';
-import { computeFailureStreak, computeStreak } from './streak';
+import { computeFailureStreakRun, computeStreakRun } from './streak';
+
+export interface HabitStreaks {
+  streak: number;
+  failureStreak: number;
+  /** A run was still unbroken at `windowStart`: older data could lengthen it. */
+  truncated?: boolean;
+}
 
 function streaksFromCompleted(
   completed: string[],
   config: HabitConfig,
   today: string,
   createdOn?: string | null,
-): { streak: number; failureStreak: number } {
+  windowStart?: string | null,
+): HabitStreaks {
   const isScheduled = (date: string) => isHabitScheduledOnDate(config, date);
+  const inf = Number.POSITIVE_INFINITY;
+  const success = computeStreakRun(completed, today, isScheduled, inf, createdOn, windowStart);
+  const failure = computeFailureStreakRun(completed, today, isScheduled, inf, createdOn, windowStart);
   return {
-    streak: computeStreak(completed, today, isScheduled, 365, createdOn),
-    failureStreak: computeFailureStreak(completed, today, isScheduled, 365, createdOn),
+    streak: success.count,
+    failureStreak: failure.count,
+    truncated: success.truncated || failure.truncated,
   };
 }
 
-/** Derive success and failure streaks from a preloaded year of habit events. */
+/** Derive success and failure streaks from preloaded habit events. */
 export function computeHabitStreaksFromEvents(
   events: readonly LifeEvent[],
   config: HabitConfig,
   today = toDateString(new Date()),
   createdOn?: string | null,
-): { streak: number; failureStreak: number } {
+  windowStart?: string | null,
+): HabitStreaks {
   return streaksFromCompleted(
     completedDatesFromHabitEvents(events, config),
     config,
     today,
     createdOn,
+    windowStart,
   );
 }
 
@@ -41,11 +55,13 @@ export function computeHabitStreaksFromDailyTotals(
   config: HabitConfig,
   today = toDateString(new Date()),
   createdOn?: string | null,
-): { streak: number; failureStreak: number } {
+  windowStart?: string | null,
+): HabitStreaks {
   return streaksFromCompleted(
     completedDatesFromDailyTotals(dailyTotals, config),
     config,
     today,
     createdOn,
+    windowStart,
   );
 }

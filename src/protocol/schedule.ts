@@ -23,11 +23,14 @@ export const HabitScheduleSchema = z.discriminatedUnion('type', [
 
 export type HabitSchedule = z.infer<typeof HabitScheduleSchema>;
 
+function utcDayNumber(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/** Whole calendar days from `startDate` to `endDate` (YYYY-MM-DD); timezone and DST independent. */
 export function daysBetween(startDate: string, endDate: string): number {
-  const start = parseLocalDate(startDate);
-  const end = parseLocalDate(endDate);
-  const ms = end.getTime() - start.getTime();
-  return Math.floor(ms / (24 * 60 * 60 * 1000));
+  return utcDayNumber(endDate) - utcDayNumber(startDate);
 }
 
 export function isScheduleActiveOnDate(schedule: HabitSchedule, dateStr: string): boolean {

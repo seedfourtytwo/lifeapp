@@ -15,6 +15,18 @@ export function streakHistorySinceDate(): string {
   return dateDaysAgo(STREAK_LOOKBACK_DAYS);
 }
 
+/** Doublings allowed past the base window (365 · 2^6 days, far beyond any real history). */
+export const MAX_WINDOW_EXTENSIONS = 6;
+
+/**
+ * Streak window start after `extensions` doublings of the base window
+ * (365, 730, 1460 … days). The streak fetch widens it only while a run is
+ * still unbroken at the window edge.
+ */
+export function streakWindowSinceDate(extensions = 0): string {
+  return dateDaysAgo(STREAK_LOOKBACK_DAYS * 2 ** extensions);
+}
+
 export function lastNDates(count: number): string[] {
   const dates: string[] = [];
   for (let i = count - 1; i >= 0; i--) {

@@ -7,7 +7,7 @@ import {
 import * as eventRepo from '../db/repositories/eventRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import { getDatabase } from '../db/client';
-import { streakHistorySinceDate } from '../utils/dates';
+import { MAX_WINDOW_EXTENSIONS, streakWindowSinceDate } from '../utils/dates';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
 import {
   computeHabitStreaksFromDailyTotals,
@@ -38,47 +38,70 @@ export async function loadHabitStreakMaps(
   }
 
   const db = await getDatabase();
-  const since = streakHistorySinceDate();
-  const metaHabits = habits.filter((h) => habitNeedsEventMetaForCompletion(h.config));
-  const totalHabits = habits.filter((h) => !habitNeedsEventMetaForCompletion(h.config));
+  let totalHabits = habits.filter((h) => !habitNeedsEventMetaForCompletion(h.config));
+  let metaHabits = habits.filter((h) => habitNeedsEventMetaForCompletion(h.config));
 
   const streaks: Record<string, number> = {};
   const failureStreaks: Record<string, number> = {};
 
-  if (totalHabits.length > 0) {
-    const totalsByElement = await eventRepo.getDailyTotalsForElementsSince(
-      db,
-      totalHabits.map((h) => h.id),
-      since,
-    );
-    for (const { id, config, createdAt } of totalHabits) {
-      const result = computeHabitStreaksFromDailyTotals(
-        totalsByElement.get(id) ?? [],
-        config,
-        undefined,
-        createdOnDate(createdAt),
-      );
-      streaks[id] = result.streak;
-      failureStreaks[id] = result.failureStreak;
-    }
-  }
+  // One cheap query in the common case. A habit whose run is still unbroken at the
+  // window edge is re-fetched with a doubled window, so a lookback limit never
+  // under-reports a streak.
+  for (let ext = 0; ext <= MAX_WINDOW_EXTENSIONS; ext++) {
+    if (totalHabits.length === 0 && metaHabits.length === 0) break;
+    const since = streakWindowSinceDate(ext);
+    const last = ext === MAX_WINDOW_EXTENSIONS;
+    const nextTotals: HabitStreakInput[] = [];
+    const nextMeta: HabitStreakInput[] = [];
 
-  if (metaHabits.length > 0) {
-    const eventsByElement = await fetchHabitStreakEvents(
-      db,
-      metaHabits.map((h) => h.id),
-      since,
-    );
-    for (const { id, config, createdAt } of metaHabits) {
-      const result = computeHabitStreaksFromEvents(
-        eventsByElement.get(id) ?? [],
-        config,
-        undefined,
-        createdOnDate(createdAt),
+    if (totalHabits.length > 0) {
+      const totalsByElement = await eventRepo.getDailyTotalsForElementsSince(
+        db,
+        totalHabits.map((h) => h.id),
+        since,
       );
-      streaks[id] = result.streak;
-      failureStreaks[id] = result.failureStreak;
+      for (const habit of totalHabits) {
+        const result = computeHabitStreaksFromDailyTotals(
+          totalsByElement.get(habit.id) ?? [],
+          habit.config,
+          undefined,
+          createdOnDate(habit.createdAt),
+          since,
+        );
+        if (result.truncated && !last) {
+          nextTotals.push(habit);
+          continue;
+        }
+        streaks[habit.id] = result.streak;
+        failureStreaks[habit.id] = result.failureStreak;
+      }
     }
+
+    if (metaHabits.length > 0) {
+      const eventsByElement = await fetchHabitStreakEvents(
+        db,
+        metaHabits.map((h) => h.id),
+        since,
+      );
+      for (const habit of metaHabits) {
+        const result = computeHabitStreaksFromEvents(
+          eventsByElement.get(habit.id) ?? [],
+          habit.config,
+          undefined,
+          createdOnDate(habit.createdAt),
+          since,
+        );
+        if (result.truncated && !last) {
+          nextMeta.push(habit);
+          continue;
+        }
+        streaks[habit.id] = result.streak;
+        failureStreaks[habit.id] = result.failureStreak;
+      }
+    }
+
+    totalHabits = nextTotals;
+    metaHabits = nextMeta;
   }
 
   return { streaks, failureStreaks };

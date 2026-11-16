@@ -1,5 +1,5 @@
 import { toDateString } from '../protocol';
-import { computeStreak } from './streak';
+import { computeStreakRun, type StreakRun } from './streak';
 
 /** Calendar days where the counter's daily total met or exceeded the target. */
 export function completedDatesFromCounterDailyTotals(
@@ -14,6 +14,25 @@ export function completedDatesFromCounterDailyTotals(
   return completed;
 }
 
+/** Counter streak plus whether it was still unbroken at `windowStart`. */
+export function computeCounterTargetStreakRun(
+  dailyTotals: readonly { date: string; total: number }[],
+  dailyTarget: number,
+  today = toDateString(new Date()),
+  createdOn?: string | null,
+  windowStart?: string | null,
+): StreakRun {
+  if (dailyTarget <= 0) return { count: 0, truncated: false };
+  return computeStreakRun(
+    completedDatesFromCounterDailyTotals(dailyTotals, dailyTarget),
+    today,
+    () => true,
+    Number.POSITIVE_INFINITY,
+    createdOn,
+    windowStart,
+  );
+}
+
 /** Consecutive days hitting the daily target, ending today (if hit) or yesterday. */
 export function computeCounterTargetStreak(
   dailyTotals: readonly { date: string; total: number }[],
@@ -21,12 +40,5 @@ export function computeCounterTargetStreak(
   today = toDateString(new Date()),
   createdOn?: string | null,
 ): number {
-  if (dailyTarget <= 0) return 0;
-  return computeStreak(
-    completedDatesFromCounterDailyTotals(dailyTotals, dailyTarget),
-    today,
-    () => true,
-    365,
-    createdOn,
-  );
+  return computeCounterTargetStreakRun(dailyTotals, dailyTarget, today, createdOn).count;
 }

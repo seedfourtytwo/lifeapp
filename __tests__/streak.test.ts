@@ -1,4 +1,10 @@
-import { computeStreak, computeFailureStreak } from '../src/utils/streak';
+import { parseLocalDate, shiftDateString } from '../src/protocol';
+import {
+  computeStreak,
+  computeFailureStreak,
+  computeStreakRun,
+  computeFailureStreakRun,
+} from '../src/utils/streak';
 
 describe('computeStreak', () => {
   it('counts consecutive completed days ending today', () => {
@@ -70,5 +76,60 @@ describe('computeFailureStreak', () => {
     );
     // Jan 8 and 9 missed; days before creation ignored.
     expect(failureStreak).toBe(2);
+  });
+});
+
+describe('streaks are not capped by lookback', () => {
+  const addDays = (date: string, n: number) => shiftDateString(date, n);
+  const today = '2026-06-01';
+
+  it('counts a daily run longer than 365 days', () => {
+    const done = Array.from({ length: 500 }, (_, i) => addDays(today, -i));
+    expect(computeStreak(done, today)).toBe(500);
+  });
+
+  it('does not let unscheduled days eat the budget (3 days a week)', () => {
+    const isScheduled = (d: string) => [1, 3, 5].includes(parseLocalDate(d).getDay());
+    const done: string[] = [];
+    for (let i = 0; i < 1100; i++) {
+      const d = addDays(today, -i);
+      if (isScheduled(d)) done.push(d);
+    }
+    expect(computeStreak(done, today, isScheduled)).toBe(done.length);
+    expect(done.length).toBeGreaterThan(156 * 2);
+  });
+
+  it('counts a long failure streak past 365 days', () => {
+    expect(computeFailureStreak([], today)).toBeGreaterThan(365);
+  });
+
+  it('still honours an explicit maxLookback of scheduled days', () => {
+    const done = Array.from({ length: 50 }, (_, i) => addDays(today, -i));
+    expect(computeStreak(done, today, () => true, 10)).toBe(10);
+  });
+
+  it('terminates when nothing is ever scheduled', () => {
+    expect(computeStreak([], today, () => false)).toBe(0);
+  });
+
+  it('reports truncation only when the run is unbroken at the window edge', () => {
+    const done = Array.from({ length: 10 }, (_, i) => addDays(today, -i));
+    const edge = addDays(today, -5);
+    expect(computeStreakRun(done, today, () => true, undefined, null, edge)).toEqual({
+      count: 6,
+      truncated: true,
+    });
+    const broken = done.filter((d) => d !== addDays(today, -3));
+    expect(computeStreakRun(broken, today, () => true, undefined, null, edge)).toEqual({
+      count: 3,
+      truncated: false,
+    });
+    expect(computeStreakRun(done, today, () => true, undefined, addDays(today, -5), edge)).toEqual({
+      count: 6,
+      truncated: false,
+    });
+    expect(computeFailureStreakRun([], today, () => true, undefined, null, edge).truncated).toBe(
+      true,
+    );
   });
 });

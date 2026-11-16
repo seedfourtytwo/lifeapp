@@ -2,9 +2,9 @@ import type { CounterConfig } from '../protocol';
 import * as eventRepo from '../db/repositories/eventRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import { getDatabase } from '../db/client';
-import { streakHistorySinceDate } from '../utils/dates';
+import { MAX_WINDOW_EXTENSIONS, streakWindowSinceDate } from '../utils/dates';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
-import { computeCounterTargetStreak } from '../utils/counterStreakCompute';
+import { computeCounterTargetStreakRun } from '../utils/counterStreakCompute';
 
 export interface CounterStreakInput {
   id: string;
@@ -15,29 +15,42 @@ export interface CounterStreakInput {
 export async function loadCounterStreakMaps(
   counters: CounterStreakInput[],
 ): Promise<Record<string, number>> {
-  const withTarget = counters.filter(
+  let pending = counters.filter(
     (c) => c.config.dailyTarget !== undefined && c.config.dailyTarget > 0,
   );
-  if (withTarget.length === 0) return {};
+  if (pending.length === 0) return {};
 
   const db = await getDatabase();
-  const since = streakHistorySinceDate();
-  const totalsByElement = await eventRepo.getDailyTotalsForElementsSince(
-    db,
-    withTarget.map((c) => c.id),
-    since,
-  );
-
   const streaks: Record<string, number> = {};
-  for (const { id, config, createdAt } of withTarget) {
-    const dailyTarget = config.dailyTarget;
-    if (dailyTarget === undefined || dailyTarget <= 0) continue;
-    streaks[id] = computeCounterTargetStreak(
-      totalsByElement.get(id) ?? [],
-      dailyTarget,
-      undefined,
-      createdOnLocalDate(createdAt),
+
+  // One cheap query in the common case; a counter whose run is still unbroken at the
+  // window edge is re-fetched with a doubled window.
+  for (let ext = 0; ext <= MAX_WINDOW_EXTENSIONS && pending.length > 0; ext++) {
+    const since = streakWindowSinceDate(ext);
+    const last = ext === MAX_WINDOW_EXTENSIONS;
+    const totalsByElement = await eventRepo.getDailyTotalsForElementsSince(
+      db,
+      pending.map((c) => c.id),
+      since,
     );
+    const next: CounterStreakInput[] = [];
+    for (const counter of pending) {
+      const dailyTarget = counter.config.dailyTarget;
+      if (dailyTarget === undefined || dailyTarget <= 0) continue;
+      const run = computeCounterTargetStreakRun(
+        totalsByElement.get(counter.id) ?? [],
+        dailyTarget,
+        undefined,
+        createdOnLocalDate(counter.createdAt),
+        since,
+      );
+      if (run.truncated && !last) {
+        next.push(counter);
+        continue;
+      }
+      streaks[counter.id] = run.count;
+    }
+    pending = next;
   }
   return streaks;
 }
