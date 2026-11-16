@@ -19,6 +19,9 @@ export type ActiveTimerSession = z.infer<typeof ActiveTimerSessionSchema>;
 export const WidgetTimerSessionSchema = z.object({
   startedAt: z.string().datetime(),
   calendarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Written only while paused / once it has been paused: a habit with a sound can pause. */
+  pausedAt: z.string().datetime().nullable().default(null),
+  pauseOffsetMs: z.number().int().nonnegative().default(0),
 });
 
 export type WidgetTimerSession = z.infer<typeof WidgetTimerSessionSchema>;

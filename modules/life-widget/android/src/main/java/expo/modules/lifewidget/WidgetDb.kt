@@ -194,8 +194,7 @@ object WidgetDb {
       todos = todos,
       today = today,
       minuteOfDay = minuteOfDay,
-      runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY))
-        .mapValues { it.value.startedAtMs },
+      runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)),
       appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
@@ -345,54 +344,111 @@ object WidgetDb {
     }
   }
 
+  /** What the audio player has to do for a habit after a timer action. */
+  class PlayerRequest(val habitId: String, val habitName: String, val command: PlayerCommand)
+
+  private fun readWidgetTimers(db: SQLiteDatabase): LinkedHashMap<String, RunningTimer> =
+    LinkedHashMap(TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)))
+
+  private fun writeWidgetTimers(db: SQLiteDatabase, timers: Map<String, RunningTimer>) {
+    if (timers.isEmpty()) {
+      db.delete("app_settings", "key = ?", arrayOf(TodayRules.WIDGET_TIMERS_KEY))
+      return
+    }
+    val values = ContentValues()
+    values.put("key", TodayRules.WIDGET_TIMERS_KEY)
+    values.put("value", TodayRules.widgetTimersJson(timers))
+    db.insertWithOnConflict("app_settings", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+  }
+
+  private fun habitRules(db: SQLiteDatabase, elementId: String): HabitRules? =
+    activeConfig(db, elementId, "habit")?.let { TodayRules.parseHabitConfig(it) }
+
+  /** The `timer_session` row the app writes when a timer stops, on the day the timer started. */
+  private fun writeTimerLog(db: SQLiteDatabase, elementId: String, log: TimerLog) {
+    insertEvent(
+      db,
+      elementId,
+      log.timer.date,
+      log.seconds.toDouble(),
+      TodayRules.timerSessionMetaJson(
+        Instant.ofEpochMilli(log.timer.startedAtMs),
+        Instant.ofEpochMilli(log.endedAtMs),
+        log.seconds,
+        log.trackCompleted,
+      ),
+    )
+    for (id in readDay(db, elementId, log.timer.date).skipIds) {
+      db.delete("events", "id = ?", arrayOf(id))
+    }
+  }
+
   /**
-   * Starts a widget stopwatch on the habit, or stops the one running and logs
-   * it as a `timer_session` on the day it started (as the app does across
-   * midnight). Refuses to start while the app is timing the same habit.
+   * Applies `action` to the habit's widget timer (TodayRules.applyTimerAction),
+   * writes the session it ends, and returns what the audio player should do.
    *
-   * Widget stopwatches live in app_settings under a key only the widget writes.
-   * The app's own key cannot be shared: the app holds its timers in memory and
+   * Widget timers live in app_settings under a key only the widget writes. The
+   * app's own key cannot be shared: the app holds its timers in memory and
    * rewrites its whole record on every change, so a session added there from
    * this process would be silently overwritten.
    */
-  fun toggleTimer(context: Context, elementId: String) {
-    val now = Instant.now()
+  fun timerAction(context: Context, elementId: String, action: TimerAction): PlayerRequest? =
+    withDb(context) { db ->
+      if (!hasTable(db, "app_settings")) return@withDb null
+      inImmediateTransaction(db) {
+        val now = System.currentTimeMillis()
+        val timers = readWidgetTimers(db)
+        val rules = habitRules(db, elementId)
+        if (rules == null) {
+          // Archived or changed while its timer ran: the timer just goes.
+          val had = timers.remove(elementId) != null
+          writeWidgetTimers(db, timers)
+          return@inImmediateTransaction if (had) PlayerRequest(elementId, "", PlayerCommand.Stop) else null
+        }
+        val lockedByApp = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)).containsKey(elementId)
+        val outcome = TodayRules.applyTimerAction(
+          rules, timers[elementId], action, now, LocalDate.now().toString(), lockedByApp,
+        )
+        outcome.log?.let { writeTimerLog(db, elementId, it) }
+        if (outcome.session == null) timers.remove(elementId) else timers[elementId] = outcome.session
+
+        if (outcome.player is PlayerCommand.Play) {
+          // One sound at a time: starting this one finishes any other habit that was playing.
+          for ((otherId, other) in timers.toMap()) {
+            if (otherId == elementId) continue
+            val otherRules = habitRules(db, otherId)
+            if (otherRules != null && otherRules.soundTrackId == null) continue
+            if (otherRules != null) {
+              TodayRules.applyTimerAction(otherRules, other, TimerAction.STOP, now, other.date, false)
+                .log?.let { writeTimerLog(db, otherId, it) }
+            }
+            timers.remove(otherId)
+          }
+        }
+        writeWidgetTimers(db, timers)
+
+        val name = db.rawQuery("SELECT name FROM elements WHERE id = ?", arrayOf(elementId))
+          .use { c -> if (c.moveToFirst()) c.getString(0) ?: "" else "" }
+        PlayerRequest(elementId, name, outcome.player)
+      }
+    }
+
+  /**
+   * A habit with a sound whose timer says "playing" while the player is not
+   * playing it (the process was killed, the phone restarted): the timer is
+   * dropped unlogged, since nobody knows how long the sound really ran.
+   */
+  fun dropOrphanedSoundTimers(context: Context, playingHabitId: String?) {
     withDb(context) { db ->
       if (!hasTable(db, "app_settings")) return@withDb
       inImmediateTransaction(db) {
-        val timers = LinkedHashMap(TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)))
-        val running = timers.remove(elementId)
-        val rules = activeConfig(db, elementId, "habit")?.let { TodayRules.parseHabitConfig(it) }
-        if (rules != null && TodayRules.canQuickLog(rules)) {
-          if (running == null) {
-            val inApp = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY))
-            if (inApp.containsKey(elementId)) return@inImmediateTransaction
-            timers[elementId] = RunningTimer(now.toEpochMilli(), LocalDate.now().toString())
-          } else {
-            val seconds = TodayRules.timerSessionSeconds(running.startedAtMs, now.toEpochMilli())
-            if (seconds != null) {
-              insertEvent(
-                db,
-                elementId,
-                running.date,
-                seconds.toDouble(),
-                TodayRules.timerSessionMetaJson(Instant.ofEpochMilli(running.startedAtMs), now, seconds),
-              )
-              for (id in readDay(db, elementId, running.date).skipIds) {
-                db.delete("events", "id = ?", arrayOf(id))
-              }
-            }
-          }
+        val timers = readWidgetTimers(db)
+        val orphans = timers.filter { (id, timer) ->
+          id != playingHabitId && timer.pausedAtMs == null && habitRules(db, id)?.soundTrackId != null
         }
-        // A habit archived or changed while its stopwatch ran just loses the stopwatch.
-        if (timers.isEmpty()) {
-          db.delete("app_settings", "key = ?", arrayOf(TodayRules.WIDGET_TIMERS_KEY))
-        } else {
-          val values = ContentValues()
-          values.put("key", TodayRules.WIDGET_TIMERS_KEY)
-          values.put("value", TodayRules.widgetTimersJson(timers))
-          db.insertWithOnConflict("app_settings", null, values, SQLiteDatabase.CONFLICT_REPLACE)
-        }
+        if (orphans.isEmpty()) return@inImmediateTransaction
+        for (id in orphans.keys) timers.remove(id)
+        writeWidgetTimers(db, timers)
       }
     }
   }

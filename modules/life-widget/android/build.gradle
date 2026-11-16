@@ -13,6 +13,14 @@ android {
     versionCode 1
     versionName '1.0.0'
   }
+  // Debug builds load the app's sounds from Metro, so they are not in the APK:
+  // pack them as assets for WidgetPlayerService. Release builds already carry
+  // them as raw resources, and a second copy would add 40 MB.
+  sourceSets {
+    debug {
+      assets.srcDirs += [new File(rootProject.projectDir, '../assets/sounds')]
+    }
+  }
   testOptions {
     unitTests.all { test ->
       // TodayRulesFixtureTest walks up from here to find __tests__/fixtures/dayRules.json.

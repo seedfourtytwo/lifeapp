@@ -24,4 +24,12 @@
   <string name="life_widget_stop_timer_a11y">Arrêter le minuteur %1$s</string>
   <string name="life_widget_running_in_app">En cours dans l’appli</string>
   <string name="life_widget_paused_in_app">En pause dans l’appli</string>
+  <string name="life_widget_player_channel">Son du minuteur</string>
+  <string name="life_widget_player_playing">Lecture</string>
+  <string name="life_widget_player_paused">En pause</string>
+  <string name="life_widget_player_pause">Pause</string>
+  <string name="life_widget_player_resume">Reprendre</string>
+  <string name="life_widget_player_stop">Terminer</string>
+  <string name="life_widget_pause_timer_a11y">Mettre %1$s en pause</string>
+  <string name="life_widget_resume_timer_a11y">Reprendre %1$s</string>
 </resources>

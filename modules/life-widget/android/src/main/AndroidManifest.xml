@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- WidgetPlayerService: a habit's timer sound played from the widget. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
   <application>
     <!--
       WHY android:process=":widget" ON EVERYTHING BELOW: these components open the
@@ -37,6 +42,12 @@
       android:name="expo.modules.lifewidget.TodayWidgetService"
       android:exported="false"
       android:permission="android.permission.BIND_REMOTEVIEWS"
+      android:process=":widget" />
+
+    <service
+      android:name="expo.modules.lifewidget.WidgetPlayerService"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback"
       android:process=":widget" />
   </application>
 </manifest>

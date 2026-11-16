@@ -39,6 +39,10 @@ data class HabitRules(
    * session finished the track (`trackCompleted`), never on logged seconds.
    */
   val playOnceTrackSeconds: Int? = null,
+  /** The habit's bundled timer sound (`hasHabitTimerSound`), or null. */
+  val soundTrackId: String? = null,
+  /** `getHabitTimerPlaybackMode`: loop unless the habit says play_once. */
+  val soundLoops: Boolean = true,
 )
 
 /** The parts of `CounterConfig` the widget needs. */
@@ -72,8 +76,45 @@ data class HabitDayState(
 
 enum class HabitRowState { OPEN, DONE, SKIPPED }
 
-/** A stopwatch the widget is running: when it started and the local day it belongs to. */
-data class RunningTimer(val startedAtMs: Long, val date: String)
+/**
+ * A timer the widget is running, in the shape of the app's `ActiveTimerSession`:
+ * when it started, the local day it belongs to, and its pauses.
+ */
+data class RunningTimer(
+  val startedAtMs: Long,
+  val date: String,
+  val pausedAtMs: Long? = null,
+  val pauseOffsetMs: Long = 0,
+)
+
+/** What a tap, a notification button or the player asks of a habit's timer. */
+enum class TimerAction {
+  /** The row: start; then stop (stopwatch) or pause/resume (a habit with a sound). */
+  TOGGLE,
+  /** Pause only — the audio was taken away (a call, headphones unplugged). */
+  PAUSE,
+  STOP,
+  /** The player reached the end of a play-once track. */
+  TRACK_ENDED,
+}
+
+/** What the audio player should do after a timer action. */
+sealed class PlayerCommand {
+  object None : PlayerCommand()
+  data class Play(val trackId: String, val loop: Boolean, val positionMs: Long) : PlayerCommand()
+  object Pause : PlayerCommand()
+  object Stop : PlayerCommand()
+}
+
+/** A finished session to write as a `timer_session` event. */
+data class TimerLog(val timer: RunningTimer, val endedAtMs: Long, val seconds: Int, val trackCompleted: Boolean)
+
+data class TimerOutcome(
+  /** The habit's timer after the action; null when none is running. */
+  val session: RunningTimer?,
+  val log: TimerLog?,
+  val player: PlayerCommand,
+)
 
 /** A timer running in the app (`ActiveTimerSessionSchema`), reduced to what a clock needs. */
 data class AppTimer(val startedAtMs: Long, val pausedAtMs: Long?, val pauseOffsetMs: Long)
@@ -95,14 +136,16 @@ sealed class WidgetRow {
     val timerTargetMinutes: Int? = null,
     /** Timer habits: minutes the widget's quick-log buttons add. Empty when the app must run the timer. */
     val quickMinutes: List<Int> = emptyList(),
-    /** Timer habits the widget can time itself (see `canQuickLog`). */
+    /** Timer habits: a tap on the row starts the widget's timer. */
     val canRun: Boolean = false,
+    /** The timer plays a sound: a tap on a running row pauses, and the row has a stop button. */
+    val hasAudio: Boolean = false,
     /**
      * Wall-clock start (epoch ms) of the timer running on this habit, or null.
      * For an app timer, moved forward by the time it has spent paused.
      */
     val runningSinceMs: Long? = null,
-    /** Set while an app timer is paused: the active time it shows, frozen. */
+    /** Set while the timer is paused: the active time it shows, frozen. */
     val pausedElapsedMs: Long? = null,
     /** The running timer belongs to the app: the widget shows it and leaves it alone. */
     val inApp: Boolean = false,
@@ -190,12 +233,16 @@ object TodayRules {
     val target = positiveInt(config["dailyTargetSeconds"])
 
     var playOnce: Int? = null
+    var soundTrackId: String? = null
+    var soundLoops = true
     val sound = config["timerSound"]
     if (timer && sound is Map<*, *>) {
       val trackId = (sound["trackId"] as? String)?.trim()
       val playback = sound["playbackMode"] ?: "loop"
-      if (playback == "play_once" && trackId != null) {
-        playOnce = BUNDLED_TRACK_SECONDS[trackId]
+      if (trackId != null && BUNDLED_TRACK_SECONDS.containsKey(trackId)) {
+        soundTrackId = trackId
+        soundLoops = playback != "play_once"
+        if (!soundLoops) playOnce = BUNDLED_TRACK_SECONDS[trackId]
       }
     }
 
@@ -207,6 +254,8 @@ object TodayRules {
       visibleOnlyInTimeRange = visibleOnly,
       dailyTargetSeconds = target,
       playOnceTrackSeconds = playOnce,
+      soundTrackId = soundTrackId,
+      soundLoops = soundLoops,
     )
   }
 
@@ -443,8 +492,8 @@ object TodayRules {
     todos: List<TodoInput>,
     today: LocalDate,
     minuteOfDay: Int,
-    /** Habit id → wall-clock start (epoch ms) of a timer the widget is running. */
-    runningTimers: Map<String, Long> = emptyMap(),
+    /** Habit id → the timer the widget is running on it. */
+    runningTimers: Map<String, RunningTimer> = emptyMap(),
     /** Habit id → the timer the app is running on it. Shown, never controlled, by the widget. */
     appTimers: Map<String, AppTimer> = emptyMap(),
   ): TodayModel {
@@ -456,8 +505,11 @@ object TodayRules {
 
     for (habit in habits) {
       // A running timer always keeps its row: without it there is nothing to stop it with.
+      // The app's timer wins the display: the widget never controls it.
       val appTimer = appTimers[habit.id]
-      val runningSince = appTimer?.let { it.startedAtMs + it.pauseOffsetMs } ?: runningTimers[habit.id]
+      val shown = appTimer?.let { RunningTimer(it.startedAtMs, "", it.pausedAtMs, it.pauseOffsetMs) }
+        ?: runningTimers[habit.id]
+      val runningSince = shown?.let { it.startedAtMs + it.pauseOffsetMs }
       val visible = isVisibleAt(habit.rules, minuteOfDay)
       if (!visible && runningSince == null) continue
       val state = habitDayState(habit.rules, today) { date -> habitFacts(habit.id, date) }
@@ -489,11 +541,10 @@ object TodayRules {
           } else {
             emptyList()
           },
-          canRun = canQuickLog(habit.rules),
+          canRun = true,
+          hasAudio = habit.rules.soundTrackId != null,
           runningSinceMs = runningSince,
-          pausedElapsedMs = appTimer?.pausedAtMs?.let {
-            (it - appTimer.startedAtMs - appTimer.pauseOffsetMs).coerceAtLeast(0)
-          },
+          pausedElapsedMs = shown?.pausedAtMs?.let { timerElapsedMs(shown, it) },
           inApp = appTimer != null,
         )
       } else {
@@ -561,7 +612,7 @@ object TodayRules {
 
   /**
    * A play_once track habit without a time goal is complete only when the track
-   * finishes (`trackCompleted`), which logged minutes never set: the app has to run it.
+   * finishes (`trackCompleted`), which logged minutes never set: it has to be played.
    */
   fun canQuickLog(rules: HabitRules): Boolean =
     rules.timer && (rules.playOnceTrackSeconds == null || rules.dailyTargetSeconds != null)
@@ -595,7 +646,10 @@ object TodayRules {
       val entry = raw as? Map<*, *> ?: return emptyMap()
       val startedAt = parseInstantMs(entry["startedAt"]) ?: return emptyMap()
       val date = parseDate(entry["calendarDate"]) ?: return emptyMap()
-      result[id] = RunningTimer(startedAt, date.toString())
+      val pausedAt = entry["pausedAt"]?.let { parseInstantMs(it) ?: return emptyMap() }
+      val offset = (entry["pauseOffsetMs"] ?: 0.0) as? Double ?: return emptyMap()
+      if (offset < 0) return emptyMap()
+      result[id] = RunningTimer(startedAt, date.toString(), pausedAt, offset.toLong())
     }
     return result
   }
@@ -605,8 +659,10 @@ object TodayRules {
 
   fun widgetTimersJson(timers: Map<String, RunningTimer>): String =
     timers.entries.joinToString(",", "{", "}") { (id, timer) ->
+      val pause = (timer.pausedAtMs?.let { ",\"pausedAt\":\"${isoTimestamp(Instant.ofEpochMilli(it))}\"" } ?: "") +
+        (if (timer.pauseOffsetMs > 0) ",\"pauseOffsetMs\":${timer.pauseOffsetMs}" else "")
       "${jsonString(id)}:{\"startedAt\":\"${isoTimestamp(Instant.ofEpochMilli(timer.startedAtMs))}\"," +
-        "\"calendarDate\":${jsonString(timer.date)}}"
+        "\"calendarDate\":${jsonString(timer.date)}$pause}"
     }
 
   /** The app's persisted sessions. Entries that do not parse are skipped. */
@@ -625,17 +681,66 @@ object TodayRules {
   /** A stopped timer shorter than this was a mistap: nothing is logged. */
   const val MIN_TIMER_SESSION_SECONDS = 5
 
-  /** Whole seconds a widget timer ran, or null when it should not be logged. */
-  fun timerSessionSeconds(startedAtMs: Long, endedAtMs: Long): Int? {
-    val seconds = (endedAtMs - startedAtMs) / 1000
-    if (seconds < MIN_TIMER_SESSION_SECONDS || seconds > Int.MAX_VALUE) return null
-    return seconds.toInt()
+  /** `activeTimerElapsedMs` (activeTimerSession.ts): active time, paused intervals left out. */
+  fun timerElapsedMs(timer: RunningTimer, nowMs: Long): Long {
+    val paused = timer.pauseOffsetMs + (timer.pausedAtMs?.let { nowMs - it } ?: 0)
+    return (nowMs - timer.startedAtMs - paused).coerceAtLeast(0)
+  }
+
+  /**
+   * The whole timer state machine, with no I/O: what `action` does to a habit's
+   * widget timer at `nowMs`. `lockedByApp` is true while the app is timing the
+   * same habit — two timers would log the same minutes twice.
+   */
+  fun applyTimerAction(
+    rules: HabitRules,
+    current: RunningTimer?,
+    action: TimerAction,
+    nowMs: Long,
+    today: String,
+    lockedByApp: Boolean,
+  ): TimerOutcome {
+    val trackId = rules.soundTrackId
+    if (current == null) {
+      if (action != TimerAction.TOGGLE || lockedByApp || !rules.timer) {
+        return TimerOutcome(null, null, PlayerCommand.None)
+      }
+      val player = if (trackId != null) PlayerCommand.Play(trackId, rules.soundLoops, 0) else PlayerCommand.None
+      return TimerOutcome(RunningTimer(nowMs, today), null, player)
+    }
+
+    val pausedAt = current.pausedAtMs
+    if (trackId != null && (action == TimerAction.TOGGLE || action == TimerAction.PAUSE)) {
+      if (pausedAt == null) {
+        return TimerOutcome(current.copy(pausedAtMs = nowMs), null, PlayerCommand.Pause)
+      }
+      if (action == TimerAction.PAUSE) return TimerOutcome(current, null, PlayerCommand.None)
+      val resumed = current.copy(pausedAtMs = null, pauseOffsetMs = current.pauseOffsetMs + (nowMs - pausedAt))
+      return TimerOutcome(resumed, null, PlayerCommand.Play(trackId, rules.soundLoops, timerElapsedMs(current, nowMs)))
+    }
+    if (action == TimerAction.PAUSE) return TimerOutcome(current, null, PlayerCommand.None)
+
+    // TOGGLE on a stopwatch, STOP, or the track ending: the session is over.
+    val completed = action == TimerAction.TRACK_ENDED && rules.playOnceTrackSeconds != null
+    val seconds = timerElapsedMs(current, nowMs) / 1000
+    val log = if ((seconds >= MIN_TIMER_SESSION_SECONDS || completed) && seconds <= Int.MAX_VALUE) {
+      TimerLog(current, nowMs, seconds.toInt().coerceAtLeast(1), completed)
+    } else {
+      null
+    }
+    return TimerOutcome(null, log, if (trackId != null) PlayerCommand.Stop else PlayerCommand.None)
   }
 
   /** Meta of a logged timer chunk: the protocol's `timer_session` shape (habit.ts). */
-  fun timerSessionMetaJson(startedAt: Instant, endedAt: Instant, durationSeconds: Int): String =
+  fun timerSessionMetaJson(
+    startedAt: Instant,
+    endedAt: Instant,
+    durationSeconds: Int,
+    trackCompleted: Boolean = false,
+  ): String =
     "{\"source\":\"$TIMER_SESSION_SOURCE\",\"startedAt\":\"${isoTimestamp(startedAt)}\"," +
-      "\"endedAt\":\"${isoTimestamp(endedAt)}\",\"durationSeconds\":$durationSeconds}"
+      "\"endedAt\":\"${isoTimestamp(endedAt)}\",\"durationSeconds\":$durationSeconds" +
+      (if (trackCompleted) ",\"trackCompleted\":true" else "") + "}"
 
   /** Meta of a boolean habit tick (eventStore.toggleHabit). */
   const val HABIT_TICK_META_JSON = "{\"source\":\"habit_tick\"}"

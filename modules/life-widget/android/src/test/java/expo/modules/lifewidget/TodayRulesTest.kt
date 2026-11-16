@@ -243,7 +243,7 @@ class TodayRulesTest {
       emptyList(),
       monday,
       12 * 60,
-      runningTimers = mapOf("h" to 1000L, "n" to 2000L),
+      runningTimers = mapOf("h" to RunningTimer(1000L, "2026-11-16"), "n" to RunningTimer(2000L, "2026-11-16")),
     )
     assertEquals(listOf("habit:h", "habit:n", "habit:i"), model.rows.map { it.key })
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
@@ -255,16 +255,7 @@ class TodayRulesTest {
   }
 
   @Test
-  fun stoppedTimerLogsWholeSecondsAndDropsAMistap() {
-    assertNull(TodayRules.timerSessionSeconds(startedAtMs = 10_000, endedAtMs = 14_999))
-    assertEquals(5, TodayRules.timerSessionSeconds(startedAtMs = 10_000, endedAtMs = 15_000))
-    assertEquals(900, TodayRules.timerSessionSeconds(startedAtMs = 0, endedAtMs = 900_999))
-    // A clock that went backwards never logs.
-    assertNull(TodayRules.timerSessionSeconds(startedAtMs = 20_000, endedAtMs = 10_000))
-  }
-
-  @Test
-  fun onlyQuickLoggableTimersCanRunInTheWidget() {
+  fun everyTimerHabitCanRunInTheWidget() {
     val track = HabitInput(
       "t",
       "Breathing",
@@ -274,8 +265,12 @@ class TodayRulesTest {
     val tick = HabitInput("b", "No Smoking", habit("{}"))
     val model = TodayRules.buildToday(listOf(track, plain, tick), { _, _ -> DayFacts.EMPTY }, emptyList(), emptyList(), monday, 0)
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
-    assertFalse(rows.getValue("t").canRun)
+    // A track habit runs through the widget's player; it still has no quick-log buttons.
+    assertTrue(rows.getValue("t").canRun)
+    assertTrue(rows.getValue("t").hasAudio)
+    assertEquals(emptyList<Int>(), rows.getValue("t").quickMinutes)
     assertTrue(rows.getValue("p").canRun)
+    assertFalse(rows.getValue("p").hasAudio)
     assertFalse(rows.getValue("b").canRun)
   }
 
@@ -322,7 +317,7 @@ class TodayRulesTest {
       emptyList(),
       monday,
       0,
-      runningTimers = mapOf("r" to 5L),
+      runningTimers = mapOf("r" to RunningTimer(5L, "2026-11-16")),
       appTimers = mapOf(
         "r" to AppTimer(start, null, 60_000),
         "s" to AppTimer(start, start + 600_000, 120_000),
@@ -337,6 +332,111 @@ class TodayRulesTest {
     val s = rows.getValue("s")
     assertTrue(s.inApp)
     assertEquals(480_000L, s.pausedElapsedMs)
+  }
+
+  private val trackOnly = """{"trackingMode":"timer","timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}"""
+  private val looped = """{"trackingMode":"timer","timerSound":{"trackId":"meditation15min"}}"""
+
+  @Test
+  fun parsesTheTimerSound() {
+    assertEquals("wimhofMorning", habit(trackOnly).soundTrackId)
+    assertFalse(habit(trackOnly).soundLoops)
+    assertEquals("meditation15min", habit(looped).soundTrackId)
+    assertTrue(habit(looped).soundLoops)
+    // An id the app does not bundle is no sound at all, as in hasHabitTimerSound.
+    assertNull(habit("""{"trackingMode":"timer","timerSound":{"trackId":"gone"}}""").soundTrackId)
+    assertNull(habit("""{"timerSound":{"trackId":"meditation15min"}}""").soundTrackId)
+  }
+
+  @Test
+  fun elapsedLeavesOutPausedTime() {
+    assertEquals(600_000L, TodayRules.timerElapsedMs(RunningTimer(0, "d"), 600_000))
+    assertEquals(540_000L, TodayRules.timerElapsedMs(RunningTimer(0, "d", null, 60_000), 600_000))
+    // Paused at 5 min: the clock stays there however late it is.
+    assertEquals(300_000L, TodayRules.timerElapsedMs(RunningTimer(0, "d", 300_000, 0), 900_000))
+    assertEquals(0L, TodayRules.timerElapsedMs(RunningTimer(1000, "d"), 0))
+  }
+
+  @Test
+  fun stopwatchTapStartsThenStopsAndLogs() {
+    val rules = habit("""{"trackingMode":"timer"}""")
+    val started = TodayRules.applyTimerAction(rules, null, TimerAction.TOGGLE, 1_000, "2026-11-16", lockedByApp = false)
+    assertEquals(RunningTimer(1_000, "2026-11-16"), started.session)
+    assertNull(started.log)
+    assertEquals(PlayerCommand.None, started.player)
+
+    val stopped = TodayRules.applyTimerAction(rules, started.session, TimerAction.TOGGLE, 601_000, "2026-11-17", lockedByApp = false)
+    assertNull(stopped.session)
+    assertEquals(TimerLog(started.session!!, 601_000, 600, trackCompleted = false), stopped.log)
+
+    // Under five seconds is a mistap: the stopwatch goes, nothing is logged.
+    val mistap = TodayRules.applyTimerAction(rules, started.session, TimerAction.TOGGLE, 4_000, "2026-11-16", lockedByApp = false)
+    assertNull(mistap.session)
+    assertNull(mistap.log)
+  }
+
+  @Test
+  fun aTimerTheAppRunsCannotBeStartedHere() {
+    val rules = habit("""{"trackingMode":"timer"}""")
+    val outcome = TodayRules.applyTimerAction(rules, null, TimerAction.TOGGLE, 1_000, "2026-11-16", lockedByApp = true)
+    assertNull(outcome.session)
+    assertEquals(PlayerCommand.None, outcome.player)
+  }
+
+  @Test
+  fun trackTapPlaysPausesAndResumes() {
+    val rules = habit(trackOnly)
+    val started = TodayRules.applyTimerAction(rules, null, TimerAction.TOGGLE, 0, "2026-11-16", lockedByApp = false)
+    assertEquals(PlayerCommand.Play("wimhofMorning", loop = false, positionMs = 0), started.player)
+
+    val paused = TodayRules.applyTimerAction(rules, started.session, TimerAction.TOGGLE, 300_000, "2026-11-16", lockedByApp = false)
+    assertEquals(RunningTimer(0, "2026-11-16", 300_000, 0), paused.session)
+    assertEquals(PlayerCommand.Pause, paused.player)
+    assertNull(paused.log)
+
+    // Resumed a minute later: that minute is not counted, and the track picks up where it was.
+    val resumed = TodayRules.applyTimerAction(rules, paused.session, TimerAction.TOGGLE, 360_000, "2026-11-16", lockedByApp = false)
+    assertEquals(RunningTimer(0, "2026-11-16", null, 60_000), resumed.session)
+    assertEquals(PlayerCommand.Play("wimhofMorning", loop = false, positionMs = 300_000), resumed.player)
+
+    // PAUSE (a phone call took the audio) never resumes.
+    val again = TodayRules.applyTimerAction(rules, paused.session, TimerAction.PAUSE, 400_000, "2026-11-16", lockedByApp = false)
+    assertEquals(paused.session, again.session)
+    assertEquals(PlayerCommand.None, again.player)
+  }
+
+  @Test
+  fun trackEndCompletesAndStopDoesNot() {
+    val rules = habit(trackOnly)
+    val session = RunningTimer(0, "2026-11-16")
+    val ended = TodayRules.applyTimerAction(rules, session, TimerAction.TRACK_ENDED, 1_340_000, "2026-11-16", lockedByApp = false)
+    assertNull(ended.session)
+    assertEquals(TimerLog(session, 1_340_000, 1340, trackCompleted = true), ended.log)
+    assertEquals(PlayerCommand.Stop, ended.player)
+
+    val stopped = TodayRules.applyTimerAction(rules, session, TimerAction.STOP, 700_000, "2026-11-16", lockedByApp = false)
+    assertEquals(TimerLog(session, 700_000, 700, trackCompleted = false), stopped.log)
+    assertEquals(PlayerCommand.Stop, stopped.player)
+
+    // A looping sound ending is not a completed track.
+    val loopEnd = TodayRules.applyTimerAction(habit(looped), session, TimerAction.TRACK_ENDED, 700_000, "2026-11-16", lockedByApp = false)
+    assertFalse(loopEnd.log!!.trackCompleted)
+  }
+
+  @Test
+  fun pausedSessionsRoundTripAndCompletedMetaMatchesTheProtocol() {
+    val timers = mapOf("h" to RunningTimer(Instant.parse("2026-11-16T08:00:00Z").toEpochMilli(), "2026-11-16", Instant.parse("2026-11-16T08:05:00Z").toEpochMilli(), 60_000))
+    val json = TodayRules.widgetTimersJson(timers)
+    assertEquals(
+      """{"h":{"startedAt":"2026-11-16T08:00:00.000Z","calendarDate":"2026-11-16","pausedAt":"2026-11-16T08:05:00.000Z","pauseOffsetMs":60000}}""",
+      json,
+    )
+    assertEquals(timers, TodayRules.parseWidgetTimers(json))
+    val end = Instant.parse("2026-11-16T08:15:00Z")
+    assertEquals(
+      """{"source":"timer_session","startedAt":"2026-11-16T08:00:00.000Z","endedAt":"2026-11-16T08:15:00.000Z","durationSeconds":900,"trackCompleted":true}""",
+      TodayRules.timerSessionMetaJson(end.minusSeconds(900), end, 900, trackCompleted = true),
+    )
   }
 
   @Test

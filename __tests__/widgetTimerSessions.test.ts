@@ -8,7 +8,24 @@ describe('widget timer sessions', () => {
 
   it('reads what the widget writes', () => {
     expect(parseWidgetTimerSessions(WRITTEN_BY_WIDGET)).toEqual({
-      'habit-1': { startedAt: '2026-11-16T08:00:00.000Z', calendarDate: '2026-11-16' },
+      'habit-1': {
+        startedAt: '2026-11-16T08:00:00.000Z',
+        calendarDate: '2026-11-16',
+        pausedAt: null,
+        pauseOffsetMs: 0,
+      },
+    });
+  });
+
+  it('reads a paused timer', () => {
+    // TodayRulesTest.pausedSessionsRoundTripAndCompletedMetaMatchesTheProtocol writes this.
+    const paused =
+      '{"h":{"startedAt":"2026-11-16T08:00:00.000Z","calendarDate":"2026-11-16","pausedAt":"2026-11-16T08:05:00.000Z","pauseOffsetMs":60000}}';
+    expect(parseWidgetTimerSessions(paused).h).toEqual({
+      startedAt: '2026-11-16T08:00:00.000Z',
+      calendarDate: '2026-11-16',
+      pausedAt: '2026-11-16T08:05:00.000Z',
+      pauseOffsetMs: 60000,
     });
   });
 

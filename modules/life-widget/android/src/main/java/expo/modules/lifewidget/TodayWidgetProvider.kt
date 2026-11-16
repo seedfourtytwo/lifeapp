@@ -37,6 +37,10 @@ internal object WidgetActions {
   const val TAP_TODO = "todo"
   const val TAP_TIMER_LOG = "timer_log"
   const val TAP_TIMER_TOGGLE = "timer_toggle"
+  const val TAP_TIMER_STOP = "timer_stop"
+  /** From the player, never from a row: the audio was interrupted / the track finished. */
+  const val TAP_TIMER_PAUSE = "timer_pause"
+  const val TAP_TIMER_ENDED = "timer_ended"
   /** A row with nothing to do on tap. Stated explicitly because row views are recycled. */
   const val TAP_NONE = "none"
 
@@ -59,6 +63,13 @@ internal object WidgetActions {
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
   }
+
+  /** A broadcast to WidgetActionReceiver that is not a row tap: notification buttons and the player. */
+  fun timerIntent(context: Context, kind: String, habitId: String): Intent =
+    Intent(context, WidgetActionReceiver::class.java)
+      .setAction(ACTION_TAP)
+      .putExtra(EXTRA_TAP_KIND, kind)
+      .putExtra(EXTRA_ID, habitId)
 
   /** The list's click template. Fill-in intents add the extras, so it must be mutable on API 31+. */
   fun tapTemplate(context: Context): PendingIntent {
@@ -97,6 +108,7 @@ internal object WidgetActions {
     val appContext = context.applicationContext
     executor.execute {
       try {
+        WidgetDb.dropOrphanedSoundTimers(appContext, WidgetPlayerService.habitId)
         work()
         WidgetUpdater.updateAll(appContext)
       } catch (e: Exception) {
@@ -227,6 +239,13 @@ class WidgetActionReceiver : BroadcastReceiver() {
     }
   }
 
+  private fun timerAction(context: Context, habitId: String, action: TimerAction) {
+    val appContext = context.applicationContext
+    WidgetActions.runAsync(this, context) {
+      WidgetDb.timerAction(appContext, habitId, action)?.let { WidgetPlayerService.apply(appContext, it) }
+    }
+  }
+
   private fun handleTap(context: Context, intent: Intent) {
     val kind = intent.getStringExtra(WidgetActions.EXTRA_TAP_KIND) ?: return
     if (kind == WidgetActions.TAP_NONE) return
@@ -246,9 +265,10 @@ class WidgetActionReceiver : BroadcastReceiver() {
         val minutes = intent.getIntExtra(WidgetActions.EXTRA_MINUTES, 0)
         WidgetActions.runAsync(this, context) { WidgetDb.logTimerMinutes(appContext, id, date, minutes) }
       }
-      WidgetActions.TAP_TIMER_TOGGLE -> {
-        WidgetActions.runAsync(this, context) { WidgetDb.toggleTimer(appContext, id) }
-      }
+      WidgetActions.TAP_TIMER_TOGGLE -> timerAction(context, id, TimerAction.TOGGLE)
+      WidgetActions.TAP_TIMER_STOP -> timerAction(context, id, TimerAction.STOP)
+      WidgetActions.TAP_TIMER_PAUSE -> timerAction(context, id, TimerAction.PAUSE)
+      WidgetActions.TAP_TIMER_ENDED -> timerAction(context, id, TimerAction.TRACK_ENDED)
       WidgetActions.TAP_TODO -> {
         WidgetActions.runAsync(this, context) { WidgetDb.completeTodo(appContext, id) }
       }

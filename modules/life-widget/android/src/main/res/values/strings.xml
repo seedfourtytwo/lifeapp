@@ -24,4 +24,12 @@
   <string name="life_widget_stop_timer_a11y">Stop the %1$s timer</string>
   <string name="life_widget_running_in_app">Running in the app</string>
   <string name="life_widget_paused_in_app">Paused in the app</string>
+  <string name="life_widget_player_channel">Timer sound</string>
+  <string name="life_widget_player_playing">Playing</string>
+  <string name="life_widget_player_paused">Paused</string>
+  <string name="life_widget_player_pause">Pause</string>
+  <string name="life_widget_player_resume">Resume</string>
+  <string name="life_widget_player_stop">Finish</string>
+  <string name="life_widget_pause_timer_a11y">Pause %1$s</string>
+  <string name="life_widget_resume_timer_a11y">Resume %1$s</string>
 </resources>

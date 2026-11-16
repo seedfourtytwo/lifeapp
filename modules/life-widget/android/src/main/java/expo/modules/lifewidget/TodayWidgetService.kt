@@ -78,6 +78,8 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     views.setInt(R.id.row_root, "setBackgroundResource", background)
     val disc = when {
       row.inApp -> R.drawable.life_widget_disc_in_app
+      runningSince != null && row.hasAudio ->
+        if (row.pausedElapsedMs != null) R.drawable.life_widget_disc_resume else R.drawable.life_widget_disc_pause
       runningSince != null -> R.drawable.life_widget_disc_stop
       row.state == HabitRowState.DONE -> R.drawable.life_widget_disc_done
       row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
@@ -120,7 +122,12 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
         views.setContentDescription(
           R.id.row_root,
           context.getString(
-            if (runningSince != null) R.string.life_widget_stop_timer_a11y else R.string.life_widget_start_timer_a11y,
+            when {
+              runningSince == null -> R.string.life_widget_start_timer_a11y
+              !row.hasAudio -> R.string.life_widget_stop_timer_a11y
+              row.pausedElapsedMs != null -> R.string.life_widget_resume_timer_a11y
+              else -> R.string.life_widget_pause_timer_a11y
+            },
             row.name,
           ),
         )
@@ -154,6 +161,16 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
           fillIn(WidgetActions.TAP_TIMER_LOG)
             .putExtra(WidgetActions.EXTRA_ID, row.id)
             .putExtra(WidgetActions.EXTRA_MINUTES, minutes),
+        )
+      }
+      if (runningSince != null && row.hasAudio && !row.inApp) {
+        // The row pauses a sound, so finishing needs its own button.
+        views.setViewVisibility(R.id.row_button_2, View.VISIBLE)
+        views.setTextViewText(R.id.row_button_2, STOP_GLYPH)
+        views.setContentDescription(R.id.row_button_2, context.getString(R.string.life_widget_stop_timer_a11y, row.name))
+        views.setOnClickFillInIntent(
+          R.id.row_button_2,
+          fillIn(WidgetActions.TAP_TIMER_STOP).putExtra(WidgetActions.EXTRA_ID, row.id),
         )
       }
     } else {
@@ -245,6 +262,11 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       fillIn(WidgetActions.TAP_TODO).putExtra(WidgetActions.EXTRA_ID, row.id),
     )
     return views
+  }
+
+  private companion object {
+    /** BLACK SQUARE: the stop symbol, the same in every language. */
+    const val STOP_GLYPH = "\u25A0"
   }
 
   private fun labelView(section: Section): RemoteViews {
