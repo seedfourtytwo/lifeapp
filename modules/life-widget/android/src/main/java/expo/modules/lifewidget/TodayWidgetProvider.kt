@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -30,12 +31,10 @@ internal object WidgetActions {
   const val EXTRA_DATE = "expo.modules.lifewidget.extra.DATE"
   const val EXTRA_WANT_DONE = "expo.modules.lifewidget.extra.WANT_DONE"
   const val EXTRA_INCREMENT = "expo.modules.lifewidget.extra.INCREMENT"
-  const val EXTRA_MINUTES = "expo.modules.lifewidget.extra.MINUTES"
 
   const val TAP_HABIT = "habit"
   const val TAP_COUNTER = "counter"
   const val TAP_TODO = "todo"
-  const val TAP_TIMER_LOG = "timer_log"
   const val TAP_TIMER_TOGGLE = "timer_toggle"
   const val TAP_TIMER_STOP = "timer_stop"
   /** From the player, never from a row: the audio was interrupted / the track finished. */
@@ -47,11 +46,17 @@ internal object WidgetActions {
   private const val REQUEST_TAP_TEMPLATE = 1
   private const val REQUEST_ALARM = 2
   private const val REQUEST_OPEN_APP = 3
+  private const val REQUEST_NOW_TOGGLE = 4
+  private const val REQUEST_NOW_STOP = 5
 
   /** One background thread per :widget process: every DB read and write runs here in order. */
   val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
-  /** Only the "no data yet" message opens the app: every row acts inside the widget. */
+  /**
+   * Opens the app. Only the header's open button and the "no data yet" message
+   * use it: every row acts inside the widget, because from the lock-screen page
+   * a launch needs the unlock first.
+   */
   fun openAppPendingIntent(context: Context): PendingIntent? {
     // The package's own launch intent, so `.dev` and release both work.
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
@@ -70,6 +75,15 @@ internal object WidgetActions {
       .setAction(ACTION_TAP)
       .putExtra(EXTRA_TAP_KIND, kind)
       .putExtra(EXTRA_ID, habitId)
+
+  /** A button of the "running now" bar, which is outside the list and so cannot use a fill-in. */
+  fun nowBarIntent(context: Context, stop: Boolean, habitId: String): PendingIntent =
+    PendingIntent.getBroadcast(
+      context,
+      if (stop) REQUEST_NOW_STOP else REQUEST_NOW_TOGGLE,
+      timerIntent(context, if (stop) TAP_TIMER_STOP else TAP_TIMER_TOGGLE, habitId),
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
   /** The list's click template. Fill-in intents add the extras, so it must be mutable on API 31+. */
   fun tapTemplate(context: Context): PendingIntent {
@@ -121,7 +135,9 @@ internal object WidgetActions {
 
   /**
    * Inexact alarm (no exact-alarm permission): just after the next local
-   * midnight, or earlier at the next habit visibility-window boundary.
+   * midnight, or earlier at the next habit visibility-window boundary. While a
+   * timer runs, every minute, so its row's minutes keep up (RTC, not a wake-up:
+   * it only fires while the phone is awake to show it).
    */
   fun scheduleNextRefresh(context: Context, snapshot: WidgetSnapshot) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
@@ -135,7 +151,15 @@ internal object WidgetActions {
         if (at > System.currentTimeMillis() && at < triggerAt) triggerAt = at
       }
     }
-    alarmManager.setWindow(AlarmManager.RTC, triggerAt, 10 * 60 * 1000L, alarmPendingIntent(context))
+    var window = 10 * 60 * 1000L
+    val timerRunning = snapshot is WidgetSnapshot.Ready && snapshot.model.rows.any {
+      it is WidgetRow.Habit && it.runningSinceMs != null && it.pausedElapsedMs == null
+    }
+    if (timerRunning) {
+      triggerAt = minOf(triggerAt, System.currentTimeMillis() + 60_000L)
+      window = 20_000L
+    }
+    alarmManager.setWindow(AlarmManager.RTC, triggerAt, window, alarmPendingIntent(context))
   }
 
   fun cancelRefresh(context: Context) {
@@ -146,7 +170,6 @@ internal object WidgetActions {
 
 internal object WidgetUpdater {
   /** Call on WidgetActions.executor only (reads the DB). */
-  @Suppress("DEPRECATION") // notifyAppWidgetViewDataChanged: replaced only by RemoteCollectionItems (API 31+).
   fun updateAll(context: Context) {
     val manager = AppWidgetManager.getInstance(context)
     val ids = manager.getAppWidgetIds(ComponentName(context, TodayWidgetProvider::class.java))
@@ -158,11 +181,14 @@ internal object WidgetUpdater {
     for (id in ids) {
       manager.updateAppWidget(id, buildViews(context, id, snapshot))
     }
-    manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      // Below API 31 the list comes from TodayWidgetService and has to be told to reload.
+      @Suppress("DEPRECATION")
+      manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
+    }
     WidgetActions.scheduleNextRefresh(context, snapshot)
   }
 
-  @Suppress("DEPRECATION") // setRemoteAdapter(int, Intent): RemoteCollectionItems needs API 31.
   private fun buildViews(context: Context, appWidgetId: Int, snapshot: WidgetSnapshot): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.life_widget_today)
 
@@ -186,19 +212,81 @@ internal object WidgetUpdater {
       ),
     )
 
-    val adapter = Intent(context, TodayWidgetService::class.java)
-      .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-    // A distinct data URI per widget id, so the system does not reuse one factory for all.
-    adapter.data = Uri.parse(adapter.toUri(Intent.URI_INTENT_SCHEME))
-    views.setRemoteAdapter(R.id.widget_list, adapter)
+    bindNowBar(context, views, snapshot)
+    bindList(context, views, appWidgetId, snapshot)
     views.setEmptyView(R.id.widget_list, R.id.widget_empty)
     views.setPendingIntentTemplate(R.id.widget_list, WidgetActions.tapTemplate(context))
 
     val open = WidgetActions.openAppPendingIntent(context)
-    if (open != null && snapshot is WidgetSnapshot.NoDatabase) {
-      views.setOnClickPendingIntent(R.id.widget_empty, open)
+    if (open != null) {
+      views.setOnClickPendingIntent(R.id.widget_open, open)
+      if (snapshot is WidgetSnapshot.NoDatabase) views.setOnClickPendingIntent(R.id.widget_empty, open)
     }
     return views
+  }
+
+  /**
+   * From API 31 the rows are built here and sent inside the widget's own
+   * RemoteViews. The older adapter service is filled in by the system on its
+   * own schedule, after the header — on recent Android versions late enough
+   * that a second update could put an old header back over a new list.
+   */
+  private fun bindList(context: Context, views: RemoteViews, appWidgetId: Int, snapshot: WidgetSnapshot) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      val rows = if (snapshot is WidgetSnapshot.Ready) snapshot.model.rows else emptyList()
+      val builder = WidgetRows(context, (snapshot as? WidgetSnapshot.Ready)?.today?.toString() ?: "")
+      val items = RemoteViews.RemoteCollectionItems.Builder()
+        .setHasStableIds(true)
+        .setViewTypeCount(builder.viewTypeCount)
+      for (row in rows) items.addItem(builder.itemId(row), builder.views(row))
+      views.setRemoteAdapter(R.id.widget_list, items.build())
+      return
+    }
+    val adapter = Intent(context, TodayWidgetService::class.java)
+      .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+    // A distinct data URI per widget id, so the system does not reuse one factory for all.
+    adapter.data = Uri.parse(adapter.toUri(Intent.URI_INTENT_SCHEME))
+    @Suppress("DEPRECATION")
+    views.setRemoteAdapter(R.id.widget_list, adapter)
+  }
+
+  /** The first timer the widget itself is running, with a live clock and its controls. */
+  private fun bindNowBar(context: Context, views: RemoteViews, snapshot: WidgetSnapshot) {
+    val row = (snapshot as? WidgetSnapshot.Ready)?.model?.rows
+      ?.firstOrNull { it is WidgetRow.Habit && it.runningSinceMs != null && !it.inApp } as? WidgetRow.Habit
+    val since = row?.runningSinceMs
+    if (row == null || since == null) {
+      views.setViewVisibility(R.id.widget_now, View.GONE)
+      return
+    }
+    views.setViewVisibility(R.id.widget_now, View.VISIBLE)
+    views.setTextViewText(R.id.widget_now_name, row.name)
+    // The chronometer counts from a base on the uptime clock; ours is wall-clock.
+    val paused = row.pausedElapsedMs
+    val elapsed = paused ?: (System.currentTimeMillis() - since)
+    views.setChronometer(R.id.widget_now_clock, SystemClock.elapsedRealtime() - elapsed, null, paused == null)
+
+    val stop = WidgetActions.nowBarIntent(context, stop = true, habitId = row.id)
+    views.setImageViewResource(R.id.widget_now_stop, R.drawable.life_widget_ic_stop)
+    views.setContentDescription(R.id.widget_now_stop, context.getString(R.string.life_widget_stop_timer_a11y, row.name))
+    views.setOnClickPendingIntent(R.id.widget_now_stop, stop)
+    if (row.hasAudio) {
+      views.setViewVisibility(R.id.widget_now_toggle, View.VISIBLE)
+      views.setImageViewResource(
+        R.id.widget_now_toggle,
+        if (paused != null) R.drawable.life_widget_ic_play else R.drawable.life_widget_ic_pause,
+      )
+      views.setContentDescription(
+        R.id.widget_now_toggle,
+        context.getString(
+          if (paused != null) R.string.life_widget_resume_timer_a11y else R.string.life_widget_pause_timer_a11y,
+          row.name,
+        ),
+      )
+      views.setOnClickPendingIntent(R.id.widget_now_toggle, WidgetActions.nowBarIntent(context, stop = false, habitId = row.id))
+    } else {
+      views.setViewVisibility(R.id.widget_now_toggle, View.GONE)
+    }
   }
 }
 
@@ -260,10 +348,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
       WidgetActions.TAP_COUNTER -> {
         val increment = intent.getDoubleExtra(WidgetActions.EXTRA_INCREMENT, 0.0)
         WidgetActions.runAsync(this, context) { WidgetDb.incrementCounter(appContext, id, date, increment) }
-      }
-      WidgetActions.TAP_TIMER_LOG -> {
-        val minutes = intent.getIntExtra(WidgetActions.EXTRA_MINUTES, 0)
-        WidgetActions.runAsync(this, context) { WidgetDb.logTimerMinutes(appContext, id, date, minutes) }
       }
       WidgetActions.TAP_TIMER_TOGGLE -> timerAction(context, id, TimerAction.TOGGLE)
       WidgetActions.TAP_TIMER_STOP -> timerAction(context, id, TimerAction.STOP)

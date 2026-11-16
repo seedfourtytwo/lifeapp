@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A timer the widget is running: an accent ring around a solid accent dot. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
   android:width="28dp"
   android:height="28dp"
@@ -6,10 +7,10 @@
   android:viewportHeight="28">
   <path
     android:fillColor="#00000000"
-    android:strokeColor="@color/life_widget_text_muted"
+    android:strokeColor="@color/life_widget_accent"
     android:strokeWidth="2"
     android:pathData="M14,3 A11,11 0 1,1 14,25 A11,11 0 1,1 14,3 Z" />
   <path
-    android:fillColor="@color/life_widget_text_muted"
-    android:pathData="M11.5,9.5 L18.5,14 L11.5,18.5 Z" />
+    android:fillColor="@color/life_widget_accent"
+    android:pathData="M14,9 A5,5 0 1,1 14,19 A5,5 0 1,1 14,9 Z" />
 </vector>

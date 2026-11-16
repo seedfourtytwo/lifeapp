@@ -41,6 +41,16 @@
       android:fontFamily="sans-serif-medium"
       android:textColor="@color/life_widget_accent"
       android:textSize="20sp" />
+
+    <!-- The one deliberate way into the app; from the lock screen it asks for the unlock. -->
+    <ImageView
+      android:id="@+id/widget_open"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      android:layout_marginStart="4dp"
+      android:contentDescription="@string/life_widget_open_app"
+      android:scaleType="center"
+      android:src="@drawable/life_widget_ic_open_muted" />
   </LinearLayout>
 
   <ProgressBar
@@ -54,6 +64,57 @@
     android:layout_marginBottom="8dp"
     android:importantForAccessibility="no"
     android:progressDrawable="@drawable/life_widget_progress" />
+
+  <!-- The timer running now, pinned above the list with a live clock and its controls. -->
+  <LinearLayout
+    android:id="@+id/widget_now"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:minHeight="64dp"
+    android:background="@drawable/life_widget_now"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp"
+    android:visibility="gone">
+
+    <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:orientation="vertical">
+
+      <TextView
+        android:id="@+id/widget_now_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/life_widget_on_button"
+        android:textSize="14sp" />
+
+      <Chronometer
+        android:id="@+id/widget_now_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:fontFeatureSettings="tnum"
+        android:textColor="@color/life_widget_on_button"
+        android:textSize="26sp" />
+    </LinearLayout>
+
+    <ImageView
+      android:id="@+id/widget_now_toggle"
+      style="@style/LifeWidgetIconButton"
+      android:background="@drawable/life_widget_button_strong" />
+
+    <ImageView
+      android:id="@+id/widget_now_stop"
+      style="@style/LifeWidgetIconButton"
+      android:layout_marginStart="2dp"
+      android:background="@drawable/life_widget_button_strong" />
+  </LinearLayout>
 
   <FrameLayout
     android:layout_width="match_parent"

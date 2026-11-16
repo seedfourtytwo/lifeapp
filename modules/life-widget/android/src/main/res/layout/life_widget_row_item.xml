@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One habit or counter: icon, name over figures and a progress bar, up to two quick buttons. -->
+<!-- One habit or counter: icon, name over figures and a progress bar, up to two buttons. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/row_root"
   android:layout_width="match_parent"
@@ -69,19 +69,6 @@
       android:visibility="gone" />
   </LinearLayout>
 
-  <!-- A running widget timer: replaces the quick buttons. -->
-  <Chronometer
-    android:id="@+id/row_clock"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:fontFamily="sans-serif-medium"
-    android:fontFeatureSettings="tnum"
-    android:paddingStart="8dp"
-    android:paddingEnd="10dp"
-    android:textColor="@color/life_widget_accent"
-    android:textSize="24sp"
-    android:visibility="gone" />
-
   <TextView
     android:id="@+id/row_button_1"
     style="@style/LifeWidgetButton" />
@@ -90,4 +77,16 @@
     android:id="@+id/row_button_2"
     style="@style/LifeWidgetButton"
     android:layout_marginStart="2dp" />
+
+  <!-- Timer controls: play, pause, finish. Counters use the two text buttons instead. -->
+  <ImageView
+    android:id="@+id/row_action_1"
+    style="@style/LifeWidgetIconButton"
+    android:visibility="gone" />
+
+  <ImageView
+    android:id="@+id/row_action_2"
+    style="@style/LifeWidgetIconButton"
+    android:layout_marginStart="2dp"
+    android:visibility="gone" />
 </LinearLayout>

@@ -135,8 +135,8 @@ class TodayRulesTest {
       ),
       model.rows.map { it.key },
     )
-    // Due: a, b and the targeted counter. Done: b.
-    assertEquals(3, model.due)
+    // Due: a, b, the targeted counter and the two open todos. Done: b.
+    assertEquals(5, model.due)
     assertEquals(1, model.done)
     val counterRow = model.rows.filterIsInstance<WidgetRow.Counter>().single()
     assertEquals(listOf(1.0, 5.0), counterRow.increments)
@@ -172,43 +172,6 @@ class TodayRulesTest {
       0,
     )
     assertEquals(listOf("todo:t"), model.rows.map { it.key })
-  }
-
-  @Test
-  fun timerQuickMinutesScaleWithTheGoal() {
-    assertEquals(listOf(5, 15), TodayRules.timerQuickMinutes(null))
-    assertEquals(listOf(5, 15), TodayRules.timerQuickMinutes(30))
-    assertEquals(listOf(15, 30), TodayRules.timerQuickMinutes(31))
-    assertEquals(listOf(15, 30), TodayRules.timerQuickMinutes(90))
-  }
-
-  @Test
-  fun timerRowsOfferQuickLogUnlessATrackMustFinish() {
-    val plain = HabitInput("p", "Reading", habit("""{"trackingMode":"timer","dailyTargetSeconds":3600}"""))
-    val track = HabitInput(
-      "t",
-      "Meditation",
-      habit("""{"trackingMode":"timer","timerSound":{"trackId":"meditation15min","playbackMode":"play_once"}}"""),
-    )
-    val trackWithGoal = HabitInput(
-      "g",
-      "Breathing",
-      habit(
-        """{"trackingMode":"timer","dailyTargetSeconds":1200,"timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}""",
-      ),
-    )
-    val model = TodayRules.buildToday(
-      listOf(plain, track, trackWithGoal),
-      { _: String, _: LocalDate -> DayFacts.EMPTY },
-      emptyList(),
-      emptyList(),
-      monday,
-      12 * 60,
-    )
-    val byId = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
-    assertEquals(listOf(15, 30), byId.getValue("p").quickMinutes)
-    assertEquals(emptyList<Int>(), byId.getValue("t").quickMinutes)
-    assertEquals(listOf(5, 15), byId.getValue("g").quickMinutes)
   }
 
   @Test
@@ -265,10 +228,9 @@ class TodayRulesTest {
     val tick = HabitInput("b", "No Smoking", habit("{}"))
     val model = TodayRules.buildToday(listOf(track, plain, tick), { _, _ -> DayFacts.EMPTY }, emptyList(), emptyList(), monday, 0)
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
-    // A track habit runs through the widget's player; it still has no quick-log buttons.
+    // A track habit runs through the widget's player.
     assertTrue(rows.getValue("t").canRun)
     assertTrue(rows.getValue("t").hasAudio)
-    assertEquals(emptyList<Int>(), rows.getValue("t").quickMinutes)
     assertTrue(rows.getValue("p").canRun)
     assertFalse(rows.getValue("p").hasAudio)
     assertFalse(rows.getValue("b").canRun)
@@ -440,7 +402,7 @@ class TodayRulesTest {
   }
 
   @Test
-  fun anySessionCountsCompletesBelowTheGoalAndAllowsQuickLog() {
+  fun anySessionCountsCompletesBelowTheGoal() {
     val goal = habit("""{"trackingMode":"timer","dailyTargetSeconds":900,"anySessionCounts":true}""")
     assertTrue(TodayRules.isHabitDayComplete(goal, DayFacts(total = 120.0)))
     assertFalse(TodayRules.isHabitDayComplete(goal, DayFacts.EMPTY))
@@ -448,9 +410,42 @@ class TodayRulesTest {
       """{"trackingMode":"timer","anySessionCounts":true,"timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}""",
     )
     assertTrue(TodayRules.isHabitDayComplete(track, DayFacts(total = 120.0)))
-    assertTrue(TodayRules.canQuickLog(track))
     // Means nothing on a tick habit.
     assertFalse(habit("""{"anySessionCounts":true}""").anySessionCounts)
+  }
+
+  @Test
+  fun todosTickedTodayMoveTheHeader() {
+    val model = TodayRules.buildToday(
+      listOf(HabitInput("a", "Open", habit("{}"))),
+      { _, _ -> DayFacts.EMPTY },
+      emptyList(),
+      listOf(TodoInput("t1", "One", null, 0), TodoInput("t2", "Two", null, 1)),
+      monday,
+      0,
+      todosDoneToday = 3,
+    )
+    // One habit, two open todos, three todos already ticked today.
+    assertEquals(6, model.due)
+    assertEquals(3, model.done)
+  }
+
+  @Test
+  fun aRunningTimerShowsItsLiveMinutesAndStart() {
+    val reading = HabitInput("r", "Reading", habit("""{"trackingMode":"timer","dailyTargetSeconds":3600}"""))
+    val facts = { _: String, _: LocalDate -> DayFacts(total = 600.0) }
+    val now = 10_000_000L
+    val model = TodayRules.buildToday(
+      listOf(reading), facts, emptyList(), emptyList(), monday, 0,
+      // Started 12.5 minutes ago, 2 of them paused.
+      runningTimers = mapOf("r" to RunningTimer(now - 750_000, "2026-11-16", null, 120_000)),
+      nowMs = now,
+    )
+    val row = model.rows.filterIsInstance<WidgetRow.Habit>().single()
+    // 10 logged minutes + 10.5 live ones.
+    assertEquals(20, row.timerMinutes)
+    assertEquals(now - 750_000, row.startedAtMs)
+    assertEquals(now - 630_000, row.runningSinceMs)
   }
 
   @Test

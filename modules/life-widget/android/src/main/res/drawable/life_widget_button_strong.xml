@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A capsule for buttons that sit on the tonal "running now" bar: the card colour, so it still reads as a button. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+  android:insetTop="6dp"
+  android:insetBottom="6dp"
+  android:insetLeft="3dp"
+  android:insetRight="3dp">
+  <shape android:shape="rectangle">
+    <solid android:color="@color/life_widget_card" />
+    <corners android:radius="22dp" />
+  </shape>
+</inset>

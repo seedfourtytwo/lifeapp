@@ -132,12 +132,10 @@ sealed class WidgetRow {
     val name: String,
     val state: HabitRowState,
     val timer: Boolean,
-    /** Timer habits: whole minutes logged today. */
+    /** Timer habits: whole minutes today, a running timer's live time included. */
     val timerMinutes: Int = 0,
     /** Timer habits: goal in minutes, when there is one. */
     val timerTargetMinutes: Int? = null,
-    /** Timer habits: minutes the widget's quick-log buttons add. Empty when the app must run the timer. */
-    val quickMinutes: List<Int> = emptyList(),
     /** Timer habits: a tap on the row starts the widget's timer. */
     val canRun: Boolean = false,
     /** The timer plays a sound: a tap on a running row pauses, and the row has a stop button. */
@@ -147,6 +145,8 @@ sealed class WidgetRow {
      * For an app timer, moved forward by the time it has spent paused.
      */
     val runningSinceMs: Long? = null,
+    /** When the running timer was started (epoch ms), pauses not taken out. */
+    val startedAtMs: Long? = null,
     /** Set while the timer is paused: the active time it shows, frozen. */
     val pausedElapsedMs: Long? = null,
     /** The running timer belongs to the app: the widget shows it and leaves it alone. */
@@ -195,7 +195,7 @@ data class OrderableElement<T>(val value: T, val createdAt: String, val sortOrde
 
 data class TodayModel(
   val rows: List<WidgetRow>,
-  /** Header figures: done of due, habits plus counters that have a target. */
+  /** Header figures: done of due — habits, counters that have a target, and today's todos. */
   val done: Int,
   val due: Int,
 )
@@ -500,6 +500,10 @@ object TodayRules {
     runningTimers: Map<String, RunningTimer> = emptyMap(),
     /** Habit id → the timer the app is running on it. Shown, never controlled, by the widget. */
     appTimers: Map<String, AppTimer> = emptyMap(),
+    /** Todos completed today: they have left the list but still count in the header. */
+    todosDoneToday: Int = 0,
+    /** Now (epoch ms), for a running timer's live minutes. */
+    nowMs: Long = 0,
   ): TodayModel {
     val open = ArrayList<WidgetRow>()
     val counterRows = ArrayList<WidgetRow>()
@@ -531,7 +535,8 @@ object TodayRules {
       }
 
       val row = if (habit.rules.timer) {
-        val seconds = habitFacts(habit.id, today).total
+        val live = shown?.let { timerElapsedMs(it, nowMs) / 1000.0 } ?: 0.0
+        val seconds = habitFacts(habit.id, today).total + live
         val target = habit.rules.dailyTargetSeconds ?: habit.rules.playOnceTrackSeconds
         WidgetRow.Habit(
           id = habit.id,
@@ -540,14 +545,10 @@ object TodayRules {
           timer = true,
           timerMinutes = Math.floor(seconds / 60.0).toInt(),
           timerTargetMinutes = target?.let { Math.round(it / 60.0).toInt() },
-          quickMinutes = if (canQuickLog(habit.rules)) {
-            timerQuickMinutes(habit.rules.dailyTargetSeconds?.let { Math.round(it / 60.0).toInt() })
-          } else {
-            emptyList()
-          },
           canRun = true,
           hasAudio = habit.rules.soundTrackId != null,
           runningSinceMs = runningSince,
+          startedAtMs = shown?.startedAtMs,
           pausedElapsedMs = shown?.pausedAtMs?.let { timerElapsedMs(shown, it) },
           inApp = appTimer != null,
         )
@@ -578,6 +579,8 @@ object TodayRules {
     }
 
     val todoRows = sortTodos(todos, today.toString()).take(MAX_TODOS).map { WidgetRow.Todo(it.id, it.title) }
+    due += todoRows.size + todosDoneToday
+    done += todosDoneToday
 
     val sections = listOf(
       Section.HABITS to open,
@@ -613,18 +616,6 @@ object TodayRules {
   /** Meta of a counter quick tap: `{ source: 'quick_button', increment }` (CounterWidget.tsx). */
   fun counterMetaJson(increment: Double): String =
     "{\"source\":\"quick_button\",\"increment\":${formatNumber(increment)}}"
-
-  /**
-   * A play_once track habit without a time goal is complete only when the track
-   * finishes (`trackCompleted`), which logged minutes never set: it has to be played.
-   */
-  fun canQuickLog(rules: HabitRules): Boolean =
-    rules.timer &&
-      (rules.playOnceTrackSeconds == null || rules.dailyTargetSeconds != null || rules.anySessionCounts)
-
-  /** Two chunk sizes that fit the goal: small ones for short goals, bigger ones for long. */
-  fun timerQuickMinutes(targetMinutes: Int?): List<Int> =
-    if (targetMinutes == null || targetMinutes <= 30) listOf(5, 15) else listOf(15, 30)
 
   // ---- timers shared through app_settings ------------------------------------
 

@@ -169,7 +169,16 @@ object WidgetDb {
     }
 
     val todos = ArrayList<TodoInput>()
+    var todosDoneToday = 0
     if (hasTable(db, "todos")) {
+      // completed_at is a UTC ISO string, which sorts as time: today is a range of them.
+      val zone = java.time.ZoneId.systemDefault()
+      val dayStart = TodayRules.isoTimestamp(today.atStartOfDay(zone).toInstant())
+      val dayEnd = TodayRules.isoTimestamp(today.plusDays(1).atStartOfDay(zone).toInstant())
+      todosDoneToday = db.rawQuery(
+        "SELECT COUNT(*) FROM todos WHERE completed_at >= ? AND completed_at < ?",
+        arrayOf(dayStart, dayEnd),
+      ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
       db.rawQuery(
         "SELECT id, title, due_date, sort_order FROM todos WHERE completed_at IS NULL",
         null,
@@ -196,6 +205,8 @@ object WidgetDb {
       minuteOfDay = minuteOfDay,
       runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)),
       appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
+      todosDoneToday = todosDoneToday,
+      nowMs = System.currentTimeMillis(),
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
   }
@@ -316,30 +327,6 @@ object WidgetDb {
       inImmediateTransaction(db) {
         if (activeConfig(db, elementId, "counter") == null) return@inImmediateTransaction
         insertEvent(db, elementId, today, increment, TodayRules.counterMetaJson(increment))
-      }
-    }
-  }
-
-  /**
-   * Logs `minutes` on a timer habit as one finished session ending now, the same
-   * row the app writes when a timer stops. Refuses habits the app has to time.
-   */
-  fun logTimerMinutes(context: Context, elementId: String, shownDate: String, minutes: Int) {
-    if (minutes <= 0) return
-    withDb(context) { db ->
-      val today = LocalDate.now().toString()
-      if (today != shownDate) return@withDb
-      inImmediateTransaction(db) {
-        val config = activeConfig(db, elementId, "habit") ?: return@inImmediateTransaction
-        val rules = TodayRules.parseHabitConfig(config) ?: return@inImmediateTransaction
-        if (!TodayRules.canQuickLog(rules)) return@inImmediateTransaction
-        val seconds = minutes * 60
-        val end = Instant.now()
-        insertEvent(db, elementId, today, seconds.toDouble(), TodayRules.timerSessionMetaJson(end.minusSeconds(seconds.toLong()), end, seconds))
-        // Logging on a skipped day completes it like the app does: drop the skip row.
-        for (id in readDay(db, elementId, today).skipIds) {
-          db.delete("events", "id = ?", arrayOf(id))
-        }
       }
     }
   }
