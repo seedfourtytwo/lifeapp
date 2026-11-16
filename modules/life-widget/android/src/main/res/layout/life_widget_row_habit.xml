@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/row_root"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="48dp"
+  android:gravity="center_vertical"
+  android:orientation="horizontal"
+  android:paddingTop="4dp"
+  android:paddingBottom="4dp">
+
+  <ImageView
+    android:id="@+id/row_disc"
+    android:layout_width="28dp"
+    android:layout_height="28dp"
+    android:importantForAccessibility="no"
+    android:src="@drawable/life_widget_disc_open" />
+
+  <TextView
+    android:id="@+id/row_name"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_weight="1"
+    android:ellipsize="end"
+    android:maxLines="2"
+    android:textColor="@color/life_widget_text"
+    android:textSize="16sp" />
+
+  <TextView
+    android:id="@+id/row_name_settled"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_weight="1"
+    android:ellipsize="end"
+    android:maxLines="2"
+    android:textColor="@color/life_widget_text_muted"
+    android:textSize="16sp"
+    android:visibility="gone" />
+
+  <TextView
+    android:id="@+id/row_meta"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    android:fontFeatureSettings="tnum"
+    android:maxLines="1"
+    android:paddingEnd="4dp"
+    android:textColor="@color/life_widget_text_muted"
+    android:textSize="14sp"
+    android:visibility="gone" />
+</LinearLayout>

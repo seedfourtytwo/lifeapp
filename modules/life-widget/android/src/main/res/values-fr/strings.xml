@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="life_widget_name">Aujourd’hui</string>
+  <string name="life_widget_description">Cochez vos habitudes, comptez et terminez vos tâches depuis l’écran d’accueil.</string>
+  <string name="life_widget_empty_no_db">Ouvrez Life pour commencer</string>
+  <string name="life_widget_empty_all_done">Tout est fait pour aujourd’hui</string>
+  <string name="life_widget_label_todos">Tâches</string>
+  <string name="life_widget_timer_progress">%1$d / %2$d min</string>
+  <string name="life_widget_timer_minutes">%1$d min</string>
+  <string name="life_widget_mark_done_a11y">Marquer %1$s comme fait</string>
+  <string name="life_widget_mark_not_done_a11y">Marquer %1$s comme pas fait</string>
+  <string name="life_widget_add_a11y">%1$s à %2$s</string>
+  <string name="life_widget_complete_todo_a11y">Terminer %1$s</string>
+  <string name="life_widget_preview_date">lun. 16</string>
+  <string name="life_widget_preview_habit">Méditer</string>
+  <string name="life_widget_preview_counter">Eau</string>
+  <string name="life_widget_preview_todo">Appeler la banque</string>
+  <string name="life_widget_preview_done">Lire</string>
+</resources>

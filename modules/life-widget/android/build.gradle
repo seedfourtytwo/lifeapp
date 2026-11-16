@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'life.dashboard'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.lifewidget"
+  defaultConfig {
+    minSdkVersion 26
+    versionCode 1
+    versionName '1.0.0'
+  }
+  testOptions {
+    unitTests.all { test ->
+      // TodayRulesFixtureTest walks up from here to find __tests__/fixtures/dayRules.json.
+      test.systemProperty 'lifewidget.projectDir', project.projectDir.absolutePath
+    }
+  }
+}
+
+dependencies {
+  testImplementation 'junit:junit:4.13.2'
+}

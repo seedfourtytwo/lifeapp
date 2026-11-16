@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Fallbacks below API 31: deco.radius.lg and deco.radius.md (src/theme/decorations.ts). -->
+  <dimen name="life_widget_radius">20dp</dimen>
+  <dimen name="life_widget_inner_radius">14dp</dimen>
+</resources>

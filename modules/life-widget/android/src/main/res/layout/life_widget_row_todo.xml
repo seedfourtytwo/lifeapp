@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/row_root"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="48dp"
+  android:gravity="center_vertical"
+  android:orientation="horizontal">
+
+  <!-- The box is the touch target (48dp tall, 40dp wide so titles align with habit names). -->
+  <FrameLayout
+    android:id="@+id/row_box"
+    android:layout_width="40dp"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp">
+
+    <ImageView
+      android:layout_width="28dp"
+      android:layout_height="28dp"
+      android:layout_gravity="start|center_vertical"
+      android:importantForAccessibility="no"
+      android:src="@drawable/life_widget_todo_box" />
+  </FrameLayout>
+
+  <TextView
+    android:id="@+id/row_name"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:ellipsize="end"
+    android:maxLines="2"
+    android:textColor="@color/life_widget_text"
+    android:textSize="16sp" />
+</LinearLayout>

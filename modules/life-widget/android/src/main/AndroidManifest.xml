@@ -1,0 +1,42 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      WHY android:process=":widget" ON EVERYTHING BELOW: these components open the
+      app's SQLite file with android.database.sqlite. The app's JS side opens the
+      same file through expo-sqlite, which bundles its own SQLite library. Two
+      SQLite copies in one OS process break each other's POSIX file locks (closing
+      the file in one drops the other's locks) and can corrupt the database. In a
+      separate process the locks are kept apart by the kernel and WAL makes
+      concurrent access safe. Never declare a DB-touching component without it,
+      and never open the DB from the main process (LifeWidgetModule only sends a
+      broadcast).
+    -->
+    <receiver
+      android:name="expo.modules.lifewidget.TodayWidgetProvider"
+      android:exported="true"
+      android:label="@string/life_widget_name"
+      android:process=":widget">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/life_widget_today_info" />
+    </receiver>
+
+    <receiver
+      android:name="expo.modules.lifewidget.WidgetActionReceiver"
+      android:exported="false"
+      android:process=":widget" />
+
+    <service
+      android:name="expo.modules.lifewidget.TodayWidgetService"
+      android:exported="false"
+      android:permission="android.permission.BIND_REMOTEVIEWS"
+      android:process=":widget" />
+  </application>
+</manifest>

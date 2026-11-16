@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="life_widget_name">Today</string>
+  <string name="life_widget_description">Tick habits, log counters and finish todos from your home screen.</string>
+  <string name="life_widget_empty_no_db">Open Life to get started</string>
+  <string name="life_widget_empty_all_done">All done for today</string>
+  <string name="life_widget_label_todos">Todos</string>
+  <string name="life_widget_timer_progress">%1$d / %2$d min</string>
+  <string name="life_widget_timer_minutes">%1$d min</string>
+  <string name="life_widget_mark_done_a11y">Mark %1$s as done</string>
+  <string name="life_widget_mark_not_done_a11y">Mark %1$s as not done</string>
+  <string name="life_widget_add_a11y">%1$s to %2$s</string>
+  <string name="life_widget_complete_todo_a11y">Complete %1$s</string>
+  <string name="life_widget_preview_date">Mon 16</string>
+  <string name="life_widget_preview_habit">Meditate</string>
+  <string name="life_widget_preview_counter">Water</string>
+  <string name="life_widget_preview_todo">Call the bank</string>
+  <string name="life_widget_preview_done">Read</string>
+</resources>

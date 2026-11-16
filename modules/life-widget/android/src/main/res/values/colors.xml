@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Below API 31: the app's light tokens (src/theme/themes.ts): ground, ink, ink2, moss, onMoss, mossTint, onMossTint. -->
+<resources>
+  <color name="life_widget_background">#ECEEEA</color>
+  <color name="life_widget_text">#18201C</color>
+  <color name="life_widget_text_muted">#58635D</color>
+  <color name="life_widget_accent">#2E6A4E</color>
+  <color name="life_widget_on_accent">#FFFFFF</color>
+  <color name="life_widget_button">#DCEADF</color>
+  <color name="life_widget_on_button">#1E4A35</color>
+</resources>

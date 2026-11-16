@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="32dp"
+  android:gravity="bottom"
+  android:paddingTop="8dp"
+  android:paddingBottom="4dp"
+  android:text="@string/life_widget_label_todos"
+  android:textColor="@color/life_widget_text_muted"
+  android:textSize="13sp" />
