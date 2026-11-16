@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { LifeEvent } from '../../protocol';
-import { EventSchema, PROTOCOL_VERSION } from '../../protocol';
+import type { HabitConfig, LifeEvent } from '../../protocol';
+import { EventSchema, isHabitDayComplete, PROTOCOL_VERSION } from '../../protocol';
+import { withImmediateTransaction } from '../immediateTransaction';
 
 /** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
 
@@ -166,32 +167,191 @@ export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise
   );
 }
 
+/** The id, time and meta for an event a write may add; the rest comes from the write. */
+export interface NewEventStub {
+  id: string;
+  timestamp: string;
+  meta?: Record<string, unknown>;
+}
+
+/** Collapse a day to one event of `total` (none at 0). Call inside a transaction. */
+async function collapseDayToTotal(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+  total: number,
+  newEvent: NewEventStub,
+): Promise<void> {
+  await deleteEventsForElementOnDate(db, elementId, date);
+  if (total > 0) {
+    await insertEvent(db, {
+      id: newEvent.id,
+      elementId,
+      timestamp: newEvent.timestamp,
+      date,
+      value: total,
+      meta: newEvent.meta,
+      protocolVersion: PROTOCOL_VERSION,
+    });
+  }
+}
+
 /**
- * Replace today's events for one element with a single total, atomically.
+ * Replace a day's events for one element with a single total, atomically.
  * The one same-day "replace" flow the protocol rules call out — never used
  * to rewrite a past day's history.
+ *
+ * Reads the day inside the same write transaction: if SQLite already holds
+ * `total` (another writer got there first) nothing is rewritten. Resolves to
+ * the day's total as committed.
  */
 export async function setDailyTotalForElement(
   db: SQLiteDatabase,
   elementId: string,
   date: string,
   total: number,
-  newEvent: { id: string; timestamp: string; meta?: Record<string, unknown> },
-): Promise<void> {
-  await db.withTransactionAsync(async () => {
-    await deleteEventsForElementOnDate(db, elementId, date);
-    if (total > 0) {
-      await insertEvent(db, {
-        id: newEvent.id,
-        elementId,
-        timestamp: newEvent.timestamp,
-        date,
-        value: total,
-        meta: newEvent.meta,
-        protocolVersion: PROTOCOL_VERSION,
-      });
-    }
+  newEvent: NewEventStub,
+): Promise<number> {
+  return withImmediateTransaction(db, async () => {
+    if ((await getDailyTotal(db, elementId, date)) === total) return total;
+    await collapseDayToTotal(db, elementId, date, total, newEvent);
+    return total;
   });
+}
+
+/**
+ * Move a day's total by `delta` from whatever SQLite holds now — counter Undo.
+ * Relative rather than "restore to N" so a +1 another writer (the home-screen
+ * widget) logged after the taps being undone survives the undo. Clamps at 0.
+ * Resolves to the day's total as committed.
+ */
+export async function adjustDailyTotalForElement(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+  delta: number,
+  newEvent: NewEventStub,
+): Promise<number> {
+  return withImmediateTransaction(db, async () => {
+    const current = await getDailyTotal(db, elementId, date);
+    const next = Math.max(0, current + delta);
+    if (next === current) return current;
+    await collapseDayToTotal(db, elementId, date, next, newEvent);
+    return next;
+  });
+}
+
+/** A habit day as SQLite holds it after a write — what the UI reconciles to. */
+export interface HabitDayAfterWrite {
+  done: boolean;
+  total: number;
+  events: LifeEvent[];
+  /** False when the day already matched the intent and nothing was written. */
+  changed: boolean;
+}
+
+/**
+ * Make a boolean habit's day match what the user asked for, atomically.
+ *
+ * `done` is the user's intent — the state they tapped toward, derived from what
+ * the screen showed — not "flip whatever SQLite says". Inside one IMMEDIATE
+ * transaction the day is read, then:
+ * - intent done, day not done → append one tick event;
+ * - intent not done, day done → delete the day's events (the existing untick);
+ * - day already matches the intent → write nothing.
+ * So a tick racing another writer's tick yields one event, and an untick of a
+ * day someone else already cleared is a quiet no-op.
+ */
+export async function applyHabitDayIntent(
+  db: SQLiteDatabase,
+  input: {
+    elementId: string;
+    date: string;
+    done: boolean;
+    config: HabitConfig;
+    newEvent: NewEventStub;
+  },
+): Promise<HabitDayAfterWrite> {
+  const { elementId, date, done, config, newEvent } = input;
+  return withImmediateTransaction(db, async () => {
+    const events = await getEventsForElementOnDate(db, elementId, date);
+    const total = events.reduce((sum, event) => sum + event.value, 0);
+    const isDone = isHabitDayComplete(total, config, events);
+    if (isDone === done) {
+      return { done: isDone, total, events, changed: false };
+    }
+    if (!done) {
+      await deleteEventsForElementOnDate(db, elementId, date);
+      return { done: false, total: 0, events: [], changed: true };
+    }
+    const tick: LifeEvent = {
+      id: newEvent.id,
+      elementId,
+      timestamp: newEvent.timestamp,
+      date,
+      value: 1,
+      meta: newEvent.meta,
+      protocolVersion: PROTOCOL_VERSION,
+    };
+    await insertEvent(db, tick);
+    const nextEvents = [...events, tick];
+    const nextTotal = total + 1;
+    return {
+      done: isHabitDayComplete(nextTotal, config, nextEvents),
+      total: nextTotal,
+      events: nextEvents,
+      changed: true,
+    };
+  });
+}
+
+/**
+ * Delete a day's events for one element and resolve to exactly what was
+ * deleted, in one transaction — so an Undo puts back everything the clear
+ * removed, including a row another writer added a moment before.
+ */
+export async function takeEventsForElementOnDate(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<LifeEvent[]> {
+  return withImmediateTransaction(db, async () => {
+    const events = await getEventsForElementOnDate(db, elementId, date);
+    await deleteEventsForElementOnDate(db, elementId, date);
+    return events;
+  });
+}
+
+/**
+ * Re-insert `events` only if the day is still empty, atomically. Resolves to
+ * false (writing nothing) when anything was logged on that day since.
+ */
+export async function restoreEventsIfDayEmpty(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+  events: readonly LifeEvent[],
+): Promise<boolean> {
+  return withImmediateTransaction(db, async () => {
+    if ((await getDailyEventCount(db, elementId, date)) > 0) return false;
+    for (const event of events) {
+      await insertEvent(db, event);
+    }
+    return true;
+  });
+}
+
+async function getDailyEventCount(
+  db: SQLiteDatabase,
+  elementId: string,
+  date: string,
+): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) as n FROM events WHERE element_id = ? AND date = ?',
+    elementId,
+    date,
+  );
+  return row?.n ?? 0;
 }
 
 export async function getDailyTotal(

@@ -21,8 +21,18 @@ export function invalidateDatabaseConnection(): void {
   initPromise = null;
 }
 
+/**
+ * How long a statement waits for another connection's write lock before failing
+ * with SQLITE_BUSY. The Android home-screen widget writes this file from its own
+ * connection; a tick there must make a tap here wait, not error.
+ */
+export const DB_BUSY_TIMEOUT_MS = 4_000;
+
 async function openAndMigrate(): Promise<SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
+  // Per-connection, never persisted — so it runs on every open, before the
+  // migrations (which write) and before anything else touches the connection.
+  await db.execAsync(`PRAGMA busy_timeout = ${DB_BUSY_TIMEOUT_MS};`);
   await runMigrations(db);
   return db;
 }

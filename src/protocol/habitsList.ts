@@ -9,7 +9,8 @@ import {
 export interface HabitListFilterContext {
   now: Date;
   today: string;
-  habitDoneToday: Record<string, boolean>;
+  /** Unused by the due-today filter; kept so existing callers still type-check. */
+  habitDoneToday?: Record<string, boolean>;
 }
 
 export function isHabitDueToday(
@@ -22,13 +23,17 @@ export function isHabitDueToday(
   );
 }
 
-/** Habits due today, in dashboard sort_order (caller supplies already-sorted active habits). */
+/**
+ * Habits due today, in dashboard sort_order (caller supplies already-sorted active habits).
+ * Pass `parsedConfigs` when the caller already parsed them, to skip a Zod parse per habit.
+ */
 export function filterHabitsDueToday(
   habits: ElementDefinition[],
   context: HabitListFilterContext,
+  parsedConfigs?: ReadonlyMap<string, HabitConfig>,
 ): ElementDefinition[] {
   return habits.filter((habit) => {
-    const config = HabitConfigSchema.parse(habit.config);
+    const config = parsedConfigs?.get(habit.id) ?? HabitConfigSchema.parse(habit.config);
     return isHabitDueToday(config, context);
   });
 }

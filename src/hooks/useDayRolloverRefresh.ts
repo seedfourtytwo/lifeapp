@@ -5,7 +5,11 @@ import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScr
 import { parseHabitConfig } from '../protocol';
 import { useElementStore } from '../store/elementStore';
 import { useEventStore } from '../store/eventStore';
-import { refreshAllDailyData, resetInMemoryDailyState } from './refreshAllDailyData';
+import {
+  refreshAllDailyData,
+  refreshTodayFromDb,
+  resetInMemoryDailyState,
+} from './refreshAllDailyData';
 import {
   currentAppCalendarDate,
   hasAppCalendarDayChanged,
@@ -52,7 +56,11 @@ async function refreshForNewCalendarDay(previousDate: string): Promise<void> {
 
 const ROLLOVER_RETRY_MS = 5_000;
 
-/** Reload habits and counters when the app calendar day changes or the app returns active. */
+/**
+ * Reload habits and counters when the app calendar day changes, and re-read
+ * today from SQLite whenever the app returns active — another writer (the
+ * home-screen widget) may have ticked or logged while it was in the background.
+ */
 export function useDayRolloverRefresh(): void {
   const dateRef = useRef(currentAppCalendarDate());
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,9 +112,13 @@ export function useDayRolloverRefresh(): void {
     scheduleNextDayRefresh();
 
     const subscription = AppState.addEventListener('change', (state: AppStateStatus) => {
-      if (state === 'active') {
+      if (state !== 'active') return;
+      if (hasAppCalendarDayChanged(dateRef.current) || inFlightRef.current) {
+        // A new day reloads everything; an in-flight rollover is doing so already.
         void handlePotentialRollover();
+        return;
       }
+      void refreshTodayFromDb();
     });
 
     return () => {
