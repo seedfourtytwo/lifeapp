@@ -3,7 +3,7 @@
   android:id="@+id/row_root"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:minHeight="48dp"
+  android:minHeight="64dp"
   android:gravity="center_vertical"
   android:orientation="horizontal">
 
@@ -15,7 +15,7 @@
     android:ellipsize="end"
     android:maxLines="2"
     android:textColor="@color/life_widget_text"
-    android:textSize="16sp" />
+    android:textSize="18sp" />
 
   <TextView
     android:id="@+id/row_total"
@@ -30,32 +30,10 @@
 
   <TextView
     android:id="@+id/row_button_1"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:minWidth="52dp"
-    android:minHeight="48dp"
-    android:background="@drawable/life_widget_button"
-    android:fontFeatureSettings="tnum"
-    android:gravity="center"
-    android:maxLines="1"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:textColor="@color/life_widget_on_button"
-    android:textSize="14sp" />
+    style="@style/LifeWidgetButton" />
 
   <TextView
     android:id="@+id/row_button_2"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginStart="4dp"
-    android:minWidth="52dp"
-    android:minHeight="48dp"
-    android:background="@drawable/life_widget_button"
-    android:fontFeatureSettings="tnum"
-    android:gravity="center"
-    android:maxLines="1"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:textColor="@color/life_widget_on_button"
-    android:textSize="14sp" />
+    style="@style/LifeWidgetButton"
+    android:layout_marginStart="6dp" />
 </LinearLayout>

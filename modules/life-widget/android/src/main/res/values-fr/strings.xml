@@ -16,4 +16,5 @@
   <string name="life_widget_preview_counter">Eau</string>
   <string name="life_widget_preview_todo">Appeler la banque</string>
   <string name="life_widget_preview_done">Lire</string>
+  <string name="life_widget_log_minutes_a11y">Ajouter %1$d minutes à %2$s</string>
 </resources>

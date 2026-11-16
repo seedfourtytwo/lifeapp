@@ -90,10 +90,37 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       }
       views.setTextViewText(R.id.row_meta, label)
       views.setViewVisibility(R.id.row_meta, View.VISIBLE)
+      if (target != null && target > 0) {
+        views.setProgressBar(R.id.row_progress, target, row.timerMinutes.coerceAtMost(target), false)
+        views.setViewVisibility(R.id.row_progress, View.VISIBLE)
+      } else {
+        views.setViewVisibility(R.id.row_progress, View.GONE)
+      }
       views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_OPEN_APP))
       views.setContentDescription(R.id.row_root, row.name)
+      val buttons = intArrayOf(R.id.row_button_1, R.id.row_button_2)
+      for ((index, buttonId) in buttons.withIndex()) {
+        val minutes = row.quickMinutes.getOrNull(index)
+        if (minutes == null) {
+          views.setViewVisibility(buttonId, View.GONE)
+          continue
+        }
+        val label = "+$minutes"
+        views.setViewVisibility(buttonId, View.VISIBLE)
+        views.setTextViewText(buttonId, label)
+        views.setContentDescription(buttonId, context.getString(R.string.life_widget_log_minutes_a11y, minutes, row.name))
+        views.setOnClickFillInIntent(
+          buttonId,
+          fillIn(WidgetActions.TAP_TIMER_LOG)
+            .putExtra(WidgetActions.EXTRA_ID, row.id)
+            .putExtra(WidgetActions.EXTRA_MINUTES, minutes),
+        )
+      }
     } else {
+      views.setViewVisibility(R.id.row_button_1, View.GONE)
+      views.setViewVisibility(R.id.row_button_2, View.GONE)
       views.setViewVisibility(R.id.row_meta, View.GONE)
+      views.setViewVisibility(R.id.row_progress, View.GONE)
       val wantDone = row.state != HabitRowState.DONE
       views.setOnClickFillInIntent(
         R.id.row_root,

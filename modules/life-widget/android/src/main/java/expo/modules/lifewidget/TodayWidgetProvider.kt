@@ -30,10 +30,12 @@ internal object WidgetActions {
   const val EXTRA_DATE = "expo.modules.lifewidget.extra.DATE"
   const val EXTRA_WANT_DONE = "expo.modules.lifewidget.extra.WANT_DONE"
   const val EXTRA_INCREMENT = "expo.modules.lifewidget.extra.INCREMENT"
+  const val EXTRA_MINUTES = "expo.modules.lifewidget.extra.MINUTES"
 
   const val TAP_HABIT = "habit"
   const val TAP_COUNTER = "counter"
   const val TAP_TODO = "todo"
+  const val TAP_TIMER_LOG = "timer_log"
   const val TAP_OPEN_APP = "open"
 
   private const val REQUEST_TAP_TEMPLATE = 1
@@ -160,8 +162,11 @@ internal object WidgetUpdater {
     if (snapshot is WidgetSnapshot.Ready && snapshot.model.due > 0) {
       views.setTextViewText(R.id.widget_progress, "${snapshot.model.done}/${snapshot.model.due}")
       views.setViewVisibility(R.id.widget_progress, View.VISIBLE)
+      views.setProgressBar(R.id.widget_progress_bar, snapshot.model.due, snapshot.model.done, false)
+      views.setViewVisibility(R.id.widget_progress_bar, View.VISIBLE)
     } else {
       views.setViewVisibility(R.id.widget_progress, View.GONE)
+      views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
     }
 
     views.setTextViewText(
@@ -247,6 +252,10 @@ class WidgetActionReceiver : BroadcastReceiver() {
       WidgetActions.TAP_COUNTER -> {
         val increment = intent.getDoubleExtra(WidgetActions.EXTRA_INCREMENT, 0.0)
         WidgetActions.runAsync(this, context) { WidgetDb.incrementCounter(appContext, id, date, increment) }
+      }
+      WidgetActions.TAP_TIMER_LOG -> {
+        val minutes = intent.getIntExtra(WidgetActions.EXTRA_MINUTES, 0)
+        WidgetActions.runAsync(this, context) { WidgetDb.logTimerMinutes(appContext, id, date, minutes) }
       }
       WidgetActions.TAP_TODO -> {
         WidgetActions.runAsync(this, context) { WidgetDb.completeTodo(appContext, id) }

@@ -84,6 +84,8 @@ sealed class WidgetRow {
     val timerMinutes: Int = 0,
     /** Timer habits: goal in minutes, when there is one. */
     val timerTargetMinutes: Int? = null,
+    /** Timer habits: minutes the widget's quick-log buttons add. Empty when the app must run the timer. */
+    val quickMinutes: List<Int> = emptyList(),
   ) : WidgetRow() {
     override val key: String get() = "habit:$id"
   }
@@ -448,6 +450,11 @@ object TodayRules {
           timer = true,
           timerMinutes = Math.floor(seconds / 60.0).toInt(),
           timerTargetMinutes = target?.let { Math.round(it / 60.0).toInt() },
+          quickMinutes = if (canQuickLog(habit.rules)) {
+            timerQuickMinutes(habit.rules.dailyTargetSeconds?.let { Math.round(it / 60.0).toInt() })
+          } else {
+            emptyList()
+          },
         )
       } else {
         WidgetRow.Habit(id = habit.id, name = habit.name, state = rowState, timer = false)
@@ -502,6 +509,22 @@ object TodayRules {
   /** Meta of a counter quick tap: `{ source: 'quick_button', increment }` (CounterWidget.tsx). */
   fun counterMetaJson(increment: Double): String =
     "{\"source\":\"quick_button\",\"increment\":${formatNumber(increment)}}"
+
+  /**
+   * A play_once track habit without a time goal is complete only when the track
+   * finishes (`trackCompleted`), which logged minutes never set: the app has to run it.
+   */
+  fun canQuickLog(rules: HabitRules): Boolean =
+    rules.timer && (rules.playOnceTrackSeconds == null || rules.dailyTargetSeconds != null)
+
+  /** Two chunk sizes that fit the goal: small ones for short goals, bigger ones for long. */
+  fun timerQuickMinutes(targetMinutes: Int?): List<Int> =
+    if (targetMinutes == null || targetMinutes <= 30) listOf(5, 15) else listOf(15, 30)
+
+  /** Meta of a logged timer chunk: the protocol's `timer_session` shape (habit.ts). */
+  fun timerSessionMetaJson(startedAt: Instant, endedAt: Instant, durationSeconds: Int): String =
+    "{\"source\":\"$TIMER_SESSION_SOURCE\",\"startedAt\":\"${isoTimestamp(startedAt)}\"," +
+      "\"endedAt\":\"${isoTimestamp(endedAt)}\",\"durationSeconds\":$durationSeconds}"
 
   /** Meta of a boolean habit tick (eventStore.toggleHabit). */
   const val HABIT_TICK_META_JSON = "{\"source\":\"habit_tick\"}"

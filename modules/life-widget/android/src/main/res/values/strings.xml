@@ -16,4 +16,5 @@
   <string name="life_widget_preview_counter">Water</string>
   <string name="life_widget_preview_todo">Call the bank</string>
   <string name="life_widget_preview_done">Read</string>
+  <string name="life_widget_log_minutes_a11y">Log %1$d minutes for %2$s</string>
 </resources>

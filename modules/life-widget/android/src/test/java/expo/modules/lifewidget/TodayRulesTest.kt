@@ -151,6 +151,52 @@ class TodayRulesTest {
   }
 
   @Test
+  fun timerQuickMinutesScaleWithTheGoal() {
+    assertEquals(listOf(5, 15), TodayRules.timerQuickMinutes(null))
+    assertEquals(listOf(5, 15), TodayRules.timerQuickMinutes(30))
+    assertEquals(listOf(15, 30), TodayRules.timerQuickMinutes(31))
+    assertEquals(listOf(15, 30), TodayRules.timerQuickMinutes(90))
+  }
+
+  @Test
+  fun timerRowsOfferQuickLogUnlessATrackMustFinish() {
+    val plain = HabitInput("p", "Reading", habit("""{"trackingMode":"timer","dailyTargetSeconds":3600}"""))
+    val track = HabitInput(
+      "t",
+      "Meditation",
+      habit("""{"trackingMode":"timer","timerSound":{"trackId":"meditation15min","playbackMode":"play_once"}}"""),
+    )
+    val trackWithGoal = HabitInput(
+      "g",
+      "Breathing",
+      habit(
+        """{"trackingMode":"timer","dailyTargetSeconds":1200,"timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}""",
+      ),
+    )
+    val model = TodayRules.buildToday(
+      listOf(plain, track, trackWithGoal),
+      { _: String, _: LocalDate -> DayFacts.EMPTY },
+      emptyList(),
+      emptyList(),
+      monday,
+      12 * 60,
+    )
+    val byId = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
+    assertEquals(listOf(15, 30), byId.getValue("p").quickMinutes)
+    assertEquals(emptyList<Int>(), byId.getValue("t").quickMinutes)
+    assertEquals(listOf(5, 15), byId.getValue("g").quickMinutes)
+  }
+
+  @Test
+  fun timerSessionMetaMatchesTheProtocol() {
+    val end = Instant.parse("2026-11-16T08:15:00Z")
+    assertEquals(
+      """{"source":"timer_session","startedAt":"2026-11-16T08:00:00.000Z","endedAt":"2026-11-16T08:15:00.000Z","durationSeconds":900}""",
+      TodayRules.timerSessionMetaJson(end.minusSeconds(900), end, 900),
+    )
+  }
+
+  @Test
   fun writesValuesTheAppAccepts() {
     assertEquals("2026-11-16T08:05:03.007Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03.007Z")))
     assertEquals("2026-11-16T08:05:03.000Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03Z")))

@@ -312,6 +312,30 @@ object WidgetDb {
     }
   }
 
+  /**
+   * Logs `minutes` on a timer habit as one finished session ending now, the same
+   * row the app writes when a timer stops. Refuses habits the app has to time.
+   */
+  fun logTimerMinutes(context: Context, elementId: String, shownDate: String, minutes: Int) {
+    if (minutes <= 0) return
+    withDb(context) { db ->
+      val today = LocalDate.now().toString()
+      if (today != shownDate) return@withDb
+      inImmediateTransaction(db) {
+        val config = activeConfig(db, elementId, "habit") ?: return@inImmediateTransaction
+        val rules = TodayRules.parseHabitConfig(config) ?: return@inImmediateTransaction
+        if (!TodayRules.canQuickLog(rules)) return@inImmediateTransaction
+        val seconds = minutes * 60
+        val end = Instant.now()
+        insertEvent(db, elementId, today, seconds.toDouble(), TodayRules.timerSessionMetaJson(end.minusSeconds(seconds.toLong()), end, seconds))
+        // Logging on a skipped day completes it like the app does: drop the skip row.
+        for (id in readDay(db, elementId, today).skipIds) {
+          db.delete("events", "id = ?", arrayOf(id))
+        }
+      }
+    }
+  }
+
   /** `setTodoCompleted(db, id, new Date().toISOString())`: only completed_at changes; the row is kept. */
   fun completeTodo(context: Context, todoId: String) {
     withDb(context) { db ->
