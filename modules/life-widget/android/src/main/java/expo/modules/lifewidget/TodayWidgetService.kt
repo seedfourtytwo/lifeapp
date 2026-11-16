@@ -40,8 +40,8 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
 
   override fun getCount(): Int = rows.size
 
-  /** habit, counter, todo, label. */
-  override fun getViewTypeCount(): Int = 4
+  /** item (habit or counter), todo, label. */
+  override fun getViewTypeCount(): Int = 3
 
   override fun getItemId(position: Int): Long = rows.getOrNull(position)?.key?.hashCode()?.toLong() ?: position.toLong()
 
@@ -54,8 +54,8 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       is WidgetRow.Habit -> habitView(row)
       is WidgetRow.Counter -> counterView(row)
       is WidgetRow.Todo -> todoView(row)
-      is WidgetRow.TodosLabel -> labelView()
-      null -> labelView()
+      is WidgetRow.Label -> labelView(row.section)
+      null -> labelView(Section.HABITS)
     }
   }
 
@@ -65,8 +65,10 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       .putExtra(WidgetActions.EXTRA_DATE, date)
 
   private fun habitView(row: WidgetRow.Habit): RemoteViews {
-    val views = RemoteViews(context.packageName, R.layout.life_widget_row_habit)
+    val views = RemoteViews(context.packageName, R.layout.life_widget_row_item)
     val settled = row.state != HabitRowState.OPEN
+    // Finished rows lose their card, so what is left to do stands out.
+    views.setInt(R.id.row_root, "setBackgroundResource", if (settled) 0 else R.drawable.life_widget_card)
     val disc = when (row.state) {
       HabitRowState.DONE -> R.drawable.life_widget_disc_done
       HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
@@ -74,12 +76,7 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     }
     views.setImageViewResource(R.id.row_disc, disc)
 
-    // Two text views, one per colour, so the host resolves the colour resource
-    // (and follows a theme change) rather than us baking in an int.
-    views.setTextViewText(R.id.row_name, row.name)
-    views.setTextViewText(R.id.row_name_settled, row.name)
-    views.setViewVisibility(R.id.row_name, if (settled) View.GONE else View.VISIBLE)
-    views.setViewVisibility(R.id.row_name_settled, if (settled) View.VISIBLE else View.GONE)
+    setName(views, row.name, settled)
 
     if (row.timer) {
       val target = row.timerTargetMinutes
@@ -139,11 +136,39 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     return views
   }
 
+  /**
+   * Two text views, one per colour, so the host resolves the colour resource
+   * (and follows a theme change) rather than us baking in an int.
+   */
+  private fun setName(views: RemoteViews, name: String, settled: Boolean) {
+    views.setTextViewText(R.id.row_name, name)
+    views.setTextViewText(R.id.row_name_settled, name)
+    views.setViewVisibility(R.id.row_name, if (settled) View.GONE else View.VISIBLE)
+    views.setViewVisibility(R.id.row_name_settled, if (settled) View.VISIBLE else View.GONE)
+  }
+
   private fun counterView(row: WidgetRow.Counter): RemoteViews {
-    val views = RemoteViews(context.packageName, R.layout.life_widget_row_counter)
-    views.setTextViewText(R.id.row_name, row.name)
+    val views = RemoteViews(context.packageName, R.layout.life_widget_row_item)
+    views.setInt(R.id.row_root, "setBackgroundResource", R.drawable.life_widget_card)
+    views.setImageViewResource(
+      R.id.row_disc,
+      if (row.done) R.drawable.life_widget_disc_done else R.drawable.life_widget_disc_counter,
+    )
+    setName(views, row.name, settled = false)
+    // Same layout as a habit row, whose views are recycled: always state the row tap.
+    views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_OPEN_APP))
+    views.setContentDescription(R.id.row_root, row.name)
+
     val total = TodayRules.formatNumber(row.total)
-    views.setTextViewText(R.id.row_total, if (row.target != null) "$total/${row.target}" else total)
+    val target = row.target
+    views.setTextViewText(R.id.row_meta, if (target != null) "$total / $target" else total)
+    views.setViewVisibility(R.id.row_meta, View.VISIBLE)
+    if (target != null && target > 0) {
+      views.setProgressBar(R.id.row_progress, target, row.total.coerceIn(0.0, target.toDouble()).toInt(), false)
+      views.setViewVisibility(R.id.row_progress, View.VISIBLE)
+    } else {
+      views.setViewVisibility(R.id.row_progress, View.GONE)
+    }
 
     val buttons = intArrayOf(R.id.row_button_1, R.id.row_button_2)
     for ((index, buttonId) in buttons.withIndex()) {
@@ -177,5 +202,19 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     return views
   }
 
-  private fun labelView(): RemoteViews = RemoteViews(context.packageName, R.layout.life_widget_row_label)
+  private fun labelView(section: Section): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.life_widget_row_label)
+    views.setTextViewText(
+      R.id.row_label,
+      context.getString(
+        when (section) {
+          Section.HABITS -> R.string.life_widget_label_habits
+          Section.COUNTERS -> R.string.life_widget_label_counters
+          Section.TODOS -> R.string.life_widget_label_todos
+          Section.DONE -> R.string.life_widget_label_done
+        },
+      ),
+    )
+    return views
+  }
 }

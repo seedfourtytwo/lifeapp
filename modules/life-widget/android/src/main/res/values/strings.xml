@@ -5,6 +5,9 @@
   <string name="life_widget_empty_no_db">Open Life to get started</string>
   <string name="life_widget_empty_all_done">All done for today</string>
   <string name="life_widget_label_todos">Todos</string>
+  <string name="life_widget_label_habits">Habits</string>
+  <string name="life_widget_label_counters">Counters</string>
+  <string name="life_widget_label_done">Done</string>
   <string name="life_widget_timer_progress">%1$d / %2$d min</string>
   <string name="life_widget_timer_minutes">%1$d min</string>
   <string name="life_widget_mark_done_a11y">Mark %1$s as done</string>

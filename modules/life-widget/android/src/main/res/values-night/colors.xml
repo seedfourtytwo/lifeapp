@@ -2,6 +2,7 @@
 <!-- Below API 31: the app's dark tokens (src/theme/themes.ts): ground, ink, ink2, moss, onMoss, mossTint, onMossTint. -->
 <resources>
   <color name="life_widget_background">#0B0E0C</color>
+  <color name="life_widget_card">#171C19</color>
   <color name="life_widget_text">#E6EBE7</color>
   <color name="life_widget_text_muted">#9AA59E</color>
   <color name="life_widget_accent">#86C9A3</color>

@@ -72,6 +72,9 @@ data class HabitDayState(
 
 enum class HabitRowState { OPEN, DONE, SKIPPED }
 
+/** The widget's sections, in display order. DONE holds done and skipped habits. */
+enum class Section { HABITS, COUNTERS, TODOS, DONE }
+
 sealed class WidgetRow {
   abstract val key: String
 
@@ -97,6 +100,8 @@ sealed class WidgetRow {
     val target: Int?,
     /** At most two, from `quickIncrements`. */
     val increments: List<Double>,
+    /** Has a target and reached it. */
+    val done: Boolean = false,
   ) : WidgetRow() {
     override val key: String get() = "counter:$id"
   }
@@ -105,8 +110,9 @@ sealed class WidgetRow {
     override val key: String get() = "todo:$id"
   }
 
-  object TodosLabel : WidgetRow() {
-    override val key: String get() = "label:todos"
+  /** A section heading. Present only when the widget shows more than one section. */
+  data class Label(val section: Section) : WidgetRow() {
+    override val key: String get() = "label:${section.name.lowercase(Locale.ROOT)}"
   }
 }
 
@@ -405,8 +411,9 @@ object TodayRules {
 
   /**
    * Everything the widget shows, in order:
-   * open due habits, counters, a "Todos" label (only when something precedes
-   * the todos), up to [MAX_TODOS] open todos, then done and skipped habits.
+   * open due habits, counters, up to [MAX_TODOS] open todos, then done and
+   * skipped habits. Each non-empty section gets a heading when there is more
+   * than one of them.
    *
    * `habits` and `counters` arrive in dashboard order. A habit outside its
    * visibility window is left out entirely (and out of the header count), as
@@ -421,6 +428,7 @@ object TodayRules {
     minuteOfDay: Int,
   ): TodayModel {
     val open = ArrayList<WidgetRow>()
+    val counterRows = ArrayList<WidgetRow>()
     val settled = ArrayList<WidgetRow>()
     var due = 0
     var done = 0
@@ -465,28 +473,37 @@ object TodayRules {
     for (counter in counters) {
       val target = counter.rules.dailyTarget
       // A skipped counter is not due, so it leaves the header count; its row stays usable.
+      val complete = isCounterDayComplete(counter.rules, counter.todayTotal)
       if (target != null && !isCounterDaySkipped(counter.rules, counter.todayTotal, counter.skippedRowToday)) {
         due++
-        if (isCounterDayComplete(counter.rules, counter.todayTotal)) done++
+        if (complete) done++
       }
-      open.add(
+      counterRows.add(
         WidgetRow.Counter(
           id = counter.id,
           name = counter.name,
           total = counter.todayTotal,
           target = target,
           increments = counter.rules.quickIncrements.take(2),
+          done = complete,
         ),
       )
     }
 
-    val shownTodos = sortTodos(todos, today.toString()).take(MAX_TODOS)
-    if (shownTodos.isNotEmpty()) {
-      if (open.isNotEmpty()) open.add(WidgetRow.TodosLabel)
-      for (todo in shownTodos) open.add(WidgetRow.Todo(todo.id, todo.title))
-    }
+    val todoRows = sortTodos(todos, today.toString()).take(MAX_TODOS).map { WidgetRow.Todo(it.id, it.title) }
 
-    return TodayModel(rows = open + settled, done = done, due = due)
+    val sections = listOf(
+      Section.HABITS to open,
+      Section.COUNTERS to counterRows,
+      Section.TODOS to todoRows,
+      Section.DONE to settled,
+    ).filter { it.second.isNotEmpty() }
+    val rows = if (sections.size > 1) {
+      sections.flatMap { (section, sectionRows) -> listOf(WidgetRow.Label(section)) + sectionRows }
+    } else {
+      sections.flatMap { it.second }
+    }
+    return TodayModel(rows = rows, done = done, due = due)
   }
 
   // ---- values written to SQLite ---------------------------------------------

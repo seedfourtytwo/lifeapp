@@ -5,10 +5,10 @@
   android:layout_height="match_parent"
   android:background="@drawable/life_widget_background"
   android:orientation="vertical"
-  android:paddingStart="18dp"
-  android:paddingTop="8dp"
-  android:paddingEnd="14dp"
-  android:paddingBottom="10dp">
+  android:paddingStart="12dp"
+  android:paddingTop="10dp"
+  android:paddingEnd="12dp"
+  android:paddingBottom="12dp">
 
   <LinearLayout
     android:id="@+id/widget_header"
@@ -16,7 +16,9 @@
     android:layout_height="wrap_content"
     android:minHeight="48dp"
     android:gravity="center_vertical"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp">
 
     <TextView
       android:id="@+id/widget_date"
@@ -27,7 +29,7 @@
       android:fontFamily="sans-serif-medium"
       android:maxLines="1"
       android:textColor="@color/life_widget_text"
-      android:textSize="24sp" />
+      android:textSize="26sp" />
 
     <TextView
       android:id="@+id/widget_progress"
@@ -36,19 +38,20 @@
       android:layout_marginStart="8dp"
       android:fontFeatureSettings="tnum"
       android:maxLines="1"
-      android:paddingEnd="4dp"
-      android:textColor="@color/life_widget_text_muted"
-      android:textSize="16sp" />
+      android:fontFamily="sans-serif-medium"
+      android:textColor="@color/life_widget_accent"
+      android:textSize="20sp" />
   </LinearLayout>
 
   <ProgressBar
     android:id="@+id/widget_progress_bar"
     style="?android:attr/progressBarStyleHorizontal"
     android:layout_width="match_parent"
-    android:layout_height="6dp"
+    android:layout_height="8dp"
+    android:layout_marginStart="6dp"
     android:layout_marginTop="2dp"
-    android:layout_marginBottom="6dp"
-    android:layout_marginEnd="4dp"
+    android:layout_marginEnd="6dp"
+    android:layout_marginBottom="8dp"
     android:importantForAccessibility="no"
     android:progressDrawable="@drawable/life_widget_progress" />
 
@@ -61,8 +64,8 @@
       android:id="@+id/widget_list"
       android:layout_width="match_parent"
       android:layout_height="match_parent"
-      android:divider="@null"
-      android:dividerHeight="0dp"
+      android:divider="@android:color/transparent"
+      android:dividerHeight="6dp"
       android:scrollbars="none" />
 
     <TextView

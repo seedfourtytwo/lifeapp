@@ -3,16 +3,19 @@
   android:id="@+id/row_root"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:minHeight="64dp"
+  android:minHeight="60dp"
+  android:background="@drawable/life_widget_card"
   android:gravity="center_vertical"
-  android:orientation="horizontal">
+  android:orientation="horizontal"
+  android:paddingStart="14dp"
+  android:paddingEnd="14dp">
 
-  <!-- The box is the touch target (64dp tall, 44dp wide so titles align with habit names). -->
+  <!-- The box is the touch target (60dp tall, 44dp wide so titles align with habit names). -->
   <FrameLayout
     android:id="@+id/row_box"
     android:layout_width="44dp"
     android:layout_height="wrap_content"
-    android:minHeight="64dp">
+    android:minHeight="60dp">
 
     <ImageView
       android:layout_width="32dp"
@@ -30,5 +33,5 @@
     android:ellipsize="end"
     android:maxLines="2"
     android:textColor="@color/life_widget_text"
-    android:textSize="18sp" />
+    android:textSize="17sp" />
 </LinearLayout>

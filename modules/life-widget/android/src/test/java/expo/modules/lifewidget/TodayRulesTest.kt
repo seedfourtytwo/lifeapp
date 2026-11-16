@@ -127,14 +127,38 @@ class TodayRulesTest {
     }
     val model = TodayRules.buildToday(listOf(done, open, skipped, hidden), facts, listOf(counter), todos, monday, 12 * 60)
     assertEquals(
-      listOf("habit:a", "counter:k", "label:todos", "todo:t2", "todo:t1", "habit:b", "habit:c"),
+      listOf(
+        "label:habits", "habit:a",
+        "label:counters", "counter:k",
+        "label:todos", "todo:t2", "todo:t1",
+        "label:done", "habit:b", "habit:c",
+      ),
       model.rows.map { it.key },
     )
     // Due: a, b and the targeted counter. Done: b.
     assertEquals(3, model.due)
     assertEquals(1, model.done)
-    val counterRow = model.rows[1] as WidgetRow.Counter
+    val counterRow = model.rows.filterIsInstance<WidgetRow.Counter>().single()
     assertEquals(listOf(1.0, 5.0), counterRow.increments)
+    assertFalse(counterRow.done)
+  }
+
+  @Test
+  fun counterRowIsDoneAtItsTarget() {
+    val model = TodayRules.buildToday(
+      emptyList(),
+      { _, _ -> DayFacts.EMPTY },
+      listOf(
+        CounterInput("k", "Water", CounterRules(listOf(1.0), 8), 8.0),
+        CounterInput("n", "Coffee", CounterRules(listOf(1.0), null), 50.0),
+      ),
+      emptyList(),
+      monday,
+      0,
+    )
+    // One section only: no heading.
+    assertEquals(listOf("counter:k", "counter:n"), model.rows.map { it.key })
+    assertEquals(listOf(true, false), model.rows.map { (it as WidgetRow.Counter).done })
   }
 
   @Test

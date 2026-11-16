@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <!-- A quick-action pill: 64dp wide, 56dp tall, so a thumb can hit it without aiming. -->
+  <!-- A quick-action pill: 66dp wide, 56dp tall, so a thumb can hit it without aiming. -->
   <style name="LifeWidgetButton">
     <item name="android:layout_width">wrap_content</item>
     <item name="android:layout_height">wrap_content</item>
-    <item name="android:minWidth">64dp</item>
+    <item name="android:minWidth">66dp</item>
     <item name="android:minHeight">56dp</item>
     <item name="android:background">@drawable/life_widget_button</item>
     <item name="android:fontFeatureSettings">tnum</item>
@@ -13,6 +13,7 @@
     <item name="android:paddingStart">14dp</item>
     <item name="android:paddingEnd">14dp</item>
     <item name="android:textColor">@color/life_widget_on_button</item>
-    <item name="android:textSize">17sp</item>
+    <item name="android:fontFamily">sans-serif-medium</item>
+    <item name="android:textSize">16sp</item>
   </style>
 </resources>

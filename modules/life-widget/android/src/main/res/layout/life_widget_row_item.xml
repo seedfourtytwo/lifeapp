@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- One habit or counter: icon, name over figures and a progress bar, up to two quick buttons. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/row_root"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:minHeight="64dp"
+  android:minHeight="68dp"
+  android:background="@drawable/life_widget_card"
   android:gravity="center_vertical"
   android:orientation="horizontal"
-  android:paddingTop="4dp"
-  android:paddingBottom="4dp">
+  android:paddingStart="14dp"
+  android:paddingTop="8dp"
+  android:paddingEnd="8dp"
+  android:paddingBottom="8dp">
 
   <ImageView
     android:id="@+id/row_disc"
@@ -20,6 +24,7 @@
     android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:layout_marginStart="12dp"
+    android:layout_marginEnd="6dp"
     android:layout_weight="1"
     android:orientation="vertical">
 
@@ -28,9 +33,10 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:ellipsize="end"
+      android:fontFamily="sans-serif-medium"
       android:maxLines="2"
       android:textColor="@color/life_widget_text"
-      android:textSize="18sp" />
+      android:textSize="17sp" />
 
     <TextView
       android:id="@+id/row_name_settled"
@@ -39,7 +45,7 @@
       android:ellipsize="end"
       android:maxLines="2"
       android:textColor="@color/life_widget_text_muted"
-      android:textSize="18sp"
+      android:textSize="17sp"
       android:visibility="gone" />
 
     <TextView
@@ -56,7 +62,7 @@
       android:id="@+id/row_progress"
       style="?android:attr/progressBarStyleHorizontal"
       android:layout_width="match_parent"
-      android:layout_height="5dp"
+      android:layout_height="6dp"
       android:layout_marginTop="6dp"
       android:importantForAccessibility="no"
       android:progressDrawable="@drawable/life_widget_progress"
@@ -65,11 +71,10 @@
 
   <TextView
     android:id="@+id/row_button_1"
-    style="@style/LifeWidgetButton"
-    android:layout_marginStart="8dp" />
+    style="@style/LifeWidgetButton" />
 
   <TextView
     android:id="@+id/row_button_2"
     style="@style/LifeWidgetButton"
-    android:layout_marginStart="6dp" />
+    android:layout_marginStart="2dp" />
 </LinearLayout>
