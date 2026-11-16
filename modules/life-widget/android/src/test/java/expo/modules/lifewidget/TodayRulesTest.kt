@@ -280,6 +280,66 @@ class TodayRulesTest {
   }
 
   @Test
+  fun widgetTimersRoundTrip() {
+    // The exact text the app must be able to read: __tests__/widgetTimerSessions.test.ts
+    // parses this same string. Change both together.
+    val written = """{"habit-1":{"startedAt":"2026-11-16T08:00:00.000Z","calendarDate":"2026-11-16"}}"""
+    val timers = mapOf("habit-1" to RunningTimer(Instant.parse("2026-11-16T08:00:00Z").toEpochMilli(), "2026-11-16"))
+    assertEquals(written, TodayRules.widgetTimersJson(timers))
+    assertEquals(timers, TodayRules.parseWidgetTimers(written))
+    assertEquals(emptyMap<String, RunningTimer>(), TodayRules.parseWidgetTimers(null))
+    assertEquals(emptyMap<String, RunningTimer>(), TodayRules.parseWidgetTimers("{not json"))
+    assertEquals(emptyMap<String, RunningTimer>(), TodayRules.parseWidgetTimers("""{"h":{"startedAt":"yesterday"}}"""))
+  }
+
+  @Test
+  fun readsTheAppsRunningTimers() {
+    val start = Instant.parse("2026-11-16T08:00:00Z").toEpochMilli()
+    val json = """{
+      "run":{"startedAt":"2026-11-16T08:00:00.000Z","pausedAt":null,"pauseOffsetMs":60000,"calendarDate":"2026-11-16"},
+      "hold":{"startedAt":"2026-11-16T08:00:00.000Z","pausedAt":"2026-11-16T08:10:00.000Z","pauseOffsetMs":0,"calendarDate":"2026-11-16"},
+      "bad":{"startedAt":7}
+    }"""
+    assertEquals(
+      mapOf(
+        "run" to AppTimer(start, null, 60_000),
+        "hold" to AppTimer(start, start + 600_000, 0),
+      ),
+      TodayRules.parseAppTimers(json),
+    )
+    assertEquals(emptyMap<String, AppTimer>(), TodayRules.parseAppTimers(null))
+  }
+
+  @Test
+  fun aTimerRunningInTheAppLocksTheWidgetRow() {
+    val start = 1_000_000L
+    val reading = HabitInput("r", "Reading", habit("""{"trackingMode":"timer"}"""))
+    val study = HabitInput("s", "Study", habit("""{"trackingMode":"timer"}"""))
+    val model = TodayRules.buildToday(
+      listOf(reading, study),
+      { _, _ -> DayFacts.EMPTY },
+      emptyList(),
+      emptyList(),
+      monday,
+      0,
+      runningTimers = mapOf("r" to 5L),
+      appTimers = mapOf(
+        "r" to AppTimer(start, null, 60_000),
+        "s" to AppTimer(start, start + 600_000, 120_000),
+      ),
+    )
+    val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
+    // The app's timer wins the display; time spent paused is not counted.
+    val r = rows.getValue("r")
+    assertTrue(r.inApp)
+    assertEquals(start + 60_000, r.runningSinceMs)
+    assertNull(r.pausedElapsedMs)
+    val s = rows.getValue("s")
+    assertTrue(s.inApp)
+    assertEquals(480_000L, s.pausedElapsedMs)
+  }
+
+  @Test
   fun writesValuesTheAppAccepts() {
     assertEquals("2026-11-16T08:05:03.007Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03.007Z")))
     assertEquals("2026-11-16T08:05:03.000Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03Z")))

@@ -71,12 +71,13 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     // Finished rows lose their card, so what is left to do stands out.
     val runningSince = row.runningSinceMs
     val background = when {
-      runningSince != null -> R.drawable.life_widget_card_running
+      runningSince != null && !row.inApp -> R.drawable.life_widget_card_running
       settled -> 0
       else -> R.drawable.life_widget_card
     }
     views.setInt(R.id.row_root, "setBackgroundResource", background)
     val disc = when {
+      row.inApp -> R.drawable.life_widget_disc_in_app
       runningSince != null -> R.drawable.life_widget_disc_stop
       row.state == HabitRowState.DONE -> R.drawable.life_widget_disc_done
       row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
@@ -95,7 +96,14 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       } else {
         context.getString(R.string.life_widget_timer_minutes, row.timerMinutes)
       }
-      views.setTextViewText(R.id.row_meta, label)
+      views.setTextViewText(
+        R.id.row_meta,
+        when {
+          !row.inApp -> label
+          row.pausedElapsedMs != null -> context.getString(R.string.life_widget_paused_in_app)
+          else -> context.getString(R.string.life_widget_running_in_app)
+        },
+      )
       views.setViewVisibility(R.id.row_meta, View.VISIBLE)
       if (target != null && target > 0) {
         views.setProgressBar(R.id.row_progress, target, row.timerMinutes.coerceAtMost(target), false)
@@ -103,7 +111,8 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       } else {
         views.setViewVisibility(R.id.row_progress, View.GONE)
       }
-      if (row.canRun) {
+      // A timer the app is running is the app's to stop: two stopwatches would log the time twice.
+      if (row.canRun && !row.inApp) {
         views.setOnClickFillInIntent(
           R.id.row_root,
           fillIn(WidgetActions.TAP_TIMER_TOGGLE).putExtra(WidgetActions.EXTRA_ID, row.id),
@@ -121,8 +130,9 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       }
       if (runningSince != null) {
         // The chronometer counts from a base on the uptime clock; ours is wall-clock.
-        val base = SystemClock.elapsedRealtime() - (System.currentTimeMillis() - runningSince)
-        views.setChronometer(R.id.row_clock, base, null, true)
+        val paused = row.pausedElapsedMs
+        val elapsed = paused ?: (System.currentTimeMillis() - runningSince)
+        views.setChronometer(R.id.row_clock, SystemClock.elapsedRealtime() - elapsed, null, paused == null)
         views.setViewVisibility(R.id.row_clock, View.VISIBLE)
       } else {
         views.setViewVisibility(R.id.row_clock, View.GONE)

@@ -15,7 +15,11 @@ import {
   type HabitConfig,
 } from '../../protocol';
 import { useElementStore } from '../../store/elementStore';
-import { useEventStore, whenActiveTimersReady } from '../../store/eventStore';
+import {
+  isTimerRunningInWidget,
+  useEventStore,
+  whenActiveTimersReady,
+} from '../../store/eventStore';
 import { currentAppCalendarDate } from '../../utils/dayRollover';
 import {
   getFocusedHabitId,
@@ -129,6 +133,14 @@ export function startHabitTimerSession(elementId: string, config: HabitConfig): 
         if (isActiveTimerPaused(existing)) {
           resumeHabitTimerSession(elementId, config);
         }
+        return;
+      }
+      // One stopwatch per habit: two would log the same minutes twice.
+      if (await isTimerRunningInWidget(elementId)) {
+        Alert.alert(
+          i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
+          i18n.t('trackers:habitWidget.timerRunningInWidgetMessage'),
+        );
         return;
       }
       await finalizeOtherTimers(elementId);

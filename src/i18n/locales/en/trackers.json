@@ -194,6 +194,8 @@
     "markHabitDoneA11y": "Mark habit done",
     "couldNotUpdateTitle": "Could not update habit",
     "couldNotStartTimerTitle": "Could not start timer",
+    "timerRunningInWidgetTitle": "Timer running in the widget",
+    "timerRunningInWidgetMessage": "This habit is being timed from the home-screen widget. Stop it there first.",
     "startTimerA11y": "Start timer",
     "resumeTimerA11y": "Resume timer",
     "pauseTimerA11y": "Pause timer",

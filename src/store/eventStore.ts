@@ -25,6 +25,7 @@ import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 import {
   loadPersistedActiveTimerSessions,
+  loadWidgetTimerSessions,
   persistActiveTimerSessions,
 } from '../db/repositories/activeTimerRepository';
 import {
@@ -74,6 +75,16 @@ export function whenActiveTimersReady(): Promise<void> {
 /** Called from bootstrap after hydrate/day-state, or on element-load failure. */
 export function releaseActiveTimersReady(): void {
   markActiveTimersReady();
+}
+
+/**
+ * True while the Android widget is running its own stopwatch on this habit.
+ * Read fresh from SQLite each time: the widget writes from another process,
+ * so nothing in memory can be trusted to know.
+ */
+export async function isTimerRunningInWidget(elementId: string): Promise<boolean> {
+  const sessions = await loadWidgetTimerSessions(await getDatabase());
+  return elementId in sessions;
 }
 
 function schedulePersistActiveTimers(

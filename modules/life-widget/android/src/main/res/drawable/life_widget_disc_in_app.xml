@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A timer running in the app: shown, not tappable. A ring around a solid dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="28dp"
+  android:height="28dp"
+  android:viewportWidth="28"
+  android:viewportHeight="28">
+  <path
+    android:fillColor="#00000000"
+    android:strokeColor="@color/life_widget_text_muted"
+    android:strokeWidth="2"
+    android:pathData="M14,3 A11,11 0 1,1 14,25 A11,11 0 1,1 14,3 Z" />
+  <path
+    android:fillColor="@color/life_widget_accent"
+    android:pathData="M14,9 A5,5 0 1,1 14,19 A5,5 0 1,1 14,9 Z" />
+</vector>

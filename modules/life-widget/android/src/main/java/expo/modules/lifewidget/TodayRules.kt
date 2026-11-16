@@ -72,6 +72,12 @@ data class HabitDayState(
 
 enum class HabitRowState { OPEN, DONE, SKIPPED }
 
+/** A stopwatch the widget is running: when it started and the local day it belongs to. */
+data class RunningTimer(val startedAtMs: Long, val date: String)
+
+/** A timer running in the app (`ActiveTimerSessionSchema`), reduced to what a clock needs. */
+data class AppTimer(val startedAtMs: Long, val pausedAtMs: Long?, val pauseOffsetMs: Long)
+
 /** The widget's sections, in display order. DONE holds done and skipped habits. */
 enum class Section { HABITS, COUNTERS, TODOS, DONE }
 
@@ -91,8 +97,15 @@ sealed class WidgetRow {
     val quickMinutes: List<Int> = emptyList(),
     /** Timer habits the widget can time itself (see `canQuickLog`). */
     val canRun: Boolean = false,
-    /** Wall-clock start (epoch ms) of the widget timer running on this habit, or null. */
+    /**
+     * Wall-clock start (epoch ms) of the timer running on this habit, or null.
+     * For an app timer, moved forward by the time it has spent paused.
+     */
     val runningSinceMs: Long? = null,
+    /** Set while an app timer is paused: the active time it shows, frozen. */
+    val pausedElapsedMs: Long? = null,
+    /** The running timer belongs to the app: the widget shows it and leaves it alone. */
+    val inApp: Boolean = false,
   ) : WidgetRow() {
     override val key: String get() = "habit:$id"
   }
@@ -432,6 +445,8 @@ object TodayRules {
     minuteOfDay: Int,
     /** Habit id → wall-clock start (epoch ms) of a timer the widget is running. */
     runningTimers: Map<String, Long> = emptyMap(),
+    /** Habit id → the timer the app is running on it. Shown, never controlled, by the widget. */
+    appTimers: Map<String, AppTimer> = emptyMap(),
   ): TodayModel {
     val open = ArrayList<WidgetRow>()
     val counterRows = ArrayList<WidgetRow>()
@@ -441,7 +456,8 @@ object TodayRules {
 
     for (habit in habits) {
       // A running timer always keeps its row: without it there is nothing to stop it with.
-      val runningSince = runningTimers[habit.id]
+      val appTimer = appTimers[habit.id]
+      val runningSince = appTimer?.let { it.startedAtMs + it.pauseOffsetMs } ?: runningTimers[habit.id]
       val visible = isVisibleAt(habit.rules, minuteOfDay)
       if (!visible && runningSince == null) continue
       val state = habitDayState(habit.rules, today) { date -> habitFacts(habit.id, date) }
@@ -475,6 +491,10 @@ object TodayRules {
           },
           canRun = canQuickLog(habit.rules),
           runningSinceMs = runningSince,
+          pausedElapsedMs = appTimer?.pausedAtMs?.let {
+            (it - appTimer.startedAtMs - appTimer.pauseOffsetMs).coerceAtLeast(0)
+          },
+          inApp = appTimer != null,
         )
       } else {
         WidgetRow.Habit(id = habit.id, name = habit.name, state = rowState, timer = false)
@@ -549,6 +569,58 @@ object TodayRules {
   /** Two chunk sizes that fit the goal: small ones for short goals, bigger ones for long. */
   fun timerQuickMinutes(targetMinutes: Int?): List<Int> =
     if (targetMinutes == null || targetMinutes <= 30) listOf(5, 15) else listOf(15, 30)
+
+  // ---- timers shared through app_settings ------------------------------------
+
+  /** `ACTIVE_TIMER_SESSIONS_KEY` (activeTimerRepository.ts): written by the app only. */
+  const val APP_TIMERS_KEY = "active_timer_sessions"
+
+  /** `WIDGET_TIMER_SESSIONS_KEY` (activeTimerRepository.ts): written by the widget only. */
+  const val WIDGET_TIMERS_KEY = "widget_timer_sessions"
+
+  private fun parseInstantMs(value: Any?): Long? {
+    val s = value as? String ?: return null
+    return try {
+      Instant.parse(s).toEpochMilli()
+    } catch (e: java.time.format.DateTimeParseException) {
+      null
+    }
+  }
+
+  /** `WidgetTimerSessionSchema` records; anything malformed reads as no timers at all, as in the app. */
+  fun parseWidgetTimers(json: String?): Map<String, RunningTimer> {
+    val root = MiniJson.parseObjectOrNull(json) ?: return emptyMap()
+    val result = LinkedHashMap<String, RunningTimer>()
+    for ((id, raw) in root) {
+      val entry = raw as? Map<*, *> ?: return emptyMap()
+      val startedAt = parseInstantMs(entry["startedAt"]) ?: return emptyMap()
+      val date = parseDate(entry["calendarDate"]) ?: return emptyMap()
+      result[id] = RunningTimer(startedAt, date.toString())
+    }
+    return result
+  }
+
+  private fun jsonString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+  fun widgetTimersJson(timers: Map<String, RunningTimer>): String =
+    timers.entries.joinToString(",", "{", "}") { (id, timer) ->
+      "${jsonString(id)}:{\"startedAt\":\"${isoTimestamp(Instant.ofEpochMilli(timer.startedAtMs))}\"," +
+        "\"calendarDate\":${jsonString(timer.date)}}"
+    }
+
+  /** The app's persisted sessions. Entries that do not parse are skipped. */
+  fun parseAppTimers(json: String?): Map<String, AppTimer> {
+    val root = MiniJson.parseObjectOrNull(json) ?: return emptyMap()
+    val result = LinkedHashMap<String, AppTimer>()
+    for ((id, raw) in root) {
+      val entry = raw as? Map<*, *> ?: continue
+      val startedAt = parseInstantMs(entry["startedAt"]) ?: continue
+      val offset = (entry["pauseOffsetMs"] as? Double ?: 0.0).toLong()
+      result[id] = AppTimer(startedAt, parseInstantMs(entry["pausedAt"]), offset)
+    }
+    return result
+  }
 
   /** A stopped timer shorter than this was a mistap: nothing is logged. */
   const val MIN_TIMER_SESSION_SECONDS = 5

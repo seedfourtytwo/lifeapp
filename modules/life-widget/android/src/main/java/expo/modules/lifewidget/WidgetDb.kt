@@ -113,16 +113,16 @@ object WidgetDb {
     val today = LocalDate.now()
     val time = LocalTime.now()
     val minuteOfDay = time.hour * 60 + time.minute
-    val running = WidgetTimers.all(context).mapValues { it.value.startedAtMs }
-    return withDb(context) { db -> readSnapshot(db, today, minuteOfDay, running) } ?: WidgetSnapshot.NoDatabase
+    return withDb(context) { db -> readSnapshot(db, today, minuteOfDay) } ?: WidgetSnapshot.NoDatabase
   }
 
-  private fun readSnapshot(
-    db: SQLiteDatabase,
-    today: LocalDate,
-    minuteOfDay: Int,
-    runningTimers: Map<String, Long>,
-  ): WidgetSnapshot {
+  private fun readSetting(db: SQLiteDatabase, key: String): String? {
+    if (!hasTable(db, "app_settings")) return null
+    return db.rawQuery("SELECT value FROM app_settings WHERE key = ?", arrayOf(key))
+      .use { c -> if (c.moveToFirst()) c.getString(0) else null }
+  }
+
+  private fun readSnapshot(db: SQLiteDatabase, today: LocalDate, minuteOfDay: Int): WidgetSnapshot {
     val ordered = ArrayList<OrderableElement<ElementRow>>()
     db.rawQuery(
       """
@@ -194,7 +194,9 @@ object WidgetDb {
       todos = todos,
       today = today,
       minuteOfDay = minuteOfDay,
-      runningTimers = runningTimers,
+      runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY))
+        .mapValues { it.value.startedAtMs },
+      appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
   }
@@ -344,40 +346,53 @@ object WidgetDb {
   }
 
   /**
-   * Starts a widget timer on the habit, or stops the one running and logs it as
-   * a `timer_session` on the day it started (as the app does across midnight).
-   * A habit that was archived or changed kind while its timer ran logs nothing.
+   * Starts a widget stopwatch on the habit, or stops the one running and logs
+   * it as a `timer_session` on the day it started (as the app does across
+   * midnight). Refuses to start while the app is timing the same habit.
+   *
+   * Widget stopwatches live in app_settings under a key only the widget writes.
+   * The app's own key cannot be shared: the app holds its timers in memory and
+   * rewrites its whole record on every change, so a session added there from
+   * this process would be silently overwritten.
    */
   fun toggleTimer(context: Context, elementId: String) {
     val now = Instant.now()
-    val running = WidgetTimers.get(context, elementId)
     withDb(context) { db ->
+      if (!hasTable(db, "app_settings")) return@withDb
       inImmediateTransaction(db) {
+        val timers = LinkedHashMap(TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)))
+        val running = timers.remove(elementId)
         val rules = activeConfig(db, elementId, "habit")?.let { TodayRules.parseHabitConfig(it) }
-        if (rules == null || !TodayRules.canQuickLog(rules)) {
-          WidgetTimers.clear(context, elementId)
-          return@inImmediateTransaction
-        }
-        if (running == null) {
-          WidgetTimers.start(context, elementId, RunningTimer(now.toEpochMilli(), LocalDate.now().toString()))
-          return@inImmediateTransaction
-        }
-        val seconds = TodayRules.timerSessionSeconds(running.startedAtMs, now.toEpochMilli())
-        if (seconds != null) {
-          insertEvent(
-            db,
-            elementId,
-            running.date,
-            seconds.toDouble(),
-            TodayRules.timerSessionMetaJson(Instant.ofEpochMilli(running.startedAtMs), now, seconds),
-          )
-          for (id in readDay(db, elementId, running.date).skipIds) {
-            db.delete("events", "id = ?", arrayOf(id))
+        if (rules != null && TodayRules.canQuickLog(rules)) {
+          if (running == null) {
+            val inApp = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY))
+            if (inApp.containsKey(elementId)) return@inImmediateTransaction
+            timers[elementId] = RunningTimer(now.toEpochMilli(), LocalDate.now().toString())
+          } else {
+            val seconds = TodayRules.timerSessionSeconds(running.startedAtMs, now.toEpochMilli())
+            if (seconds != null) {
+              insertEvent(
+                db,
+                elementId,
+                running.date,
+                seconds.toDouble(),
+                TodayRules.timerSessionMetaJson(Instant.ofEpochMilli(running.startedAtMs), now, seconds),
+              )
+              for (id in readDay(db, elementId, running.date).skipIds) {
+                db.delete("events", "id = ?", arrayOf(id))
+              }
+            }
           }
         }
-        // Cleared only once the session is written (or dropped as a mistap): a
-        // database that could not be opened leaves the timer running.
-        WidgetTimers.clear(context, elementId)
+        // A habit archived or changed while its stopwatch ran just loses the stopwatch.
+        if (timers.isEmpty()) {
+          db.delete("app_settings", "key = ?", arrayOf(TodayRules.WIDGET_TIMERS_KEY))
+        } else {
+          val values = ContentValues()
+          values.put("key", TodayRules.WIDGET_TIMERS_KEY)
+          values.put("value", TodayRules.widgetTimersJson(timers))
+          db.insertWithOnConflict("app_settings", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        }
       }
     }
   }

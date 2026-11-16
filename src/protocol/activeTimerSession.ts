@@ -11,6 +11,18 @@ export const ActiveTimerSessionSchema = z.object({
 
 export type ActiveTimerSession = z.infer<typeof ActiveTimerSessionSchema>;
 
+/**
+ * A stopwatch the Android widget is running on a habit. The widget owns these
+ * (it starts, stops and logs them); the app only reads them, to refuse starting
+ * a second timer on the same habit.
+ */
+export const WidgetTimerSessionSchema = z.object({
+  startedAt: z.string().datetime(),
+  calendarDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export type WidgetTimerSession = z.infer<typeof WidgetTimerSessionSchema>;
+
 export function createActiveTimerSession(now = new Date()): ActiveTimerSession {
   return {
     startedAt: now.toISOString(),

@@ -197,9 +197,10 @@ export {
   isHabitStartingSoon,
   formatScheduleDescription,
 } from './kinds/habit';
-export type { ActiveTimerSession } from './activeTimerSession';
+export type { ActiveTimerSession, WidgetTimerSession } from './activeTimerSession';
 export {
   ActiveTimerSessionSchema,
+  WidgetTimerSessionSchema,
   activeTimerElapsedMs,
   activeTimerElapsedSeconds,
   createActiveTimerSession,

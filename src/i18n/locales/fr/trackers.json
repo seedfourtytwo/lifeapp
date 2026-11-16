@@ -194,6 +194,8 @@
     "markHabitDoneA11y": "Marquer l'habitude comme faite",
     "couldNotUpdateTitle": "Mise à jour de l'habitude impossible",
     "couldNotStartTimerTitle": "Impossible de démarrer le minuteur",
+    "timerRunningInWidgetTitle": "Minuteur en cours dans le widget",
+    "timerRunningInWidgetMessage": "Cette habitude est chronométrée depuis le widget de l’écran d’accueil. Arrêtez-le d’abord là-bas.",
     "startTimerA11y": "Démarrer le minuteur",
     "resumeTimerA11y": "Reprendre le minuteur",
     "pauseTimerA11y": "Mettre le minuteur en pause",
