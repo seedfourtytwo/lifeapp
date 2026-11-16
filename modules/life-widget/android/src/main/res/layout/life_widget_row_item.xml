@@ -69,6 +69,19 @@
       android:visibility="gone" />
   </LinearLayout>
 
+  <!-- A running widget timer: replaces the quick buttons. -->
+  <Chronometer
+    android:id="@+id/row_clock"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:fontFamily="sans-serif-medium"
+    android:fontFeatureSettings="tnum"
+    android:paddingStart="8dp"
+    android:paddingEnd="10dp"
+    android:textColor="@color/life_widget_accent"
+    android:textSize="24sp"
+    android:visibility="gone" />
+
   <TextView
     android:id="@+id/row_button_1"
     style="@style/LifeWidgetButton" />

@@ -89,6 +89,10 @@ sealed class WidgetRow {
     val timerTargetMinutes: Int? = null,
     /** Timer habits: minutes the widget's quick-log buttons add. Empty when the app must run the timer. */
     val quickMinutes: List<Int> = emptyList(),
+    /** Timer habits the widget can time itself (see `canQuickLog`). */
+    val canRun: Boolean = false,
+    /** Wall-clock start (epoch ms) of the widget timer running on this habit, or null. */
+    val runningSinceMs: Long? = null,
   ) : WidgetRow() {
     override val key: String get() = "habit:$id"
   }
@@ -426,6 +430,8 @@ object TodayRules {
     todos: List<TodoInput>,
     today: LocalDate,
     minuteOfDay: Int,
+    /** Habit id → wall-clock start (epoch ms) of a timer the widget is running. */
+    runningTimers: Map<String, Long> = emptyMap(),
   ): TodayModel {
     val open = ArrayList<WidgetRow>()
     val counterRows = ArrayList<WidgetRow>()
@@ -434,16 +440,20 @@ object TodayRules {
     var done = 0
 
     for (habit in habits) {
-      if (!isVisibleAt(habit.rules, minuteOfDay)) continue
+      // A running timer always keeps its row: without it there is nothing to stop it with.
+      val runningSince = runningTimers[habit.id]
+      val visible = isVisibleAt(habit.rules, minuteOfDay)
+      if (!visible && runningSince == null) continue
       val state = habitDayState(habit.rules, today) { date -> habitFacts(habit.id, date) }
       val rowState = when {
+        !visible -> null
         state.due && state.done -> HabitRowState.DONE
         state.due -> HabitRowState.OPEN
         state.skipped && state.scheduled -> HabitRowState.SKIPPED
         else -> null
-      } ?: continue
+      } ?: if (runningSince != null) HabitRowState.OPEN else continue
 
-      if (state.due) {
+      if (visible && state.due) {
         due++
         if (state.done) done++
       }
@@ -463,6 +473,8 @@ object TodayRules {
           } else {
             emptyList()
           },
+          canRun = canQuickLog(habit.rules),
+          runningSinceMs = runningSince,
         )
       } else {
         WidgetRow.Habit(id = habit.id, name = habit.name, state = rowState, timer = false)
@@ -537,6 +549,16 @@ object TodayRules {
   /** Two chunk sizes that fit the goal: small ones for short goals, bigger ones for long. */
   fun timerQuickMinutes(targetMinutes: Int?): List<Int> =
     if (targetMinutes == null || targetMinutes <= 30) listOf(5, 15) else listOf(15, 30)
+
+  /** A stopped timer shorter than this was a mistap: nothing is logged. */
+  const val MIN_TIMER_SESSION_SECONDS = 5
+
+  /** Whole seconds a widget timer ran, or null when it should not be logged. */
+  fun timerSessionSeconds(startedAtMs: Long, endedAtMs: Long): Int? {
+    val seconds = (endedAtMs - startedAtMs) / 1000
+    if (seconds < MIN_TIMER_SESSION_SECONDS || seconds > Int.MAX_VALUE) return null
+    return seconds.toInt()
+  }
 
   /** Meta of a logged timer chunk: the protocol's `timer_session` shape (habit.ts). */
   fun timerSessionMetaJson(startedAt: Instant, endedAt: Instant, durationSeconds: Int): String =

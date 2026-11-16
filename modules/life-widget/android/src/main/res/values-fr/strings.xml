@@ -20,4 +20,6 @@
   <string name="life_widget_preview_todo">Appeler la banque</string>
   <string name="life_widget_preview_done">Lire</string>
   <string name="life_widget_log_minutes_a11y">Ajouter %1$d minutes à %2$s</string>
+  <string name="life_widget_start_timer_a11y">Démarrer le minuteur %1$s</string>
+  <string name="life_widget_stop_timer_a11y">Arrêter le minuteur %1$s</string>
 </resources>

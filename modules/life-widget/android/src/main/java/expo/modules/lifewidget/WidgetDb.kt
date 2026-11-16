@@ -113,10 +113,16 @@ object WidgetDb {
     val today = LocalDate.now()
     val time = LocalTime.now()
     val minuteOfDay = time.hour * 60 + time.minute
-    return withDb(context) { db -> readSnapshot(db, today, minuteOfDay) } ?: WidgetSnapshot.NoDatabase
+    val running = WidgetTimers.all(context).mapValues { it.value.startedAtMs }
+    return withDb(context) { db -> readSnapshot(db, today, minuteOfDay, running) } ?: WidgetSnapshot.NoDatabase
   }
 
-  private fun readSnapshot(db: SQLiteDatabase, today: LocalDate, minuteOfDay: Int): WidgetSnapshot {
+  private fun readSnapshot(
+    db: SQLiteDatabase,
+    today: LocalDate,
+    minuteOfDay: Int,
+    runningTimers: Map<String, Long>,
+  ): WidgetSnapshot {
     val ordered = ArrayList<OrderableElement<ElementRow>>()
     db.rawQuery(
       """
@@ -188,6 +194,7 @@ object WidgetDb {
       todos = todos,
       today = today,
       minuteOfDay = minuteOfDay,
+      runningTimers = runningTimers,
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
   }
@@ -332,6 +339,45 @@ object WidgetDb {
         for (id in readDay(db, elementId, today).skipIds) {
           db.delete("events", "id = ?", arrayOf(id))
         }
+      }
+    }
+  }
+
+  /**
+   * Starts a widget timer on the habit, or stops the one running and logs it as
+   * a `timer_session` on the day it started (as the app does across midnight).
+   * A habit that was archived or changed kind while its timer ran logs nothing.
+   */
+  fun toggleTimer(context: Context, elementId: String) {
+    val now = Instant.now()
+    val running = WidgetTimers.get(context, elementId)
+    withDb(context) { db ->
+      inImmediateTransaction(db) {
+        val rules = activeConfig(db, elementId, "habit")?.let { TodayRules.parseHabitConfig(it) }
+        if (rules == null || !TodayRules.canQuickLog(rules)) {
+          WidgetTimers.clear(context, elementId)
+          return@inImmediateTransaction
+        }
+        if (running == null) {
+          WidgetTimers.start(context, elementId, RunningTimer(now.toEpochMilli(), LocalDate.now().toString()))
+          return@inImmediateTransaction
+        }
+        val seconds = TodayRules.timerSessionSeconds(running.startedAtMs, now.toEpochMilli())
+        if (seconds != null) {
+          insertEvent(
+            db,
+            elementId,
+            running.date,
+            seconds.toDouble(),
+            TodayRules.timerSessionMetaJson(Instant.ofEpochMilli(running.startedAtMs), now, seconds),
+          )
+          for (id in readDay(db, elementId, running.date).skipIds) {
+            db.delete("events", "id = ?", arrayOf(id))
+          }
+        }
+        // Cleared only once the session is written (or dropped as a mistap): a
+        // database that could not be opened leaves the timer running.
+        WidgetTimers.clear(context, elementId)
       }
     }
   }

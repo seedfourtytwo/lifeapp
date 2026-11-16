@@ -221,6 +221,65 @@ class TodayRulesTest {
   }
 
   @Test
+  fun runningTimerKeepsItsRowAndIsNotCountedTwice() {
+    val hidden = HabitInput(
+      "h",
+      "Hidden",
+      habit("""{"trackingMode":"timer","visibleOnlyInTimeRange":true,"timeRange":{"start":"06:00","end":"07:00"}}"""),
+    )
+    val notToday = HabitInput(
+      "n",
+      "Not today",
+      habit("""{"trackingMode":"timer","schedule":{"type":"weekdays","days":[0]}}"""),
+    )
+    val idle = HabitInput("i", "Idle", habit("""{"trackingMode":"timer"}"""))
+    val none = TodayRules.buildToday(listOf(hidden, notToday, idle), { _, _ -> DayFacts.EMPTY }, emptyList(), emptyList(), monday, 12 * 60)
+    assertEquals(listOf("habit:i"), none.rows.map { it.key })
+
+    val model = TodayRules.buildToday(
+      listOf(hidden, notToday, idle),
+      { _, _ -> DayFacts.EMPTY },
+      emptyList(),
+      emptyList(),
+      monday,
+      12 * 60,
+      runningTimers = mapOf("h" to 1000L, "n" to 2000L),
+    )
+    assertEquals(listOf("habit:h", "habit:n", "habit:i"), model.rows.map { it.key })
+    val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
+    assertEquals(1000L, rows.getValue("h").runningSinceMs)
+    assertEquals(2000L, rows.getValue("n").runningSinceMs)
+    assertNull(rows.getValue("i").runningSinceMs)
+    // Only the idle habit is due today; a running timer does not make a habit due.
+    assertEquals(1, model.due)
+  }
+
+  @Test
+  fun stoppedTimerLogsWholeSecondsAndDropsAMistap() {
+    assertNull(TodayRules.timerSessionSeconds(startedAtMs = 10_000, endedAtMs = 14_999))
+    assertEquals(5, TodayRules.timerSessionSeconds(startedAtMs = 10_000, endedAtMs = 15_000))
+    assertEquals(900, TodayRules.timerSessionSeconds(startedAtMs = 0, endedAtMs = 900_999))
+    // A clock that went backwards never logs.
+    assertNull(TodayRules.timerSessionSeconds(startedAtMs = 20_000, endedAtMs = 10_000))
+  }
+
+  @Test
+  fun onlyQuickLoggableTimersCanRunInTheWidget() {
+    val track = HabitInput(
+      "t",
+      "Breathing",
+      habit("""{"trackingMode":"timer","timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}"""),
+    )
+    val plain = HabitInput("p", "Reading", habit("""{"trackingMode":"timer"}"""))
+    val tick = HabitInput("b", "No Smoking", habit("{}"))
+    val model = TodayRules.buildToday(listOf(track, plain, tick), { _, _ -> DayFacts.EMPTY }, emptyList(), emptyList(), monday, 0)
+    val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
+    assertFalse(rows.getValue("t").canRun)
+    assertTrue(rows.getValue("p").canRun)
+    assertFalse(rows.getValue("b").canRun)
+  }
+
+  @Test
   fun writesValuesTheAppAccepts() {
     assertEquals("2026-11-16T08:05:03.007Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03.007Z")))
     assertEquals("2026-11-16T08:05:03.000Z", TodayRules.isoTimestamp(Instant.parse("2026-11-16T08:05:03Z")))

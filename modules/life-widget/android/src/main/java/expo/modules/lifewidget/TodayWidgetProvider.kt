@@ -36,7 +36,9 @@ internal object WidgetActions {
   const val TAP_COUNTER = "counter"
   const val TAP_TODO = "todo"
   const val TAP_TIMER_LOG = "timer_log"
-  const val TAP_OPEN_APP = "open"
+  const val TAP_TIMER_TOGGLE = "timer_toggle"
+  /** A row with nothing to do on tap. Stated explicitly because row views are recycled. */
+  const val TAP_NONE = "none"
 
   private const val REQUEST_TAP_TEMPLATE = 1
   private const val REQUEST_ALARM = 2
@@ -45,15 +47,11 @@ internal object WidgetActions {
   /** One background thread per :widget process: every DB read and write runs here in order. */
   val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
-  fun launchIntent(context: Context): Intent? {
+  /** Only the "no data yet" message opens the app: every row acts inside the widget. */
+  fun openAppPendingIntent(context: Context): PendingIntent? {
     // The package's own launch intent, so `.dev` and release both work.
     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-    return intent
-  }
-
-  fun openAppPendingIntent(context: Context): PendingIntent? {
-    val intent = launchIntent(context) ?: return null
     return PendingIntent.getActivity(
       context,
       REQUEST_OPEN_APP,
@@ -185,8 +183,7 @@ internal object WidgetUpdater {
     views.setPendingIntentTemplate(R.id.widget_list, WidgetActions.tapTemplate(context))
 
     val open = WidgetActions.openAppPendingIntent(context)
-    if (open != null) {
-      views.setOnClickPendingIntent(R.id.widget_header, open)
+    if (open != null && snapshot is WidgetSnapshot.NoDatabase) {
       views.setOnClickPendingIntent(R.id.widget_empty, open)
     }
     return views
@@ -232,15 +229,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
 
   private fun handleTap(context: Context, intent: Intent) {
     val kind = intent.getStringExtra(WidgetActions.EXTRA_TAP_KIND) ?: return
-    if (kind == WidgetActions.TAP_OPEN_APP) {
-      val launch = WidgetActions.launchIntent(context) ?: return
-      try {
-        context.startActivity(launch)
-      } catch (e: RuntimeException) {
-        Log.w("LifeWidget", "Could not open the app from the widget", e)
-      }
-      return
-    }
+    if (kind == WidgetActions.TAP_NONE) return
     val id = intent.getStringExtra(WidgetActions.EXTRA_ID) ?: return
     val date = intent.getStringExtra(WidgetActions.EXTRA_DATE) ?: ""
     val appContext = context.applicationContext
@@ -256,6 +245,9 @@ class WidgetActionReceiver : BroadcastReceiver() {
       WidgetActions.TAP_TIMER_LOG -> {
         val minutes = intent.getIntExtra(WidgetActions.EXTRA_MINUTES, 0)
         WidgetActions.runAsync(this, context) { WidgetDb.logTimerMinutes(appContext, id, date, minutes) }
+      }
+      WidgetActions.TAP_TIMER_TOGGLE -> {
+        WidgetActions.runAsync(this, context) { WidgetDb.toggleTimer(appContext, id) }
       }
       WidgetActions.TAP_TODO -> {
         WidgetActions.runAsync(this, context) { WidgetDb.completeTodo(appContext, id) }

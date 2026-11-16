@@ -2,6 +2,7 @@ package expo.modules.lifewidget
 
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -68,11 +69,20 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     val views = RemoteViews(context.packageName, R.layout.life_widget_row_item)
     val settled = row.state != HabitRowState.OPEN
     // Finished rows lose their card, so what is left to do stands out.
-    views.setInt(R.id.row_root, "setBackgroundResource", if (settled) 0 else R.drawable.life_widget_card)
-    val disc = when (row.state) {
-      HabitRowState.DONE -> R.drawable.life_widget_disc_done
-      HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
-      HabitRowState.OPEN -> if (row.timer) R.drawable.life_widget_disc_timer else R.drawable.life_widget_disc_open
+    val runningSince = row.runningSinceMs
+    val background = when {
+      runningSince != null -> R.drawable.life_widget_card_running
+      settled -> 0
+      else -> R.drawable.life_widget_card
+    }
+    views.setInt(R.id.row_root, "setBackgroundResource", background)
+    val disc = when {
+      runningSince != null -> R.drawable.life_widget_disc_stop
+      row.state == HabitRowState.DONE -> R.drawable.life_widget_disc_done
+      row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
+      // The play disc only where a tap starts the widget timer.
+      row.canRun -> R.drawable.life_widget_disc_timer
+      else -> R.drawable.life_widget_disc_open
     }
     views.setImageViewResource(R.id.row_disc, disc)
 
@@ -93,11 +103,34 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       } else {
         views.setViewVisibility(R.id.row_progress, View.GONE)
       }
-      views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_OPEN_APP))
-      views.setContentDescription(R.id.row_root, row.name)
+      if (row.canRun) {
+        views.setOnClickFillInIntent(
+          R.id.row_root,
+          fillIn(WidgetActions.TAP_TIMER_TOGGLE).putExtra(WidgetActions.EXTRA_ID, row.id),
+        )
+        views.setContentDescription(
+          R.id.row_root,
+          context.getString(
+            if (runningSince != null) R.string.life_widget_stop_timer_a11y else R.string.life_widget_start_timer_a11y,
+            row.name,
+          ),
+        )
+      } else {
+        views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_NONE))
+        views.setContentDescription(R.id.row_root, row.name)
+      }
+      if (runningSince != null) {
+        // The chronometer counts from a base on the uptime clock; ours is wall-clock.
+        val base = SystemClock.elapsedRealtime() - (System.currentTimeMillis() - runningSince)
+        views.setChronometer(R.id.row_clock, base, null, true)
+        views.setViewVisibility(R.id.row_clock, View.VISIBLE)
+      } else {
+        views.setViewVisibility(R.id.row_clock, View.GONE)
+      }
       val buttons = intArrayOf(R.id.row_button_1, R.id.row_button_2)
       for ((index, buttonId) in buttons.withIndex()) {
-        val minutes = row.quickMinutes.getOrNull(index)
+        // While the timer runs the clock takes the buttons' place.
+        val minutes = if (runningSince != null) null else row.quickMinutes.getOrNull(index)
         if (minutes == null) {
           views.setViewVisibility(buttonId, View.GONE)
           continue
@@ -116,6 +149,7 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     } else {
       views.setViewVisibility(R.id.row_button_1, View.GONE)
       views.setViewVisibility(R.id.row_button_2, View.GONE)
+      views.setViewVisibility(R.id.row_clock, View.GONE)
       views.setViewVisibility(R.id.row_meta, View.GONE)
       views.setViewVisibility(R.id.row_progress, View.GONE)
       val wantDone = row.state != HabitRowState.DONE
@@ -156,8 +190,9 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
     )
     setName(views, row.name, settled = false)
     // Same layout as a habit row, whose views are recycled: always state the row tap.
-    views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_OPEN_APP))
+    views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_NONE))
     views.setContentDescription(R.id.row_root, row.name)
+    views.setViewVisibility(R.id.row_clock, View.GONE)
 
     val total = TodayRules.formatNumber(row.total)
     val target = row.target
