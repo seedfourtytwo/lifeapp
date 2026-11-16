@@ -20,6 +20,7 @@ const habitSaveData = (
   scheduleWeekdays: [1, 2, 3, 4, 5],
   scheduleInterval: '2',
   scheduleAnchorDate: '2025-06-30',
+  scheduleTimesPerWeek: '3',
   useReminder: false,
   remindMinutesBefore: '15',
   showStreakOnCard: false,

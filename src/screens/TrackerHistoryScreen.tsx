@@ -21,11 +21,13 @@ import {
   chartPlotValue,
   chartUnitLabel,
   completedDatesFromHabitEvents,
+  CounterConfigSchema,
+  countsAsScheduledDay,
   formatHabitTimerDuration,
   isElementDayComplete,
-  isHabitScheduledOnDate,
   parseHabitConfig,
   type ElementDefinition,
+  type StreakUnit,
 } from '../protocol';
 import {
   DEFAULT_HISTORY_RANGE,
@@ -40,7 +42,11 @@ import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } 
 import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 import { playChartSelectHaptic } from '../utils/habitHaptics';
-import { computeHabitStreaksFromEvents } from '../utils/habitStreakCompute';
+import { computeCounterStreaks } from '../utils/counterStreakCompute';
+import {
+  computeHabitStreaksFromEvents,
+  habitDayHistoryFromEvents,
+} from '../utils/habitStreakCompute';
 import {
   formatTrackerHistoryDayValue,
   truncateNotePreview,
@@ -56,7 +62,7 @@ interface DayRow {
 
 export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
-  const { t } = useTranslation(['insights', 'common']);
+  const { t } = useTranslation(['insights', 'common', 'trackers']);
   const { decorations: deco } = useAppTheme();
   const { elementId } = route.params;
   const [element, setElement] = useState<ElementDefinition | null>(null);
@@ -64,7 +70,10 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [rangeDays, setRangeDays] = useState<HistoryRangeDays>(DEFAULT_HISTORY_RANGE);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [streakUnit, setStreakUnit] = useState<StreakUnit>('days');
   const [personalBest, setPersonalBest] = useState(0);
+  /** Strength 0–100; null when the tracker has none (a counter without a target). */
+  const [score, setScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notesByDate, setNotesByDate] = useState<Map<string, string>>(new Map());
@@ -100,6 +109,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setNotesByDate(new Map());
         setStreak(0);
         setPersonalBest(0);
+        setScore(null);
         return true;
       }
 
@@ -135,20 +145,43 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         );
         if (generation !== loadGenerationRef.current) return false;
         const createdOn = createdOnLocalDate(loaded.createdAt);
-        const { streak: currentStreak } = computeHabitStreaksFromEvents(
-          yearRows,
-          config,
-          undefined,
-          createdOn,
-        );
-        setStreak(currentStreak);
+        const result = computeHabitStreaksFromEvents(yearRows, config, undefined, createdOn);
+        setStreak(result.streak);
+        setStreakUnit(result.streakUnit);
+        setScore(result.score);
         const completed = completedDatesFromHabitEvents(yearRows, config);
+        const history = habitDayHistoryFromEvents(yearRows, config);
+        // A best run in days says nothing about a times-a-week habit; leave it out.
         setPersonalBest(
-          computePersonalBestStreak(completed, (date) => isHabitScheduledOnDate(config, date)),
+          config.schedule.type === 'times_per_week'
+            ? 0
+            : computePersonalBestStreak(completed, (date) =>
+                countsAsScheduledDay(config.schedule, date, history),
+              ),
         );
       } else {
         setStreak(0);
+        setStreakUnit('days');
         setPersonalBest(0);
+        const target = CounterConfigSchema.safeParse(loaded.config).data?.dailyTarget;
+        if (target && target > 0) {
+          const yearTotals = await eventRepo.getDailyTotalsByElement(
+            db,
+            elementId,
+            streakHistorySinceDate(),
+          );
+          if (generation !== loadGenerationRef.current) return false;
+          setScore(
+            computeCounterStreaks(
+              yearTotals,
+              target,
+              undefined,
+              createdOnLocalDate(loaded.createdAt),
+            ).score,
+          );
+        } else {
+          setScore(null);
+        }
       }
       return true;
     } catch (err) {
@@ -277,6 +310,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         kind: 'habit',
         daysDone: chartModel.completedFlags.filter(Boolean).length,
         streak,
+        streakUnit,
         bestRun: personalBest,
         averageLabel:
           chartModel.isTimerHabit && chartModel.activity.activeDays > 0
@@ -298,6 +332,21 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         <HistoryRangeControl value={rangeDays} onChange={setRangeDays} />
 
         <View style={[styles.tile, tile]}>
+          {score !== null ? (
+            <View style={styles.strength}>
+              <View
+                style={styles.strengthFigure}
+                accessible
+                accessibilityLabel={t('trackers:habitWidget.strengthA11y', { score })}
+              >
+                <Text style={[typeScale.bigStat, { color: theme.colors.onSurface }]}>
+                  {score}
+                </Text>
+                <QuietText style={typeScale.caption}>{t('history.statStrength')}</QuietText>
+              </View>
+              <QuietText style={typeScale.secondary}>{t('history.strengthExplainer')}</QuietText>
+            </View>
+          ) : null}
           <HistoryStatRow stats={stats} />
           <InteractiveDailyChart
             days={days.map((d) => ({ date: d.date, label: d.label }))}
@@ -395,6 +444,13 @@ const styles = StyleSheet.create({
   flexText: {
     flex: 1,
     minWidth: 0,
+  },
+  strength: {
+    gap: space.xs,
+    marginBottom: space.lg,
+  },
+  strengthFigure: {
+    alignSelf: 'flex-start',
   },
   noteRow: {
     flexDirection: 'row',

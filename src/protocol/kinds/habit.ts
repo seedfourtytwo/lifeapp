@@ -80,6 +80,11 @@ export const HabitEventMetaSchema = z.discriminatedUnion('source', [
     /** Set when a play_once track finished naturally (not manual Done). */
     trackCompleted: z.boolean().optional(),
   }),
+  /**
+   * "Skip today": a value-0 row. The day counts as skipped only while it is not
+   * also complete — see `src/protocol/dayRules.ts`. At most one per day.
+   */
+  z.object({ source: z.literal('skip') }),
 ]);
 
 export type HabitEventMeta = z.infer<typeof HabitEventMetaSchema>;

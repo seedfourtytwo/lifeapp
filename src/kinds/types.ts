@@ -18,6 +18,12 @@ export interface WidgetProps<TConfig = Record<string, unknown>> {
   onToggle?: () => Promise<void>;
   streak?: number;
   failureStreak?: number;
+  /** Strength score 0–100 (habits; counters with a daily target). */
+  score?: number;
+  /** Today reads as skipped (a skip row on a day that is not complete). */
+  skipped?: boolean;
+  /** Skip today (`true`) or undo the skip (`false`), from the row's long-press tray. */
+  onSkipToday?: (skip: boolean) => void;
   activeTimerSession?: ActiveTimerSession | null;
   onTimerPress?: () => void | Promise<void>;
   onTimerFinish?: () => void | Promise<void>;

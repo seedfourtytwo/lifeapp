@@ -49,6 +49,13 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
     }
     return { type: 'weekdays', days: [...data.scheduleWeekdays].sort() };
   }
+  if (data.scheduleType === 'times_per_week') {
+    const times = parseInt(data.scheduleTimesPerWeek.trim(), 10);
+    if (Number.isNaN(times) || times < 1 || times > 6) {
+      throw new Error(i18n.t('trackers:validation.timesPerWeekRange'));
+    }
+    return { type: 'times_per_week', times };
+  }
   const interval = parseInt(data.scheduleInterval.trim(), 10);
   if (Number.isNaN(interval) || interval < 1) {
     throw new Error(i18n.t('trackers:validation.intervalMin1'));

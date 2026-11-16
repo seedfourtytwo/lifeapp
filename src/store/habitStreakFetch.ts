@@ -28,13 +28,19 @@ function createdOnDate(createdAt?: string | null): string | null {
 export interface HabitStreakMaps {
   streaks: Record<string, number>;
   failureStreaks: Record<string, number>;
+  /**
+   * Strength score 0–100. Taken from the same pass as the streaks: the first
+   * 365-day window already covers everything the score can still feel, so the
+   * window is never widened for it (only for an unbroken streak).
+   */
+  scores: Record<string, number>;
 }
 
 export async function loadHabitStreakMaps(
   habits: HabitStreakInput[],
 ): Promise<HabitStreakMaps> {
   if (habits.length === 0) {
-    return { streaks: {}, failureStreaks: {} };
+    return { streaks: {}, failureStreaks: {}, scores: {} };
   }
 
   const db = await getDatabase();
@@ -43,6 +49,7 @@ export async function loadHabitStreakMaps(
 
   const streaks: Record<string, number> = {};
   const failureStreaks: Record<string, number> = {};
+  const scores: Record<string, number> = {};
 
   // One cheap query in the common case. A habit whose run is still unbroken at the
   // window edge is re-fetched with a doubled window, so a lookback limit never
@@ -68,6 +75,7 @@ export async function loadHabitStreakMaps(
           createdOnDate(habit.createdAt),
           since,
         );
+        if (ext === 0) scores[habit.id] = result.score;
         if (result.truncated && !last) {
           nextTotals.push(habit);
           continue;
@@ -91,6 +99,7 @@ export async function loadHabitStreakMaps(
           createdOnDate(habit.createdAt),
           since,
         );
+        if (ext === 0) scores[habit.id] = result.score;
         if (result.truncated && !last) {
           nextMeta.push(habit);
           continue;
@@ -104,7 +113,7 @@ export async function loadHabitStreakMaps(
     metaHabits = nextMeta;
   }
 
-  return { streaks, failureStreaks };
+  return { streaks, failureStreaks, scores };
 }
 
 async function fetchHabitStreakEvents(
@@ -120,7 +129,7 @@ export async function loadHabitStreakForElement(
   elementId: string,
   config: HabitConfig,
   createdAt?: string | null,
-): Promise<{ streak: number; failureStreak: number }> {
+): Promise<{ streak: number; failureStreak: number; score: number }> {
   let resolvedCreatedAt = createdAt;
   if (resolvedCreatedAt === undefined) {
     try {
@@ -136,5 +145,6 @@ export async function loadHabitStreakForElement(
   return {
     streak: maps.streaks[elementId] ?? 0,
     failureStreak: maps.failureStreaks[elementId] ?? 0,
+    score: maps.scores[elementId] ?? 0,
   };
 }

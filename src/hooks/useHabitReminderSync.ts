@@ -31,6 +31,10 @@ export function habitReminderSignature(
   habitDoneToday: Record<string, boolean>,
   today: string,
   language: string,
+  dayContext: {
+    skipRowToday?: Record<string, boolean>;
+    habitWeekDoneBefore?: Record<string, readonly string[]>;
+  } = {},
 ): string {
   const parts: unknown[] = [today, language];
   for (const element of elements) {
@@ -46,6 +50,12 @@ export function habitReminderSignature(
       remindMinutesBefore,
       schedule,
       habitDoneToday[element.id] ?? false,
+      // A skip drops today's reminder; a times-a-week habit's earlier done days
+      // can drop the rest of the week's.
+      dayContext.skipRowToday?.[element.id] ?? false,
+      schedule.type === 'times_per_week'
+        ? (dayContext.habitWeekDoneBefore?.[element.id] ?? [])
+        : null,
     ]);
   }
   return JSON.stringify(parts);
@@ -82,18 +92,20 @@ export function useHabitReminderSync(): void {
     const evaluate = (force = false) => {
       if (cancelled) return;
       const { elements } = useElementStore.getState();
-      const { habitDoneToday } = useEventStore.getState();
+      const { habitDoneToday, skipRowToday, habitWeekDoneBefore } = useEventStore.getState();
+      const dayContext = { skipRowToday, habitWeekDoneBefore };
       const signature = habitReminderSignature(
         elements,
         habitDoneToday,
         currentAppCalendarDate(),
         appLanguage,
+        dayContext,
       );
       const stale = Date.now() - lastSyncAt >= HABIT_REMINDER_REFRESH_MS;
       if (signature === lastSignature && !(force && stale)) return;
       lastSignature = signature;
       lastSyncAt = Date.now();
-      void syncHabitReminders(elements, true, habitDoneToday).catch((error) => {
+      void syncHabitReminders(elements, true, habitDoneToday, dayContext).catch((error) => {
         console.warn('Habit reminder sync skipped', error);
       });
     };

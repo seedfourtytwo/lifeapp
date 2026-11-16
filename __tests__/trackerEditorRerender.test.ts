@@ -126,6 +126,7 @@ const habitState = Object.freeze({
   scheduleWeekdays: habitSession.scheduleWeekdays,
   scheduleInterval: habitSession.scheduleInterval,
   scheduleAnchorDate: habitSession.scheduleAnchorDate,
+  scheduleTimesPerWeek: habitSession.scheduleTimesPerWeek,
   useReminder: habitSession.useReminder,
   remindMinutesBefore: habitSession.remindMinutesBefore,
   showStreakOnCard: habitSession.showStreakOnCard,

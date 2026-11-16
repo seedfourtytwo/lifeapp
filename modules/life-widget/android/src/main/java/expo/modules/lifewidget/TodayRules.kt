@@ -110,7 +110,13 @@ sealed class WidgetRow {
 
 data class HabitInput(val id: String, val name: String, val rules: HabitRules)
 
-data class CounterInput(val id: String, val name: String, val rules: CounterRules, val todayTotal: Double)
+data class CounterInput(
+  val id: String,
+  val name: String,
+  val rules: CounterRules,
+  val todayTotal: Double,
+  val skippedRowToday: Boolean = false,
+)
 
 data class TodoInput(val id: String, val title: String, val dueDate: String?, val sortOrder: Long)
 
@@ -267,9 +273,15 @@ object TodayRules {
 
   /** `isElementDayComplete` for a counter (src/protocol/semantics.ts). */
   fun isCounterDayComplete(rules: CounterRules, total: Double): Boolean {
+    // A counter without a target is never "complete" (decision shared with dayRules.ts).
     val target = rules.dailyTarget
-    if (target != null && target > 0) return total >= target
-    return total > 0
+    return target != null && target > 0 && total >= target
+  }
+
+  /** A targeted counter with a skip row that has not reached its target: not due today. */
+  fun isCounterDaySkipped(rules: CounterRules, total: Double, hasSkip: Boolean): Boolean {
+    val target = rules.dailyTarget
+    return hasSkip && target != null && target > 0 && total < target
   }
 
   /** `isScheduleActiveOnDate` for the date-only variants (src/protocol/schedule.ts). */
@@ -445,7 +457,8 @@ object TodayRules {
 
     for (counter in counters) {
       val target = counter.rules.dailyTarget
-      if (target != null) {
+      // A skipped counter is not due, so it leaves the header count; its row stays usable.
+      if (target != null && !isCounterDaySkipped(counter.rules, counter.todayTotal, counter.skippedRowToday)) {
         due++
         if (isCounterDayComplete(counter.rules, counter.todayTotal)) done++
       }

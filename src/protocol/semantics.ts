@@ -10,6 +10,10 @@ import { HabitConfigSchema, isHabitDayComplete } from './kinds/habit';
  * | counter | —                   | increment or set total   | quick_button, manual    |
  * | habit   | trackingMode boolean| 1 = checked off          | habit_tick              |
  * | habit   | trackingMode timer  | session length (seconds) | timer_session           |
+ * | either  | —                   | 0 = "skip today" marker  | skip                    |
+ *
+ * A skip row adds nothing to the SUM; whether a day reads as skipped is
+ * decided in `dayRules.ts` (skip row AND not complete).
  *
  * Daily total = SUM(events.value) for that element on that calendar date.
  * Completion rules live in kind config (e.g. dailyTarget, dailyTargetSeconds).

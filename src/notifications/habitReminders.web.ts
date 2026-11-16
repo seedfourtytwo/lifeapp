@@ -13,6 +13,10 @@ export async function syncHabitReminders(
   _elements: ElementDefinition[],
   _enabled: boolean,
   _habitDoneToday?: Record<string, boolean>,
+  _dayContext?: {
+    skipRowToday?: Record<string, boolean>;
+    habitWeekDoneBefore?: Record<string, readonly string[]>;
+  },
 ): Promise<void> {}
 
 export async function scheduleEndOfDayReminder(

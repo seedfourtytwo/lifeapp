@@ -37,6 +37,7 @@ function habitFieldStateFromSession(session: TrackerEditorSession): HabitEditorF
     scheduleWeekdays: session.scheduleWeekdays,
     scheduleInterval: session.scheduleInterval,
     scheduleAnchorDate: session.scheduleAnchorDate,
+    scheduleTimesPerWeek: session.scheduleTimesPerWeek,
     useReminder: session.useReminder,
     remindMinutesBefore: session.remindMinutesBefore,
     showStreakOnCard: session.showStreakOnCard,

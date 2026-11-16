@@ -1,5 +1,5 @@
 import { getDateLocale } from '../i18n';
-import { parseLocalDate, shiftDateString, toDateString } from '../protocol';
+import { parseLocalDate, shiftDateString, toDateString, weekStartDateString } from '../protocol';
 
 /** Days of history used for streak calculations (inclusive window). */
 export const STREAK_LOOKBACK_DAYS = 365;
@@ -71,13 +71,12 @@ export function formatShortDate(dateStr: string): string {
   });
 }
 
-/** Monday of the ISO week containing `dateStr`. */
+/**
+ * Monday of the ISO week containing `dateStr`. One definition, shared with the
+ * habit `times_per_week` schedule (`weekStartDateString` in protocol).
+ */
 export function startOfWeekDate(dateStr: string): string {
-  const d = parseLocalDate(dateStr);
-  // getDay(): 0 = Sunday. Sunday belongs to the week that started 6 days earlier.
-  const offset = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - offset);
-  return toDateString(d);
+  return weekStartDateString(dateStr);
 }
 
 /** The seven dates, Monday first, of the week containing `dateStr`. */

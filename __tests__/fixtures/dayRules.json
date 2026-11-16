@@ -1,0 +1,934 @@
+[
+  {
+    "name": "daily unbroken run including today",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-08",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-08": {
+        "total": 1
+      },
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 11,
+      "streakUnit": "days",
+      "score": 44
+    }
+  },
+  {
+    "name": "daily with one miss, today still open",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-01",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-01": {
+        "total": 1
+      },
+      "2026-11-02": {
+        "total": 1
+      },
+      "2026-11-03": {
+        "total": 1
+      },
+      "2026-11-04": {
+        "total": 1
+      },
+      "2026-11-05": {
+        "total": 1
+      },
+      "2026-11-06": {
+        "total": 1
+      },
+      "2026-11-07": {
+        "total": 1
+      },
+      "2026-11-08": {
+        "total": 1
+      },
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 3,
+      "streakUnit": "days",
+      "score": 55
+    },
+    "note": "Today open never breaks the run: it counts back from yesterday (17, 16, 15)."
+  },
+  {
+    "name": "daily, nothing ever done",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-10",
+    "today": "2026-11-18",
+    "days": {},
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 0,
+      "streakUnit": "days",
+      "score": 0
+    }
+  },
+  {
+    "name": "weekdays with weekend gaps",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    "createdOn": "2026-11-09",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 8,
+      "streakUnit": "days",
+      "score": 35
+    },
+    "note": "weekdays.days uses 0 = Sunday \u2026 6 = Saturday. The weekend is not scheduled, so it neither breaks nor extends."
+  },
+  {
+    "name": "weekdays on an unscheduled Saturday",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "weekdays",
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    "createdOn": "2026-11-09",
+    "today": "2026-11-21",
+    "days": {
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1
+      },
+      "2026-11-19": {
+        "total": 1
+      },
+      "2026-11-20": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": false,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 10,
+      "streakUnit": "days",
+      "score": 41
+    }
+  },
+  {
+    "name": "every_n_days counts scheduled days only",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "every_n_days",
+        "interval": 3,
+        "anchorDate": "2026-11-03"
+      }
+    },
+    "createdOn": "2026-11-03",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-03": {
+        "total": 1
+      },
+      "2026-11-06": {
+        "total": 1
+      },
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 2,
+      "streakUnit": "days",
+      "score": 23
+    },
+    "note": "Scheduled: 03, 06, 09, 12, 15, 18. 12 was missed; 10 is unscheduled and ignored."
+  },
+  {
+    "name": "skip in the middle of a run",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-10",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 0,
+        "skipped": true
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 7,
+      "streakUnit": "days",
+      "score": 31
+    },
+    "note": "The skipped 14th is treated as unscheduled: the run is 17\u202615 and 13\u202610."
+  },
+  {
+    "name": "skipped today",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-12",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 0,
+        "skipped": true
+      }
+    },
+    "expect": {
+      "dueToday": false,
+      "doneToday": false,
+      "skippedToday": true,
+      "streak": 6,
+      "streakUnit": "days",
+      "score": 27
+    }
+  },
+  {
+    "name": "a skip row on a complete day is not a skip",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-12",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1,
+        "skipped": true
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 7,
+      "streakUnit": "days",
+      "score": 31
+    }
+  },
+  {
+    "name": "times_per_week met this week, two earlier weeks met",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-02",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-02": {
+        "total": 1
+      },
+      "2026-11-04": {
+        "total": 1
+      },
+      "2026-11-07": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-11": {
+        "total": 1
+      },
+      "2026-11-15": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 3,
+      "streakUnit": "weeks",
+      "score": 29
+    },
+    "note": "Weeks are Monday\u2013Sunday. Today is done, so it stays due (visible as done)."
+  },
+  {
+    "name": "times_per_week not yet met this week",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-09",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-09": {
+        "total": 1
+      },
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 1,
+      "streakUnit": "weeks",
+      "score": 16
+    },
+    "note": "The unfinished current week never breaks the run; last week (met) carries it."
+  },
+  {
+    "name": "times_per_week met early in the week is not due afterwards",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 2
+      }
+    },
+    "createdOn": "2026-11-16",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-17": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": false,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 1,
+      "streakUnit": "weeks",
+      "score": 6
+    }
+  },
+  {
+    "name": "times_per_week missed last full week",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-02",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-02": {
+        "total": 1
+      },
+      "2026-11-03": {
+        "total": 1
+      },
+      "2026-11-04": {
+        "total": 1
+      },
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 0,
+      "streakUnit": "weeks",
+      "score": 12
+    }
+  },
+  {
+    "name": "times_per_week created mid-week, creation week missed",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-12",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-10": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 0,
+      "streakUnit": "weeks",
+      "score": 10
+    },
+    "note": "Created Thursday 12th: the creation week is ignored when missed (not a break). The 10th is before creation and never counts, in streak or score."
+  },
+  {
+    "name": "times_per_week created mid-week, creation week met",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-12",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-12": {
+        "total": 1
+      },
+      "2026-11-13": {
+        "total": 1
+      },
+      "2026-11-14": {
+        "total": 1
+      },
+      "2026-11-16": {
+        "total": 1
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 1,
+      "streakUnit": "weeks",
+      "score": 16
+    }
+  },
+  {
+    "name": "times_per_week skipped today",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "times_per_week",
+        "times": 3
+      }
+    },
+    "createdOn": "2026-11-16",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-16": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 0,
+        "skipped": true
+      }
+    },
+    "expect": {
+      "dueToday": false,
+      "doneToday": false,
+      "skippedToday": true,
+      "streak": 0,
+      "streakUnit": "weeks",
+      "score": 0
+    },
+    "note": "A skip only hides today; the week still needs 3."
+  },
+  {
+    "name": "counter with a daily target",
+    "kind": "counter",
+    "config": {
+      "unit": "reps",
+      "quickIncrements": [
+        10
+      ],
+      "dailyTarget": 50
+    },
+    "createdOn": "2026-11-14",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-14": {
+        "total": 60
+      },
+      "2026-11-15": {
+        "total": 50
+      },
+      "2026-11-16": {
+        "total": 20
+      },
+      "2026-11-17": {
+        "total": 55
+      },
+      "2026-11-18": {
+        "total": 30
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 1,
+      "streakUnit": "days",
+      "score": 14
+    },
+    "note": "Complete when total >= dailyTarget. Counters always run on a daily schedule."
+  },
+  {
+    "name": "counter skipped today below target",
+    "kind": "counter",
+    "config": {
+      "unit": "reps",
+      "quickIncrements": [
+        10
+      ],
+      "dailyTarget": 50
+    },
+    "createdOn": "2026-11-14",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-14": {
+        "total": 60
+      },
+      "2026-11-15": {
+        "total": 50
+      },
+      "2026-11-16": {
+        "total": 50
+      },
+      "2026-11-17": {
+        "total": 55
+      },
+      "2026-11-18": {
+        "total": 10,
+        "skipped": true
+      }
+    },
+    "expect": {
+      "dueToday": false,
+      "doneToday": false,
+      "skippedToday": true,
+      "streak": 4,
+      "streakUnit": "days",
+      "score": 19
+    }
+  },
+  {
+    "name": "counter skip row but target reached",
+    "kind": "counter",
+    "config": {
+      "unit": "reps",
+      "quickIncrements": [
+        10
+      ],
+      "dailyTarget": 50
+    },
+    "createdOn": "2026-11-17",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-17": {
+        "total": 55
+      },
+      "2026-11-18": {
+        "total": 50,
+        "skipped": true
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 2,
+      "streakUnit": "days",
+      "score": 10
+    }
+  },
+  {
+    "name": "counter without a target has no streak or score",
+    "kind": "counter",
+    "config": {
+      "unit": "cups",
+      "quickIncrements": [
+        1
+      ]
+    },
+    "createdOn": "2026-11-14",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-16": {
+        "total": 3
+      },
+      "2026-11-18": {
+        "total": 2
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 0,
+      "streakUnit": "days",
+      "score": 0
+    },
+    "note": "Without dailyTarget nothing is ever complete: doneToday false, streak 0, score 0."
+  },
+  {
+    "name": "timer habit with a seconds target",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "timer",
+      "dailyTargetSeconds": 600,
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-14",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-14": {
+        "total": 600
+      },
+      "2026-11-15": {
+        "total": 300
+      },
+      "2026-11-16": {
+        "total": 700
+      },
+      "2026-11-17": {
+        "total": 600
+      },
+      "2026-11-18": {
+        "total": 900
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 3,
+      "streakUnit": "days",
+      "score": 19
+    },
+    "note": "Complete when total seconds >= dailyTargetSeconds; 300 s on the 15th is not complete."
+  },
+  {
+    "name": "timer habit without a target",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "timer",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-16",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-16": {
+        "total": 30
+      },
+      "2026-11-18": {
+        "total": 45
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": true,
+      "skippedToday": false,
+      "streak": 1,
+      "streakUnit": "days",
+      "score": 10
+    },
+    "note": "No target and no play-once sound: any logged second completes the day."
+  },
+  {
+    "name": "boolean habit counts a day with any tick",
+    "kind": "habit",
+    "config": {
+      "trackingMode": "boolean",
+      "schedule": {
+        "type": "daily"
+      }
+    },
+    "createdOn": "2026-11-16",
+    "today": "2026-11-18",
+    "days": {
+      "2026-11-16": {
+        "total": 2
+      },
+      "2026-11-17": {
+        "total": 1
+      },
+      "2026-11-18": {
+        "total": 0
+      }
+    },
+    "expect": {
+      "dueToday": true,
+      "doneToday": false,
+      "skippedToday": false,
+      "streak": 2,
+      "streakUnit": "days",
+      "score": 10
+    },
+    "note": "A boolean day is complete when total >= 1; a day row with total 0 is just \"not done\"."
+  }
+]

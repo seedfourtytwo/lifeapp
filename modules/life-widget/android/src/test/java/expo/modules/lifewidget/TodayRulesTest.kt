@@ -231,10 +231,11 @@ class TodayRulesTest {
             failures.add("$name: config did not parse")
             continue
           }
-          // The widget has no counter "due" notion beyond the header count, so
-          // only completion (and never-skipped) is compared for counters.
           check(failures, name, "doneToday", expect["doneToday"], TodayRules.isCounterDayComplete(rules, facts(today).total))
-          check(failures, name, "skippedToday", expect["skippedToday"], false)
+          check(
+            failures, name, "skippedToday", expect["skippedToday"],
+            TodayRules.isCounterDaySkipped(rules, facts(today).total, facts(today).hasSkip),
+          )
         }
         else -> failures.add("$name: unknown kind $kind")
       }

@@ -11,25 +11,37 @@ const TARGET = 48;
 type Props = {
   done: boolean;
   onPress: () => void;
+  /** Opens the row's tray (e.g. Skip today). */
+  onLongPress?: () => void;
   accessibilityLabel: string;
+  accessibilityHint?: string;
 };
 
 /**
  * A habit's tick: an empty ring at rest, a solid moss disc with a check once
  * done. The ring is small so the row stays calm; the target is not.
  */
-export function TrackerCardTick({ done, onPress, accessibilityLabel }: Props) {
+export function TrackerCardTick({
+  done,
+  onPress,
+  onLongPress,
+  accessibilityLabel,
+  accessibilityHint,
+}: Props) {
   const theme = useTheme();
   const doneFill = useDoneFill(done);
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       hitSlop={4}
       style={styles.target}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: done }}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
     >
       <View style={styles.ring}>
         <View style={[styles.outline, { borderColor: theme.colors.outlineVariant }]} />

@@ -52,6 +52,66 @@ describe('Life Protocol bundle', () => {
     expect(parseProtocolBundle(bundle)).toEqual(bundle);
   });
 
+  it('round-trips a times-a-week habit and skip rows for a habit and a counter', () => {
+    const weekly = {
+      ...habitElement,
+      id: '550e8400-e29b-41d4-a716-446655440020',
+      config: HabitConfigSchema.parse({
+        trackingMode: 'boolean',
+        schedule: { type: 'times_per_week', times: 3 },
+      }),
+    };
+    const counter = {
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      kind: 'counter' as const,
+      name: 'Push-ups',
+      config: CounterConfigSchema.parse({ unit: 'reps', quickIncrements: [10], dailyTarget: 50 }),
+      protocolVersion: PROTOCOL_VERSION,
+      createdAt: '2025-01-01T00:00:00.000Z',
+    };
+    const skipRow = (id: string, elementId: string) => ({
+      id,
+      elementId,
+      timestamp: '2025-01-02T10:00:00.000Z',
+      date: '2025-01-02',
+      value: 0,
+      meta: { source: 'skip' },
+      protocolVersion: PROTOCOL_VERSION,
+    });
+    const bundle = createProtocolBundle({
+      elements: [habitElement, weekly, counter],
+      dashboard: [],
+      events: [
+        skipRow('550e8400-e29b-41d4-a716-446655440022', habitElement.id),
+        skipRow('550e8400-e29b-41d4-a716-446655440023', weekly.id),
+        skipRow('550e8400-e29b-41d4-a716-446655440024', counter.id),
+      ],
+    });
+    expect(parseProtocolBundle(JSON.parse(JSON.stringify(bundle)))).toEqual(bundle);
+  });
+
+  it('rejects a times-a-week schedule outside 1–6', () => {
+    for (const times of [0, 7]) {
+      expect(() =>
+        HabitConfigSchema.parse({ schedule: { type: 'times_per_week', times } }),
+      ).toThrow();
+    }
+  });
+
+  it('rejects a skip row that carries a value', () => {
+    expect(() =>
+      validateEventForElement(habitElement, {
+        id: '550e8400-e29b-41d4-a716-446655440025',
+        elementId: habitElement.id,
+        timestamp: '2025-01-02T10:00:00.000Z',
+        date: '2025-01-02',
+        value: 1,
+        meta: { source: 'skip' },
+        protocolVersion: PROTOCOL_VERSION,
+      }),
+    ).toThrow(/value 0/);
+  });
+
   it('rejects events that reference missing elements', () => {
     expect(() =>
       createProtocolBundle({

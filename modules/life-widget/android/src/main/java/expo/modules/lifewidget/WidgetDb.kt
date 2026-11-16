@@ -158,7 +158,8 @@ object WidgetDb {
     val facts = readFacts(db, TodayRules.weekStart(today).toString(), today.toString())
     val todayKey = today.toString()
     val counters = counterDefs.map { (element, rules) ->
-      CounterInput(element.id, element.name, rules, facts["${element.id}|$todayKey"]?.total ?: 0.0)
+      val day = facts["${element.id}|$todayKey"]
+      CounterInput(element.id, element.name, rules, day?.total ?: 0.0, day?.hasSkip ?: false)
     }
 
     val todos = ArrayList<TodoInput>()

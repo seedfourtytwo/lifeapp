@@ -34,12 +34,12 @@ jest.mock('../src/db/client', () => ({
 
 jest.mock('../src/store/habitStreakFetch', () => ({
   loadHabitStreakForElement: jest.fn(async () => ({ streak: 1, failureStreak: 0 })),
-  loadHabitStreakMaps: jest.fn(async () => ({ streaks: {}, failureStreaks: {} })),
+  loadHabitStreakMaps: jest.fn(async () => ({ streaks: {}, failureStreaks: {}, scores: {} })),
 }));
 
 jest.mock('../src/store/counterStreakFetch', () => ({
-  loadCounterStreakForElement: jest.fn(async () => 0),
-  loadCounterStreakMaps: jest.fn(async () => ({})),
+  loadCounterStreakForElement: jest.fn(async () => ({ streak: 0, score: 0 })),
+  loadCounterStreakMaps: jest.fn(async () => ({ streaks: {}, scores: {} })),
 }));
 
 jest.mock('../src/utils/habitHaptics', () => ({

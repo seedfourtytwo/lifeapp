@@ -3,7 +3,7 @@ import type { GestureResponderEvent } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { getKindHandler } from '../../kinds/registry';
 import type { CounterConfig, ElementDefinition } from '../../protocol';
-import { useEventStore } from '../../store/eventStore';
+import { isSkippedToday, useEventStore } from '../../store/eventStore';
 
 type Props = {
   element: ElementDefinition;
@@ -15,6 +15,8 @@ type Props = {
     meta?: Record<string, unknown>,
   ) => Promise<void>;
   onSetDailyTotal: (element: ElementDefinition, total: number) => Promise<void>;
+  /** Skip today (`true`) or undo it. Only offered with a daily target. */
+  onSkipToday: (element: ElementDefinition, config: CounterConfig, skip: boolean) => void;
   onOpenDetails: (element: ElementDefinition) => void;
   /** Open today's note for this counter; `dictate` starts the mic. */
   onOpenNote: (element: ElementDefinition, dictate: boolean) => void;
@@ -37,6 +39,7 @@ function CounterCard({
   hasTodayNote,
   onLog,
   onSetDailyTotal,
+  onSkipToday,
   onOpenDetails,
   onOpenNote,
   onLongPressReorder,
@@ -46,11 +49,17 @@ function CounterCard({
   delayLongPressReorder,
   reorderHint,
 }: Props) {
-  const { todayTotal, streak } = useEventStore(
-    useShallow((state) => ({
-      todayTotal: state.dailyTotals[element.id] ?? 0,
-      streak: state.counterStreaks[element.id] ?? 0,
-    })),
+  const target = config.dailyTarget ?? 0;
+  const { todayTotal, streak, score, skipped } = useEventStore(
+    useShallow((state) => {
+      const total = state.dailyTotals[element.id] ?? 0;
+      return {
+        todayTotal: total,
+        streak: state.counterStreaks[element.id] ?? 0,
+        score: state.counterScores[element.id] ?? 0,
+        skipped: target > 0 && isSkippedToday(state, element.id, total >= target),
+      };
+    }),
   );
 
   const handler = getKindHandler(element.kind);
@@ -63,6 +72,9 @@ function CounterCard({
       config={config}
       todayTotal={todayTotal}
       streak={streak}
+      score={score}
+      skipped={skipped}
+      onSkipToday={target > 0 ? (skip) => onSkipToday(element, config, skip) : undefined}
       onLongPressReorder={onLongPressReorder}
       delayLongPressReorder={delayLongPressReorder}
       onReorderTouchMove={onReorderTouchMove}

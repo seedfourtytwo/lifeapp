@@ -60,10 +60,16 @@ export default function CountersScreen({
   const logEvent = useEventStore((s) => s.logEvent);
   const setDailyTotal = useEventStore((s) => s.setDailyTotal);
   const adjustDailyTotal = useEventStore((s) => s.adjustDailyTotal);
+  const setSkipToday = useEventStore((s) => s.setSkipToday);
   const counterTotalsReady = useEventStore((s) => s.counterTotalsReady);
   const now = useAppCalendarNow();
   const [scrollLocked, setScrollLocked] = useState(false);
   const [counterUndo, setCounterUndo] = useState<CounterUndo | null>(null);
+  /** The latest skip, offered for Undo; a skip and a burst of taps never share the bar. */
+  const [skipUndo, setSkipUndo] = useState<{
+    element: ElementDefinition;
+    config: CounterConfig;
+  } | null>(null);
   const scrollRef = useRef<HomeTabScrollViewHandle>(null);
 
   useEffect(() => {
@@ -71,6 +77,7 @@ export default function CountersScreen({
     setScrollLocked(false);
     // Undo belongs to the page it was offered on; leaving the page settles it.
     setCounterUndo(null);
+    setSkipUndo(null);
   }, [notesActive]);
 
   useRefreshCounterTotalsOnFocus();
@@ -130,6 +137,20 @@ export default function CountersScreen({
     return map;
   }, [counters]);
 
+  const undoSkip = () => {
+    const pending = skipUndo;
+    setSkipUndo(null);
+    if (!pending) return;
+    setSkipToday(pending.element.id, { kind: 'counter', config: pending.config }, false).catch(
+      (err) => {
+        Alert.alert(
+          tCommon('alerts.couldNotSave'),
+          err instanceof Error ? err.message : tCommon('errors.somethingWentWrong'),
+        );
+      },
+    );
+  };
+
   const undoLastTaps = () => {
     const pending = counterUndo;
     setCounterUndo(null);
@@ -151,13 +172,16 @@ export default function CountersScreen({
 
   // Stable callbacks for the memoised cards; the latest values ride on a ref.
   const latest = useRef({ noteEditor, now, onBeforeOpenTrackerNote, navigation, t, tCommon });
+  const tTrackersRef = useRef(tTrackers);
+  tTrackersRef.current = tTrackers;
   latest.current = { noteEditor, now, onBeforeOpenTrackerNote, navigation, t, tCommon };
 
   const handleLog = useCallback(
     (element: ElementDefinition, value: number, meta?: Record<string, unknown>) => {
       const before = useEventStore.getState().dailyTotals[element.id] ?? 0;
       return logEvent(element.id, value, meta)
-        .then(() =>
+        .then(() => {
+          setSkipUndo(null);
           setCounterUndo((prev) =>
             nextCounterUndo(prev, {
               elementId: element.id,
@@ -165,8 +189,8 @@ export default function CountersScreen({
               before,
               added: value,
             }),
-          ),
-        )
+          );
+        })
         .catch((err) => {
           const { t: tHome, tCommon: tC } = latest.current;
           Alert.alert(
@@ -185,6 +209,24 @@ export default function CountersScreen({
       setCounterUndo((prev) => (prev?.elementId === element.id ? null : prev));
     },
     [setDailyTotal],
+  );
+
+  const handleSkipToday = useCallback(
+    (element: ElementDefinition, config: CounterConfig, skip: boolean) => {
+      setSkipToday(element.id, { kind: 'counter', config }, skip)
+        .then(() => {
+          setCounterUndo(null);
+          setSkipUndo(skip ? { element, config } : null);
+        })
+        .catch((err) => {
+          const { tCommon: tC } = latest.current;
+          Alert.alert(
+            tTrackersRef.current('skip.couldNotSkipTitle'),
+            err instanceof Error ? err.message : tC('errors.somethingWentWrong'),
+          );
+        });
+    },
+    [setSkipToday],
   );
 
   const handleOpenDetails = useCallback((element: ElementDefinition) => {
@@ -222,6 +264,7 @@ export default function CountersScreen({
           reorderHint={canReorder ? reorderHint : undefined}
           onLog={handleLog}
           onSetDailyTotal={handleSetDailyTotal}
+          onSkipToday={handleSkipToday}
           onOpenDetails={handleOpenDetails}
           hasTodayNote={notesToday.has(element.id)}
           onOpenNote={handleOpenNote}
@@ -235,6 +278,7 @@ export default function CountersScreen({
       handleOpenDetails,
       handleOpenNote,
       handleSetDailyTotal,
+      handleSkipToday,
       notesToday,
       reorderHint,
     ],
@@ -325,12 +369,17 @@ export default function CountersScreen({
       {editorHost}
       <UndoSnackbar
         message={
-          counterUndo
-            ? tTrackers('undo.counterAdded', { name: counterUndo.name, count: counterUndo.added })
-            : null
+          skipUndo
+            ? tTrackers('undo.skipped', { name: skipUndo.element.name })
+            : counterUndo
+              ? tTrackers('undo.counterAdded', { name: counterUndo.name, count: counterUndo.added })
+              : null
         }
-        onUndo={undoLastTaps}
-        onDismiss={() => setCounterUndo(null)}
+        onUndo={skipUndo ? undoSkip : undoLastTaps}
+        onDismiss={() => {
+          setCounterUndo(null);
+          setSkipUndo(null);
+        }}
       />
     </>
   );

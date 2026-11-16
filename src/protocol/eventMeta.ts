@@ -41,6 +41,10 @@ export function validateEventForElement(
   if (event.value < 0) {
     throw new Error(`Event ${event.id} has negative value`);
   }
+
+  if (event.meta?.source === 'skip' && event.value !== 0) {
+    throw new Error(`Skip event ${event.id} must have value 0`);
+  }
 }
 
 export function validateBundleEventLinks(

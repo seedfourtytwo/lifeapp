@@ -1,6 +1,7 @@
 import {
   CounterConfigSchema,
   countTodosNeedingAttention,
+  habitTodayFacts,
   isHabitDueToday,
   parseHabitConfig,
   toDateString,
@@ -19,12 +20,17 @@ export type UnfinishedTrackerCounts = {
 
 /**
  * Count what is still open today: due habits not done, counters under their
- * daily target, and todos due today or overdue.
+ * daily target, and todos due today or overdue. Skipped habits and counters
+ * are not due, so they are not counted.
  */
 export function countUnfinishedTrackersToday(args: {
   elements: ElementDefinition[];
   habitDoneToday: Record<string, boolean>;
   dailyTotals: Record<string, number>;
+  /** Today holds a skip row — a skipped habit or counter is not left to do. */
+  skipRowToday?: Record<string, boolean>;
+  /** `times_per_week` habits: this week's done days before today. */
+  habitWeekDoneBefore?: Record<string, readonly string[]>;
   todos?: readonly Todo[];
   now?: Date;
 }): UnfinishedTrackerCounts {
@@ -39,7 +45,7 @@ export function countUnfinishedTrackersToday(args: {
 
     if (element.kind === 'habit') {
       const config = parseHabitConfig(element.config);
-      if (!isHabitDueToday(config, { now, today })) continue;
+      if (!isHabitDueToday(config, { now, today }, habitTodayFacts(element.id, args))) continue;
       if (!(args.habitDoneToday[element.id] ?? false)) {
         habits += 1;
       }
@@ -50,7 +56,8 @@ export function countUnfinishedTrackersToday(args: {
       const config = CounterConfigSchema.parse(element.config);
       if (!config.dailyTarget || config.dailyTarget <= 0) continue;
       const total = args.dailyTotals[element.id] ?? 0;
-      if (total < config.dailyTarget) {
+      const skipped = args.skipRowToday?.[element.id] ?? false;
+      if (total < config.dailyTarget && !skipped) {
         counters += 1;
       }
     }

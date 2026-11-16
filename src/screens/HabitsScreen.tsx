@@ -19,7 +19,7 @@ import {
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
+import { isSkippedToday, useEventStore } from '../store/eventStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitCard from './habits/HabitCard';
@@ -114,16 +114,41 @@ export default function HabitsScreen({
     [elements],
   );
 
-  // Due-ness depends on the day and the configs, never on ticks.
-  const dueTodayHabits = useMemo(
+  // Due-ness depends on the day and the configs — and, for a times-a-week habit
+  // only, on this week's done days. Subscribe to that slice as a string, so a
+  // tick on an ordinary habit never re-runs the filter.
+  const weeklyIds = useMemo(
     () =>
-      filterHabitsDueToday(
-        allHabits,
-        { now, today: currentAppCalendarDate(now) },
-        habitConfigs,
-      ),
-    [allHabits, habitConfigs, now],
+      allHabits
+        .filter((h) => habitConfigs.get(h.id)?.schedule.type === 'times_per_week')
+        .map((h) => h.id),
+    [allHabits, habitConfigs],
   );
+  const weekKey = useEventStore((s) =>
+    weeklyIds
+      .map(
+        (id) =>
+          `${id}|${(s.habitWeekDoneBefore[id] ?? []).join(',')}|${s.habitDoneToday[id] ? 1 : 0}`,
+      )
+      .join('\n'),
+  );
+  const dueTodayHabits = useMemo(() => {
+    const { habitDoneToday, habitWeekDoneBefore } = useEventStore.getState();
+    return filterHabitsDueToday(
+      allHabits,
+      {
+        now,
+        today: currentAppCalendarDate(now),
+        habitDoneToday,
+        habitWeekDoneBefore,
+        // Skipped rows stay listed (sunk with the done ones) so they can be undone.
+        includeSkipped: true,
+      },
+      habitConfigs,
+    );
+    // `weekKey` stands in for the weekly slice of the store read above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allHabits, habitConfigs, now, weekKey]);
   const dueIds = useMemo(() => dueTodayHabits.map((h) => h.id), [dueTodayHabits]);
 
   // Subscribe to derived primitives, not the whole maps: a tick re-renders this
@@ -132,23 +157,35 @@ export default function HabitsScreen({
   const doneKey = useEventStore((s) =>
     dueIds.filter((id) => s.habitDoneToday[id] ?? false).join('\n'),
   );
+  // The header says days, so a times-a-week habit's run (in weeks) stays out of it.
+  const dayStreakIds = useMemo(() => {
+    const weekly = new Set(weeklyIds);
+    return dueIds.filter((id) => !weekly.has(id));
+  }, [dueIds, weeklyIds]);
   const bestStreak = useEventStore((s) =>
-    dueIds.reduce((best, id) => Math.max(best, s.habitStreaks[id] ?? 0), 0),
+    dayStreakIds.reduce((best, id) => Math.max(best, s.habitStreaks[id] ?? 0), 0),
+  );
+  const skippedKey = useEventStore((s) =>
+    dueIds.filter((id) => isSkippedToday(s, id, s.habitDoneToday[id] ?? false)).join('\n'),
   );
   const doneIds = useMemo(
     () => new Set(doneKey.length > 0 ? doneKey.split('\n') : []),
     [doneKey],
   );
+  const skippedIds = useMemo(
+    () => new Set(skippedKey.length > 0 ? skippedKey.split('\n') : []),
+    [skippedKey],
+  );
 
-  /** Remaining first (user sort_order), then done (user sort_order). */
+  /** Remaining first (user sort_order), then done and skipped (user sort_order). */
   const habits = useMemo(() => {
     const remaining: ElementDefinition[] = [];
-    const done: ElementDefinition[] = [];
+    const settled: ElementDefinition[] = [];
     for (const habit of dueTodayHabits) {
-      (doneIds.has(habit.id) ? done : remaining).push(habit);
+      (doneIds.has(habit.id) || skippedIds.has(habit.id) ? settled : remaining).push(habit);
     }
-    return [...remaining, ...done];
-  }, [dueTodayHabits, doneIds]);
+    return [...remaining, ...settled];
+  }, [dueTodayHabits, doneIds, skippedIds]);
 
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
 
@@ -164,11 +201,12 @@ export default function HabitsScreen({
   const headerMeta = useMemo(
     () =>
       habitHeaderMeta({
-        due: habits.length,
+        // A skipped habit is not due today, so it is not counted as left to do.
+        due: habits.length - skippedIds.size,
         done: doneIds.size,
         bestStreak,
       }),
-    [habits.length, doneIds.size, bestStreak],
+    [habits.length, skippedIds.size, doneIds.size, bestStreak],
   );
 
   const activityLabel = useMemo(
@@ -191,10 +229,13 @@ export default function HabitsScreen({
     onTrackerNotesOpenChange,
   });
 
-  /** Sort only among remaining — done stays parked at the bottom. */
+  /** Sort only among remaining — done and skipped stay parked at the bottom. */
   const reorderPeerIds = useMemo(
-    () => habits.filter((habit) => !doneIds.has(habit.id)).map((h) => h.id),
-    [habits, doneIds],
+    () =>
+      habits
+        .filter((habit) => !doneIds.has(habit.id) && !skippedIds.has(habit.id))
+        .map((h) => h.id),
+    [habits, doneIds, skippedIds],
   );
   const reorderPeerSet = useMemo(() => new Set(reorderPeerIds), [reorderPeerIds]);
 

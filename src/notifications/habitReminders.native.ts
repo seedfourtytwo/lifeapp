@@ -63,7 +63,7 @@ async function getNotifications(): Promise<NotificationsModule | null> {
 
 /**
  * Start reminders are one-shot DATE triggers expanded by `collectStartReminderFires`,
- * which asks `isScheduleActiveOnDate` per day — so every schedule type works,
+ * which asks `isScheduleDueOnDate` per day — so every schedule type works,
  * including `every_n_days` (a recurring DAILY/WEEKLY trigger could not express it).
  */
 function canScheduleStartReminder(config: HabitConfig): boolean {
@@ -106,13 +106,24 @@ export async function cancelHabitStartReminders(): Promise<void> {
   await cancelHabitStartRemindersWith(Notifications);
 }
 
+/** Today's skip rows and this week's done days, so a skipped or finished habit is not reminded. */
+export interface HabitReminderDayContext {
+  skipRowToday?: Record<string, boolean>;
+  habitWeekDoneBefore?: Record<string, readonly string[]>;
+}
+
 async function scheduleStartRemindersForHabit(
   notifications: NotificationsModule,
   element: ElementDefinition,
   config: HabitConfig,
   doneToday: boolean,
+  dayContext: HabitReminderDayContext,
 ): Promise<void> {
-  const fires = collectStartReminderFires(config, { doneToday });
+  const fires = collectStartReminderFires(config, {
+    doneToday,
+    skippedToday: (dayContext.skipRowToday?.[element.id] ?? false) && !doneToday,
+    weekDoneBefore: dayContext.habitWeekDoneBefore?.[element.id],
+  });
 
   await Promise.all(
     fires.map((fire) =>
@@ -139,6 +150,7 @@ export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
   habitDoneToday: Record<string, boolean> = {},
+  dayContext: HabitReminderDayContext = {},
 ): Promise<void> {
   const run = async (): Promise<void> => {
     if (!isNotificationsNativeAvailable()) {
@@ -178,6 +190,7 @@ export async function syncHabitReminders(
         element,
         config,
         habitDoneToday[element.id] ?? false,
+        dayContext,
       );
     }
   };

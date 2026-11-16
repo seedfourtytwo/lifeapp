@@ -8,7 +8,7 @@ import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import { getKindHandler } from '../../kinds/registry';
 import type { RootStackParamList } from '../../navigation/types';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
-import { useEventStore } from '../../store/eventStore';
+import { isSkippedToday, useEventStore } from '../../store/eventStore';
 
 type Props = {
   habit: ElementDefinition;
@@ -51,17 +51,40 @@ function HabitCard({
     todayTotal,
     isDone,
     streak,
+    score,
+    skipped,
     activeTimerSession,
     toggleHabit,
+    setSkipToday,
   } = useEventStore(
     useShallow((state) => ({
       todayTotal: state.dailyTotals[habit.id] ?? 0,
       isDone: state.habitDoneToday[habit.id] ?? false,
       streak: state.habitStreaks[habit.id] ?? 0,
+      score: state.habitScores[habit.id] ?? 0,
+      skipped: isSkippedToday(state, habit.id, state.habitDoneToday[habit.id] ?? false),
       activeTimerSession: state.activeTimerSessions[habit.id] ?? null,
       toggleHabit: state.toggleHabit,
+      setSkipToday: state.setSkipToday,
     })),
   );
+
+  const skipToday = (skip: boolean) => {
+    const tracker = { kind: 'habit' as const, config };
+    setSkipToday(habit.id, tracker, skip)
+      .then(() => {
+        if (!skip) return;
+        onOfferUndo?.(t('undo.skipped', { name: habit.name }), () =>
+          setSkipToday(habit.id, tracker, false),
+        );
+      })
+      .catch((error) => {
+        Alert.alert(
+          t('skip.couldNotSkipTitle'),
+          error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+        );
+      });
+  };
 
   const habitHandler = getKindHandler('habit');
   if (!habitHandler) return null;
@@ -75,6 +98,9 @@ function HabitCard({
       todayTotal={todayTotal}
       isDone={isDone}
       streak={streak}
+      score={score}
+      skipped={skipped}
+      onSkipToday={skipToday}
       activeTimerSession={activeTimerSession}
       hasTodayNote={hasTodayNote}
       onDictateNote={onOpenNote ? () => onOpenNote(habit, true) : undefined}

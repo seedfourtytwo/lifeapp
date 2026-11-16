@@ -24,16 +24,68 @@ export function getHabitStreakDays(
 
 /**
  * Success-streak copy for accessibility (and any non-compact surfaces).
+ * A `times_per_week` habit's streak is counted in weeks and says so.
  */
 export function formatHabitStreakLabel(
   config: HabitConfig,
   streak?: number,
 ): string | null {
-  const days = getHabitStreakDays(config, streak);
-  if (days == null) return null;
-  return days === 1
+  const count = getHabitStreakDays(config, streak);
+  if (count == null) return null;
+  if (config.schedule.type === 'times_per_week') {
+    return i18n.t('trackers:habitWidget.streakWeeks', { count });
+  }
+  return count === 1
     ? i18n.t('trackers:habitWidget.streakOne')
-    : i18n.t('trackers:habitWidget.streakMany', { count: days });
+    : i18n.t('trackers:habitWidget.streakMany', { count });
+}
+
+/**
+ * The one line under a Home row's name. `figure` (when set) is a quantity the
+ * row draws in the mono face after `text`; `a11y` is what a screen reader says.
+ */
+export interface TrackerCardCaption {
+  text: string;
+  figure?: string;
+  a11y: string;
+}
+
+/** "Strength 62": the score in the caption slot once the run has broken. */
+export function strengthCaption(
+  score: number,
+  ns: 'habitWidget' | 'counterWidget',
+): TrackerCardCaption {
+  return {
+    text: i18n.t(`trackers:${ns}.strengthLabel`),
+    figure: String(score),
+    a11y: i18n.t(`trackers:${ns}.strengthA11y`, { score }),
+  };
+}
+
+export function skippedCaption(): TrackerCardCaption {
+  const text = i18n.t('trackers:skip.skippedToday');
+  return { text, a11y: text };
+}
+
+/**
+ * Home caption for a habit, in priority order:
+ * 1. skipped today → "Skipped today" (in words, never by dimming the row);
+ * 2. a live run → "4 days in a row" / "2 weeks in a row";
+ * 3. a broken run with history left → "Strength 62" — a miss shows what is
+ *    left, not what was lost (there is deliberately no "missed N days" line);
+ * 4. nothing.
+ * Streak and strength both honour `showStreakOnCard`.
+ */
+export function habitCardCaption(
+  config: HabitConfig,
+  state: { streak?: number; score?: number; skipped?: boolean },
+): TrackerCardCaption | null {
+  if (state.skipped) return skippedCaption();
+  const streakLabel = formatHabitStreakLabel(config, state.streak);
+  if (streakLabel) return { text: streakLabel, a11y: streakLabel };
+  if (!shouldShowHabitStreakOnCard(config)) return null;
+  const score = state.score ?? 0;
+  return score > 0 ? strengthCaption(score, 'habitWidget') : null;
 }
 
 /**

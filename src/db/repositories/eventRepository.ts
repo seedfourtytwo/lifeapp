@@ -1,6 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { HabitConfig, LifeEvent } from '../../protocol';
-import { EventSchema, isHabitDayComplete, PROTOCOL_VERSION } from '../../protocol';
+import {
+  EventSchema,
+  isHabitDayComplete,
+  isSkipEvent,
+  PROTOCOL_VERSION,
+  skipEventPayload,
+} from '../../protocol';
 import { withImmediateTransaction } from '../immediateTransaction';
 
 /** SQLite access for append-only life events. Prefer batch helpers when loading many elements. */
@@ -41,6 +47,20 @@ function mapRowsToEvents(rows: EventRow[]): LifeEvent[] {
     }
   }
   return events;
+}
+
+/**
+ * True for a "skip today" row (`meta.source = 'skip'`). Guarded by json_valid so
+ * one corrupt meta string cannot fail a whole aggregate. Kotlin writes the same
+ * JSON, so this is the one place SQL recognises a skip.
+ */
+const IS_SKIP_ROW_SQL =
+  "(CASE WHEN json_valid(meta_json) THEN json_extract(meta_json, '$.source') END) = 'skip'";
+
+async function deleteEventsById(db: SQLiteDatabase, events: readonly LifeEvent[]): Promise<void> {
+  for (const event of events) {
+    await db.runAsync('DELETE FROM events WHERE id = ?', event.id);
+  }
 }
 
 export async function deleteEventsForElementOnDate(
@@ -138,9 +158,10 @@ export async function getDailyTotalsByElement(
   db: SQLiteDatabase,
   elementId: string,
   sinceDate: string,
-): Promise<{ date: string; total: number }[]> {
-  const rows = await db.getAllAsync<{ date: string; total: number }>(
-    `SELECT date, COALESCE(SUM(value), 0) as total
+): Promise<{ date: string; total: number; skipped: boolean }[]> {
+  const rows = await db.getAllAsync<{ date: string; total: number; skipped: number }>(
+    `SELECT date, COALESCE(SUM(value), 0) as total,
+       MAX(CASE WHEN ${IS_SKIP_ROW_SQL} THEN 1 ELSE 0 END) as skipped
      FROM events
      WHERE element_id = ? AND date >= ?
      GROUP BY date
@@ -148,7 +169,7 @@ export async function getDailyTotalsByElement(
     elementId,
     sinceDate,
   );
-  return rows;
+  return rows.map((row) => ({ date: row.date, total: row.total, skipped: row.skipped === 1 }));
 }
 
 export async function insertEvent(db: SQLiteDatabase, event: LifeEvent): Promise<void> {
@@ -174,7 +195,12 @@ export interface NewEventStub {
   meta?: Record<string, unknown>;
 }
 
-/** Collapse a day to one event of `total` (none at 0). Call inside a transaction. */
+/**
+ * Collapse a day to one event of `total` (none at 0). Call inside a transaction.
+ * A skip row is not a quantity, so it survives the collapse untouched: it is
+ * neither dropped nor duplicated (whether the day still *reads* as skipped is
+ * the day rules' call — a day that reaches its target is complete, not skipped).
+ */
 async function collapseDayToTotal(
   db: SQLiteDatabase,
   elementId: string,
@@ -182,7 +208,12 @@ async function collapseDayToTotal(
   total: number,
   newEvent: NewEventStub,
 ): Promise<void> {
-  await deleteEventsForElementOnDate(db, elementId, date);
+  // In SQL rather than by parsed id, so a row with corrupt meta is still cleared.
+  await db.runAsync(
+    `DELETE FROM events WHERE element_id = ? AND date = ? AND NOT COALESCE(${IS_SKIP_ROW_SQL}, 0)`,
+    elementId,
+    date,
+  );
   if (total > 0) {
     await insertEvent(db, {
       id: newEvent.id,
@@ -256,8 +287,10 @@ export interface HabitDayAfterWrite {
  * `done` is the user's intent — the state they tapped toward, derived from what
  * the screen showed — not "flip whatever SQLite says". Inside one IMMEDIATE
  * transaction the day is read, then:
- * - intent done, day not done → append one tick event;
- * - intent not done, day done → delete the day's events (the existing untick);
+ * - intent done, day not done → append one tick event, and delete the day's
+ *   skip row if it has one (ticking a skipped day un-skips it);
+ * - intent not done, day done → delete the day's events, skip rows included:
+ *   an untick returns the day to plain "not done", never to "skipped";
  * - day already matches the intent → write nothing.
  * So a tick racing another writer's tick yields one event, and an untick of a
  * day someone else already cleared is a quiet no-op.
@@ -293,8 +326,10 @@ export async function applyHabitDayIntent(
       meta: newEvent.meta,
       protocolVersion: PROTOCOL_VERSION,
     };
+    const skipRows = events.filter(isSkipEvent);
+    await deleteEventsById(db, skipRows);
     await insertEvent(db, tick);
-    const nextEvents = [...events, tick];
+    const nextEvents = [...events.filter((event) => !isSkipEvent(event)), tick];
     const nextTotal = total + 1;
     return {
       done: isHabitDayComplete(nextTotal, config, nextEvents),
@@ -323,8 +358,10 @@ export async function takeEventsForElementOnDate(
 }
 
 /**
- * Re-insert `events` only if the day is still empty, atomically. Resolves to
- * false (writing nothing) when anything was logged on that day since.
+ * Re-insert `events` only if nothing was *logged* on the day since, atomically.
+ * A skip row alone is not a log: the restore still runs, but never adds a
+ * second skip row to a day that already has one. Resolves to false (writing
+ * nothing) when anything else was logged on that day since.
  */
 export async function restoreEventsIfDayEmpty(
   db: SQLiteDatabase,
@@ -333,25 +370,72 @@ export async function restoreEventsIfDayEmpty(
   events: readonly LifeEvent[],
 ): Promise<boolean> {
   return withImmediateTransaction(db, async () => {
-    if ((await getDailyEventCount(db, elementId, date)) > 0) return false;
+    const current = await getEventsForElementOnDate(db, elementId, date);
+    if (current.some((event) => !isSkipEvent(event))) return false;
+    const alreadySkipped = current.length > 0;
     for (const event of events) {
+      if (alreadySkipped && isSkipEvent(event)) continue;
       await insertEvent(db, event);
     }
     return true;
   });
 }
 
-async function getDailyEventCount(
+/** A tracker day after a skip write — what the UI reconciles to. */
+export interface SkipDayAfterWrite {
+  /** The day reads as skipped: it holds a skip row and is not complete. */
+  skipped: boolean;
+  /** The day holds a skip row (it may also be complete, e.g. a widget tick). */
+  hasSkipRow: boolean;
+  total: number;
+  /** False when the day already matched the intent (or is complete) and nothing was written. */
+  changed: boolean;
+}
+
+/**
+ * Skip or un-skip one tracker day, atomically (one IMMEDIATE transaction):
+ * - skip: insert one value-0 `{ source: 'skip' }` row, unless the day is
+ *   complete (nothing to skip) or already holds a skip row (at most one per day);
+ * - unskip: delete only that day's skip rows; logged values stay.
+ * `isComplete` is the tracker's completion rule over the day's total and rows.
+ */
+export async function applySkipDayIntent(
   db: SQLiteDatabase,
-  elementId: string,
-  date: string,
-): Promise<number> {
-  const row = await db.getFirstAsync<{ n: number }>(
-    'SELECT COUNT(*) as n FROM events WHERE element_id = ? AND date = ?',
-    elementId,
-    date,
-  );
-  return row?.n ?? 0;
+  input: {
+    elementId: string;
+    date: string;
+    skip: boolean;
+    isComplete: (total: number, events: readonly LifeEvent[]) => boolean;
+    newEvent: Omit<NewEventStub, 'meta'>;
+  },
+): Promise<SkipDayAfterWrite> {
+  const { elementId, date, skip, isComplete, newEvent } = input;
+  return withImmediateTransaction(db, async () => {
+    const events = await getEventsForElementOnDate(db, elementId, date);
+    const total = events.reduce((sum, event) => sum + event.value, 0);
+    const complete = isComplete(total, events);
+    const skipRows = events.filter(isSkipEvent);
+    if (skip) {
+      if (complete || skipRows.length > 0) {
+        const hasSkipRow = skipRows.length > 0;
+        return { skipped: !complete && hasSkipRow, hasSkipRow, total, changed: false };
+      }
+      await insertEvent(db, {
+        id: newEvent.id,
+        elementId,
+        timestamp: newEvent.timestamp,
+        date,
+        ...skipEventPayload(),
+        protocolVersion: PROTOCOL_VERSION,
+      });
+      return { skipped: true, hasSkipRow: true, total, changed: true };
+    }
+    if (skipRows.length === 0) {
+      return { skipped: false, hasSkipRow: false, total, changed: false };
+    }
+    await deleteEventsById(db, skipRows);
+    return { skipped: false, hasSkipRow: false, total, changed: true };
+  });
 }
 
 export async function getDailyTotal(
@@ -392,20 +476,62 @@ export async function getDailyTotalsForElementsOnDate(
   return totals;
 }
 
-/** Daily SUM(value) per element since a date — for streak completion without loading every row. */
+/** One element's day: SUM(value), and whether it holds a skip row (value 0, invisible to SUM). */
+export interface DayTotalState {
+  total: number;
+  skipped: boolean;
+}
+
+/** Today's total and skip flag per element, in one query (Home day state). */
+export async function getDayStatesForElementsOnDate(
+  db: SQLiteDatabase,
+  elementIds: string[],
+  date: string,
+): Promise<Map<string, DayTotalState>> {
+  const states = new Map<string, DayTotalState>();
+  for (const id of elementIds) {
+    states.set(id, { total: 0, skipped: false });
+  }
+  if (elementIds.length === 0) return states;
+
+  const rows = await db.getAllAsync<{ element_id: string; total: number; skipped: number }>(
+    `SELECT element_id, COALESCE(SUM(value), 0) as total,
+       MAX(CASE WHEN ${IS_SKIP_ROW_SQL} THEN 1 ELSE 0 END) as skipped
+     FROM events
+     WHERE date = ? AND element_id IN (${placeholdersFor(elementIds)})
+     GROUP BY element_id`,
+    date,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    states.set(row.element_id, { total: row.total, skipped: row.skipped === 1 });
+  }
+  return states;
+}
+
+/**
+ * Daily SUM(value) per element since a date, with a skip flag per day — for
+ * streaks and the strength score without loading every row.
+ */
 export async function getDailyTotalsForElementsSince(
   db: SQLiteDatabase,
   elementIds: string[],
   sinceDate: string,
-): Promise<Map<string, { date: string; total: number }[]>> {
-  const byElement = new Map<string, { date: string; total: number }[]>();
+): Promise<Map<string, { date: string; total: number; skipped: boolean }[]>> {
+  const byElement = new Map<string, { date: string; total: number; skipped: boolean }[]>();
   for (const id of elementIds) {
     byElement.set(id, []);
   }
   if (elementIds.length === 0) return byElement;
 
-  const rows = await db.getAllAsync<{ element_id: string; date: string; total: number }>(
-    `SELECT element_id, date, COALESCE(SUM(value), 0) as total
+  const rows = await db.getAllAsync<{
+    element_id: string;
+    date: string;
+    total: number;
+    skipped: number;
+  }>(
+    `SELECT element_id, date, COALESCE(SUM(value), 0) as total,
+       MAX(CASE WHEN ${IS_SKIP_ROW_SQL} THEN 1 ELSE 0 END) as skipped
      FROM events
      WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)})
      GROUP BY element_id, date
@@ -414,7 +540,9 @@ export async function getDailyTotalsForElementsSince(
     ...elementIds,
   );
   for (const row of rows) {
-    byElement.get(row.element_id)?.push({ date: row.date, total: row.total });
+    byElement
+      .get(row.element_id)
+      ?.push({ date: row.date, total: row.total, skipped: row.skipped === 1 });
   }
   return byElement;
 }

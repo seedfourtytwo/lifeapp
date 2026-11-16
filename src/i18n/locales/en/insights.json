@@ -35,6 +35,10 @@
     "statAverageUnit": "{{unit}} a day on average",
     "statDaysLogged_one": "day logged",
     "statDaysLogged_other": "days logged",
-    "statBestRun": "best run"
+    "statBestRun": "best run",
+    "statStrength": "strength",
+    "strengthExplainer": "Strength rises each time you do it and fades slowly when you don’t, so one missed day costs a little, not everything.",
+    "statInARowWeeks_one": "week in a row",
+    "statInARowWeeks_other": "weeks in a row"
   }
 }

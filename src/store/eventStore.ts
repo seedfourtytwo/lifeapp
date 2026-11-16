@@ -6,15 +6,19 @@ import {
   CounterConfigSchema,
   habitNeedsEventMetaForCompletion,
   isHabitDayComplete,
+  isSkipEvent,
   parseHabitConfig,
   PROTOCOL_VERSION,
   toDateString,
+  weekStartDateString,
   type ActiveTimerSession,
   type HabitConfig,
   type LifeEvent,
 } from '../protocol';
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
 import { sumEventValues } from '../utils/events';
+import { habitDayHistoryFromEvents, dayHistoryFromDailyTotals } from '../utils/habitStreakCompute';
+import { isTrackerTotalComplete, type DayRulesTracker } from '../utils/trackerDayRules';
 import { playHabitCompleteHaptic } from '../utils/habitHaptics';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { getDatabase } from '../db/client';
@@ -86,9 +90,23 @@ function schedulePersistActiveTimers(
 interface EventState extends ResettableMirror {
   dailyTotals: Record<string, number>;
   habitDoneToday: Record<string, boolean>;
+  /**
+   * Today holds a skip row (habits and counters). The day *reads* as skipped
+   * only while it is also not complete — use `isSkippedToday`, never this raw.
+   */
+  skipRowToday: Record<string, boolean>;
+  /**
+   * `times_per_week` habits only: this week's completed dates before today,
+   * which decide whether the habit is still due today.
+   */
+  habitWeekDoneBefore: Record<string, string[]>;
   habitStreaks: Record<string, number>;
   habitFailureStreaks: Record<string, number>;
+  /** Strength score 0–100, loaded with the streaks. */
+  habitScores: Record<string, number>;
   counterStreaks: Record<string, number>;
+  /** Strength score 0–100 for counters with a daily target. */
+  counterScores: Record<string, number>;
   activeTimerSessions: Record<string, ActiveTimerSession>;
   /** True after at least one successful habit day-state load this process. */
   dayStateReady: boolean;
@@ -112,6 +130,16 @@ interface EventState extends ResettableMirror {
    */
   adjustDailyTotal: (elementId: string, delta: number, date?: string) => Promise<void>;
   toggleHabit: (elementId: string, config: HabitConfig, date?: string) => Promise<void>;
+  /**
+   * Skip (or un-skip) today for a habit or a counter with a daily target.
+   * Skipping a complete day writes nothing.
+   */
+  setSkipToday: (
+    elementId: string,
+    tracker: DayRulesTracker,
+    skip: boolean,
+    date?: string,
+  ) => Promise<void>;
   startHabitTimer: (elementId: string) => void;
   pauseHabitTimer: (elementId: string) => void;
   resumeHabitTimer: (elementId: string) => void;
@@ -276,7 +304,7 @@ async function knownCreatedAt(elementId: string): Promise<string | undefined> {
 async function loadHabitStreak(
   elementId: string,
   config: HabitConfig,
-): Promise<{ streak: number; failureStreak: number }> {
+): Promise<{ streak: number; failureStreak: number; score?: number }> {
   return loadHabitStreakForElement(elementId, config, await knownCreatedAt(elementId));
 }
 
@@ -305,7 +333,7 @@ async function refreshCounterStreakAfterWrite(
     if (!element || element.kind !== 'counter') return;
     const parsed = CounterConfigSchema.safeParse(element.config);
     if (!parsed.success || !parsed.data.dailyTarget) return;
-    const streak = await loadCounterStreakForElement(
+    const { streak, score } = await loadCounterStreakForElement(
       elementId,
       parsed.data,
       element.createdAt,
@@ -314,6 +342,7 @@ async function refreshCounterStreakAfterWrite(
     if (getWriteEpoch(elementId) !== writeEpochAtStart) return;
     set({
       counterStreaks: { ...get().counterStreaks, [elementId]: streak },
+      counterScores: { ...get().counterScores, [elementId]: score },
     });
   } catch {
     // Non-fatal — focus refresh will catch up.
@@ -326,8 +355,10 @@ function applyTodayMaps(
   patch: Partial<{
     dailyTotal: number;
     habitDone: boolean;
+    skipRow: boolean;
     streak: number;
     failureStreak: number;
+    score: number;
   }>,
   set: (partial: Partial<EventState>) => void,
   get: () => EventState,
@@ -339,6 +370,12 @@ function applyTodayMaps(
       : {}),
     ...(patch.habitDone !== undefined
       ? { habitDoneToday: { ...get().habitDoneToday, [elementId]: patch.habitDone } }
+      : {}),
+    ...(patch.skipRow !== undefined
+      ? { skipRowToday: { ...get().skipRowToday, [elementId]: patch.skipRow } }
+      : {}),
+    ...(patch.score !== undefined
+      ? { habitScores: { ...get().habitScores, [elementId]: patch.score } }
       : {}),
     ...(patch.streak !== undefined
       ? { habitStreaks: { ...get().habitStreaks, [elementId]: patch.streak } }
@@ -357,9 +394,13 @@ function applyTodayMaps(
 export const useEventStore = create<EventState>((set, get) => ({
   dailyTotals: {},
   habitDoneToday: {},
+  skipRowToday: {},
+  habitWeekDoneBefore: {},
   habitStreaks: {},
   habitFailureStreaks: {},
+  habitScores: {},
   counterStreaks: {},
+  counterScores: {},
   activeTimerSessions: {},
   dayStateReady: false,
   counterTotalsReady: false,
@@ -372,9 +413,13 @@ export const useEventStore = create<EventState>((set, get) => ({
     set({
       dailyTotals: {},
       habitDoneToday: {},
+      skipRowToday: {},
+      habitWeekDoneBefore: {},
       habitStreaks: {},
       habitFailureStreaks: {},
+      habitScores: {},
       counterStreaks: {},
+      counterScores: {},
       activeTimerSessions: {},
       dayStateReady: false,
       counterTotalsReady: false,
@@ -466,18 +511,24 @@ export const useEventStore = create<EventState>((set, get) => ({
       const generation = ++counterTotalLoadGeneration;
       const epochs = captureWriteEpochs(elementIds);
       const db = await getDatabase();
-      const totals = await eventRepo.getDailyTotalsForElementsOnDate(db, elementIds, today);
+      const states = await eventRepo.getDayStatesForElementsOnDate(db, elementIds, today);
       if (generation !== counterTotalLoadGeneration) return;
 
       const todayTotals: Record<string, number> = {};
-      for (const [id, total] of totals) {
-        todayTotals[id] = total;
+      const skipRows: Record<string, boolean> = {};
+      for (const [id, state] of states) {
+        todayTotals[id] = state.total;
+        skipRows[id] = state.skipped;
       }
 
       set({
         dailyTotals: {
           ...get().dailyTotals,
           ...mergeUnchangedEntries(todayTotals, epochs),
+        },
+        skipRowToday: {
+          ...get().skipRowToday,
+          ...mergeUnchangedEntries(skipRows, epochs),
         },
         counterTotalsReady: true,
       });
@@ -489,12 +540,16 @@ export const useEventStore = create<EventState>((set, get) => ({
     return joinInFlightLoad(loadKey(`counterStreaks|${todayDate()}`, counters), async () => {
       const generation = ++counterStreakLoadGeneration;
       const epochs = captureWriteEpochs(counters.map((c) => c.id));
-      const streaks = await loadCounterStreakMaps(counters);
+      const { streaks, scores } = await loadCounterStreakMaps(counters);
       if (generation !== counterStreakLoadGeneration) return;
       set({
         counterStreaks: {
           ...get().counterStreaks,
-          ...mergeUnchangedEntries(streaks, epochs),
+          ...mergeUnchangedEntries(streaks ?? {}, epochs),
+        },
+        counterScores: {
+          ...get().counterScores,
+          ...mergeUnchangedEntries(scores ?? {}, epochs),
         },
       });
     });
@@ -515,17 +570,19 @@ export const useEventStore = create<EventState>((set, get) => ({
 
       const totals: Record<string, number> = {};
       const status: Record<string, boolean> = {};
+      const skipRows: Record<string, boolean> = {};
 
       if (totalHabits.length > 0) {
-        const dayTotals = await eventRepo.getDailyTotalsForElementsOnDate(
+        const dayStates = await eventRepo.getDayStatesForElementsOnDate(
           db,
           totalHabits.map((h) => h.id),
           date,
         );
         for (const { id, config } of totalHabits) {
-          const total = dayTotals.get(id) ?? 0;
-          totals[id] = total;
-          status[id] = isHabitDayComplete(total, config);
+          const state = dayStates.get(id) ?? { total: 0, skipped: false };
+          totals[id] = state.total;
+          status[id] = isHabitDayComplete(state.total, config);
+          skipRows[id] = state.skipped;
         }
       }
 
@@ -540,8 +597,11 @@ export const useEventStore = create<EventState>((set, get) => ({
           const total = sumEventValues(events);
           totals[id] = total;
           status[id] = isHabitDayComplete(total, config, events);
+          skipRows[id] = events.some(isSkipEvent);
         }
       }
+
+      const weekDoneBefore = await loadWeekDoneBefore(habits, date);
 
       if (generation !== habitDayLoadGeneration) return;
 
@@ -554,6 +614,12 @@ export const useEventStore = create<EventState>((set, get) => ({
           ...get().habitDoneToday,
           ...mergeUnchangedEntries(status, epochs),
         },
+        skipRowToday: {
+          ...get().skipRowToday,
+          ...mergeUnchangedEntries(skipRows, epochs),
+        },
+        // Earlier days of the week: no write on today's row can change these.
+        habitWeekDoneBefore: { ...get().habitWeekDoneBefore, ...weekDoneBefore },
         dayStateReady: true,
       });
     });
@@ -565,10 +631,14 @@ export const useEventStore = create<EventState>((set, get) => ({
     return joinInFlightLoad(loadKey(`habitStreaks|${todayDate()}`, habits), async () => {
       const generation = ++habitStreakLoadGeneration;
       const epochs = captureWriteEpochs(habits.map((h) => h.id));
-      const { streaks, failureStreaks } = await loadHabitStreakMaps(habits);
+      const { streaks, failureStreaks, scores } = await loadHabitStreakMaps(habits);
       if (generation !== habitStreakLoadGeneration) return;
 
       set({
+        habitScores: {
+          ...get().habitScores,
+          ...mergeUnchangedEntries(scores ?? {}, epochs),
+        },
         habitStreaks: {
           ...get().habitStreaks,
           ...mergeUnchangedEntries(streaks, epochs),
@@ -695,11 +765,14 @@ export const useEventStore = create<EventState>((set, get) => ({
     // What the screen showed decides the intent; SQLite decides the outcome.
     const shownDone = get().habitDoneToday[elementId] ?? false;
     const shownTotal = get().dailyTotals[elementId] ?? 0;
+    const shownSkipRow = get().skipRowToday[elementId] ?? false;
     const wantDone = !shownDone;
+    // Either way the day ends up with no skip row: a tick un-skips it, an
+    // untick clears the whole day (see applyHabitDayIntent).
     applyTodayMaps(
       elementId,
       date,
-      { habitDone: wantDone, dailyTotal: wantDone ? 1 : 0 },
+      { habitDone: wantDone, dailyTotal: wantDone ? 1 : 0, skipRow: false },
       set,
       get,
     );
@@ -729,7 +802,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
           return;
         }
-        let streaks: { streak: number; failureStreak: number } | null = null;
+        let streaks: { streak: number; failureStreak: number; score?: number } | null = null;
         try {
           streaks = await loadHabitStreak(elementId, config);
         } catch {
@@ -743,7 +816,12 @@ export const useEventStore = create<EventState>((set, get) => ({
         applyTodayMaps(
           elementId,
           date,
-          { habitDone: day.done, dailyTotal: day.total, ...(streaks ?? {}) },
+          {
+            habitDone: day.done,
+            dailyTotal: day.total,
+            skipRow: day.events.some(isSkipEvent),
+            ...(streaks ?? {}),
+          },
           set,
           get,
         );
@@ -753,7 +831,7 @@ export const useEventStore = create<EventState>((set, get) => ({
         applyTodayMaps(
           elementId,
           date,
-          { habitDone: shownDone, dailyTotal: shownTotal },
+          { habitDone: shownDone, dailyTotal: shownTotal, skipRow: shownSkipRow },
           set,
           get,
         );
@@ -763,6 +841,51 @@ export const useEventStore = create<EventState>((set, get) => ({
       releasePending();
       habitToggleInFlight.delete(elementId);
     }
+  },
+
+  setSkipToday: async (elementId, tracker, skip, date = todayDate()) => {
+    const dataEpochAtStart = getDataGeneration('protocol');
+    const ourWriteEpoch = bumpWriteEpoch(elementId);
+    const releasePending = beginPendingWrite(elementId);
+    const shownSkipRow = get().skipRowToday[elementId] ?? false;
+    applyTodayMaps(elementId, date, { skipRow: skip }, set, get);
+    try {
+      await withDbWriteLock(async () => {
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) return;
+        const db = await getDatabase();
+        const day = await eventRepo.applySkipDayIntent(db, {
+          elementId,
+          date,
+          skip,
+          isComplete: (total, events) =>
+            tracker.kind === 'habit'
+              ? isHabitDayComplete(total, tracker.config, events)
+              : isTrackerTotalComplete(tracker, total),
+          newEvent: { id: newId(), timestamp: new Date().toISOString() },
+        });
+        if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) return;
+        // Mirror what SQLite holds, not what was asked: skipping a complete day writes nothing.
+        applyTodayMaps(elementId, date, { skipRow: day.hasSkipRow }, set, get);
+        if (!day.changed) return;
+        if (tracker.kind === 'habit') {
+          try {
+            const streaks = await loadHabitStreak(elementId, tracker.config);
+            if (eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) return;
+            applyTodayMaps(elementId, date, streaks, set, get);
+          } catch {
+            // The skip committed; streaks catch up on the next refresh.
+          }
+        }
+      });
+    } catch (error) {
+      if (!eventWriteSuperseded(dataEpochAtStart, elementId, ourWriteEpoch)) {
+        applyTodayMaps(elementId, date, { skipRow: shownSkipRow }, set, get);
+      }
+      throw error;
+    } finally {
+      releasePending();
+    }
+    if (tracker.kind === 'counter') await refreshCounterStreakAfterWrite(elementId, set, get);
   },
 
   startHabitTimer: (elementId) => {
@@ -893,11 +1016,11 @@ export const useEventStore = create<EventState>((set, get) => ({
             void playHabitCompleteHaptic();
           }
 
-          const { streak, failureStreak } = await loadHabitStreak(elementId, config);
+          const { streak, failureStreak, score } = await loadHabitStreak(elementId, config);
           applyTodayMaps(
             elementId,
             persistDate,
-            { dailyTotal: committedTotal, habitDone: isComplete, streak, failureStreak },
+            { dailyTotal: committedTotal, habitDone: isComplete, streak, failureStreak, score },
             set,
             get,
           );
@@ -974,11 +1097,17 @@ export const useEventStore = create<EventState>((set, get) => ({
         delete nextSessions[elementId];
         set({ activeTimerSessions: nextSessions });
         schedulePersistActiveTimers(nextSessions);
-        applyTodayMaps(elementId, date, { dailyTotal: 0, habitDone: false }, set, get);
+        applyTodayMaps(
+          elementId,
+          date,
+          { dailyTotal: 0, habitDone: false, skipRow: false },
+          set,
+          get,
+        );
 
         try {
-          const { streak, failureStreak } = await loadHabitStreak(elementId, config);
-          applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+          const { streak, failureStreak, score } = await loadHabitStreak(elementId, config);
+          applyTodayMaps(elementId, date, { streak, failureStreak, score }, set, get);
         } catch {
           // Day wipe already applied; streaks can refresh on next focus.
         }
@@ -1011,13 +1140,17 @@ export const useEventStore = create<EventState>((set, get) => ({
         applyTodayMaps(
           elementId,
           date,
-          { dailyTotal: total, habitDone: isHabitDayComplete(total, config, own) },
+          {
+            dailyTotal: total,
+            habitDone: isHabitDayComplete(total, config, own),
+            skipRow: own.some(isSkipEvent) || (get().skipRowToday[elementId] ?? false),
+          },
           set,
           get,
         );
         try {
-          const { streak, failureStreak } = await loadHabitStreak(elementId, config);
-          applyTodayMaps(elementId, date, { streak, failureStreak }, set, get);
+          const { streak, failureStreak, score } = await loadHabitStreak(elementId, config);
+          applyTodayMaps(elementId, date, { streak, failureStreak, score }, set, get);
         } catch {
           // Day restored; streaks can refresh on next focus.
         }
@@ -1056,4 +1189,67 @@ export function counterStreakInputsFromElements(
     });
   }
   return inputs;
+}
+
+/**
+ * The day reads as skipped: it holds a skip row and is not complete. `done` is
+ * the tracker's completion today (habit: `habitDoneToday`; counter: total ≥ target).
+ */
+export function isSkippedToday(
+  state: Pick<EventState, 'skipRowToday'>,
+  elementId: string,
+  done: boolean,
+): boolean {
+  return (state.skipRowToday[elementId] ?? false) && !done;
+}
+
+/**
+ * This week's completed dates before `date`, for `times_per_week` habits only
+ * (one query per path, and none at all when no habit uses that schedule).
+ */
+async function loadWeekDoneBefore(
+  habits: HabitStreakInput[],
+  date: string,
+): Promise<Record<string, string[]>> {
+  const weekly = habits.filter((h) => h.config.schedule.type === 'times_per_week');
+  const result: Record<string, string[]> = {};
+  if (weekly.length === 0) return result;
+  const weekStart = weekStartDateString(date);
+  for (const habit of weekly) result[habit.id] = [];
+  if (weekStart >= date) return result;
+
+  const db = await getDatabase();
+  const inWeekBefore = (day: string) => day >= weekStart && day < date;
+  const metaHabits = weekly.filter((h) => habitNeedsEventMetaForCompletion(h.config));
+  const totalHabits = weekly.filter((h) => !habitNeedsEventMetaForCompletion(h.config));
+
+  if (totalHabits.length > 0) {
+    const byElement = await eventRepo.getDailyTotalsForElementsSince(
+      db,
+      totalHabits.map((h) => h.id),
+      weekStart,
+    );
+    for (const habit of totalHabits) {
+      const history = dayHistoryFromDailyTotals(
+        (byElement.get(habit.id) ?? []).filter((row) => inWeekBefore(row.date)),
+        (total) => isHabitDayComplete(total, habit.config),
+      );
+      result[habit.id] = [...history.completed].sort();
+    }
+  }
+  if (metaHabits.length > 0) {
+    const byElement = await eventRepo.getEventsForElementsSince(
+      db,
+      metaHabits.map((h) => h.id),
+      weekStart,
+    );
+    for (const habit of metaHabits) {
+      const history = habitDayHistoryFromEvents(
+        (byElement.get(habit.id) ?? []).filter((event) => inWeekBefore(event.date)),
+        habit.config,
+      );
+      result[habit.id] = [...history.completed].sort();
+    }
+  }
+  return result;
 }

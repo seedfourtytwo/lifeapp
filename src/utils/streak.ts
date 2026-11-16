@@ -111,3 +111,86 @@ export function computeFailureStreak(
   return computeFailureStreakRun(completedDates, today, isScheduledOnDate, maxLookback, createdOn)
     .count;
 }
+
+/** Hard stop on weeks walked (≈ the same span as `MAX_CALENDAR_SPAN`). */
+const MAX_WEEK_SPAN = Math.ceil(MAX_CALENDAR_SPAN / 7);
+
+function completedInRange(
+  completed: ReadonlySet<string>,
+  from: string,
+  through: string,
+  createdOn?: string | null,
+): number {
+  let count = 0;
+  for (let cursor = from; cursor <= through; cursor = shiftDateString(cursor, 1)) {
+    if (createdOn && cursor < createdOn) continue;
+    if (completed.has(cursor)) count++;
+  }
+  return count;
+}
+
+/** What a weekly walk needs: which days are done, the target, and the walk's bounds. */
+export interface WeeklyStreakInput {
+  completedDates: Iterable<string>;
+  today: string;
+  /** Completed days a Monday–Sunday week needs. */
+  times: number;
+  /** Monday of a date's week (`weekStartDateString`). */
+  weekStartOf: (date: string) => string;
+  createdOn?: string | null;
+  windowStart?: string | null;
+}
+
+/**
+ * `times_per_week` success streak, in weeks: consecutive past weeks that met
+ * the target, plus the current week once it has met it. The current, unfinished
+ * week never breaks the run. The creation week (habit did not exist all week)
+ * counts if met and otherwise ends the walk without breaking it. Days before
+ * `createdOn` never count as completed.
+ */
+export function computeWeeklyStreakRun(input: WeeklyStreakInput): StreakRun {
+  const completed = new Set(input.completedDates);
+  const { today, times, weekStartOf, createdOn, windowStart } = input;
+  const currentStart = weekStartOf(today);
+  let count = completedInRange(completed, currentStart, today, createdOn) >= times ? 1 : 0;
+  if (createdOn && currentStart <= createdOn) return { count, truncated: false };
+
+  let weekStart = shiftDateString(currentStart, -7);
+  for (let walked = 0; walked < MAX_WEEK_SPAN; walked++) {
+    const weekEnd = shiftDateString(weekStart, 6);
+    if (createdOn && weekEnd < createdOn) break;
+    if (windowStart && weekStart < windowStart) return { count, truncated: true };
+    const met = completedInRange(completed, weekStart, weekEnd, createdOn) >= times;
+    const creationWeek = Boolean(createdOn && weekStart < createdOn);
+    if (met) count++;
+    if (!met || creationWeek) break;
+    weekStart = shiftDateString(weekStart, -7);
+  }
+  return { count, truncated: false };
+}
+
+/**
+ * `times_per_week` failure streak: consecutive past *full* weeks that missed
+ * the target, ending last week. 0 once the current week has met the target.
+ * The creation week is not a full week, so it is never counted as missed.
+ */
+export function computeWeeklyFailureStreakRun(input: WeeklyStreakInput): StreakRun {
+  const completed = new Set(input.completedDates);
+  const { today, times, weekStartOf, createdOn, windowStart } = input;
+  const currentStart = weekStartOf(today);
+  if (completedInRange(completed, currentStart, today, createdOn) >= times) {
+    return { count: 0, truncated: false };
+  }
+
+  let count = 0;
+  let weekStart = shiftDateString(currentStart, -7);
+  for (let walked = 0; walked < MAX_WEEK_SPAN; walked++) {
+    if (createdOn && weekStart < createdOn) break;
+    if (windowStart && weekStart < windowStart) return { count, truncated: true };
+    const weekEnd = shiftDateString(weekStart, 6);
+    if (completedInRange(completed, weekStart, weekEnd, createdOn) >= times) break;
+    count++;
+    weekStart = shiftDateString(weekStart, -7);
+  }
+  return { count, truncated: false };
+}

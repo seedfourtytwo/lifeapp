@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { HabitConfig } from '../../protocol';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
-import { formatHabitStreakLabel } from './habitCardLabels';
+import { ActionBubbleTray } from '../../components/ActionBubbleTray';
+import { habitCardCaption } from './habitCardLabels';
+import { skipTodayBubbles } from '../skipTodayBubble';
 import { TrackerCardTick } from '../TrackerCardTick';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
@@ -23,6 +25,9 @@ export function HabitBooleanWidget({
   onEditNote,
   hasTodayNote,
   streak,
+  score,
+  skipped,
+  onSkipToday,
   onLongPressReorder,
   delayLongPressReorder,
   onReorderTouchMove,
@@ -32,7 +37,9 @@ export function HabitBooleanWidget({
 }: WidgetProps<HabitConfig>) {
   const { t } = useTranslation('trackers');
   const done = Boolean(isDone);
-  const streakLabel = formatHabitStreakLabel(config, streak);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const caption = habitCardCaption(config, { streak, score, skipped: skipped && !done });
+  const bubbles = skipTodayBubbles({ complete: done, skipped: Boolean(skipped), onSkipToday });
 
   return (
     <TrackerCard>
@@ -41,7 +48,7 @@ export function HabitBooleanWidget({
           name={element.name}
           icon={config.icon}
           complete={done}
-          streakLabel={streakLabel}
+          caption={caption}
           {...trackerCardTitleInteractions({
             onOpenDetails,
             onLongPressReorder,
@@ -54,13 +61,20 @@ export function HabitBooleanWidget({
         />
 
         <View style={styles.trailingCluster}>
-          <TrackerCardTick
-            done={done}
-            onPress={() => void onToggle?.()}
-            accessibilityLabel={
-              done ? t('habitWidget.completedTapToUndoA11y') : t('habitWidget.markHabitDoneA11y')
-            }
-          />
+          <ActionBubbleTray open={trayOpen} onDismiss={() => setTrayOpen(false)} bubbles={bubbles}>
+            <TrackerCardTick
+              done={done}
+              onPress={() => {
+                setTrayOpen(false);
+                void onToggle?.();
+              }}
+              onLongPress={bubbles.length > 0 ? () => setTrayOpen((open) => !open) : undefined}
+              accessibilityLabel={
+                done ? t('habitWidget.completedTapToUndoA11y') : t('habitWidget.markHabitDoneA11y')
+              }
+              accessibilityHint={bubbles.length > 0 ? t('skip.longPressHint') : undefined}
+            />
+          </ActionBubbleTray>
 
           {/* Only once there is a note; a first one is added from the history. */}
           {onDictateNote && hasTodayNote ? (
