@@ -419,7 +419,7 @@ class TodayRulesTest {
   }
 
   @Test
-  fun todosTickedTodayMoveTheHeader() {
+  fun todosTickedTodayStayUnderDoneAndMoveTheHeader() {
     val model = TodayRules.buildToday(
       listOf(HabitInput("a", "Open", habit("{}"))),
       { _, _ -> DayFacts.EMPTY },
@@ -427,11 +427,42 @@ class TodayRulesTest {
       listOf(TodoInput("t1", "One", null, 0), TodoInput("t2", "Two", null, 1)),
       monday,
       0,
-      todosDoneToday = 3,
+      doneTodos = listOf(TodoInput("d1", "Ticked", null, 0), TodoInput("d2", "Also ticked", "2026-11-10", 1)),
     )
-    // One habit, two open todos, three todos already ticked today.
-    assertEquals(6, model.due)
-    assertEquals(3, model.done)
+    // One habit, two open todos, two todos already ticked today.
+    assertEquals(5, model.due)
+    assertEquals(2, model.done)
+    assertEquals(
+      listOf("label:habits", "habit:a", "label:todos", "todo:t1", "todo:t2", "label:done", "todo:d1", "todo:d2"),
+      model.rows.map { it.key },
+    )
+    val ticked = model.rows.filterIsInstance<WidgetRow.Todo>().filter { it.done }
+    assertEquals(listOf("d1", "d2"), ticked.map { it.id })
+    // A ticked todo no longer nags about its date.
+    assertEquals(TodoDue.NONE, ticked[1].due)
+  }
+
+  @Test
+  fun todoRowsSayWhenTheyAreDue() {
+    val model = TodayRules.buildToday(
+      emptyList(),
+      { _, _ -> DayFacts.EMPTY },
+      emptyList(),
+      listOf(
+        TodoInput("late", "Late", "2026-11-10", 0),
+        TodoInput("today", "Today", "2026-11-16", 1),
+        TodoInput("soon", "Soon", "2026-11-20", 2),
+        TodoInput("any", "Any time", null, 3),
+      ),
+      monday,
+      0,
+    )
+    val due = model.rows.filterIsInstance<WidgetRow.Todo>().associate { it.id to it.due }
+    assertEquals(TodoDue.OVERDUE, due["late"])
+    assertEquals(TodoDue.TODAY, due["today"])
+    assertEquals(TodoDue.LATER, due["soon"])
+    assertEquals(TodoDue.NONE, due["any"])
+    assertEquals("2026-11-20", model.rows.filterIsInstance<WidgetRow.Todo>().first { it.id == "soon" }.dueDate)
   }
 
   @Test

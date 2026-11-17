@@ -32,4 +32,8 @@
   <string name="life_widget_paused">En pause</string>
   <string name="life_widget_open_app">Ouvrir Life</string>
   <string name="life_widget_label_now">En cours</string>
+  <string name="life_widget_todo_overdue">En retard · %1$s</string>
+  <string name="life_widget_todo_today">Pour aujourd’hui</string>
+  <string name="life_widget_todo_due">Pour le %1$s</string>
+  <string name="life_widget_reopen_todo_a11y">Rouvrir %1$s</string>
 </resources>

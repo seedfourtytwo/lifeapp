@@ -78,6 +78,9 @@ data class HabitDayState(
 
 enum class HabitRowState { OPEN, DONE, SKIPPED }
 
+/** Where an open todo's date stands against today. */
+enum class TodoDue { NONE, OVERDUE, TODAY, LATER }
+
 /**
  * A timer the widget is running, in the shape of the app's `ActiveTimerSession`:
  * when it started, the local day it belongs to, and its pauses.
@@ -175,7 +178,15 @@ sealed class WidgetRow {
     override val key: String get() = "counter:$id"
   }
 
-  data class Todo(val id: String, val title: String) : WidgetRow() {
+  data class Todo(
+    val id: String,
+    val title: String,
+    val due: TodoDue = TodoDue.NONE,
+    /** `YYYY-MM-DD`, set with [TodoDue.LATER] and [TodoDue.OVERDUE]. */
+    val dueDate: String? = null,
+    /** Ticked today: listed under Done, where a tap reopens it. */
+    val done: Boolean = false,
+  ) : WidgetRow() {
     override val key: String get() = "todo:$id"
   }
 
@@ -488,8 +499,8 @@ object TodayRules {
 
   /**
    * Everything the widget shows, in order:
-   * open due habits, counters, up to [MAX_TODOS] open todos, then done and
-   * skipped habits. Each non-empty section gets a heading when there is more
+   * what is running now, open due habits, counters, up to [MAX_TODOS] open
+   * todos, then done and skipped habits and the todos ticked today. Each non-empty section gets a heading when there is more
    * than one of them.
    *
    * `habits` and `counters` arrive in dashboard order. A habit outside its
@@ -507,8 +518,8 @@ object TodayRules {
     runningTimers: Map<String, RunningTimer> = emptyMap(),
     /** Habit id → the timer the app is running on it. Shown, never controlled, by the widget. */
     appTimers: Map<String, AppTimer> = emptyMap(),
-    /** Todos completed today: they have left the list but still count in the header. */
-    todosDoneToday: Int = 0,
+    /** Todos completed today: listed under Done, and counted in the header. */
+    doneTodos: List<TodoInput> = emptyList(),
   ): TodayModel {
     val now = ArrayList<WidgetRow>()
     val open = ArrayList<WidgetRow>()
@@ -588,9 +599,20 @@ object TodayRules {
       )
     }
 
-    val todoRows = sortTodos(todos, today.toString()).take(MAX_TODOS).map { WidgetRow.Todo(it.id, it.title) }
-    due += todoRows.size + todosDoneToday
-    done += todosDoneToday
+    val todayKey = today.toString()
+    val todoRows = sortTodos(todos, todayKey).take(MAX_TODOS).map {
+      val dueDate = it.dueDate
+      val due = when {
+        dueDate == null -> TodoDue.NONE
+        dueDate < todayKey -> TodoDue.OVERDUE
+        dueDate == todayKey -> TodoDue.TODAY
+        else -> TodoDue.LATER
+      }
+      WidgetRow.Todo(it.id, it.title, due, if (due == TodoDue.TODAY) null else dueDate)
+    }
+    due += todoRows.size + doneTodos.size
+    done += doneTodos.size
+    for (todo in doneTodos) settled.add(WidgetRow.Todo(todo.id, todo.title, done = true))
 
     val sections = listOf(
       Section.NOW to now,

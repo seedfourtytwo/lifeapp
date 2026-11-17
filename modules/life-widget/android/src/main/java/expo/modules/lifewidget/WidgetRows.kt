@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Turns the model's rows into list item views. Shared by the two ways the list
@@ -230,9 +232,39 @@ internal class WidgetRows(private val context: Context, private val date: String
 
   private fun todoView(row: WidgetRow.Todo): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.life_widget_row_todo)
-    views.setTextViewText(R.id.row_name, row.title)
-    views.setContentDescription(R.id.row_box, context.getString(R.string.life_widget_complete_todo_a11y, row.title))
-    views.setOnClickFillInIntent(R.id.row_box, fillIn(WidgetActions.TAP_TODO, row.id))
+    // Like a finished habit, a ticked todo loses its card.
+    views.setInt(R.id.row_root, "setBackgroundResource", if (row.done) 0 else R.drawable.life_widget_card)
+    views.setImageViewResource(
+      R.id.row_box_icon,
+      if (row.done) R.drawable.life_widget_disc_done else R.drawable.life_widget_todo_box,
+    )
+    setName(views, row.title, settled = row.done)
+
+    val dueDate = row.dueDate?.let { TodayRules.parseDate(it) }
+    val day = dueDate?.let { DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()).format(it) } ?: ""
+    val quiet = if (row.due == TodoDue.LATER) context.getString(R.string.life_widget_todo_due, day) else null
+    val alert = when (row.due) {
+      TodoDue.OVERDUE -> context.getString(R.string.life_widget_todo_overdue, day)
+      TodoDue.TODAY -> context.getString(R.string.life_widget_todo_today)
+      else -> null
+    }
+    views.setTextViewText(R.id.row_meta, quiet ?: "")
+    views.setViewVisibility(R.id.row_meta, if (quiet != null) View.VISIBLE else View.GONE)
+    views.setTextViewText(R.id.row_meta_alert, alert ?: "")
+    views.setViewVisibility(R.id.row_meta_alert, if (alert != null) View.VISIBLE else View.GONE)
+
+    // Only the box is the tap target: a todo is ticked on purpose, not by brushing the row.
+    views.setContentDescription(
+      R.id.row_box,
+      context.getString(
+        if (row.done) R.string.life_widget_reopen_todo_a11y else R.string.life_widget_complete_todo_a11y,
+        row.title,
+      ),
+    )
+    views.setOnClickFillInIntent(
+      R.id.row_box,
+      fillIn(WidgetActions.TAP_TODO, row.id).putExtra(WidgetActions.EXTRA_WANT_DONE, !row.done),
+    )
     return views
   }
 

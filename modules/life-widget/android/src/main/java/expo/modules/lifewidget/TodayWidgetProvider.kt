@@ -376,7 +376,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
       WidgetActions.TAP_TIMER_PAUSE -> timerAction(context, id, TimerAction.PAUSE)
       WidgetActions.TAP_TIMER_ENDED -> timerAction(context, id, TimerAction.TRACK_ENDED)
       WidgetActions.TAP_TODO -> {
-        WidgetActions.runAsync(this, context) { WidgetDb.completeTodo(appContext, id) }
+        val wantDone = intent.getBooleanExtra(WidgetActions.EXTRA_WANT_DONE, true)
+        WidgetActions.runAsync(this, context) { WidgetDb.setTodoDone(appContext, id, wantDone) }
       }
     }
   }

@@ -169,16 +169,18 @@ object WidgetDb {
     }
 
     val todos = ArrayList<TodoInput>()
-    var todosDoneToday = 0
+    val doneTodos = ArrayList<TodoInput>()
     if (hasTable(db, "todos")) {
       // completed_at is a UTC ISO string, which sorts as time: today is a range of them.
       val zone = java.time.ZoneId.systemDefault()
       val dayStart = TodayRules.isoTimestamp(today.atStartOfDay(zone).toInstant())
       val dayEnd = TodayRules.isoTimestamp(today.plusDays(1).atStartOfDay(zone).toInstant())
-      todosDoneToday = db.rawQuery(
-        "SELECT COUNT(*) FROM todos WHERE completed_at >= ? AND completed_at < ?",
+      db.rawQuery(
+        "SELECT id, title FROM todos WHERE completed_at >= ? AND completed_at < ? ORDER BY completed_at",
         arrayOf(dayStart, dayEnd),
-      ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+      ).use { c ->
+        while (c.moveToNext()) doneTodos.add(TodoInput(c.getString(0), c.getString(1) ?: "", null, 0))
+      }
       db.rawQuery(
         "SELECT id, title, due_date, sort_order FROM todos WHERE completed_at IS NULL",
         null,
@@ -205,7 +207,7 @@ object WidgetDb {
       minuteOfDay = minuteOfDay,
       runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)),
       appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
-      todosDoneToday = todosDoneToday,
+      doneTodos = doneTodos,
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
   }
@@ -443,13 +445,17 @@ object WidgetDb {
     }
   }
 
-  /** `setTodoCompleted(db, id, new Date().toISOString())`: only completed_at changes; the row is kept. */
-  fun completeTodo(context: Context, todoId: String) {
+  /**
+   * `setTodoCompleted(db, id, …)`: only completed_at changes; the row is kept.
+   * `done` false reopens a todo ticked by mistake.
+   */
+  fun setTodoDone(context: Context, todoId: String, done: Boolean) {
     withDb(context) { db ->
       if (!hasTable(db, "todos")) return@withDb
       val values = ContentValues()
-      values.put("completed_at", TodayRules.isoTimestamp(Instant.now()))
-      db.update("todos", values, "id = ? AND completed_at IS NULL", arrayOf(todoId))
+      if (done) values.put("completed_at", TodayRules.isoTimestamp(Instant.now())) else values.putNull("completed_at")
+      val onlyIf = if (done) "completed_at IS NULL" else "completed_at IS NOT NULL"
+      db.update("todos", values, "id = ? AND $onlyIf", arrayOf(todoId))
       Unit
     }
   }

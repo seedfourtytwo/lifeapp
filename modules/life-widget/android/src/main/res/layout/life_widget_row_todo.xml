@@ -18,6 +18,7 @@
     android:minHeight="60dp">
 
     <ImageView
+      android:id="@+id/row_box_icon"
       android:layout_width="32dp"
       android:layout_height="32dp"
       android:layout_gravity="start|center_vertical"
@@ -25,13 +26,52 @@
       android:src="@drawable/life_widget_todo_box" />
   </FrameLayout>
 
-  <TextView
-    android:id="@+id/row_name"
+  <LinearLayout
     android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:layout_weight="1"
-    android:ellipsize="end"
-    android:maxLines="2"
-    android:textColor="@color/life_widget_text"
-    android:textSize="17sp" />
+    android:orientation="vertical"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+      android:id="@+id/row_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:ellipsize="end"
+      android:maxLines="2"
+      android:textColor="@color/life_widget_text"
+      android:textSize="17sp" />
+
+    <!-- The same title in the quiet colour, for a todo ticked today. -->
+    <TextView
+      android:id="@+id/row_name_settled"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:ellipsize="end"
+      android:maxLines="2"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="17sp"
+      android:visibility="gone" />
+
+    <!-- When it is due. Two views, one per colour: overdue and today stand out. -->
+    <TextView
+      android:id="@+id/row_meta"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:maxLines="1"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="14sp"
+      android:visibility="gone" />
+
+    <TextView
+      android:id="@+id/row_meta_alert"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:fontFamily="sans-serif-medium"
+      android:maxLines="1"
+      android:textColor="@color/life_widget_accent"
+      android:textSize="14sp"
+      android:visibility="gone" />
+  </LinearLayout>
 </LinearLayout>
