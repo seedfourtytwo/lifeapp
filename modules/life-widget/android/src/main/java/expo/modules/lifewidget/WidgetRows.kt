@@ -4,10 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Turns the model's rows into list item views. Shared by the two ways the list
@@ -79,11 +75,12 @@ internal class WidgetRows(private val context: Context, private val date: String
       else -> R.drawable.life_widget_card
     }
     views.setInt(R.id.row_root, "setBackgroundResource", background)
+    // A timer habit shows a stopwatch, not the ring: the ring means "tap to tick".
     val disc = when {
-      row.inApp -> R.drawable.life_widget_disc_in_app
-      running -> R.drawable.life_widget_disc_running
+      running && !paused -> R.drawable.life_widget_disc_timer_running
       row.state == HabitRowState.DONE -> R.drawable.life_widget_disc_done
       row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
+      row.timer -> R.drawable.life_widget_disc_timer
       else -> R.drawable.life_widget_disc_open
     }
     views.setImageViewResource(R.id.row_disc, disc)
@@ -110,32 +107,39 @@ internal class WidgetRows(private val context: Context, private val date: String
       return views
     }
 
-    val target = row.timerTargetMinutes
-    val minutes = if (target != null) {
-      context.getString(R.string.life_widget_timer_progress, row.timerMinutes, target)
-    } else {
-      context.getString(R.string.life_widget_timer_minutes, row.timerMinutes)
+    // Today's time so far, as a clock that ticks while the timer runs: what is
+    // already logged plus the running session, over the goal.
+    val runningSince = row.runningSinceMs
+    val pausedMs = row.pausedElapsedMs
+    val sessionMs = when {
+      runningSince == null -> 0L
+      pausedMs != null -> pausedMs
+      else -> (System.currentTimeMillis() - runningSince).coerceAtLeast(0)
     }
+    val shownMs = row.loggedSeconds * 1000L + sessionMs
+    val target = row.targetSeconds
     val status = when {
       row.inApp && paused -> context.getString(R.string.life_widget_paused_in_app)
       row.inApp -> context.getString(R.string.life_widget_running_in_app)
       paused -> context.getString(R.string.life_widget_paused)
-      running -> context.getString(R.string.life_widget_started_at, clockTime(row.startedAtMs ?: 0))
       else -> null
     }
-    // A running timer's minutes would go stale between redraws; the pinned bar has the live clock.
-    val live = running && !paused && !row.inApp
+    // Plain text: a Chronometer does not tick inside a list item on the lock-screen
+    // page. The habit the widget is timing is drawn outside the list (WidgetUpdater);
+    // a timer the app is running has no figure here that could be trusted to move.
+    val time = TodayRules.formatElapsed((shownMs / 1000).toInt()) +
+      (if (target != null) " / ${TodayRules.formatElapsed(target)}" else "")
     views.setTextViewText(
       R.id.row_meta,
       when {
-        status == null -> minutes
-        live -> status
-        else -> "$status · $minutes"
+        status == null -> time
+        row.inApp && !paused -> status
+        else -> "$status · $time"
       },
     )
     views.setViewVisibility(R.id.row_meta, View.VISIBLE)
     if (target != null && target > 0) {
-      views.setProgressBar(R.id.row_progress, target, row.timerMinutes.coerceAtMost(target), false)
+      views.setProgressBar(R.id.row_progress, target, (shownMs / 1000).coerceAtMost(target.toLong()).toInt(), false)
       views.setViewVisibility(R.id.row_progress, View.VISIBLE)
     } else {
       views.setViewVisibility(R.id.row_progress, View.GONE)
@@ -238,6 +242,7 @@ internal class WidgetRows(private val context: Context, private val date: String
       R.id.row_label,
       context.getString(
         when (section) {
+          Section.NOW -> R.string.life_widget_label_now
           Section.HABITS -> R.string.life_widget_label_habits
           Section.COUNTERS -> R.string.life_widget_label_counters
           Section.TODOS -> R.string.life_widget_label_todos
@@ -247,8 +252,4 @@ internal class WidgetRows(private val context: Context, private val date: String
     )
     return views
   }
-
-  private fun clockTime(epochMs: Long): String =
-    DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
-      .format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
 }

@@ -8,8 +8,6 @@
   <string name="life_widget_label_habits">Habits</string>
   <string name="life_widget_label_counters">Counters</string>
   <string name="life_widget_label_done">Done</string>
-  <string name="life_widget_timer_progress">%1$d / %2$d min</string>
-  <string name="life_widget_timer_minutes">%1$d min</string>
   <string name="life_widget_mark_done_a11y">Mark %1$s as done</string>
   <string name="life_widget_mark_not_done_a11y">Mark %1$s as not done</string>
   <string name="life_widget_add_a11y">%1$s to %2$s</string>
@@ -32,6 +30,6 @@
   <string name="life_widget_pause_timer_a11y">Pause %1$s</string>
   <string name="life_widget_resume_timer_a11y">Resume %1$s</string>
   <string name="life_widget_paused">Paused</string>
-  <string name="life_widget_started_at">Since %1$s</string>
   <string name="life_widget_open_app">Open Life</string>
+  <string name="life_widget_label_now">Now</string>
 </resources>

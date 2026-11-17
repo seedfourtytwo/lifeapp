@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The "running now" bar: the tonal button colour as a card. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-  <solid android:color="@color/life_widget_button" />
-  <corners android:radius="@dimen/life_widget_inner_radius" />
-</shape>

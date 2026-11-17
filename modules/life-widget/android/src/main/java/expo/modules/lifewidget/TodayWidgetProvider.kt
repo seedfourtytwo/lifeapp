@@ -76,8 +76,8 @@ internal object WidgetActions {
       .putExtra(EXTRA_TAP_KIND, kind)
       .putExtra(EXTRA_ID, habitId)
 
-  /** A button of the "running now" bar, which is outside the list and so cannot use a fill-in. */
-  fun nowBarIntent(context: Context, stop: Boolean, habitId: String): PendingIntent =
+  /** A button of the pinned "now" item, which is outside the list and so cannot use a fill-in. */
+  fun nowIntent(context: Context, stop: Boolean, habitId: String): PendingIntent =
     PendingIntent.getBroadcast(
       context,
       if (stop) REQUEST_NOW_STOP else REQUEST_NOW_TOGGLE,
@@ -204,8 +204,8 @@ internal object WidgetUpdater {
       ),
     )
 
-    bindNowBar(context, views, snapshot)
-    bindList(context, views, appWidgetId, snapshot)
+    val nowRow = bindNow(context, views, snapshot)
+    bindList(context, views, appWidgetId, snapshot, nowRow)
     views.setEmptyView(R.id.widget_list, R.id.widget_empty)
     views.setPendingIntentTemplate(R.id.widget_list, WidgetActions.tapTemplate(context))
 
@@ -223,9 +223,20 @@ internal object WidgetUpdater {
    * own schedule, after the header — on recent Android versions late enough
    * that a second update could put an old header back over a new list.
    */
-  private fun bindList(context: Context, views: RemoteViews, appWidgetId: Int, snapshot: WidgetSnapshot) {
+  private fun bindList(
+    context: Context,
+    views: RemoteViews,
+    appWidgetId: Int,
+    snapshot: WidgetSnapshot,
+    nowRow: WidgetRow.Habit?,
+  ) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      val rows = if (snapshot is WidgetSnapshot.Ready) snapshot.model.rows else emptyList()
+      val all = if (snapshot is WidgetSnapshot.Ready) snapshot.model.rows else emptyList()
+      // The pinned item is not repeated in the list, nor is a NOW heading left over an empty section.
+      val withoutNow = all.filter { it !== nowRow }
+      val rows = withoutNow.filterIndexed { index, row ->
+        !(row is WidgetRow.Label && row.section == Section.NOW && withoutNow.getOrNull(index + 1) !is WidgetRow.Habit)
+      }
       val builder = WidgetRows(context, (snapshot as? WidgetSnapshot.Ready)?.today?.toString() ?: "")
       val items = RemoteViews.RemoteCollectionItems.Builder()
         .setHasStableIds(true)
@@ -242,43 +253,62 @@ internal object WidgetUpdater {
     views.setRemoteAdapter(R.id.widget_list, adapter)
   }
 
-  /** The first timer the widget itself is running, with a live clock and its controls. */
-  private fun bindNowBar(context: Context, views: RemoteViews, snapshot: WidgetSnapshot) {
+  /**
+   * Draws the habit the widget is timing as the pinned item, and returns its
+   * row so the list can leave it out. Below API 31 the list comes from the
+   * adapter service and keeps the row; the pinned item is then an extra.
+   */
+  private fun bindNow(context: Context, views: RemoteViews, snapshot: WidgetSnapshot): WidgetRow.Habit? {
     val row = (snapshot as? WidgetSnapshot.Ready)?.model?.rows
       ?.firstOrNull { it is WidgetRow.Habit && it.runningSinceMs != null && !it.inApp } as? WidgetRow.Habit
     val since = row?.runningSinceMs
     if (row == null || since == null) {
       views.setViewVisibility(R.id.widget_now, View.GONE)
-      return
+      return null
     }
     views.setViewVisibility(R.id.widget_now, View.VISIBLE)
     views.setTextViewText(R.id.widget_now_name, row.name)
-    // The chronometer counts from a base on the uptime clock; ours is wall-clock.
-    val paused = row.pausedElapsedMs
-    val elapsed = paused ?: (System.currentTimeMillis() - since)
-    views.setChronometer(R.id.widget_now_clock, SystemClock.elapsedRealtime() - elapsed, null, paused == null)
 
-    val stop = WidgetActions.nowBarIntent(context, stop = true, habitId = row.id)
+    // Today's time so far: what is already logged plus this session, over the goal.
+    val paused = row.pausedElapsedMs
+    val sessionMs = paused ?: (System.currentTimeMillis() - since).coerceAtLeast(0)
+    val shownMs = row.loggedSeconds * 1000L + sessionMs
+    val target = row.targetSeconds
+    val prefix = if (paused != null) context.getString(R.string.life_widget_paused) + " · " else ""
+    // Paused, the goal is dropped: with two buttons beside it the line has no room for both.
+    val suffix = if (target != null && paused == null) " / ${TodayRules.formatElapsed(target)}" else ""
+    // The format goes in before the base, because only setBase redraws the text.
+    // "%s" is where the time goes, so a literal percent sign has to be doubled.
+    views.setString(R.id.widget_now_clock, "setFormat", prefix.replace("%", "%%") + "%s" + suffix.replace("%", "%%"))
+    views.setLong(R.id.widget_now_clock, "setBase", SystemClock.elapsedRealtime() - shownMs)
+    views.setBoolean(R.id.widget_now_clock, "setStarted", paused == null)
+    if (target != null && target > 0) {
+      views.setProgressBar(R.id.widget_now_progress, target, (shownMs / 1000).coerceAtMost(target.toLong()).toInt(), false)
+      views.setViewVisibility(R.id.widget_now_progress, View.VISIBLE)
+    } else {
+      views.setViewVisibility(R.id.widget_now_progress, View.GONE)
+    }
+
+    val stopLabel = context.getString(R.string.life_widget_stop_timer_a11y, row.name)
     views.setImageViewResource(R.id.widget_now_stop, R.drawable.life_widget_ic_stop)
-    views.setContentDescription(R.id.widget_now_stop, context.getString(R.string.life_widget_stop_timer_a11y, row.name))
-    views.setOnClickPendingIntent(R.id.widget_now_stop, stop)
+    views.setContentDescription(R.id.widget_now_stop, stopLabel)
+    views.setOnClickPendingIntent(R.id.widget_now_stop, WidgetActions.nowIntent(context, stop = true, habitId = row.id))
     if (row.hasAudio) {
+      val label = context.getString(
+        if (paused != null) R.string.life_widget_resume_timer_a11y else R.string.life_widget_pause_timer_a11y,
+        row.name,
+      )
       views.setViewVisibility(R.id.widget_now_toggle, View.VISIBLE)
       views.setImageViewResource(
         R.id.widget_now_toggle,
         if (paused != null) R.drawable.life_widget_ic_play else R.drawable.life_widget_ic_pause,
       )
-      views.setContentDescription(
-        R.id.widget_now_toggle,
-        context.getString(
-          if (paused != null) R.string.life_widget_resume_timer_a11y else R.string.life_widget_pause_timer_a11y,
-          row.name,
-        ),
-      )
-      views.setOnClickPendingIntent(R.id.widget_now_toggle, WidgetActions.nowBarIntent(context, stop = false, habitId = row.id))
+      views.setContentDescription(R.id.widget_now_toggle, label)
+      views.setOnClickPendingIntent(R.id.widget_now_toggle, WidgetActions.nowIntent(context, stop = false, habitId = row.id))
     } else {
       views.setViewVisibility(R.id.widget_now_toggle, View.GONE)
     }
+    return row
   }
 }
 

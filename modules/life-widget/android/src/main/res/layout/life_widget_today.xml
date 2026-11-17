@@ -65,55 +65,98 @@
     android:importantForAccessibility="no"
     android:progressDrawable="@drawable/life_widget_progress" />
 
-  <!-- The timer running now, pinned above the list with a live clock and its controls. -->
+  <!--
+    The habit being timed now. It looks like a list item but sits outside the
+    list: a Chronometer ticks here and does not inside list items on the
+    lock-screen page, and pinned it stays in reach while the list scrolls.
+  -->
   <LinearLayout
     android:id="@+id/widget_now"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:minHeight="64dp"
-    android:background="@drawable/life_widget_now"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="8dp"
+    android:layout_marginBottom="4dp"
+    android:orientation="vertical"
     android:visibility="gone">
 
-    <LinearLayout
-      android:layout_width="0dp"
+    <TextView
+      android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_weight="1"
-      android:orientation="vertical">
+      android:fontFamily="sans-serif-medium"
+      android:letterSpacing="0.08"
+      android:paddingStart="6dp"
+      android:paddingBottom="6dp"
+      android:text="@string/life_widget_label_now"
+      android:textAllCaps="true"
+      android:textColor="@color/life_widget_accent"
+      android:textSize="12sp" />
 
-      <TextView
-        android:id="@+id/widget_now_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="@color/life_widget_on_button"
-        android:textSize="14sp" />
+    <LinearLayout
+      android:id="@+id/widget_now_card"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:minHeight="76dp"
+      android:background="@drawable/life_widget_card_running"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:paddingStart="14dp"
+      android:paddingTop="8dp"
+      android:paddingEnd="8dp"
+      android:paddingBottom="8dp">
 
-      <Chronometer
-        android:id="@+id/widget_now_clock"
-        android:layout_width="wrap_content"
+      <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/life_widget_disc_timer_running" />
+
+      <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-medium"
-        android:fontFeatureSettings="tnum"
-        android:textColor="@color/life_widget_on_button"
-        android:textSize="26sp" />
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+          android:id="@+id/widget_now_name"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:textColor="@color/life_widget_text"
+          android:textSize="17sp" />
+
+        <!-- Today's time on this habit, ticking: what is logged plus this session. -->
+        <Chronometer
+          android:id="@+id/widget_now_clock"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-medium"
+          android:fontFeatureSettings="tnum"
+          android:maxLines="1"
+          android:textColor="@color/life_widget_accent"
+          android:textSize="20sp" />
+
+        <ProgressBar
+          android:id="@+id/widget_now_progress"
+          style="?android:attr/progressBarStyleHorizontal"
+          android:layout_width="match_parent"
+          android:layout_height="6dp"
+          android:layout_marginTop="6dp"
+          android:importantForAccessibility="no"
+          android:progressDrawable="@drawable/life_widget_progress" />
+      </LinearLayout>
+
+      <ImageView
+        android:id="@+id/widget_now_toggle"
+        style="@style/LifeWidgetIconButton" />
+
+      <ImageView
+        android:id="@+id/widget_now_stop"
+        style="@style/LifeWidgetIconButton"
+        android:layout_marginStart="2dp" />
     </LinearLayout>
-
-    <ImageView
-      android:id="@+id/widget_now_toggle"
-      style="@style/LifeWidgetIconButton"
-      android:background="@drawable/life_widget_button_strong" />
-
-    <ImageView
-      android:id="@+id/widget_now_stop"
-      style="@style/LifeWidgetIconButton"
-      android:layout_marginStart="2dp"
-      android:background="@drawable/life_widget_button_strong" />
   </LinearLayout>
 
   <FrameLayout

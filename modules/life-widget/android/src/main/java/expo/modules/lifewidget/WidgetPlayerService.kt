@@ -271,6 +271,10 @@ class WidgetPlayerService : Service() {
           }
         }
         is PlayerCommand.Pause -> mainHandler.post { instance?.pausePlayback() }
+        is PlayerCommand.StopAll -> {
+          habitId = null
+          mainHandler.post { instance?.stopPlayback() }
+        }
         is PlayerCommand.Stop -> {
           if (habitId == request.habitId) habitId = null
           mainHandler.post { instance?.takeIf { it.playingHabitId == request.habitId }?.stopPlayback() }

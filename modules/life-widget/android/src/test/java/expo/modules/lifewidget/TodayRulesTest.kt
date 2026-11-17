@@ -208,7 +208,8 @@ class TodayRulesTest {
       12 * 60,
       runningTimers = mapOf("h" to RunningTimer(1000L, "2026-11-16"), "n" to RunningTimer(2000L, "2026-11-16")),
     )
-    assertEquals(listOf("habit:h", "habit:n", "habit:i"), model.rows.map { it.key })
+    // What is running comes first, under its own heading.
+    assertEquals(listOf("label:now", "habit:h", "habit:n", "label:habits", "habit:i"), model.rows.map { it.key })
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
     assertEquals(1000L, rows.getValue("h").runningSinceMs)
     assertEquals(2000L, rows.getValue("n").runningSinceMs)
@@ -285,6 +286,9 @@ class TodayRulesTest {
         "s" to AppTimer(start, start + 600_000, 120_000),
       ),
     )
+    // Running in the app is "now"; paused in the app stays in the list, so an
+    // old forgotten session does not sit at the top for days.
+    assertEquals(listOf("label:now", "habit:r", "label:habits", "habit:s"), model.rows.map { it.key })
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
     // The app's timer wins the display; time spent paused is not counted.
     val r = rows.getValue("r")
@@ -431,21 +435,37 @@ class TodayRulesTest {
   }
 
   @Test
-  fun aRunningTimerShowsItsLiveMinutesAndStart() {
+  fun aTimerRowCarriesSecondsForItsClock() {
     val reading = HabitInput("r", "Reading", habit("""{"trackingMode":"timer","dailyTargetSeconds":3600}"""))
-    val facts = { _: String, _: LocalDate -> DayFacts(total = 600.0) }
+    val track = HabitInput(
+      "t",
+      "Breathing",
+      habit("""{"trackingMode":"timer","timerSound":{"trackId":"wimhofMorning","playbackMode":"play_once"}}"""),
+    )
+    val facts = { id: String, _: LocalDate -> if (id == "r") DayFacts(total = 609.0) else DayFacts.EMPTY }
     val now = 10_000_000L
     val model = TodayRules.buildToday(
-      listOf(reading), facts, emptyList(), emptyList(), monday, 0,
+      listOf(reading, track), facts, emptyList(), emptyList(), monday, 0,
       // Started 12.5 minutes ago, 2 of them paused.
       runningTimers = mapOf("r" to RunningTimer(now - 750_000, "2026-11-16", null, 120_000)),
-      nowMs = now,
     )
-    val row = model.rows.filterIsInstance<WidgetRow.Habit>().single()
-    // 10 logged minutes + 10.5 live ones.
-    assertEquals(20, row.timerMinutes)
+    val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
+    val row = rows.getValue("r")
+    assertEquals(609, row.loggedSeconds)
+    assertEquals(3600, row.targetSeconds)
     assertEquals(now - 750_000, row.startedAtMs)
     assertEquals(now - 630_000, row.runningSinceMs)
+    // A play-once track is its own goal.
+    assertEquals(1340, rows.getValue("t").targetSeconds)
+  }
+
+  @Test
+  fun clockTextMatchesTheChronometer() {
+    assertEquals("00:00", TodayRules.formatElapsed(0))
+    assertEquals("05:09", TodayRules.formatElapsed(309))
+    assertEquals("59:59", TodayRules.formatElapsed(3599))
+    assertEquals("1:00:00", TodayRules.formatElapsed(3600))
+    assertEquals("1:30:05", TodayRules.formatElapsed(5405))
   }
 
   @Test

@@ -206,7 +206,6 @@ object WidgetDb {
       runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)),
       appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
       todosDoneToday = todosDoneToday,
-      nowMs = System.currentTimeMillis(),
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
   }
@@ -393,18 +392,20 @@ object WidgetDb {
           return@inImmediateTransaction if (had) PlayerRequest(elementId, "", PlayerCommand.Stop) else null
         }
         val lockedByApp = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)).containsKey(elementId)
+        val running = timers[elementId]
         val outcome = TodayRules.applyTimerAction(
-          rules, timers[elementId], action, now, LocalDate.now().toString(), lockedByApp,
+          rules, running, action, now, LocalDate.now().toString(), lockedByApp,
         )
         outcome.log?.let { writeTimerLog(db, elementId, it) }
         if (outcome.session == null) timers.remove(elementId) else timers[elementId] = outcome.session
 
-        if (outcome.player is PlayerCommand.Play) {
-          // One sound at a time: starting this one finishes any other habit that was playing.
+        var stoppedSound = false
+        if (running == null && outcome.session != null) {
+          // One activity at a time: starting this timer finishes and logs any other.
           for ((otherId, other) in timers.toMap()) {
             if (otherId == elementId) continue
             val otherRules = habitRules(db, otherId)
-            if (otherRules != null && otherRules.soundTrackId == null) continue
+            if (otherRules?.soundTrackId != null) stoppedSound = true
             if (otherRules != null) {
               TodayRules.applyTimerAction(otherRules, other, TimerAction.STOP, now, other.date, false)
                 .log?.let { writeTimerLog(db, otherId, it) }
@@ -416,7 +417,9 @@ object WidgetDb {
 
         val name = db.rawQuery("SELECT name FROM elements WHERE id = ?", arrayOf(elementId))
           .use { c -> if (c.moveToFirst()) c.getString(0) ?: "" else "" }
-        PlayerRequest(elementId, name, outcome.player)
+        // A stopwatch that replaced a playing sound still has to silence it.
+        val command = if (stoppedSound && outcome.player is PlayerCommand.None) PlayerCommand.StopAll else outcome.player
+        PlayerRequest(elementId, name, command)
       }
     }
 

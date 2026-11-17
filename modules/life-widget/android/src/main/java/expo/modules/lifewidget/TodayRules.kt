@@ -105,7 +105,10 @@ sealed class PlayerCommand {
   object None : PlayerCommand()
   data class Play(val trackId: String, val loop: Boolean, val positionMs: Long) : PlayerCommand()
   object Pause : PlayerCommand()
+  /** Stop this habit's sound. */
   object Stop : PlayerCommand()
+  /** Stop whatever is playing: another habit's timer took over without a sound of its own. */
+  object StopAll : PlayerCommand()
 }
 
 /** A finished session to write as a `timer_session` event. */
@@ -121,8 +124,12 @@ data class TimerOutcome(
 /** A timer running in the app (`ActiveTimerSessionSchema`), reduced to what a clock needs. */
 data class AppTimer(val startedAtMs: Long, val pausedAtMs: Long?, val pauseOffsetMs: Long)
 
-/** The widget's sections, in display order. DONE holds done and skipped habits. */
-enum class Section { HABITS, COUNTERS, TODOS, DONE }
+/**
+ * The widget's sections, in display order. NOW holds the habits whose timer
+ * the widget is running or holding paused, or the app is running; DONE holds
+ * done and skipped habits.
+ */
+enum class Section { NOW, HABITS, COUNTERS, TODOS, DONE }
 
 sealed class WidgetRow {
   abstract val key: String
@@ -132,10 +139,10 @@ sealed class WidgetRow {
     val name: String,
     val state: HabitRowState,
     val timer: Boolean,
-    /** Timer habits: whole minutes today, a running timer's live time included. */
-    val timerMinutes: Int = 0,
-    /** Timer habits: goal in minutes, when there is one. */
-    val timerTargetMinutes: Int? = null,
+    /** Timer habits: seconds logged today, the running session not included. */
+    val loggedSeconds: Int = 0,
+    /** Timer habits: goal in seconds — the daily target, else a play-once track's length. */
+    val targetSeconds: Int? = null,
     /** Timer habits: a tap on the row starts the widget's timer. */
     val canRun: Boolean = false,
     /** The timer plays a sound: a tap on a running row pauses, and the row has a stop button. */
@@ -502,9 +509,8 @@ object TodayRules {
     appTimers: Map<String, AppTimer> = emptyMap(),
     /** Todos completed today: they have left the list but still count in the header. */
     todosDoneToday: Int = 0,
-    /** Now (epoch ms), for a running timer's live minutes. */
-    nowMs: Long = 0,
   ): TodayModel {
+    val now = ArrayList<WidgetRow>()
     val open = ArrayList<WidgetRow>()
     val counterRows = ArrayList<WidgetRow>()
     val settled = ArrayList<WidgetRow>()
@@ -535,16 +541,15 @@ object TodayRules {
       }
 
       val row = if (habit.rules.timer) {
-        val live = shown?.let { timerElapsedMs(it, nowMs) / 1000.0 } ?: 0.0
-        val seconds = habitFacts(habit.id, today).total + live
+        val seconds = habitFacts(habit.id, today).total
         val target = habit.rules.dailyTargetSeconds ?: habit.rules.playOnceTrackSeconds
         WidgetRow.Habit(
           id = habit.id,
           name = habit.name,
           state = rowState,
           timer = true,
-          timerMinutes = Math.floor(seconds / 60.0).toInt(),
-          timerTargetMinutes = target?.let { Math.round(it / 60.0).toInt() },
+          loggedSeconds = seconds.toInt(),
+          targetSeconds = target,
           canRun = true,
           hasAudio = habit.rules.soundTrackId != null,
           runningSinceMs = runningSince,
@@ -555,7 +560,12 @@ object TodayRules {
       } else {
         WidgetRow.Habit(id = habit.id, name = habit.name, state = rowState, timer = false)
       }
-      if (rowState == HabitRowState.OPEN) open.add(row) else settled.add(row)
+      val isNow = runningTimers.containsKey(habit.id) || (appTimer != null && appTimer.pausedAtMs == null)
+      when {
+        isNow -> now.add(row)
+        rowState == HabitRowState.OPEN -> open.add(row)
+        else -> settled.add(row)
+      }
     }
 
     for (counter in counters) {
@@ -583,6 +593,7 @@ object TodayRules {
     done += todosDoneToday
 
     val sections = listOf(
+      Section.NOW to now,
       Section.HABITS to open,
       Section.COUNTERS to counterRows,
       Section.TODOS to todoRows,
@@ -672,6 +683,14 @@ object TodayRules {
       result[id] = AppTimer(startedAt, parseInstantMs(entry["pausedAt"]), offset)
     }
     return result
+  }
+
+  /** Seconds as `DateUtils.formatElapsedTime` prints them, which is what a Chronometer shows. */
+  fun formatElapsed(seconds: Int): String {
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val sec = seconds % 60
+    return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, sec) else String.format(Locale.US, "%02d:%02d", m, sec)
   }
 
   /** A stopped timer shorter than this was a mistap: nothing is logged. */
