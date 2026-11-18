@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static sample for the widget picker (API 31+ previewLayout). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@android:id/background"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/life_widget_background"
+  android:orientation="vertical"
+  android:paddingStart="16dp"
+  android:paddingTop="4dp"
+  android:paddingEnd="12dp"
+  android:paddingBottom="8dp">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:fontFamily="sans-serif-medium"
+      android:maxLines="1"
+      android:text="@string/life_widget_preview_date"
+      android:textColor="@color/life_widget_text"
+      android:textSize="16sp" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:fontFeatureSettings="tnum"
+      android:paddingEnd="4dp"
+      android:text="1/3"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="14sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+      android:layout_width="28dp"
+      android:layout_height="28dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/life_widget_disc_open" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:layout_weight="1"
+      android:maxLines="1"
+      android:text="@string/life_widget_preview_habit"
+      android:textColor="@color/life_widget_text"
+      android:textSize="16sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:maxLines="1"
+      android:text="@string/life_widget_preview_counter"
+      android:textColor="@color/life_widget_text"
+      android:textSize="16sp" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginEnd="4dp"
+      android:fontFeatureSettings="tnum"
+      android:text="3/8"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="14sp" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:minWidth="52dp"
+      android:minHeight="48dp"
+      android:background="@drawable/life_widget_button"
+      android:gravity="center"
+      android:paddingStart="12dp"
+      android:paddingEnd="12dp"
+      android:text="+1"
+      android:textColor="@color/life_widget_on_button"
+      android:textSize="14sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <FrameLayout
+      android:layout_width="40dp"
+      android:layout_height="wrap_content">
+
+      <ImageView
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="start|center_vertical"
+        android:importantForAccessibility="no"
+        android:src="@drawable/life_widget_todo_box" />
+    </FrameLayout>
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:maxLines="1"
+      android:text="@string/life_widget_preview_todo"
+      android:textColor="@color/life_widget_text"
+      android:textSize="16sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="48dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+      android:layout_width="28dp"
+      android:layout_height="28dp"
+      android:importantForAccessibility="no"
+      android:src="@drawable/life_widget_disc_done" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:layout_weight="1"
+      android:maxLines="1"
+      android:text="@string/life_widget_preview_done"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="16sp" />
+  </LinearLayout>
+</LinearLayout>

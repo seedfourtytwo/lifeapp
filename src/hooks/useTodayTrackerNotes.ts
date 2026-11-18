@@ -6,7 +6,9 @@ import { currentAppCalendarDate } from '../utils/dayRollover';
 /** Batch-load per-tracker notes for the current calendar day. */
 export function useTodayTrackerNotes(elementIds: string[], now: Date) {
   const [notesToday, setNotesToday] = useState<Map<string, string>>(new Map());
-  const idsKey = elementIds.join(',');
+  // The id *set*, not its order: Habits re-parks a ticked habit at the bottom,
+  // and a reorder must not re-query day_notes.
+  const idsKey = [...elementIds].sort().join(',');
   const today = currentAppCalendarDate(now);
 
   const reload = useCallback(async () => {

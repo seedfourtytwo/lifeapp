@@ -5,7 +5,12 @@ import { WEATHER_FORECAST_CACHE_KEY } from '../weather/forecastCache';
 import { getDatabase } from './client';
 import { importClearStep, PERSISTED_CONCEPTS, type AmbientClearFlag } from './persistedConcepts';
 import * as settingsRepo from './repositories/settingsRepository';
-import { clearPersistedActiveTimerSessions, ACTIVE_TIMER_SESSIONS_KEY } from './repositories/activeTimerRepository';
+import {
+  clearPersistedActiveTimerSessions,
+  clearWidgetTimerSessions,
+  ACTIVE_TIMER_SESSIONS_KEY,
+  WIDGET_TIMER_SESSIONS_KEY,
+} from './repositories/activeTimerRepository';
 import {
   clearOptionsAreEmpty,
   resolveActivityDeleteBeforeDate,
@@ -112,6 +117,8 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
     await awaitPendingEventWrites();
     useEventStore.setState({ activeTimerSessions: {} });
     await clearPersistedActiveTimerSessions(await getDatabase());
+    // The widget's own stopwatches go with the activity they would have logged into.
+    await clearWidgetTimerSessions(await getDatabase());
   }
   if (options.calendar) {
     bumpDataGeneration('calendar');
@@ -147,7 +154,12 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
       }
       if (options.preferences) {
         const liveSessions = useEventStore.getState().activeTimerSessions;
+        // Same for a stopwatch the widget is running: it is not a preference.
+        const widgetSessions = await settingsRepo.getSetting(db, WIDGET_TIMER_SESSIONS_KEY);
         await clearAmbient(db, 'preferences');
+        if (widgetSessions) {
+          await settingsRepo.setSetting(db, WIDGET_TIMER_SESSIONS_KEY, widgetSessions);
+        }
         // Preference wipe clears all app_settings rows; re-write ephemeral timer state
         // so a theme/settings clear does not orphan a running lock-screen session.
         if (Object.keys(liveSessions).length > 0) {

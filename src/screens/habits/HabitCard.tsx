@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Alert, type GestureResponderEvent } from 'react-native';
@@ -7,14 +8,14 @@ import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import { getKindHandler } from '../../kinds/registry';
 import type { RootStackParamList } from '../../navigation/types';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
-import { useEventStore } from '../../store/eventStore';
+import { isSkippedToday, useEventStore } from '../../store/eventStore';
 
 type Props = {
   habit: ElementDefinition;
   config: HabitConfig;
   hasTodayNote?: boolean;
-  onDictateNote?: () => void;
-  onEditNote?: () => void;
+  /** Open today's note for this habit; `dictate` starts the mic. Pass a stable callback. */
+  onOpenNote?: (habit: ElementDefinition, dictate: boolean) => void;
   onLongPressReorder?: (event: GestureResponderEvent) => void;
   onReorderTouchMove?: (event: GestureResponderEvent) => void;
   onReorderTouchEnd?: (event: GestureResponderEvent) => void;
@@ -25,12 +26,15 @@ type Props = {
   onOfferUndo?: (message: string, undo: () => Promise<void>) => void;
 };
 
-export default function HabitCard({
+/**
+ * One habit row on Home. Reads its own slice of the event store and is memoised,
+ * so a tick re-renders this card only — give it stable callbacks.
+ */
+function HabitCard({
   habit,
   config,
   hasTodayNote,
-  onDictateNote,
-  onEditNote,
+  onOpenNote,
   onLongPressReorder,
   delayLongPressReorder,
   onReorderTouchMove,
@@ -47,17 +51,40 @@ export default function HabitCard({
     todayTotal,
     isDone,
     streak,
+    score,
+    skipped,
     activeTimerSession,
     toggleHabit,
+    setSkipToday,
   } = useEventStore(
     useShallow((state) => ({
       todayTotal: state.dailyTotals[habit.id] ?? 0,
       isDone: state.habitDoneToday[habit.id] ?? false,
       streak: state.habitStreaks[habit.id] ?? 0,
+      score: state.habitScores[habit.id] ?? 0,
+      skipped: isSkippedToday(state, habit.id, state.habitDoneToday[habit.id] ?? false),
       activeTimerSession: state.activeTimerSessions[habit.id] ?? null,
       toggleHabit: state.toggleHabit,
+      setSkipToday: state.setSkipToday,
     })),
   );
+
+  const skipToday = (skip: boolean) => {
+    const tracker = { kind: 'habit' as const, config };
+    setSkipToday(habit.id, tracker, skip)
+      .then(() => {
+        if (!skip) return;
+        onOfferUndo?.(t('undo.skipped', { name: habit.name }), () =>
+          setSkipToday(habit.id, tracker, false),
+        );
+      })
+      .catch((error) => {
+        Alert.alert(
+          t('skip.couldNotSkipTitle'),
+          error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+        );
+      });
+  };
 
   const habitHandler = getKindHandler('habit');
   if (!habitHandler) return null;
@@ -71,10 +98,13 @@ export default function HabitCard({
       todayTotal={todayTotal}
       isDone={isDone}
       streak={streak}
+      score={score}
+      skipped={skipped}
+      onSkipToday={skipToday}
       activeTimerSession={activeTimerSession}
       hasTodayNote={hasTodayNote}
-      onDictateNote={onDictateNote}
-      onEditNote={onEditNote}
+      onDictateNote={onOpenNote ? () => onOpenNote(habit, true) : undefined}
+      onEditNote={onOpenNote ? () => onOpenNote(habit, false) : undefined}
       onLongPressReorder={onLongPressReorder}
       delayLongPressReorder={delayLongPressReorder}
       onReorderTouchMove={onReorderTouchMove}
@@ -119,3 +149,5 @@ export default function HabitCard({
     />
   );
 }
+
+export default memo(HabitCard);

@@ -2,7 +2,6 @@ import {
   daysBetween,
   formatScheduleDescription,
   isScheduleActiveOnDate,
-  isScheduleSupportedForReminders,
   isTimeRangeStartingSoon,
   toExpoWeekday,
 } from '../src/protocol/schedule';
@@ -84,23 +83,54 @@ describe('isTimeRangeStartingSoon', () => {
   });
 });
 
-describe('isScheduleSupportedForReminders', () => {
-  it('supports daily and weekdays only', () => {
-    expect(isScheduleSupportedForReminders({ type: 'daily' })).toBe(true);
-    expect(isScheduleSupportedForReminders({ type: 'weekdays', days: [1] })).toBe(true);
-    expect(
-      isScheduleSupportedForReminders({
-        type: 'every_n_days',
-        interval: 2,
-        anchorDate: '2025-01-01',
-      }),
-    ).toBe(false);
-  });
-});
-
 describe('toExpoWeekday', () => {
   it('maps JS Sunday=0 to Expo Sunday=1', () => {
     expect(toExpoWeekday(0)).toBe(1);
     expect(toExpoWeekday(6)).toBe(7);
+  });
+});
+
+describe('daysBetween across DST', () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  const zones = [
+    'America/New_York',
+    'Europe/London',
+    'Australia/Sydney',
+    'Pacific/Auckland',
+    'UTC',
+  ];
+
+  it.each(zones)('is a pure calendar-day difference in %s', (tz) => {
+    process.env.TZ = tz;
+    // Spring/autumn changes in both hemispheres.
+    expect(daysBetween('2026-03-07', '2026-03-08')).toBe(1);
+    expect(daysBetween('2026-03-01', '2026-03-15')).toBe(14);
+    expect(daysBetween('2026-03-28', '2026-03-29')).toBe(1);
+    expect(daysBetween('2026-10-24', '2026-10-25')).toBe(1);
+    expect(daysBetween('2026-11-01', '2026-11-02')).toBe(1);
+    expect(daysBetween('2026-04-04', '2026-04-05')).toBe(1);
+    expect(daysBetween('2026-09-26', '2026-09-27')).toBe(1);
+    expect(daysBetween('2026-01-01', '2027-01-01')).toBe(365);
+    expect(daysBetween('2026-03-08', '2026-03-07')).toBe(-1);
+    expect(daysBetween('2026-03-08', '2026-03-08')).toBe(0);
+  });
+
+  it.each(zones)('every_n_days stays on cadence over a DST change in %s', (tz) => {
+    process.env.TZ = tz;
+    const schedule = {
+      type: 'every_n_days' as const,
+      interval: 2,
+      anchorDate: '2026-03-01',
+    };
+    // 03-01 + 2k: 03-03, 03-05, 03-07, 03-09 ...
+    expect(isScheduleActiveOnDate(schedule, '2026-03-07')).toBe(true);
+    expect(isScheduleActiveOnDate(schedule, '2026-03-08')).toBe(false);
+    expect(isScheduleActiveOnDate(schedule, '2026-03-09')).toBe(true);
+    expect(isScheduleActiveOnDate(schedule, '2026-03-15')).toBe(true);
   });
 });

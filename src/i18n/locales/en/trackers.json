@@ -16,7 +16,9 @@
   "schedule": {
     "weekdays": "Weekdays",
     "weekends": "Weekends",
-    "everyNDays": "Every {{count}} days"
+    "everyNDays": "Every {{count}} days",
+    "timesPerWeek_one": "{{count}} time a week",
+    "timesPerWeek_other": "{{count}} times a week"
   },
   "metaLines": {
     "buttons": "Buttons: {{list}}",
@@ -35,7 +37,8 @@
     "firstDayFormat": "First day must be YYYY-MM-DD",
     "reminderMinutesNonNegative": "Reminder minutes must be zero or more",
     "timeRangeFormat": "Enter valid times in HH:mm format, e.g. 06:00",
-    "timeRangeRequiredForVisibility": "Set a time range before limiting visibility"
+    "timeRangeRequiredForVisibility": "Set a time range before limiting visibility",
+    "timesPerWeekRange": "Pick how many times a week, from 1 to 6"
   },
   "confirm": {
     "deleteTitle": "Delete {{kind}}?",
@@ -59,7 +62,8 @@
   "undo": {
     "counterAdded": "{{name}} +{{count}}",
     "timerReset": "{{name}}: today’s time cleared",
-    "archived": "{{name}} archived"
+    "archived": "{{name}} archived",
+    "skipped": "{{name}} skipped for today"
   },
   "editor": {
     "newCounterTitle": "New counter",
@@ -138,15 +142,21 @@
     "toPlaceholder": "09:00",
     "onlyShowDuringWindowLabel": "Only show during this window",
     "onlyShowDuringWindowHint": "Hidden outside this time on Habits",
-    "everyNDaysReminderUnavailableHint": "Reminders are not available for every-N-days schedules yet.",
     "reminderBeforeStartLabel": "Reminder before start",
     "minutesBeforeLabel": "Minutes before",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Any time"
+    "timeWindowOff": "Any time",
+    "timesPerWeek": "Times a week",
+    "timesPerWeekLabel": "How many days each week",
+    "timesPerWeekPreset_one": "{{count}} time a week",
+    "timesPerWeekPreset_other": "{{count}} times a week",
+    "timesPerWeekHint": "Any days, Monday to Sunday. Once the week is done it stays off the list until Monday, and the streak counts weeks."
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Daily goal (minutes)",
     "dailyGoalPlaceholder": "e.g. 15",
+    "anySessionCountsLabel": "Any session counts",
+    "anySessionCountsHint": "Done for the day after any time logged, even below the goal or before the track ends",
     "soundWhileRunningLabel": "Sound while running",
     "soundHint": "Choose a bundled meditation or focus track.",
     "noTracksBundledHint": "No tracks bundled yet. Add MP3 files to assets/sounds/ in the project, then rebuild the app.",
@@ -177,13 +187,19 @@
     "streakMany": "{{count}} days in a row",
     "addIncrementA11y": "Add {{count}}",
     "expandIncrementsHint": "Long press to show more increments",
-    "reorderLongPressHint": "Hold to see the name; keep holding to reorder"
+    "reorderLongPressHint": "Hold to see the name; keep holding to reorder",
+    "strengthLabel": "Strength",
+    "strengthA11y": "Strength {{score}} out of 100"
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Completed. Tap to undo",
     "markHabitDoneA11y": "Mark habit done",
     "couldNotUpdateTitle": "Could not update habit",
     "couldNotStartTimerTitle": "Could not start timer",
+    "timerRunningInWidgetTitle": "Timer running in the widget",
+    "timerRunningInWidgetMessage": "This habit is being timed from the home-screen widget. Stop it there first.",
+    "timerRunningInWidgetTakeOverMessage": "The widget is timing this habit. Continuing stops the widget's timer and logs the time it ran.",
+    "timerRunningInWidgetTakeOver": "Stop it and continue",
     "startTimerA11y": "Start timer",
     "resumeTimerA11y": "Resume timer",
     "pauseTimerA11y": "Pause timer",
@@ -196,7 +212,11 @@
     "streakOne": "1 day in a row",
     "streakMany": "{{count}} days in a row",
     "soundLoopsA11y": "Sound loops while the timer runs",
-    "soundPlaysOnceA11y": "Sound plays once, then the timer stops"
+    "soundPlaysOnceA11y": "Sound plays once, then the timer stops",
+    "streakWeeks_one": "{{count}} week in a row",
+    "streakWeeks_other": "{{count}} weeks in a row",
+    "strengthLabel": "Strength",
+    "strengthA11y": "Strength {{score}} out of 100"
   },
   "lockScreen": {
     "paused": "Paused",
@@ -205,5 +225,12 @@
     "playToStart": "Play to start",
     "playToCheckOff": "Play to check off",
     "fallbackHabitName": "Habit"
+  },
+  "skip": {
+    "skipTodayA11y": "Skip today",
+    "undoSkipA11y": "Undo skip",
+    "skippedToday": "Skipped today",
+    "longPressHint": "Long press to skip today",
+    "couldNotSkipTitle": "Could not skip"
   }
 }

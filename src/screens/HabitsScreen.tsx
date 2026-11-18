@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -14,12 +14,12 @@ import { useRefreshHabitDayOnFocus } from '../hooks/useHabitDataRefresh';
 import { NoteEditorHost } from '../notes';
 import {
   filterHabitsDueToday,
-  orderHabitsList,
   parseHabitConfig,
+  type ElementDefinition,
   type HabitConfig,
 } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
+import { isSkippedToday, useEventStore } from '../store/eventStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import HabitCard from './habits/HabitCard';
@@ -28,7 +28,10 @@ import DayHeader from './shared/DayHeader';
 import { habitHeaderMeta } from './shared/dayHeaderMeta';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
 import NotebookButtons from './shared/NotebookButtons';
-import { DraggableTrackerList } from './shared/DraggableTrackerList';
+import {
+  DraggableTrackerList,
+  type DraggableRenderContext,
+} from './shared/DraggableTrackerList';
 import {
   HomeTabScrollView,
   type HomeTabScrollViewHandle,
@@ -58,8 +61,6 @@ export default function HabitsScreen({
   const isLoading = useElementStore((s) => s.isLoading);
   const error = useElementStore((s) => s.error);
   const reorderHabitToOrder = useElementStore((s) => s.reorderHabitToOrder);
-  const habitDoneToday = useEventStore((s) => s.habitDoneToday);
-  const habitStreaks = useEventStore((s) => s.habitStreaks);
   const dayStateReady = useEventStore((s) => s.dayStateReady);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const now = useAppCalendarNow();
@@ -76,6 +77,11 @@ export default function HabitsScreen({
     // Undo belongs to the page it was offered on; leaving the page settles it.
     setPendingUndo(null);
   }, [notesActive]);
+
+  const offerUndo = useCallback(
+    (message: string, undo: () => Promise<void>) => setPendingUndo({ message, undo }),
+    [],
+  );
 
   const runUndo = () => {
     const pending = pendingUndo;
@@ -108,24 +114,78 @@ export default function HabitsScreen({
     [elements],
   );
 
-  const filterContext = useMemo(
-    () => ({
-      now,
-      today: currentAppCalendarDate(now),
-      habitDoneToday,
-    }),
-    [now, habitDoneToday],
+  // Due-ness depends on the day and the configs — and, for a times-a-week habit
+  // only, on this week's done days. Subscribe to that slice as a string, so a
+  // tick on an ordinary habit never re-runs the filter.
+  const weeklyIds = useMemo(
+    () =>
+      allHabits
+        .filter((h) => habitConfigs.get(h.id)?.schedule.type === 'times_per_week')
+        .map((h) => h.id),
+    [allHabits, habitConfigs],
+  );
+  const weekKey = useEventStore((s) =>
+    weeklyIds
+      .map(
+        (id) =>
+          `${id}|${(s.habitWeekDoneBefore[id] ?? []).join(',')}|${s.habitDoneToday[id] ? 1 : 0}`,
+      )
+      .join('\n'),
+  );
+  const dueTodayHabits = useMemo(() => {
+    const { habitDoneToday, habitWeekDoneBefore } = useEventStore.getState();
+    return filterHabitsDueToday(
+      allHabits,
+      {
+        now,
+        today: currentAppCalendarDate(now),
+        habitDoneToday,
+        habitWeekDoneBefore,
+        // Skipped rows stay listed (sunk with the done ones) so they can be undone.
+        includeSkipped: true,
+      },
+      habitConfigs,
+    );
+    // `weekKey` stands in for the weekly slice of the store read above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allHabits, habitConfigs, now, weekKey]);
+  const dueIds = useMemo(() => dueTodayHabits.map((h) => h.id), [dueTodayHabits]);
+
+  // Subscribe to derived primitives, not the whole maps: a tick re-renders this
+  // screen only when the done set or the best streak actually moves, and each
+  // card reads its own slice (see HabitCard).
+  const doneKey = useEventStore((s) =>
+    dueIds.filter((id) => s.habitDoneToday[id] ?? false).join('\n'),
+  );
+  // The header says days, so a times-a-week habit's run (in weeks) stays out of it.
+  const dayStreakIds = useMemo(() => {
+    const weekly = new Set(weeklyIds);
+    return dueIds.filter((id) => !weekly.has(id));
+  }, [dueIds, weeklyIds]);
+  const bestStreak = useEventStore((s) =>
+    dayStreakIds.reduce((best, id) => Math.max(best, s.habitStreaks[id] ?? 0), 0),
+  );
+  const skippedKey = useEventStore((s) =>
+    dueIds.filter((id) => isSkippedToday(s, id, s.habitDoneToday[id] ?? false)).join('\n'),
+  );
+  const doneIds = useMemo(
+    () => new Set(doneKey.length > 0 ? doneKey.split('\n') : []),
+    [doneKey],
+  );
+  const skippedIds = useMemo(
+    () => new Set(skippedKey.length > 0 ? skippedKey.split('\n') : []),
+    [skippedKey],
   );
 
-  const dueTodayHabits = useMemo(
-    () => filterHabitsDueToday(allHabits, filterContext),
-    [allHabits, filterContext],
-  );
-
-  const habits = useMemo(
-    () => orderHabitsList(dueTodayHabits, habitDoneToday),
-    [dueTodayHabits, habitDoneToday],
-  );
+  /** Remaining first (user sort_order), then done and skipped (user sort_order). */
+  const habits = useMemo(() => {
+    const remaining: ElementDefinition[] = [];
+    const settled: ElementDefinition[] = [];
+    for (const habit of dueTodayHabits) {
+      (doneIds.has(habit.id) || skippedIds.has(habit.id) ? settled : remaining).push(habit);
+    }
+    return [...remaining, ...settled];
+  }, [dueTodayHabits, doneIds, skippedIds]);
 
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
 
@@ -141,14 +201,12 @@ export default function HabitsScreen({
   const headerMeta = useMemo(
     () =>
       habitHeaderMeta({
-        due: habits.length,
-        done: habits.filter((habit) => habitDoneToday[habit.id] ?? false).length,
-        bestStreak: habits.reduce(
-          (best, habit) => Math.max(best, habitStreaks[habit.id] ?? 0),
-          0,
-        ),
+        // A skipped habit is not due today, so it is not counted as left to do.
+        due: habits.length - skippedIds.size,
+        done: doneIds.size,
+        bestStreak,
       }),
-    [habits, habitDoneToday, habitStreaks],
+    [habits.length, skippedIds.size, doneIds.size, bestStreak],
   );
 
   const activityLabel = useMemo(
@@ -171,10 +229,54 @@ export default function HabitsScreen({
     onTrackerNotesOpenChange,
   });
 
-  /** Sort only among remaining — done stays parked at the bottom. */
+  /** Sort only among remaining — done and skipped stay parked at the bottom. */
   const reorderPeerIds = useMemo(
-    () => habits.filter((habit) => !(habitDoneToday[habit.id] ?? false)).map((h) => h.id),
-    [habits, habitDoneToday],
+    () =>
+      habits
+        .filter((habit) => !doneIds.has(habit.id) && !skippedIds.has(habit.id))
+        .map((h) => h.id),
+    [habits, doneIds, skippedIds],
+  );
+  const reorderPeerSet = useMemo(() => new Set(reorderPeerIds), [reorderPeerIds]);
+
+  // Stable callbacks for the memoised cards; the latest values ride on a ref.
+  const latest = useRef({ noteEditor, now, onBeforeOpenTrackerNote });
+  latest.current = { noteEditor, now, onBeforeOpenTrackerNote };
+  const openNote = useCallback((habit: ElementDefinition, dictate: boolean) => {
+    const { noteEditor: editor, now: at, onBeforeOpenTrackerNote: beforeOpen } = latest.current;
+    beforeOpen?.();
+    void editor.open(
+      { kind: 'tracker', elementId: habit.id, label: habit.name },
+      currentAppCalendarDate(at),
+      dictate ? { dictate: true } : undefined,
+    );
+  }, []);
+
+  const reorderHint = tTrackers('habitWidget.reorderLongPressHint');
+  const renderHabit = useCallback(
+    (id: string, drag: DraggableRenderContext) => {
+      const habit = habitById.get(id);
+      const config = habit ? habitConfigs.get(habit.id) : undefined;
+      if (!habit || !config) return null;
+      // Done rows are not peers, so peer membership already excludes them.
+      const canReorder = drag.canDrag && reorderPeerSet.has(habit.id);
+      return (
+        <HabitCard
+          habit={habit}
+          config={config}
+          onLongPressReorder={canReorder ? drag.onLongPress : undefined}
+          delayLongPressReorder={drag.delayLongPress}
+          onReorderTouchMove={canReorder ? drag.onTouchMove : undefined}
+          onReorderTouchEnd={canReorder ? drag.onTouchEnd : undefined}
+          onReorderTouchCancel={canReorder ? drag.onTouchCancel : undefined}
+          reorderHint={canReorder ? reorderHint : undefined}
+          onOfferUndo={offerUndo}
+          hasTodayNote={notesToday.has(habit.id)}
+          onOpenNote={openNote}
+        />
+      );
+    },
+    [habitById, habitConfigs, notesToday, offerUndo, openNote, reorderHint, reorderPeerSet],
   );
 
   const reload = async () => {
@@ -275,7 +377,7 @@ export default function HabitsScreen({
             onTrackerDragActiveChange?.(active);
           }}
           onReorder={(nextIds) => {
-            const nextPeers = nextIds.filter((id) => reorderPeerIds.includes(id));
+            const nextPeers = nextIds.filter((id) => reorderPeerSet.has(id));
             return reorderHabitToOrder(nextPeers).catch((error) => {
               Alert.alert(
                 tCommon('alerts.couldNotSave'),
@@ -284,45 +386,7 @@ export default function HabitsScreen({
               throw error;
             });
           }}
-          renderItem={(id, drag) => {
-            const habit = habitById.get(id);
-            const config = habit ? habitConfigs.get(habit.id) : undefined;
-            if (!habit || !config) return null;
-            const isDone = habitDoneToday[habit.id] ?? false;
-            const canReorder =
-              drag.canDrag && !isDone && reorderPeerIds.includes(habit.id);
-            return (
-              <HabitCard
-                habit={habit}
-                config={config}
-                onLongPressReorder={canReorder ? drag.onLongPress : undefined}
-                delayLongPressReorder={drag.delayLongPress}
-                onReorderTouchMove={canReorder ? drag.onTouchMove : undefined}
-                onReorderTouchEnd={canReorder ? drag.onTouchEnd : undefined}
-                onReorderTouchCancel={canReorder ? drag.onTouchCancel : undefined}
-                reorderHint={
-                  canReorder ? tTrackers('habitWidget.reorderLongPressHint') : undefined
-                }
-                onOfferUndo={(message, undo) => setPendingUndo({ message, undo })}
-                hasTodayNote={notesToday.has(habit.id)}
-                onDictateNote={() => {
-                  onBeforeOpenTrackerNote?.();
-                  void noteEditor.open(
-                    { kind: 'tracker', elementId: habit.id, label: habit.name },
-                    currentAppCalendarDate(now),
-                    { dictate: true },
-                  );
-                }}
-                onEditNote={() => {
-                  onBeforeOpenTrackerNote?.();
-                  void noteEditor.open(
-                    { kind: 'tracker', elementId: habit.id, label: habit.name },
-                    currentAppCalendarDate(now),
-                  );
-                }}
-              />
-            );
-          }}
+          renderItem={renderHabit}
         />
       )}
     </HomeTabScrollView>

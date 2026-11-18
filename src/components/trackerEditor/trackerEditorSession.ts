@@ -25,9 +25,11 @@ export function newEditorSession(
     scheduleWeekdays: [1, 2, 3, 4, 5],
     scheduleInterval: '2',
     scheduleAnchorDate: toDateString(new Date()),
+    scheduleTimesPerWeek: '3',
     useReminder: false,
     remindMinutesBefore: '15',
     showStreakOnCard: true,
+    anySessionCounts: false,
     ...overrides,
   };
 }
@@ -78,9 +80,11 @@ export function editorSessionFromHabit(
     scheduleInterval: schedule.type === 'every_n_days' ? String(schedule.interval) : '2',
     scheduleAnchorDate:
       schedule.type === 'every_n_days' ? schedule.anchorDate : toDateString(new Date()),
+    scheduleTimesPerWeek: schedule.type === 'times_per_week' ? String(schedule.times) : '3',
     useReminder: config.remindMinutesBefore !== undefined,
     remindMinutesBefore:
       config.remindMinutesBefore !== undefined ? String(config.remindMinutesBefore) : '15',
     showStreakOnCard: config.showStreakOnCard !== false,
+    anySessionCounts: config.anySessionCounts === true,
   });
 }

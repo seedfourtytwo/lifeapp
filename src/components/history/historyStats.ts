@@ -20,6 +20,8 @@ export type HistoryStatsInput =
       daysDone: number;
       streak: number;
       bestRun: number;
+      /** `weeks` for a times-a-week habit: its run is counted in weeks. */
+      streakUnit?: 'days' | 'weeks';
       /** A timer habit's average session, already formatted. */
       averageLabel?: string;
     }
@@ -47,7 +49,8 @@ export function historyStats(input: HistoryStatsInput): HistoryStat[] {
       stats.push({
         id: 'streak',
         value: String(input.streak),
-        captionKey: 'history.statInARow',
+        captionKey:
+          input.streakUnit === 'weeks' ? 'history.statInARowWeeks' : 'history.statInARow',
         count: input.streak,
       });
     }

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One habit or counter: icon, name over figures and a progress bar, up to two buttons. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/row_root"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="68dp"
+  android:background="@drawable/life_widget_card"
+  android:gravity="center_vertical"
+  android:orientation="horizontal"
+  android:paddingStart="14dp"
+  android:paddingTop="8dp"
+  android:paddingEnd="8dp"
+  android:paddingBottom="8dp">
+
+  <ImageView
+    android:id="@+id/row_disc"
+    android:layout_width="32dp"
+    android:layout_height="32dp"
+    android:importantForAccessibility="no"
+    android:src="@drawable/life_widget_disc_open" />
+
+  <LinearLayout
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="6dp"
+    android:layout_weight="1"
+    android:orientation="vertical">
+
+    <TextView
+      android:id="@+id/row_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:ellipsize="end"
+      android:fontFamily="sans-serif-medium"
+      android:maxLines="2"
+      android:textColor="@color/life_widget_text"
+      android:textSize="17sp" />
+
+    <TextView
+      android:id="@+id/row_name_settled"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:ellipsize="end"
+      android:maxLines="2"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="17sp"
+      android:visibility="gone" />
+
+    <TextView
+      android:id="@+id/row_meta"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:fontFeatureSettings="tnum"
+      android:maxLines="1"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="14sp"
+      android:visibility="gone" />
+
+    <ProgressBar
+      android:id="@+id/row_progress"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="6dp"
+      android:layout_marginTop="6dp"
+      android:importantForAccessibility="no"
+      android:progressDrawable="@drawable/life_widget_progress"
+      android:visibility="gone" />
+  </LinearLayout>
+
+  <TextView
+    android:id="@+id/row_button_1"
+    style="@style/LifeWidgetButton" />
+
+  <TextView
+    android:id="@+id/row_button_2"
+    style="@style/LifeWidgetButton"
+    android:layout_marginStart="2dp" />
+
+  <!-- Timer controls: play, pause, finish. Counters use the two text buttons instead. -->
+  <ImageView
+    android:id="@+id/row_action_1"
+    style="@style/LifeWidgetIconButton"
+    android:visibility="gone" />
+
+  <ImageView
+    android:id="@+id/row_action_2"
+    style="@style/LifeWidgetIconButton"
+    android:layout_marginStart="2dp"
+    android:visibility="gone" />
+</LinearLayout>

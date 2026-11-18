@@ -60,6 +60,11 @@ export const HabitConfigSchema = z.object({
   dailyTargetSeconds: z.number().int().positive().optional(),
   /** Bundled audio track while the timer runs. */
   timerSound: HabitTimerSoundSchema.optional(),
+  /**
+   * Timer habits: any logged time completes the day, even below the goal or
+   * before a play-once track ends. The goal then only drives the progress bar.
+   */
+  anySessionCounts: z.boolean().optional(),
   /** Minutes before timeRange.start to fire a local reminder */
   remindMinutesBefore: z.number().int().nonnegative().optional(),
   /** Show current success or failure streak on the habit card */
@@ -80,6 +85,11 @@ export const HabitEventMetaSchema = z.discriminatedUnion('source', [
     /** Set when a play_once track finished naturally (not manual Done). */
     trackCompleted: z.boolean().optional(),
   }),
+  /**
+   * "Skip today": a value-0 row. The day counts as skipped only while it is not
+   * also complete — see `src/protocol/dayRules.ts`. At most one per day.
+   */
+  z.object({ source: z.literal('skip') }),
 ]);
 
 export type HabitEventMeta = z.infer<typeof HabitEventMetaSchema>;
@@ -120,6 +130,7 @@ export type HabitInput = {
   schedule?: HabitSchedule;
   remindMinutesBefore?: number;
   showStreakOnCard?: boolean;
+  anySessionCounts?: boolean;
   icon?: TrackerIconId;
 };
 
@@ -144,6 +155,7 @@ export function buildHabitConfig(
       ? { dailyTargetSeconds: input.dailyTargetSeconds }
       : {}),
     ...(input.timerSound ? { timerSound: input.timerSound } : {}),
+    ...(input.trackingMode === 'timer' && input.anySessionCounts ? { anySessionCounts: true } : {}),
     ...(input.remindMinutesBefore !== undefined && input.remindMinutesBefore >= 0
       ? { remindMinutesBefore: input.remindMinutesBefore }
       : {}),
@@ -160,6 +172,7 @@ export function isHabitDayComplete(
   dayEvents?: readonly Pick<LifeEvent, 'value' | 'meta'>[],
 ): boolean {
   if (config.trackingMode === 'timer') {
+    if (config.anySessionCounts) return total > 0;
     if (config.dailyTargetSeconds && config.dailyTargetSeconds > 0) {
       return total >= config.dailyTargetSeconds;
     }

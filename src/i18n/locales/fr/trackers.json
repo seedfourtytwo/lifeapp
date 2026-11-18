@@ -16,7 +16,9 @@
   "schedule": {
     "weekdays": "Jours de semaine",
     "weekends": "Week-ends",
-    "everyNDays": "Tous les {{count}} jours"
+    "everyNDays": "Tous les {{count}} jours",
+    "timesPerWeek_one": "{{count}} fois par semaine",
+    "timesPerWeek_other": "{{count}} fois par semaine"
   },
   "metaLines": {
     "buttons": "Boutons : {{list}}",
@@ -35,7 +37,8 @@
     "firstDayFormat": "Le premier jour doit être au format AAAA-MM-JJ",
     "reminderMinutesNonNegative": "Les minutes de rappel doivent être zéro ou plus",
     "timeRangeFormat": "Entrez des heures valides au format HH:mm, ex. 06:00",
-    "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité"
+    "timeRangeRequiredForVisibility": "Définissez une plage horaire avant de limiter la visibilité",
+    "timesPerWeekRange": "Choisissez combien de fois par semaine, de 1 à 6"
   },
   "confirm": {
     "deleteTitle": "Supprimer {{kind}} ?",
@@ -59,7 +62,8 @@
   "undo": {
     "counterAdded": "{{name}} +{{count}}",
     "timerReset": "{{name}} : temps du jour effacé",
-    "archived": "{{name}} est dans les archives"
+    "archived": "{{name}} est dans les archives",
+    "skipped": "{{name}} sauté pour aujourd’hui"
   },
   "editor": {
     "newCounterTitle": "Nouveau compteur",
@@ -138,15 +142,21 @@
     "toPlaceholder": "09:00",
     "onlyShowDuringWindowLabel": "Afficher uniquement pendant cette plage",
     "onlyShowDuringWindowHint": "Masquée en dehors de cette plage dans Habitudes",
-    "everyNDaysReminderUnavailableHint": "Les rappels ne sont pas encore disponibles pour les programmations tous-les-N-jours.",
     "reminderBeforeStartLabel": "Rappel avant le début",
     "minutesBeforeLabel": "Minutes avant",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Toute la journée"
+    "timeWindowOff": "Toute la journée",
+    "timesPerWeek": "Fois par semaine",
+    "timesPerWeekLabel": "Combien de jours par semaine",
+    "timesPerWeekPreset_one": "{{count}} fois par semaine",
+    "timesPerWeekPreset_other": "{{count}} fois par semaine",
+    "timesPerWeekHint": "N’importe quels jours, du lundi au dimanche. Une fois la semaine faite, l’habitude quitte la liste jusqu’à lundi, et la série compte en semaines."
   },
   "habitSoundFields": {
     "dailyGoalLabel": "Objectif quotidien (minutes)",
     "dailyGoalPlaceholder": "ex. 15",
+    "anySessionCountsLabel": "Toute séance compte",
+    "anySessionCountsHint": "Terminé pour la journée dès qu’un temps est enregistré, même sous l’objectif ou avant la fin de la piste",
     "soundWhileRunningLabel": "Son pendant l'exécution",
     "soundHint": "Choisissez une piste de méditation ou de concentration intégrée.",
     "noTracksBundledHint": "Aucune piste intégrée pour le moment. Ajoutez des fichiers MP3 dans assets/sounds/ du projet, puis reconstruisez l'application.",
@@ -177,13 +187,19 @@
     "streakMany": "{{count}} jours d'affilée",
     "addIncrementA11y": "Ajouter {{count}}",
     "expandIncrementsHint": "Appui long pour afficher d'autres incréments",
-    "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner"
+    "reorderLongPressHint": "Maintenir pour voir le nom ; continuer pour réordonner",
+    "strengthLabel": "Solidité",
+    "strengthA11y": "Solidité {{score}} sur 100"
   },
   "habitWidget": {
     "completedTapToUndoA11y": "Terminé. Appuyez pour annuler",
     "markHabitDoneA11y": "Marquer l'habitude comme faite",
     "couldNotUpdateTitle": "Mise à jour de l'habitude impossible",
     "couldNotStartTimerTitle": "Impossible de démarrer le minuteur",
+    "timerRunningInWidgetTitle": "Minuteur en cours dans le widget",
+    "timerRunningInWidgetMessage": "Cette habitude est chronométrée depuis le widget de l’écran d’accueil. Arrêtez-le d’abord là-bas.",
+    "timerRunningInWidgetTakeOverMessage": "Le widget chronomètre cette habitude. Continuer arrête son minuteur et enregistre le temps écoulé.",
+    "timerRunningInWidgetTakeOver": "Arrêter et continuer",
     "startTimerA11y": "Démarrer le minuteur",
     "resumeTimerA11y": "Reprendre le minuteur",
     "pauseTimerA11y": "Mettre le minuteur en pause",
@@ -196,7 +212,11 @@
     "streakOne": "1 jour d'affilée",
     "streakMany": "{{count}} jours d'affilée",
     "soundLoopsA11y": "Le son tourne en boucle pendant le minuteur",
-    "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête"
+    "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête",
+    "streakWeeks_one": "{{count}} semaine d’affilée",
+    "streakWeeks_other": "{{count}} semaines d’affilée",
+    "strengthLabel": "Solidité",
+    "strengthA11y": "Solidité {{score}} sur 100"
   },
   "lockScreen": {
     "paused": "En pause",
@@ -205,5 +225,12 @@
     "playToStart": "Lecture pour démarrer",
     "playToCheckOff": "Lecture pour cocher",
     "fallbackHabitName": "Habitude"
+  },
+  "skip": {
+    "skipTodayA11y": "Sauter aujourd’hui",
+    "undoSkipA11y": "Annuler le saut",
+    "skippedToday": "Sauté aujourd’hui",
+    "longPressHint": "Appui long pour sauter aujourd’hui",
+    "couldNotSkipTitle": "Impossible de sauter"
   }
 }

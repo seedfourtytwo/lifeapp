@@ -18,7 +18,8 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
-import { describeHabitCardSound, formatHabitStreakLabel } from './habitCardLabels';
+import { describeHabitCardSound, habitCardCaption } from './habitCardLabels';
+import { skipTodayBubbles } from '../skipTodayBubble';
 import { HabitSoundIndicator } from './HabitSoundIndicator';
 import { TrackerCardRoundButton } from '../TrackerCardRoundButton';
 import { TrackerCardTitle } from '../TrackerCardTitle';
@@ -32,6 +33,9 @@ export function HabitTimerWidget({
   config,
   todayTotal,
   streak,
+  score,
+  skipped,
+  onSkipToday,
   isDone,
   activeTimerSession,
   onTimerPress,
@@ -64,7 +68,6 @@ export function HabitTimerWidget({
     !hasSecondsTarget &&
     hasHabitTimerSound(config.timerSound) &&
     getHabitTimerPlaybackMode(config.timerSound) === 'play_once';
-  const streakLabel = formatHabitStreakLabel(config, streak);
   const soundIndicator = describeHabitCardSound(config);
 
   const todayTotalRef = useRef(todayTotal);
@@ -85,7 +88,8 @@ export function HabitTimerWidget({
   const displayTotal = liveTimerTotalSeconds(todayTotal, activeTimerSession);
   // play_once without a seconds goal: only store "track finished" counts as done.
   // Seconds goals use live total so the wash/colors update during the session.
-  const isComplete = isPlayOnceTarget
+  // "Any session counts": done once a session is banked, not the second one starts.
+  const isComplete = isPlayOnceTarget || config.anySessionCounts
     ? Boolean(isDone)
     : isHabitDayComplete(displayTotal, config);
 
@@ -95,12 +99,15 @@ export function HabitTimerWidget({
    * - Seconds target: only after the goal is reached (keep going for overtime,
    *   then Done to save). Under target: Play/Pause only; Reset clears the day.
    * - play_once track goal: never — only natural track end completes.
+   * - "Any session counts": anytime — banking a short session is the point.
    */
   const secondsTarget = config.dailyTargetSeconds ?? 0;
   const showManualDone =
     isRunning &&
     Boolean(onTimerFinish) &&
-    (!hasCompletionTarget || (hasSecondsTarget && displayTotal >= secondsTarget));
+    (Boolean(config.anySessionCounts) ||
+      !hasCompletionTarget ||
+      (hasSecondsTarget && displayTotal >= secondsTarget));
 
   useEffect(() => {
     if (!hasSecondsTarget || !isRunning || isPaused || chimePlayedRef.current) return;
@@ -121,6 +128,28 @@ export function HabitTimerWidget({
 
   const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
+  const caption = habitCardCaption(config, {
+    streak,
+    score,
+    skipped: skipped && !isComplete && !isRunning,
+  });
+  // Skipping is for a day you are not doing: never offered while a timer runs.
+  const skipBubbles = isRunning
+    ? []
+    : skipTodayBubbles({ complete: isComplete, skipped: Boolean(skipped), onSkipToday });
+  const trayBubbles = [
+    ...(canResetToday
+      ? [
+          {
+            key: 'reset',
+            icon: 'backup-restore',
+            accessibilityLabel: t('habitWidget.resetTodayA11y'),
+            onPress: () => void onResetToday?.(),
+          },
+        ]
+      : []),
+    ...skipBubbles,
+  ];
 
   /** Idle + zero today: show target only (or hide for open-ended). Elapsed appears once started. */
   const totalLabel = formatHabitHomeTimerLabel({
@@ -143,10 +172,6 @@ export function HabitTimerWidget({
 
   const closeResetBubbles = () => setResetBubblesOpen(false);
 
-  const confirmResetToday = () => {
-    void onResetToday?.();
-  };
-
   return (
     <TrackerCard>
       <View style={styles.oneLineRow}>
@@ -155,7 +180,7 @@ export function HabitTimerWidget({
           icon={config.icon}
           progress={hasCompletionTarget ? progress : null}
           complete={isComplete}
-          streakLabel={streakLabel}
+          caption={caption}
           {...trackerCardTitleInteractions({
             onOpenDetails,
             onLongPressReorder,
@@ -188,18 +213,7 @@ export function HabitTimerWidget({
           <ActionBubbleTray
             open={resetBubblesOpen}
             onDismiss={closeResetBubbles}
-            bubbles={
-              canResetToday
-                ? [
-                    {
-                      key: 'reset',
-                      icon: 'backup-restore',
-                      accessibilityLabel: t('habitWidget.resetTodayA11y'),
-                      onPress: confirmResetToday,
-                    },
-                  ]
-                : []
-            }
+            bubbles={trayBubbles}
           >
             <TrackerCardRoundButton
               icon={playIcon}
@@ -208,14 +222,18 @@ export function HabitTimerWidget({
                 void onTimerPress?.();
               }}
               onLongPress={
-                canResetToday
+                trayBubbles.length > 0
                   ? () => setResetBubblesOpen((open) => !open)
                   : undefined
               }
               delayLongPress={350}
               accessibilityLabel={playA11y}
               accessibilityHint={
-                canResetToday ? t('habitWidget.playLongPressResetHint') : undefined
+                canResetToday
+                  ? t('habitWidget.playLongPressResetHint')
+                  : skipBubbles.length > 0
+                    ? t('skip.longPressHint')
+                    : undefined
               }
             />
           </ActionBubbleTray>

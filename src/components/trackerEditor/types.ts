@@ -25,9 +25,13 @@ export type TrackerEditorSession = {
   scheduleWeekdays: number[];
   scheduleInterval: string;
   scheduleAnchorDate: string;
+  /** `times_per_week` target, '1'–'6'. */
+  scheduleTimesPerWeek: string;
   useReminder: boolean;
   remindMinutesBefore: string;
   showStreakOnCard: boolean;
+  /** Timer habits: any logged time completes the day. */
+  anySessionCounts: boolean;
 };
 
 export type TrackerEditorSaveData =
@@ -56,9 +60,11 @@ export type TrackerEditorSaveData =
       scheduleWeekdays: number[];
       scheduleInterval: string;
       scheduleAnchorDate: string;
+      scheduleTimesPerWeek: string;
       useReminder: boolean;
       remindMinutesBefore: string;
       showStreakOnCard: boolean;
+      anySessionCounts: boolean;
     };
 
 export type HabitEditorFieldState = Pick<
@@ -76,7 +82,9 @@ export type HabitEditorFieldState = Pick<
   | 'scheduleWeekdays'
   | 'scheduleInterval'
   | 'scheduleAnchorDate'
+  | 'scheduleTimesPerWeek'
   | 'useReminder'
   | 'remindMinutesBefore'
   | 'showStreakOnCard'
+  | 'anySessionCounts'
 >;

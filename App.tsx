@@ -26,6 +26,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
 import { useEveningCheckInSync } from './src/hooks/useEveningCheckInSync';
+import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
+import { useWidgetSync } from './src/hooks/useWidgetSync';
 import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
 import { getAppTheme } from './src/theme';
@@ -57,6 +59,8 @@ function ThemedApp() {
   useAppBootstrap();
   useCalendarReminderSync();
   useEveningCheckInSync();
+  useHabitReminderSync();
+  useWidgetSync();
 
   useEffect(() => {
     if (!isLoaded) {

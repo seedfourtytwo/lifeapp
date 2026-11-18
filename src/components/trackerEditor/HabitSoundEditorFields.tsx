@@ -4,7 +4,9 @@ import { Button } from 'react-native-paper';
 import ChoiceChip from '../ChoiceChip';
 import QuietText from '../QuietText';
 import SegmentedControl from '../SegmentedControl';
+import { SettingsSwitch } from '../settings';
 import { FilledField } from '../sheet';
+import { Text } from 'react-native-paper';
 import { typeScale } from '../../theme/typography';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,14 +30,18 @@ type SoundFieldState = {
 type Props = {
   dailyGoalMinutes: string;
   sound: SoundFieldState;
+  anySessionCounts: boolean;
   onDailyGoalMinutesChange: (value: string) => void;
+  onAnySessionCountsChange: (value: boolean) => void;
   onSoundChange: (patch: Partial<SoundFieldState>) => void;
 };
 
 export default function HabitSoundEditorFields({
   dailyGoalMinutes,
   sound,
+  anySessionCounts,
   onDailyGoalMinutesChange,
+  onAnySessionCountsChange,
   onSoundChange,
 }: Props) {
   const { t } = useTranslation('trackers');
@@ -143,6 +149,19 @@ export default function HabitSoundEditorFields({
         onChangeText={onDailyGoalMinutesChange}
         keyboardType="number-pad"
       />
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabel}>
+          <Text style={typeScale.body}>{t('habitSoundFields.anySessionCountsLabel')}</Text>
+          <QuietText style={[typeScale.caption, styles.hint]}>
+            {t('habitSoundFields.anySessionCountsHint')}
+          </QuietText>
+        </View>
+        <SettingsSwitch
+          value={anySessionCounts}
+          onValueChange={onAnySessionCountsChange}
+          accessibilityLabel={t('habitSoundFields.anySessionCountsLabel')}
+        />
+      </View>
       <View style={styles.switchLabel}>
         <QuietText style={typeScale.caption}>
           {t('habitSoundFields.soundWhileRunningLabel')}

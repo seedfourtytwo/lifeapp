@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveCounters } from '../utils/dashboardElements';
 import { useElementStore } from '../store/elementStore';
@@ -7,32 +7,48 @@ import {
   useEventStore,
 } from '../store/eventStore';
 
-/** Refresh today's totals and target-hit streaks when Home gains focus. */
+/**
+ * Refresh today's totals and target-hit streaks when Home gains focus, and when
+ * the active counters or their configs change while it is focused (the
+ * cold-start load). Renames and other edits that leave the queries' answers
+ * alone do not re-run it.
+ */
 export function useRefreshCounterTotalsOnFocus(): void {
   const elements = useElementStore((s) => s.elements);
   const dashboard = useElementStore((s) => s.dashboard);
   const loadCounterTotals = useEventStore((s) => s.loadCounterTotals);
   const loadCounterStreaks = useEventStore((s) => s.loadCounterStreaks);
 
-  const counters = useMemo(
-    () => getActiveCounters(elements, dashboard),
-    [elements, dashboard],
-  );
-  const counterIds = useMemo(() => counters.map((element) => element.id), [counters]);
-  const streakInputs = useMemo(
-    () => counterStreakInputsFromElements(counters),
-    [counters],
-  );
+  const { counterIds, streakInputs, key } = useMemo(() => {
+    const counters = getActiveCounters(elements, dashboard);
+    const ids = counters.map((element) => element.id);
+    const streaks = counterStreakInputsFromElements(counters);
+    return {
+      counterIds: ids,
+      streakInputs: streaks,
+      key: [
+        [...ids].sort().join(','),
+        streaks
+          .map((c) => `${c.id}:${c.createdAt ?? ''}:${JSON.stringify(c.config)}`)
+          .sort()
+          .join('|'),
+      ].join('#'),
+    };
+  }, [elements, dashboard]);
+  const latest = useRef({ counterIds, streakInputs });
+  latest.current = { counterIds, streakInputs };
 
   useFocusEffect(
     useCallback(() => {
-      if (counterIds.length > 0) {
-        void loadCounterTotals(counterIds);
+      const { counterIds: ids, streakInputs: streaks } = latest.current;
+      if (ids.length > 0) {
+        void loadCounterTotals(ids);
       }
-      if (streakInputs.length > 0) {
-        void loadCounterStreaks(streakInputs);
+      if (streaks.length > 0) {
+        void loadCounterStreaks(streaks);
       }
-    }, [counterIds, loadCounterStreaks, loadCounterTotals, streakInputs]),
+      // `key` stands in for the inputs: same counters and configs, same queries.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key, loadCounterStreaks, loadCounterTotals]),
   );
 }
-

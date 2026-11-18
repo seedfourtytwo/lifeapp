@@ -60,12 +60,21 @@ function everyNDaysSummary(
   });
 }
 
-const SCHEDULE_TYPES: readonly HabitScheduleType[] = ['daily', 'weekdays', 'every_n_days'];
+const SCHEDULE_TYPES: readonly HabitScheduleType[] = [
+  'daily',
+  'weekdays',
+  'every_n_days',
+  'times_per_week',
+];
 const SCHEDULE_LABEL_KEY: Record<HabitScheduleType, string> = {
   daily: 'habitFields.everyDay',
   weekdays: 'habitFields.specificDays',
   every_n_days: 'habitFields.everyNDays',
+  times_per_week: 'habitFields.timesPerWeek',
 };
+
+/** Seven would be "every day"; that is the daily schedule. */
+const TIMES_PER_WEEK_CHOICES = [1, 2, 3, 4, 5, 6] as const;
 
 /** What the closed Repeat row says it is set to. */
 function repeatSummary(state: HabitEditorFieldState, t: TFunction): string {
@@ -82,6 +91,12 @@ function repeatSummary(state: HabitEditorFieldState, t: TFunction): string {
     return Number.isFinite(interval) && interval > 0
       ? t('habitFields.everyNPreset', { count: interval })
       : t('habitFields.everyNDays');
+  }
+  if (state.scheduleType === 'times_per_week') {
+    const times = parseInt(state.scheduleTimesPerWeek.trim(), 10);
+    return Number.isFinite(times) && times > 0
+      ? t('habitFields.timesPerWeekPreset', { count: times })
+      : t('habitFields.timesPerWeek');
   }
   return t('habitFields.everyDay');
 }
@@ -144,9 +159,11 @@ function HabitEditorFields({ state, onChange }: Props) {
               habitSoundTrackId: state.habitSoundTrackId,
               habitSoundPlaybackMode: state.habitSoundPlaybackMode,
             }}
+            anySessionCounts={state.anySessionCounts}
             onDailyGoalMinutesChange={(habitDailyGoalMinutes) =>
               onChange({ habitDailyGoalMinutes })
             }
+            onAnySessionCountsChange={(anySessionCounts) => onChange({ anySessionCounts })}
             onSoundChange={(patch) => onChange(patch)}
           />
         ) : (
@@ -212,6 +229,29 @@ function HabitEditorFields({ state, onChange }: Props) {
                 onPress={() => toggleWeekday(value)}
               />
             ))}
+          </View>
+        ) : null}
+        {state.scheduleType === 'times_per_week' ? (
+          <View style={styles.sectionBody}>
+            <QuietText style={typeScale.caption}>{t('habitFields.timesPerWeekLabel')}</QuietText>
+            <View
+              style={styles.chipRow}
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('habitFields.timesPerWeekLabel')}
+            >
+              {TIMES_PER_WEEK_CHOICES.map((times) => (
+                <ChoiceChip
+                  key={times}
+                  label={String(times)}
+                  accessibilityLabel={t('habitFields.timesPerWeekPreset', { count: times })}
+                  selected={state.scheduleTimesPerWeek === String(times)}
+                  onPress={() => onChange({ scheduleTimesPerWeek: String(times) })}
+                />
+              ))}
+            </View>
+            <QuietText style={[typeScale.caption, styles.hint]}>
+              {t('habitFields.timesPerWeekHint')}
+            </QuietText>
           </View>
         ) : null}
         {state.scheduleType === 'every_n_days' ? (
@@ -330,33 +370,25 @@ function HabitEditorFields({ state, onChange }: Props) {
                 accessibilityLabel={t('habitFields.onlyShowDuringWindowLabel')}
               />
             </View>
-            {state.scheduleType === 'every_n_days' ? (
-              <QuietText style={[typeScale.caption, styles.hint]}>
-                {t('habitFields.everyNDaysReminderUnavailableHint')}
-              </QuietText>
-            ) : (
-              <>
-                <View style={styles.switchRow}>
-                  <Text style={[typeScale.body, styles.switchLabel]}>
-                    {t('habitFields.reminderBeforeStartLabel')}
-                  </Text>
-                  <SettingsSwitch
-                    value={state.useReminder}
-                    onValueChange={(useReminder) => onChange({ useReminder })}
-                    accessibilityLabel={t('habitFields.reminderBeforeStartLabel')}
-                  />
-                </View>
-                {state.useReminder ? (
-                  <FilledField
-                    label={t('habitFields.minutesBeforeLabel')}
-                    placeholder={t('habitFields.minutesBeforePlaceholder')}
-                    value={state.remindMinutesBefore}
-                    onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
-                    keyboardType="number-pad"
-                  />
-                ) : null}
-              </>
-            )}
+            <View style={styles.switchRow}>
+              <Text style={[typeScale.body, styles.switchLabel]}>
+                {t('habitFields.reminderBeforeStartLabel')}
+              </Text>
+              <SettingsSwitch
+                value={state.useReminder}
+                onValueChange={(useReminder) => onChange({ useReminder })}
+                accessibilityLabel={t('habitFields.reminderBeforeStartLabel')}
+              />
+            </View>
+            {state.useReminder ? (
+              <FilledField
+                label={t('habitFields.minutesBeforeLabel')}
+                placeholder={t('habitFields.minutesBeforePlaceholder')}
+                value={state.remindMinutesBefore}
+                onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
+                keyboardType="number-pad"
+              />
+            ) : null}
           </View>
         ) : null}
       </FormSection>

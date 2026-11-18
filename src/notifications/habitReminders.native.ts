@@ -3,7 +3,6 @@ import { i18n } from '../i18n';
 import type { ElementDefinition, HabitConfig } from '../protocol';
 import { HabitConfigSchema } from '../protocol';
 import { DEFAULT_EVENING_CHECK_IN_TIME, parseEveningCheckInTime } from '../protocol/appSettings';
-import { isScheduleSupportedForReminders } from '../protocol/schedule';
 import { isElementArchived } from '../utils/dashboardElements';
 import { collectStartReminderFires } from './habitStartReminderTimes';
 
@@ -62,12 +61,16 @@ async function getNotifications(): Promise<NotificationsModule | null> {
   }
 }
 
+/**
+ * Start reminders are one-shot DATE triggers expanded by `collectStartReminderFires`,
+ * which asks `isScheduleDueOnDate` per day — so every schedule type works,
+ * including `every_n_days` (a recurring DAILY/WEEKLY trigger could not express it).
+ */
 function canScheduleStartReminder(config: HabitConfig): boolean {
   return (
     config.timeRange !== undefined &&
     config.remindMinutesBefore !== undefined &&
-    config.remindMinutesBefore >= 0 &&
-    isScheduleSupportedForReminders(config.schedule)
+    config.remindMinutesBefore >= 0
   );
 }
 
@@ -103,13 +106,24 @@ export async function cancelHabitStartReminders(): Promise<void> {
   await cancelHabitStartRemindersWith(Notifications);
 }
 
+/** Today's skip rows and this week's done days, so a skipped or finished habit is not reminded. */
+export interface HabitReminderDayContext {
+  skipRowToday?: Record<string, boolean>;
+  habitWeekDoneBefore?: Record<string, readonly string[]>;
+}
+
 async function scheduleStartRemindersForHabit(
   notifications: NotificationsModule,
   element: ElementDefinition,
   config: HabitConfig,
   doneToday: boolean,
+  dayContext: HabitReminderDayContext,
 ): Promise<void> {
-  const fires = collectStartReminderFires(config, { doneToday });
+  const fires = collectStartReminderFires(config, {
+    doneToday,
+    skippedToday: (dayContext.skipRowToday?.[element.id] ?? false) && !doneToday,
+    weekDoneBefore: dayContext.habitWeekDoneBefore?.[element.id],
+  });
 
   await Promise.all(
     fires.map((fire) =>
@@ -117,7 +131,11 @@ async function scheduleStartRemindersForHabit(
         identifier: `${REMINDER_PREFIX}${element.id}-${fire.dateStr}`,
         content: {
           title: i18n.t('notifications:habitReminder.title'),
-          body: i18n.t('notifications:habitReminder.body', { name: element.name }),
+          body: i18n.t('notifications:habitReminder.body', {
+            name: element.name,
+            start: config.timeRange?.start ?? '',
+            end: config.timeRange?.end ?? '',
+          }),
         },
         trigger: {
           type: notifications.SchedulableTriggerInputTypes.DATE,
@@ -132,6 +150,7 @@ export async function syncHabitReminders(
   elements: ElementDefinition[],
   enabled: boolean,
   habitDoneToday: Record<string, boolean> = {},
+  dayContext: HabitReminderDayContext = {},
 ): Promise<void> {
   const run = async (): Promise<void> => {
     if (!isNotificationsNativeAvailable()) {
@@ -149,24 +168,29 @@ export async function syncHabitReminders(
       return;
     }
 
+    // Decide what is schedulable BEFORE asking for permission: the OS prompt
+    // must only ever appear for a user who configured at least one reminder.
+    const schedulable: { element: ElementDefinition; config: HabitConfig }[] = [];
+    for (const element of elements) {
+      if (element.kind !== 'habit' || isElementArchived(element)) continue;
+      const parsed = HabitConfigSchema.safeParse(element.config);
+      if (!parsed.success || !canScheduleStartReminder(parsed.data)) continue;
+      schedulable.push({ element, config: parsed.data });
+    }
+    if (schedulable.length === 0) return;
+
     const granted = await requestNotificationPermissions();
     if (!granted || generation !== habitReminderSyncGeneration) return;
 
-    const habits = elements.filter(
-      (element) => element.kind === 'habit' && !isElementArchived(element),
-    );
-
-    for (const element of habits) {
+    for (const { element, config } of schedulable) {
       if (generation !== habitReminderSyncGeneration) return;
-
-      const config = HabitConfigSchema.parse(element.config);
-      if (!canScheduleStartReminder(config)) continue;
 
       await scheduleStartRemindersForHabit(
         Notifications,
         element,
         config,
         habitDoneToday[element.id] ?? false,
+        dayContext,
       );
     }
   };

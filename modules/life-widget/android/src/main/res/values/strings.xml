@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="life_widget_name">Today</string>
+  <string name="life_widget_description">Tick habits, log counters and finish todos from your home screen.</string>
+  <string name="life_widget_empty_no_db">Open Life to get started</string>
+  <string name="life_widget_empty_all_done">All done for today</string>
+  <string name="life_widget_label_todos">Todos</string>
+  <string name="life_widget_label_done">Done</string>
+  <string name="life_widget_mark_done_a11y">Mark %1$s as done</string>
+  <string name="life_widget_mark_not_done_a11y">Mark %1$s as not done</string>
+  <string name="life_widget_add_a11y">%1$s to %2$s</string>
+  <string name="life_widget_complete_todo_a11y">Complete %1$s</string>
+  <string name="life_widget_preview_date">Mon 16</string>
+  <string name="life_widget_preview_habit">Meditate</string>
+  <string name="life_widget_preview_counter">Water</string>
+  <string name="life_widget_preview_todo">Call the bank</string>
+  <string name="life_widget_preview_done">Read</string>
+  <string name="life_widget_start_timer_a11y">Start the %1$s timer</string>
+  <string name="life_widget_stop_timer_a11y">Stop the %1$s timer</string>
+  <string name="life_widget_running_in_app">Running in the app</string>
+  <string name="life_widget_paused_in_app">Paused in the app</string>
+  <string name="life_widget_player_channel">Timer sound</string>
+  <string name="life_widget_player_playing">Playing</string>
+  <string name="life_widget_player_paused">Paused</string>
+  <string name="life_widget_player_pause">Pause</string>
+  <string name="life_widget_player_resume">Resume</string>
+  <string name="life_widget_player_stop">Finish</string>
+  <string name="life_widget_pause_timer_a11y">Pause %1$s</string>
+  <string name="life_widget_resume_timer_a11y">Resume %1$s</string>
+  <string name="life_widget_paused">Paused</string>
+  <string name="life_widget_open_app">Open Life</string>
+  <!-- The daily goal of a timer habit not started yet. -->
+  <string name="life_widget_goal">Goal %1$s</string>
+  <string name="life_widget_label_now">Now</string>
+  <string name="life_widget_todo_overdue">Overdue · %1$s</string>
+  <string name="life_widget_todo_today">Due today</string>
+  <string name="life_widget_todo_due">Due %1$s</string>
+  <string name="life_widget_reopen_todo_a11y">Reopen %1$s</string>
+</resources>

@@ -14,7 +14,8 @@ import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
-import { formatCounterStreakLabel } from './counterCardLabels';
+import { counterCardCaption } from './counterCardLabels';
+import { skipTodayBubbles } from '../skipTodayBubble';
 
 const NOTE_ICON_SIZE = 24;
 
@@ -23,6 +24,9 @@ export function CounterWidget({
   config,
   todayTotal,
   streak,
+  score,
+  skipped,
+  onSkipToday,
   onLog,
   onSetDailyTotal,
   onOpenDetails,
@@ -48,13 +52,11 @@ export function CounterWidget({
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
   const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
-  const streakLabel = formatCounterStreakLabel(config, streak);
+  const caption = counterCardCaption(config, { streak, score, skipped: skipped && !isComplete });
 
   const increments = config.quickIncrements;
   const primaryIncrement = increments[0];
   const extraIncrements = increments.slice(1);
-  // Setting an exact total is a tap on the count, so the tray is only for +N.
-  const canShowBubbles = extraIncrements.length > 0;
 
   const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
 
@@ -101,6 +103,8 @@ export function CounterWidget({
   const primaryBg = theme.colors.primaryContainer;
   const primaryFg = theme.colors.primary;
 
+  // Setting an exact total is a tap on the count, so the tray holds the other
+  // +N buttons and, with a daily target, Skip today.
   const bubbles = [
     ...extraIncrements.map((increment) => ({
       key: `inc-${increment}`,
@@ -108,7 +112,11 @@ export function CounterWidget({
       accessibilityLabel: t('counterWidget.addIncrementA11y', { count: increment }),
       onPress: () => logIncrement(increment),
     })),
+    ...(hasTarget
+      ? skipTodayBubbles({ complete: isComplete, skipped: Boolean(skipped), onSkipToday })
+      : []),
   ];
+  const canShowBubbles = bubbles.length > 0;
 
   return (
     <>
@@ -119,7 +127,7 @@ export function CounterWidget({
             icon={config.icon}
             progress={hasTarget ? progress : null}
             complete={isComplete}
-            streakLabel={streakLabel}
+            caption={caption}
             {...trackerCardTitleInteractions({
               onOpenDetails,
               onLongPressReorder,
@@ -172,7 +180,11 @@ export function CounterWidget({
                   count: primaryIncrement,
                 })}
                 accessibilityHint={
-                  canShowBubbles ? t('counterWidget.expandIncrementsHint') : undefined
+                  extraIncrements.length > 0
+                    ? t('counterWidget.expandIncrementsHint')
+                    : canShowBubbles
+                      ? t('skip.longPressHint')
+                      : undefined
                 }
               >
                 <Text style={[styles.incrementLabel, { color: primaryFg }]}>

@@ -15,10 +15,18 @@ const SETTLE_MS = 1500;
 
 function unfinishedTotal(): number {
   const { elements } = useElementStore.getState();
-  const { habitDoneToday, dailyTotals } = useEventStore.getState();
+  const { habitDoneToday, dailyTotals, skipRowToday, habitWeekDoneBefore } =
+    useEventStore.getState();
   const { todos } = useTodoStore.getState();
 
-  return countUnfinishedTrackersToday({ elements, habitDoneToday, dailyTotals, todos }).total;
+  return countUnfinishedTrackersToday({
+    elements,
+    habitDoneToday,
+    dailyTotals,
+    skipRowToday,
+    habitWeekDoneBefore,
+    todos,
+  }).total;
 }
 
 /**

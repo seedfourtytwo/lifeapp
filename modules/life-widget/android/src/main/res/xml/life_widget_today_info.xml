@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3x2 minimum (70n - 30 dp), 4x4 by default on API 31+, resizable both ways, 30-minute refresh floor. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+  android:description="@string/life_widget_description"
+  android:initialLayout="@layout/life_widget_today"
+  android:minWidth="180dp"
+  android:minHeight="110dp"
+  android:minResizeWidth="180dp"
+  android:minResizeHeight="110dp"
+  android:previewLayout="@layout/life_widget_preview"
+  android:resizeMode="horizontal|vertical"
+  android:targetCellWidth="4"
+  android:targetCellHeight="4"
+  android:updatePeriodMillis="1800000"
+  android:widgetCategory="home_screen" />

@@ -2,7 +2,6 @@ import type { TrackerEditorSaveData } from '../components/trackerEditor/types';
 import { i18n } from '../i18n';
 import {
   buildHabitTimerSound,
-  isScheduleSupportedForReminders,
   type CounterInput,
   type HabitInput,
   type HabitSchedule,
@@ -50,6 +49,13 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
     }
     return { type: 'weekdays', days: [...data.scheduleWeekdays].sort() };
   }
+  if (data.scheduleType === 'times_per_week') {
+    const times = parseInt(data.scheduleTimesPerWeek.trim(), 10);
+    if (Number.isNaN(times) || times < 1 || times > 6) {
+      throw new Error(i18n.t('trackers:validation.timesPerWeekRange'));
+    }
+    return { type: 'times_per_week', times };
+  }
   const interval = parseInt(data.scheduleInterval.trim(), 10);
   if (Number.isNaN(interval) || interval < 1) {
     throw new Error(i18n.t('trackers:validation.intervalMin1'));
@@ -64,10 +70,8 @@ function parseSchedule(data: Extract<TrackerEditorSaveData, { mode: 'habit' }>):
 function parseRemindMinutes(
   data: Extract<TrackerEditorSaveData, { mode: 'habit' }>,
   hasTimeRange: boolean,
-  schedule: HabitSchedule,
 ): number | undefined {
   if (!hasTimeRange || !data.useReminder) return undefined;
-  if (!isScheduleSupportedForReminders(schedule)) return undefined;
   const trimmed = data.remindMinutesBefore.trim();
   if (!trimmed) return undefined;
   const minutes = parseInt(trimmed, 10);
@@ -131,10 +135,11 @@ export function parseTrackerEditorSave(
           ? parseDailyGoalSeconds(data.habitDailyGoalMinutes)
           : undefined,
       timerSound,
+      anySessionCounts: data.habitTrackingMode === 'timer' && data.anySessionCounts,
       timeRange,
       visibleOnlyInTimeRange: data.visibleOnlyInTimeRange,
       schedule,
-      remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange), schedule),
+      remindMinutesBefore: parseRemindMinutes(data, Boolean(timeRange)),
       showStreakOnCard: data.showStreakOnCard,
     },
   };

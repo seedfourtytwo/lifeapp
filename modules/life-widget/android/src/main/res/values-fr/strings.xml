@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="life_widget_name">Aujourd’hui</string>
+  <string name="life_widget_description">Cochez vos habitudes, comptez et terminez vos tâches depuis l’écran d’accueil.</string>
+  <string name="life_widget_empty_no_db">Ouvrez Life pour commencer</string>
+  <string name="life_widget_empty_all_done">Tout est fait pour aujourd’hui</string>
+  <string name="life_widget_label_todos">Tâches</string>
+  <string name="life_widget_label_done">Terminé</string>
+  <string name="life_widget_mark_done_a11y">Marquer %1$s comme fait</string>
+  <string name="life_widget_mark_not_done_a11y">Marquer %1$s comme pas fait</string>
+  <string name="life_widget_add_a11y">%1$s à %2$s</string>
+  <string name="life_widget_complete_todo_a11y">Terminer %1$s</string>
+  <string name="life_widget_preview_date">lun. 16</string>
+  <string name="life_widget_preview_habit">Méditer</string>
+  <string name="life_widget_preview_counter">Eau</string>
+  <string name="life_widget_preview_todo">Appeler la banque</string>
+  <string name="life_widget_preview_done">Lire</string>
+  <string name="life_widget_start_timer_a11y">Démarrer le minuteur %1$s</string>
+  <string name="life_widget_stop_timer_a11y">Arrêter le minuteur %1$s</string>
+  <string name="life_widget_running_in_app">En cours dans l’appli</string>
+  <string name="life_widget_paused_in_app">En pause dans l’appli</string>
+  <string name="life_widget_player_channel">Son du minuteur</string>
+  <string name="life_widget_player_playing">Lecture</string>
+  <string name="life_widget_player_paused">En pause</string>
+  <string name="life_widget_player_pause">Pause</string>
+  <string name="life_widget_player_resume">Reprendre</string>
+  <string name="life_widget_player_stop">Terminer</string>
+  <string name="life_widget_pause_timer_a11y">Mettre %1$s en pause</string>
+  <string name="life_widget_resume_timer_a11y">Reprendre %1$s</string>
+  <string name="life_widget_paused">En pause</string>
+  <string name="life_widget_open_app">Ouvrir Life</string>
+  <!-- The daily goal of a timer habit not started yet. -->
+  <string name="life_widget_goal">Objectif %1$s</string>
+  <string name="life_widget_label_now">En cours</string>
+  <string name="life_widget_todo_overdue">En retard · %1$s</string>
+  <string name="life_widget_todo_today">Pour aujourd’hui</string>
+  <string name="life_widget_todo_due">Pour le %1$s</string>
+  <string name="life_widget_reopen_todo_a11y">Rouvrir %1$s</string>
+</resources>

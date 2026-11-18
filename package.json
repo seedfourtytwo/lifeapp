@@ -1,6 +1,6 @@
 {
   "name": "lifeapp",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -38,6 +38,7 @@
     "expo-status-bar": "~3.0.9",
     "i18next": "^26.3.6",
     "life-moonshine-dictation": "file:modules/life-moonshine-dictation",
+    "life-widget": "file:modules/life-widget",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-i18next": "^17.0.10",

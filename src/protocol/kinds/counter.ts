@@ -19,7 +19,8 @@ export const CounterConfigSchema = z.object({
 export type CounterConfig = z.infer<typeof CounterConfigSchema>;
 
 export const CounterEventMetaSchema = z.object({
-  source: z.enum(['quick_button', 'manual', 'manual_set']).optional(),
+  /** `skip`: a value-0 "skip today" row (only meaningful with a daily target). */
+  source: z.enum(['quick_button', 'manual', 'manual_set', 'skip']).optional(),
   increment: z.number().optional(),
 });
 

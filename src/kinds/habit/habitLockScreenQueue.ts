@@ -27,12 +27,16 @@ export function getLockScreenHabitQueue(): ElementDefinition[] {
   const active = getActiveHabits(elements, dashboard);
   const now = new Date();
   const today = currentAppCalendarDate(now);
+  const { habitDoneToday, habitWeekDoneBefore, skipRowToday } = useEventStore.getState();
+  // Skipped habits are not due, so they are not queued on the lock screen.
   const due = filterHabitsDueToday(active, {
     now,
     today,
-    habitDoneToday: useEventStore.getState().habitDoneToday,
+    habitDoneToday,
+    habitWeekDoneBefore,
+    skipRowToday,
   });
-  return orderHabitsList(due, useEventStore.getState().habitDoneToday);
+  return orderHabitsList(due, habitDoneToday);
 }
 
 function habitFromStore(elementId: string): {

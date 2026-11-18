@@ -197,21 +197,43 @@ export {
   isHabitStartingSoon,
   formatScheduleDescription,
 } from './kinds/habit';
-export type { ActiveTimerSession } from './activeTimerSession';
+export type { ActiveTimerSession, WidgetTimerSession } from './activeTimerSession';
 export {
   ActiveTimerSessionSchema,
+  WidgetTimerSessionSchema,
   activeTimerElapsedMs,
   activeTimerElapsedSeconds,
   createActiveTimerSession,
   isActiveTimerPaused,
 } from './activeTimerSession';
-export { isScheduleActiveOnDate, isScheduleSupportedForReminders } from './schedule';
+export {
+  completedDaysInWeekBefore,
+  isScheduleActiveOnDate,
+  isScheduleDueOnDate,
+  weekStartDateString,
+} from './schedule';
+export {
+  COUNTER_DAY_RULES_SCHEDULE,
+  SKIP_EVENT_SOURCE,
+  countsAsScheduledDay,
+  dayFactsFromEvents,
+  isDaySkipped,
+  isDueOnDate,
+  isOfferedOnDate,
+  isSkipEvent,
+  skipEventPayload,
+  streakUnitForSchedule,
+  trackerDayHistory,
+} from './dayRules';
+export type { StreakUnit, TrackerDayFacts, TrackerDayHistory } from './dayRules';
 export {
   filterHabitsDueToday,
+  habitTodayFacts,
   orderHabitsList,
   isHabitDueToday,
+  isHabitOfferedToday,
 } from './habitsList';
-export type { HabitListFilterContext } from './habitsList';
+export type { HabitListFilterContext, HabitTodayFacts } from './habitsList';
 export type {
   HabitConfig,
   HabitEventMeta,

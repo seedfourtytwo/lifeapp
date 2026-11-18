@@ -18,9 +18,9 @@ import { useSettingsStore } from '../store/settingsStore';
 import { getActiveHabits } from '../utils/dashboardElements';
 
 /**
- * Identity of active habits that should reload streaks / warm sounds.
- * Includes config so target/schedule edits refresh streaks without renaming thrashing
- * day-state (focus refresh owns today's completion map).
+ * Identity of active habits whose sounds should be warmed. Includes config so a
+ * sound change re-runs the preload. Streaks and today's completion map are
+ * loaded by the Home focus refresh (`useRefreshHabitDayOnFocus`), not here.
  */
 function activeHabitBootstrapKey(
   elements: ReturnType<typeof useElementStore.getState>['elements'],
@@ -32,7 +32,7 @@ function activeHabitBootstrapKey(
     .join('|');
 }
 
-/** Loads settings, elements, todos, habit streaks, and warms timer sounds at app start. */
+/** Loads settings, elements, todos, and warms timer sounds at app start. */
 export function useAppBootstrap(): void {
   const settingsLoaded = useSettingsStore((s) => s.isLoaded);
   const loadSettings = useSettingsStore((s) => s.load);
@@ -42,7 +42,6 @@ export function useAppBootstrap(): void {
   const elementsLoading = useElementStore((s) => s.isLoading);
   const elementsLoaded = useElementStore((s) => s.isLoaded);
   const elementsError = useElementStore((s) => s.error);
-  const loadHabitStreaks = useEventStore((s) => s.loadHabitStreaks);
   const hydrateActiveTimerSessions = useEventStore((s) => s.hydrateActiveTimerSessions);
   const didRestoreTimersRef = useRef(false);
   const didReleaseTimersReadyRef = useRef(false);
@@ -82,11 +81,10 @@ export function useAppBootstrap(): void {
     const habitElements = getActiveHabits(latestElements, latestDashboard);
     if (habitElements.length === 0) return;
 
-    const inputs = habitStreakInputsFromElements(habitElements);
-    // Day-state is loaded on Habits focus — avoid a duplicate cold-start query.
-    void loadHabitStreaks(inputs);
+    // Streaks load on Home focus once elements land — a load here too ran the
+    // same streak query twice on every cold start.
     void preloadConfiguredHabitSounds(habitElements);
-  }, [bootstrapKey, elementsLoading, loadHabitStreaks, settingsLoaded]);
+  }, [bootstrapKey, elementsLoading, settingsLoaded]);
 
   useEffect(() => {
     if (!settingsLoaded || !elementsLoaded || elementsLoading || didRestoreTimersRef.current) {
@@ -103,7 +101,9 @@ export function useAppBootstrap(): void {
         const { elements: latestElements, dashboard: latestDashboard } =
           useElementStore.getState();
         const habitElements = getActiveHabits(latestElements, latestDashboard);
-        if (habitElements.length > 0) {
+        // Skip when the Home focus load already landed; an identical load still
+        // in flight is joined rather than repeated (see `joinInFlightLoad`).
+        if (habitElements.length > 0 && !useEventStore.getState().dayStateReady) {
           await useEventStore
             .getState()
             .loadHabitDayState(habitStreakInputsFromElements(habitElements));

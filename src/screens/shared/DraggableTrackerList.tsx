@@ -48,6 +48,7 @@ export type DraggableRenderContext = {
   /**
    * Wire these to the title Pressable so the *same* finger that long-presses
    * can keep moving (no second tap). Do not put them on action buttons.
+   * Stable per row id across renders, so memoised rows can take them as props.
    */
   onLongPress: (event: GestureResponderEvent) => void;
   onTouchMove: (event: GestureResponderEvent) => void;
@@ -58,6 +59,11 @@ export type DraggableRenderContext = {
   /** False when fewer than two rows can be reordered. */
   canDrag: boolean;
 };
+
+type RowGestureHandlers = Pick<
+  DraggableRenderContext,
+  'onLongPress' | 'onTouchMove' | 'onTouchEnd' | 'onTouchCancel'
+>;
 
 type Props = {
   itemIds: readonly string[];
@@ -394,6 +400,27 @@ export function DraggableTrackerList({
     [endDrag],
   );
 
+  // One handler set per row id, created once: rows render memoised cards, and a
+  // fresh closure per render would defeat the memo on every list render. The
+  // handlers call through a ref so they always reach the current callbacks.
+  const gestureHandlersRef = useRef({ startDrag, onDragTouchMove, onDragTouchEnd, onDragTouchCancel });
+  gestureHandlersRef.current = { startDrag, onDragTouchMove, onDragTouchEnd, onDragTouchCancel };
+  const rowHandlersRef = useRef(new Map<string, RowGestureHandlers>());
+  const rowHandlersFor = useCallback((id: string): RowGestureHandlers => {
+    const cached = rowHandlersRef.current.get(id);
+    if (cached) return cached;
+    const handlers: RowGestureHandlers = {
+      onLongPress: (event) => {
+        gestureHandlersRef.current.startDrag(id, event.nativeEvent.pageY);
+      },
+      onTouchMove: (event) => gestureHandlersRef.current.onDragTouchMove(id, event),
+      onTouchEnd: () => gestureHandlersRef.current.onDragTouchEnd(id),
+      onTouchCancel: () => gestureHandlersRef.current.onDragTouchCancel(id),
+    };
+    rowHandlersRef.current.set(id, handlers);
+    return handlers;
+  }, []);
+
   useEffect(
     () => () => {
       stopEdgeScroll();
@@ -426,8 +453,12 @@ export function DraggableTrackerList({
     });
   }, []);
 
-  // Drop layout cache for ids that left the list.
+  // Drop layout cache (and row handlers) for ids that left the list.
   useEffect(() => {
+    const live = new Set(order);
+    for (const id of [...rowHandlersRef.current.keys()]) {
+      if (!live.has(id)) rowHandlersRef.current.delete(id);
+    }
     setHeights((prev) => {
       const idSet = new Set(order);
       let changed = false;
@@ -513,12 +544,7 @@ export function DraggableTrackerList({
               />
             ) : null}
             {renderItem(id, {
-              onLongPress: (event) => {
-                startDrag(id, event.nativeEvent.pageY);
-              },
-              onTouchMove: (event) => onDragTouchMove(id, event),
-              onTouchEnd: () => onDragTouchEnd(id),
-              onTouchCancel: () => onDragTouchCancel(id),
+              ...rowHandlersFor(id),
               delayLongPress: LONG_PRESS_MS,
               isDragging,
               canDrag,

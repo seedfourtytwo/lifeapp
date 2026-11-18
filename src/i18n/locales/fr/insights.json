@@ -35,6 +35,10 @@
     "statAverageUnit": "{{unit}} par jour en moyenne",
     "statDaysLogged_one": "jour noté",
     "statDaysLogged_other": "jours notés",
-    "statBestRun": "meilleure série"
+    "statBestRun": "meilleure série",
+    "statStrength": "solidité",
+    "strengthExplainer": "La solidité monte chaque fois que vous le faites et baisse lentement sinon : un jour manqué coûte un peu, pas tout.",
+    "statInARowWeeks_one": "semaine d’affilée",
+    "statInARowWeeks_other": "semaines d’affilée"
   }
 }
