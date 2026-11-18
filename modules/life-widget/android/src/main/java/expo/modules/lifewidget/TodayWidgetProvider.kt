@@ -187,7 +187,10 @@ internal object WidgetUpdater {
     val dateLabel = DateTimeFormatter.ofPattern("EEE d", Locale.getDefault()).format(LocalDate.now())
     views.setTextViewText(R.id.widget_date, dateLabel)
 
-    if (snapshot is WidgetSnapshot.Ready && snapshot.model.due > 0) {
+    // The tally appears once there is something to tally. A bright 0/11 over an
+    // untouched day is a scoreboard of what has not happened yet, and this widget
+    // is the first thing seen on waking — the count should arrive as a reward.
+    if (snapshot is WidgetSnapshot.Ready && snapshot.model.due > 0 && snapshot.model.done > 0) {
       views.setTextViewText(R.id.widget_progress, "${snapshot.model.done}/${snapshot.model.due}")
       views.setViewVisibility(R.id.widget_progress, View.VISIBLE)
       views.setProgressBar(R.id.widget_progress_bar, snapshot.model.due, snapshot.model.done, false)

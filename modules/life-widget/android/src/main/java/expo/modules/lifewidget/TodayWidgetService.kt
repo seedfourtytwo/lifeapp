@@ -53,5 +53,7 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
   override fun getLoadingView(): RemoteViews? = null
 
   override fun getViewAt(position: Int): RemoteViews =
-    builder.views(rows.getOrNull(position) ?: WidgetRow.Label(Section.HABITS))
+    // A position past the end means the list shrank under the host between its
+    // count and this call.
+    rows.getOrNull(position)?.let { builder.views(it) } ?: builder.blank()
 }

@@ -5,8 +5,6 @@
   <string name="life_widget_empty_no_db">Open Life to get started</string>
   <string name="life_widget_empty_all_done">All done for today</string>
   <string name="life_widget_label_todos">Todos</string>
-  <string name="life_widget_label_habits">Habits</string>
-  <string name="life_widget_label_counters">Counters</string>
   <string name="life_widget_label_done">Done</string>
   <string name="life_widget_mark_done_a11y">Mark %1$s as done</string>
   <string name="life_widget_mark_not_done_a11y">Mark %1$s as not done</string>
@@ -31,6 +29,8 @@
   <string name="life_widget_resume_timer_a11y">Resume %1$s</string>
   <string name="life_widget_paused">Paused</string>
   <string name="life_widget_open_app">Open Life</string>
+  <!-- The daily goal of a timer habit not started yet. -->
+  <string name="life_widget_goal">Goal %1$s</string>
   <string name="life_widget_label_now">Now</string>
   <string name="life_widget_todo_overdue">Overdue · %1$s</string>
   <string name="life_widget_todo_today">Due today</string>

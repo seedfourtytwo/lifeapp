@@ -21,6 +21,13 @@ internal class WidgetRows(private val context: Context, private val date: String
 
   fun itemId(row: WidgetRow): Long = row.key.hashCode().toLong()
 
+  /**
+   * For a position the host asks for after the list has shrunk under it. The
+   * label layout with nothing in it: any row carrying words would read as a
+   * real entry that cannot be tapped.
+   */
+  fun blank(): RemoteViews = RemoteViews(context.packageName, R.layout.life_widget_row_label)
+
   fun views(row: WidgetRow): RemoteViews = when (row) {
     is WidgetRow.Habit -> habitView(row)
     is WidgetRow.Counter -> counterView(row)
@@ -129,18 +136,22 @@ internal class WidgetRows(private val context: Context, private val date: String
     // Plain text: a Chronometer does not tick inside a list item on the lock-screen
     // page. The habit the widget is timing is drawn outside the list (WidgetUpdater);
     // a timer the app is running has no figure here that could be trusted to move.
-    val time = TodayRules.formatElapsed((shownMs / 1000).toInt()) +
-      (if (target != null) " / ${TodayRules.formatElapsed(target)}" else "")
-    views.setTextViewText(
-      R.id.row_meta,
-      when {
-        status == null -> time
-        row.inApp && !paused -> status
-        else -> "$status · $time"
-      },
-    )
-    views.setViewVisibility(R.id.row_meta, View.VISIBLE)
-    if (target != null && target > 0) {
+    val started = running || paused || row.inApp || row.loggedSeconds > 0
+    val figure = TodayRules.timerFigure((shownMs / 1000).toInt(), target, started)
+    val time = figure?.let {
+      if (it.isGoal) context.getString(R.string.life_widget_goal, it.text) else it.text
+    }
+    val meta = when {
+      status == null -> time
+      time == null -> status
+      row.inApp && !paused -> status
+      else -> "$status · $time"
+    }
+    views.setTextViewText(R.id.row_meta, meta ?: "")
+    views.setViewVisibility(R.id.row_meta, if (meta != null) View.VISIBLE else View.GONE)
+    // An empty bar on every untouched row is a row of nothing: the bar appears
+    // with the first logged second, and then it means something.
+    if (started && target != null && target > 0) {
       views.setProgressBar(R.id.row_progress, target, (shownMs / 1000).coerceAtMost(target.toLong()).toInt(), false)
       views.setViewVisibility(R.id.row_progress, View.VISIBLE)
     } else {
@@ -204,7 +215,8 @@ internal class WidgetRows(private val context: Context, private val date: String
     val target = row.target
     views.setTextViewText(R.id.row_meta, if (target != null) "$total / $target" else total)
     views.setViewVisibility(R.id.row_meta, View.VISIBLE)
-    if (target != null && target > 0) {
+    // As on a habit row: an empty bar says nothing the figure has not said.
+    if (target != null && target > 0 && row.total > 0) {
       views.setProgressBar(R.id.row_progress, target, row.total.coerceIn(0.0, target.toDouble()).toInt(), false)
       views.setViewVisibility(R.id.row_progress, View.VISIBLE)
     } else {
@@ -275,8 +287,6 @@ internal class WidgetRows(private val context: Context, private val date: String
       context.getString(
         when (section) {
           Section.NOW -> R.string.life_widget_label_now
-          Section.HABITS -> R.string.life_widget_label_habits
-          Section.COUNTERS -> R.string.life_widget_label_counters
           Section.TODOS -> R.string.life_widget_label_todos
           Section.DONE -> R.string.life_widget_label_done
         },

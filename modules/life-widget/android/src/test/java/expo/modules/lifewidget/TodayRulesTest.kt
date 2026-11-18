@@ -126,10 +126,12 @@ class TodayRulesTest {
       }
     }
     val model = TodayRules.buildToday(listOf(done, open, skipped, hidden), facts, listOf(counter), todos, monday, 12 * 60)
+    // Habits and counters are one run in the user's own order, with no heading
+    // over them: what is still to do today is what the widget is for, and a
+    // heading saying so costs a row on a screen that has few.
     assertEquals(
       listOf(
-        "label:habits", "habit:a",
-        "label:counters", "counter:k",
+        "habit:a", "counter:k",
         "label:todos", "todo:t2", "todo:t1",
         "label:done", "habit:b", "habit:c",
       ),
@@ -209,7 +211,7 @@ class TodayRulesTest {
       runningTimers = mapOf("h" to RunningTimer(1000L, "2026-11-16"), "n" to RunningTimer(2000L, "2026-11-16")),
     )
     // What is running comes first, under its own heading.
-    assertEquals(listOf("label:now", "habit:h", "habit:n", "label:habits", "habit:i"), model.rows.map { it.key })
+    assertEquals(listOf("label:now", "habit:h", "habit:n", "habit:i"), model.rows.map { it.key })
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
     assertEquals(1000L, rows.getValue("h").runningSinceMs)
     assertEquals(2000L, rows.getValue("n").runningSinceMs)
@@ -288,7 +290,7 @@ class TodayRulesTest {
     )
     // Running in the app is "now"; paused in the app stays in the list, so an
     // old forgotten session does not sit at the top for days.
-    assertEquals(listOf("label:now", "habit:r", "label:habits", "habit:s"), model.rows.map { it.key })
+    assertEquals(listOf("label:now", "habit:r", "habit:s"), model.rows.map { it.key })
     val rows = model.rows.filterIsInstance<WidgetRow.Habit>().associateBy { it.id }
     // The app's timer wins the display; time spent paused is not counted.
     val r = rows.getValue("r")
@@ -346,7 +348,9 @@ class TodayRulesTest {
     val rules = habit("""{"trackingMode":"timer"}""")
     val outcome = TodayRules.applyTimerAction(rules, null, TimerAction.TOGGLE, 1_000, "2026-11-16", lockedByApp = true)
     assertNull(outcome.session)
-    assertEquals(PlayerCommand.None, outcome.player)
+    // No session starts. The player is still told to stop, which it only acts on
+    // if this habit's sound is playing — see stopSilencesTheHabitWhateverTheDatabaseSaysNow.
+    assertEquals(PlayerCommand.Stop, outcome.player)
   }
 
   @Test
@@ -387,6 +391,61 @@ class TodayRulesTest {
     // A looping sound ending is not a completed track.
     val loopEnd = TodayRules.applyTimerAction(habit(looped), session, TimerAction.TRACK_ENDED, 700_000, "2026-11-16", lockedByApp = false)
     assertFalse(loopEnd.log!!.trackCompleted)
+  }
+
+  /**
+   * The player is told to stop by habit, and only acts when that habit's sound
+   * is the one playing — so a Stop costs nothing when nothing is playing. The
+   * state that must never decide it is the database: a sound outlives the timer
+   * row (Clear activity, an import) and outlives the habit's sound setting, and
+   * in both cases the Stop button was the only way left to silence it.
+   */
+  /**
+   * Before a timer habit is started there is nothing to report, and "00:00 /
+   * 15:00" under every untouched row is ten identical zeroes competing with the
+   * one habit actually under way. The goal alone says the same thing in half the
+   * width, and the row keeps its figure the moment a second is logged.
+   */
+  @Test
+  fun anUnstartedTimerShowsItsGoalRatherThanAZero() {
+    // Marked as a goal, because "22:20" on its own reads as twenty past ten.
+    assertEquals(TimerFigure("15:00", isGoal = true), TodayRules.timerFigure(0, 900, started = false))
+    assertEquals(TimerFigure("1:00:00", isGoal = true), TodayRules.timerFigure(0, 3600, started = false))
+    // A stopwatch has no goal, so it has nothing to say until it runs.
+    assertNull(TodayRules.timerFigure(0, null, started = false))
+
+    // Running, even at zero, is worth a clock — and a clock needs no label.
+    assertEquals(TimerFigure("00:00 / 15:00", isGoal = false), TodayRules.timerFigure(0, 900, started = true))
+    assertEquals(TimerFigure("00:00", isGoal = false), TodayRules.timerFigure(0, null, started = true))
+
+    // Time logged earlier today counts as started, however the row was left.
+    assertEquals(TimerFigure("03:20 / 15:00", isGoal = false), TodayRules.timerFigure(200, 900, started = false))
+    assertEquals(TimerFigure("03:20", isGoal = false), TodayRules.timerFigure(200, null, started = false))
+  }
+
+  @Test
+  fun stopSilencesTheHabitWhateverTheDatabaseSaysNow() {
+    val rules = habit(trackOnly)
+    val session = RunningTimer(0, "2026-11-16")
+
+    // The timer row is gone (Clear activity) but the track is still playing.
+    for (action in listOf(TimerAction.STOP, TimerAction.TRACK_ENDED, TimerAction.PAUSE)) {
+      val outcome = TodayRules.applyTimerAction(rules, null, action, 700_000, "2026-11-16", lockedByApp = false)
+      assertNull(outcome.session)
+      assertNull(outcome.log)
+      assertEquals("$action with no timer", PlayerCommand.Stop, outcome.player)
+    }
+
+    // The sound was taken off the habit while its timer ran.
+    val soundless = habit("""{"trackingMode":"timer"}""")
+    val stopped = TodayRules.applyTimerAction(soundless, session, TimerAction.STOP, 700_000, "2026-11-16", lockedByApp = false)
+    assertEquals(PlayerCommand.Stop, stopped.player)
+    assertEquals(TimerLog(session, 700_000, 700, trackCompleted = false), stopped.log)
+
+    // A mistap still silences it, even though it logs nothing.
+    val mistap = TodayRules.applyTimerAction(rules, session, TimerAction.STOP, 4_000, "2026-11-16", lockedByApp = false)
+    assertNull(mistap.log)
+    assertEquals(PlayerCommand.Stop, mistap.player)
   }
 
   @Test
@@ -433,7 +492,7 @@ class TodayRulesTest {
     assertEquals(5, model.due)
     assertEquals(2, model.done)
     assertEquals(
-      listOf("label:habits", "habit:a", "label:todos", "todo:t1", "todo:t2", "label:done", "todo:d1", "todo:d2"),
+      listOf("habit:a", "label:todos", "todo:t1", "todo:t2", "label:done", "todo:d1", "todo:d2"),
       model.rows.map { it.key },
     )
     val ticked = model.rows.filterIsInstance<WidgetRow.Todo>().filter { it.done }

@@ -5,8 +5,6 @@
   <string name="life_widget_empty_no_db">Ouvrez Life pour commencer</string>
   <string name="life_widget_empty_all_done">Tout est fait pour aujourd’hui</string>
   <string name="life_widget_label_todos">Tâches</string>
-  <string name="life_widget_label_habits">Habitudes</string>
-  <string name="life_widget_label_counters">Compteurs</string>
   <string name="life_widget_label_done">Terminé</string>
   <string name="life_widget_mark_done_a11y">Marquer %1$s comme fait</string>
   <string name="life_widget_mark_not_done_a11y">Marquer %1$s comme pas fait</string>
@@ -31,6 +29,8 @@
   <string name="life_widget_resume_timer_a11y">Reprendre %1$s</string>
   <string name="life_widget_paused">En pause</string>
   <string name="life_widget_open_app">Ouvrir Life</string>
+  <!-- The daily goal of a timer habit not started yet. -->
+  <string name="life_widget_goal">Objectif %1$s</string>
   <string name="life_widget_label_now">En cours</string>
   <string name="life_widget_todo_overdue">En retard · %1$s</string>
   <string name="life_widget_todo_today">Pour aujourd’hui</string>

@@ -114,6 +114,9 @@ sealed class PlayerCommand {
   object StopAll : PlayerCommand()
 }
 
+/** What a timer habit's row says under its name, and whether it is a goal. */
+data class TimerFigure(val text: String, val isGoal: Boolean)
+
 /** A finished session to write as a `timer_session` event. */
 data class TimerLog(val timer: RunningTimer, val endedAtMs: Long, val seconds: Int, val trackCompleted: Boolean)
 
@@ -128,11 +131,12 @@ data class TimerOutcome(
 data class AppTimer(val startedAtMs: Long, val pausedAtMs: Long?, val pauseOffsetMs: Long)
 
 /**
- * The widget's sections, in display order. NOW holds the habits whose timer
- * the widget is running or holding paused, or the app is running; DONE holds
- * done and skipped habits.
+ * The headings the list can carry, in display order. NOW holds the habits whose
+ * timer the widget is running or holding paused, or the app is running; DONE
+ * holds done and skipped habits. The day's open habits and counters run between
+ * them as one list under no heading at all.
  */
-enum class Section { NOW, HABITS, COUNTERS, TODOS, DONE }
+enum class Section { NOW, TODOS, DONE }
 
 sealed class WidgetRow {
   abstract val key: String
@@ -614,15 +618,19 @@ object TodayRules {
     done += doneTodos.size
     for (todo in doneTodos) settled.add(WidgetRow.Todo(todo.id, todo.title, done = true))
 
+    // Habits and counters are the day itself, in the order the user put them in:
+    // one run, under no heading. Naming them would cost two of the few rows the
+    // widget has to say what the rows already say.
     val sections = listOf(
       Section.NOW to now,
-      Section.HABITS to open,
-      Section.COUNTERS to counterRows,
+      null to (open + counterRows),
       Section.TODOS to todoRows,
       Section.DONE to settled,
     ).filter { it.second.isNotEmpty() }
     val rows = if (sections.size > 1) {
-      sections.flatMap { (section, sectionRows) -> listOf(WidgetRow.Label(section)) + sectionRows }
+      sections.flatMap { (section, sectionRows) ->
+        (section?.let { listOf(WidgetRow.Label(it)) } ?: emptyList()) + sectionRows
+      }
     } else {
       sections.flatMap { it.second }
     }
@@ -715,6 +723,25 @@ object TodayRules {
     return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, sec) else String.format(Locale.US, "%02d:%02d", m, sec)
   }
 
+  /**
+   * The figure under a timer habit's name, or null when there is none to show.
+   *
+   * An untouched row shows its goal rather than `00:00 / 15:00`: the zero is the
+   * same on every row that has not been started, so it separates nothing, and a
+   * screen of them buries the one habit that is actually under way. `started`
+   * covers a running or paused session as well as time logged earlier today.
+   *
+   * `isGoal` asks the caller to name it as one — alone, `22:20` reads as a time
+   * of day. A figure with a clock already in it needs no such label.
+   */
+  fun timerFigure(shownSeconds: Int, targetSeconds: Int?, started: Boolean): TimerFigure? {
+    if (!started && shownSeconds <= 0) {
+      return targetSeconds?.let { TimerFigure(formatElapsed(it), isGoal = true) }
+    }
+    val goal = targetSeconds?.let { " / ${formatElapsed(it)}" } ?: ""
+    return TimerFigure(formatElapsed(shownSeconds) + goal, isGoal = false)
+  }
+
   /** A stopped timer shorter than this was a mistap: nothing is logged. */
   const val MIN_TIMER_SESSION_SECONDS = 5
 
@@ -740,7 +767,12 @@ object TodayRules {
     val trackId = rules.soundTrackId
     if (current == null) {
       if (action != TimerAction.TOGGLE || lockedByApp || !rules.timer) {
-        return TimerOutcome(null, null, PlayerCommand.None)
+        // Nothing to time here, so nothing should still be sounding for this
+        // habit. Stop rather than None: the sound outlives the timer row — a
+        // Clear or an import deletes it mid-session — and the Stop button must
+        // not need the row to silence it. The player acts only when it is this
+        // habit's sound that is playing, so this costs nothing otherwise.
+        return TimerOutcome(null, null, PlayerCommand.Stop)
       }
       val player = if (trackId != null) PlayerCommand.Play(trackId, rules.soundLoops, 0) else PlayerCommand.None
       return TimerOutcome(RunningTimer(nowMs, today), null, player)
@@ -765,7 +797,9 @@ object TodayRules {
     } else {
       null
     }
-    return TimerOutcome(null, log, if (trackId != null) PlayerCommand.Stop else PlayerCommand.None)
+    // Stop whether or not the habit still has a sound: it may have had one when
+    // the session started and lost it since, and the sound is playing either way.
+    return TimerOutcome(null, log, PlayerCommand.Stop)
   }
 
   /** Meta of a logged timer chunk: the protocol's `timer_session` shape (habit.ts). */

@@ -57,20 +57,35 @@ class WidgetPlayerService : Service() {
     val track = intent?.getStringExtra(EXTRA_TRACK_ID)
     if (id == null || track == null) {
       // Restarted without its command: nothing to play.
-      stopPlayback()
+      stopPlayback(startId)
       return START_NOT_STICKY
     }
+    // `habitId` is set before the service is asked to start and cleared by a
+    // Stop, so it is ahead of this command. If it no longer names this habit,
+    // a Stop (or another habit's Play) overtook us while the system was still
+    // creating the service, and playing now would leave a sound no timer owns.
+    if (habitId != id) {
+      Log.w(TAG, "Stale play command for $id")
+      if (habitId == null) stopPlayback(startId)
+      return START_NOT_STICKY
+    }
+    val sameHabit = playingHabitId == id
     playingHabitId = id
     habitName = intent.getStringExtra(EXTRA_HABIT_NAME) ?: ""
     // Within the few seconds the system allows after startForegroundService.
     startForeground(NOTIFICATION_ID, buildNotification(playing = true))
-    play(track, intent.getBooleanExtra(EXTRA_LOOP, true), intent.getLongExtra(EXTRA_POSITION_MS, 0))
+    play(track, intent.getBooleanExtra(EXTRA_LOOP, true), intent.getLongExtra(EXTRA_POSITION_MS, 0), sameHabit)
     return START_NOT_STICKY
   }
 
-  private fun play(track: String, loop: Boolean, positionMs: Long) {
+  /**
+   * `sameHabit` is false when a different habit took the sound over. Two habits
+   * can share a track, and then the loaded player is at the other habit's
+   * position with the other habit's looping: start this one from its own place.
+   */
+  private fun play(track: String, loop: Boolean, positionMs: Long, sameHabit: Boolean) {
     val existing = player
-    if (existing != null && trackId == track) {
+    if (existing != null && trackId == track && sameHabit) {
       // Resuming what was paused here: the player already sits at the right place.
       requestFocus()
       existing.start()
@@ -83,40 +98,51 @@ class WidgetPlayerService : Service() {
       report(WidgetActions.TAP_TIMER_STOP)
       return
     }
+    // Held outside the try so a failure part-way through still releases the
+    // native player — and its wake lock, once setWakeMode has run.
+    var created: MediaPlayer? = null
     try {
-      val created = MediaPlayer()
-      created.setAudioAttributes(
+      val mp = MediaPlayer()
+      created = mp
+      mp.setAudioAttributes(
         AudioAttributes.Builder()
           .setUsage(AudioAttributes.USAGE_MEDIA)
           .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
           .build(),
       )
-      source.use { created.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
-      created.isLooping = loop
-      created.setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
-      created.setOnCompletionListener { report(WidgetActions.TAP_TIMER_ENDED) }
-      created.setOnErrorListener { _, what, extra ->
+      source.use { mp.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
+      mp.isLooping = loop
+      mp.setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
+      mp.setOnCompletionListener { report(WidgetActions.TAP_TIMER_ENDED) }
+      mp.setOnErrorListener { _, what, extra ->
         Log.w(TAG, "Playback error $what/$extra")
         report(WidgetActions.TAP_TIMER_STOP)
         true
       }
-      created.prepare()
-      val duration = created.duration
+      mp.prepare()
+      val duration = mp.duration
       if (positionMs > 0 && duration > 0) {
         // A process that was restarted mid-session picks the sound up where the timer says it is.
-        created.seekTo((if (loop) positionMs % duration else positionMs.coerceAtMost(duration.toLong())).toInt())
+        mp.seekTo((if (loop) positionMs % duration else positionMs.coerceAtMost(duration.toLong())).toInt())
       }
       requestFocus()
-      created.start()
-      player = created
+      mp.start()
+      player = mp
       trackId = track
     } catch (e: IOException) {
-      Log.w(TAG, "Could not play $track", e)
-      report(WidgetActions.TAP_TIMER_STOP)
-    } catch (e: IllegalStateException) {
-      Log.w(TAG, "Could not play $track", e)
-      report(WidgetActions.TAP_TIMER_STOP)
+      failedToPlay(track, e, created)
+    } catch (e: RuntimeException) {
+      // setDataSource alone can throw IllegalArgumentException, SecurityException
+      // or IllegalStateException. Uncaught, any of them takes the :widget process
+      // down and the running timer is lost with it.
+      failedToPlay(track, e, created)
     }
+  }
+
+  private fun failedToPlay(track: String, cause: Exception, created: MediaPlayer?) {
+    Log.w(TAG, "Could not play $track", cause)
+    created?.release()
+    report(WidgetActions.TAP_TIMER_STOP)
   }
 
   /**
@@ -140,10 +166,15 @@ class WidgetPlayerService : Service() {
     getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification(playing = false))
   }
 
-  private fun stopPlayback() {
+  /**
+   * `startId` is passed when the stop comes from a command being processed, so
+   * a newer start already queued behind it keeps the service alive; `stopSelf()`
+   * with no id would drop it.
+   */
+  private fun stopPlayback(startId: Int? = null) {
     releasePlayer()
     stopForeground(STOP_FOREGROUND_REMOVE)
-    stopSelf()
+    if (startId != null) stopSelf(startId) else stopSelf()
   }
 
   private fun releasePlayer() {
