@@ -1,5 +1,6 @@
 package expo.modules.lifewidget
 
+import android.app.Activity
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -25,6 +26,14 @@ internal object WidgetActions {
   const val ACTION_REFRESH = "expo.modules.lifewidget.action.REFRESH"
   const val ACTION_TAP = "expo.modules.lifewidget.action.TAP"
   const val ACTION_ALARM = "expo.modules.lifewidget.action.ALARM"
+
+  /**
+   * The app asking this process to stop a habit's widget timer, so it can take
+   * the habit over. Sent as an ordered broadcast: the app waits for the result,
+   * which arrives once the stop has been written, so it can then start its own
+   * timer without racing the row it just asked to be removed.
+   */
+  const val ACTION_STOP_TIMER = "expo.modules.lifewidget.action.STOP_TIMER"
 
   const val EXTRA_TAP_KIND = "expo.modules.lifewidget.extra.TAP_KIND"
   const val EXTRA_ID = "expo.modules.lifewidget.extra.ID"
@@ -114,6 +123,31 @@ internal object WidgetActions {
     if (widgetIds(context).isEmpty()) return
     val intent = Intent(context, WidgetActionReceiver::class.java).setAction(ACTION_REFRESH)
     context.sendBroadcast(intent)
+  }
+
+  /**
+   * Main-process safe, like [requestUpdate]: the stop itself is written by the
+   * ":widget" process, which owns `widget_timer_sessions`. [onDone] runs on the
+   * main thread once that process has finished, or at once if it cannot be
+   * reached. Unlike [requestUpdate] this does NOT check that a widget is
+   * placed — a timer left behind by a widget since removed is exactly the case
+   * it exists for.
+   */
+  fun requestTimerStop(context: Context, habitId: String, onDone: () -> Unit) {
+    val intent = Intent(context, WidgetActionReceiver::class.java)
+      .setAction(ACTION_STOP_TIMER)
+      .putExtra(EXTRA_ID, habitId)
+    context.sendOrderedBroadcast(
+      intent,
+      null,
+      object : BroadcastReceiver() {
+        override fun onReceive(ignored: Context?, unused: Intent?) = onDone()
+      },
+      null,
+      Activity.RESULT_OK,
+      null,
+      null,
+    )
   }
 
   /** Runs `work` on the executor and keeps the broadcast alive until it finishes. */
@@ -235,11 +269,7 @@ internal object WidgetUpdater {
   ) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       val all = if (snapshot is WidgetSnapshot.Ready) snapshot.model.rows else emptyList()
-      // The pinned item is not repeated in the list, nor is a NOW heading left over an empty section.
-      val withoutNow = all.filter { it !== nowRow }
-      val rows = withoutNow.filterIndexed { index, row ->
-        !(row is WidgetRow.Label && row.section == Section.NOW && withoutNow.getOrNull(index + 1) !is WidgetRow.Habit)
-      }
+      val rows = TodayRules.rowsWithoutPinned(all, nowRow)
       val builder = WidgetRows(context, (snapshot as? WidgetSnapshot.Ready)?.today?.toString() ?: "")
       val items = RemoteViews.RemoteCollectionItems.Builder()
         .setHasStableIds(true)
@@ -262,8 +292,7 @@ internal object WidgetUpdater {
    * adapter service and keeps the row; the pinned item is then an extra.
    */
   private fun bindNow(context: Context, views: RemoteViews, snapshot: WidgetSnapshot): WidgetRow.Habit? {
-    val row = (snapshot as? WidgetSnapshot.Ready)?.model?.rows
-      ?.firstOrNull { it is WidgetRow.Habit && it.runningSinceMs != null && !it.inApp } as? WidgetRow.Habit
+    val row = (snapshot as? WidgetSnapshot.Ready)?.model?.rows?.let { TodayRules.pinnedHabit(it) }
     val since = row?.runningSinceMs
     if (row == null || since == null) {
       views.setViewVisibility(R.id.widget_now, View.GONE)
@@ -349,6 +378,12 @@ class WidgetActionReceiver : BroadcastReceiver() {
     when (intent.action) {
       WidgetActions.ACTION_REFRESH, WidgetActions.ACTION_ALARM -> WidgetActions.runAsync(this, context) {}
       WidgetActions.ACTION_TAP -> handleTap(context, intent)
+      WidgetActions.ACTION_STOP_TIMER -> {
+        // The app taking a habit over. Finalised exactly as the widget's own
+        // Stop does, so the time it ran is logged rather than thrown away.
+        val id = intent.getStringExtra(WidgetActions.EXTRA_ID)
+        if (id != null) timerAction(context, id, TimerAction.STOP)
+      }
     }
   }
 

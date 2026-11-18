@@ -3,6 +3,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 
 type LifeWidgetNativeModule = {
   requestUpdate(): void;
+  stopTimer(habitId: string): Promise<void>;
 };
 
 /**
@@ -30,4 +31,21 @@ export function requestWidgetUpdate(): void {
   } catch (error) {
     console.warn('Widget update request failed', error);
   }
+}
+
+/**
+ * Stop the widget's own timer for a habit and log the time it ran, so the app
+ * can take that habit over. A timer left behind by a widget the user has since
+ * removed is the case this exists for, so it does not check that a widget is
+ * placed.
+ *
+ * The write happens in the widget's process, which owns that table; this
+ * resolves once that process has finished, so the caller's next read sees the
+ * row gone instead of racing it. On web, on iOS, on a dev client built before
+ * this existed, and for a habit with no widget timer, it does nothing and
+ * resolves.
+ */
+export async function stopWidgetTimer(habitId: string): Promise<void> {
+  if (!NativeModuleImpl?.stopTimer) return;
+  await NativeModuleImpl.stopTimer(habitId);
 }

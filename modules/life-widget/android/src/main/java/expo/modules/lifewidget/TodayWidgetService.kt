@@ -28,7 +28,10 @@ internal class TodayWidgetFactory(private val context: Context) : RemoteViewsSer
       when (val snapshot = WidgetDb.loadSnapshot(context)) {
         is WidgetSnapshot.Ready -> {
           builder = WidgetRows(context, snapshot.today.toString())
-          snapshot.model.rows
+          // The running habit is drawn as the pinned card above this list, as it
+          // is on API 31+; without this it appears in both places.
+          val all = snapshot.model.rows
+          TodayRules.rowsWithoutPinned(all, TodayRules.pinnedHabit(all))
         }
         is WidgetSnapshot.NoDatabase -> emptyList()
       }

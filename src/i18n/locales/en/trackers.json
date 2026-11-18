@@ -198,6 +198,8 @@
     "couldNotStartTimerTitle": "Could not start timer",
     "timerRunningInWidgetTitle": "Timer running in the widget",
     "timerRunningInWidgetMessage": "This habit is being timed from the home-screen widget. Stop it there first.",
+    "timerRunningInWidgetTakeOverMessage": "The widget is timing this habit. Continuing stops the widget's timer and logs the time it ran.",
+    "timerRunningInWidgetTakeOver": "Stop it and continue",
     "startTimerA11y": "Start timer",
     "resumeTimerA11y": "Resume timer",
     "pauseTimerA11y": "Pause timer",

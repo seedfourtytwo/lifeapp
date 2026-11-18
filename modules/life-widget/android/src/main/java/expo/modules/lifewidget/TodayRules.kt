@@ -2,6 +2,7 @@ package expo.modules.lifewidget
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -724,6 +725,32 @@ object TodayRules {
   }
 
   /**
+   * The list, with the habit drawn as the pinned card above it taken out.
+   *
+   * The NOW heading goes with it unless another running habit is left under it:
+   * a heading whose only row has been lifted out would sit above whatever comes
+   * next and label that instead. This lived in the view code once and broke
+   * silently when the sections either side of it changed.
+   */
+  /**
+   * The habit drawn as the pinned card above the list: the one the widget is
+   * timing. A timer the app is running stays an ordinary row — the app owns it,
+   * and the card's clock would be ticking for something we must not stop.
+   */
+  fun pinnedHabit(rows: List<WidgetRow>): WidgetRow.Habit? =
+    rows.firstOrNull { it is WidgetRow.Habit && it.runningSinceMs != null && !it.inApp } as? WidgetRow.Habit
+
+  fun rowsWithoutPinned(rows: List<WidgetRow>, pinned: WidgetRow.Habit?): List<WidgetRow> {
+    if (pinned == null) return rows
+    val withoutPinned = rows.filter { it !== pinned }
+    return withoutPinned.filterIndexed { index, row ->
+      if (row !is WidgetRow.Label || row.section != Section.NOW) return@filterIndexed true
+      val next = withoutPinned.getOrNull(index + 1)
+      next is WidgetRow.Habit && next.runningSinceMs != null
+    }
+  }
+
+  /**
    * The figure under a timer habit's name, or null when there is none to show.
    *
    * An untouched row shows its goal rather than `00:00 / 15:00`: the zero is the
@@ -744,6 +771,26 @@ object TodayRules {
 
   /** A stopped timer shorter than this was a mistap: nothing is logged. */
   const val MIN_TIMER_SESSION_SECONDS = 5
+
+  /**
+   * What a finished session is worth, in seconds.
+   *
+   * A session is logged against the day it started on, so it can be worth no
+   * more than what was left of that day when it started. Without the ceiling a
+   * stopwatch nobody stopped — the widget removed, the habit forgotten — logs
+   * one event claiming days of reading on a single Tuesday.
+   */
+  fun cappedSessionSeconds(timer: RunningTimer, nowMs: Long): Long {
+    val elapsed = timerElapsedMs(timer, nowMs)
+    val startOfNextDay = parseDate(timer.date)
+      ?.plusDays(1)
+      ?.atStartOfDay(ZoneId.systemDefault())
+      ?.toInstant()
+      ?.toEpochMilli()
+      ?: return elapsed / 1000
+    val roomLeftInTheDay = (startOfNextDay - timer.startedAtMs).coerceAtLeast(0)
+    return elapsed.coerceAtMost(roomLeftInTheDay) / 1000
+  }
 
   /** `activeTimerElapsedMs` (activeTimerSession.ts): active time, paused intervals left out. */
   fun timerElapsedMs(timer: RunningTimer, nowMs: Long): Long {
@@ -791,7 +838,7 @@ object TodayRules {
 
     // TOGGLE on a stopwatch, STOP, or the track ending: the session is over.
     val completed = action == TimerAction.TRACK_ENDED && rules.playOnceTrackSeconds != null
-    val seconds = timerElapsedMs(current, nowMs) / 1000
+    val seconds = cappedSessionSeconds(current, nowMs)
     val log = if ((seconds >= MIN_TIMER_SESSION_SECONDS || completed) && seconds <= Int.MAX_VALUE) {
       TimerLog(current, nowMs, seconds.toInt().coerceAtLeast(1), completed)
     } else {

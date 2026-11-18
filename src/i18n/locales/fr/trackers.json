@@ -198,6 +198,8 @@
     "couldNotStartTimerTitle": "Impossible de démarrer le minuteur",
     "timerRunningInWidgetTitle": "Minuteur en cours dans le widget",
     "timerRunningInWidgetMessage": "Cette habitude est chronométrée depuis le widget de l’écran d’accueil. Arrêtez-le d’abord là-bas.",
+    "timerRunningInWidgetTakeOverMessage": "Le widget chronomètre cette habitude. Continuer arrête son minuteur et enregistre le temps écoulé.",
+    "timerRunningInWidgetTakeOver": "Arrêter et continuer",
     "startTimerA11y": "Démarrer le minuteur",
     "resumeTimerA11y": "Reprendre le minuteur",
     "pauseTimerA11y": "Mettre le minuteur en pause",

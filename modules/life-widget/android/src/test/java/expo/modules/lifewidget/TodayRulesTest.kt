@@ -423,6 +423,82 @@ class TodayRulesTest {
     assertEquals(TimerFigure("03:20", isGoal = false), TodayRules.timerFigure(200, null, started = false))
   }
 
+  /**
+   * A stopwatch nobody stopped runs until it is noticed — days, if the widget
+   * was removed. The session belongs to the day it started on, so that is all
+   * it can ever be worth: whatever is left of that day after it started. The
+   * alternative is one event claiming fifty hours of reading on a Tuesday.
+   */
+  /**
+   * The running habit is drawn as a pinned card above the list, so the list
+   * must not repeat it — nor keep the NOW heading that introduced it, which
+   * would otherwise sit above whatever happens to come next and label it.
+   */
+  @Test
+  fun pullingThePinnedHabitOutTakesItsHeadingWithIt() {
+    val running = WidgetRow.Habit("r", "Running", HabitRowState.OPEN, timer = true, runningSinceMs = 1000L)
+    val other = WidgetRow.Habit("o", "Other", HabitRowState.OPEN, timer = true)
+    val counter = WidgetRow.Counter("c", "Water", 0.0, null, emptyList(), done = false)
+    val rows = listOf(WidgetRow.Label(Section.NOW), running, other, counter)
+
+    // The only running habit is pinned: heading and row both go.
+    assertEquals(
+      listOf("habit:o", "counter:c"),
+      TodayRules.rowsWithoutPinned(rows, running).map { it.key },
+    )
+
+    // A second habit still running keeps the heading, and itself.
+    val alsoRunning = WidgetRow.Habit("s", "Second", HabitRowState.OPEN, timer = true, runningSinceMs = 2000L)
+    assertEquals(
+      listOf("label:now", "habit:s", "habit:o", "counter:c"),
+      TodayRules.rowsWithoutPinned(
+        listOf(WidgetRow.Label(Section.NOW), running, alsoRunning, other, counter),
+        running,
+      ).map { it.key },
+    )
+
+    // Nothing pinned (the app owns the timer): the list is left alone.
+    assertEquals(
+      listOf("label:now", "habit:r", "habit:o", "counter:c"),
+      TodayRules.rowsWithoutPinned(rows, null).map { it.key },
+    )
+
+    // The card shows what the widget is timing, never what the app is timing.
+    assertEquals(running, TodayRules.pinnedHabit(rows))
+    val appsOwn = running.copy(inApp = true)
+    assertNull(TodayRules.pinnedHabit(listOf(WidgetRow.Label(Section.NOW), appsOwn, other)))
+    assertNull(TodayRules.pinnedHabit(listOf(other, counter)))
+  }
+
+  @Test
+  fun aForgottenStopwatchLogsNoMoreThanTheDayItStartedOn() {
+    val rules = habit("""{"trackingMode":"timer"}""")
+    val zone = java.time.ZoneId.systemDefault()
+    // Started at 22:00 local; two hours of that day were left.
+    val startedAt = LocalDate.parse("2026-11-16").atTime(22, 0).atZone(zone).toInstant().toEpochMilli()
+    val session = RunningTimer(startedAt, "2026-11-16")
+
+    // Stopped three days later: only those two hours are logged.
+    val threeDaysOn = startedAt + 3 * 24 * 3600_000L
+    val late = TodayRules.applyTimerAction(rules, session, TimerAction.STOP, threeDaysOn, "2026-11-19", lockedByApp = false)
+    assertEquals(2 * 3600, late.log!!.seconds)
+    assertNull(late.session)
+
+    // Inside the day it is untouched, to the second.
+    val sameEvening = startedAt + 90 * 60_000L
+    val normal = TodayRules.applyTimerAction(rules, session, TimerAction.STOP, sameEvening, "2026-11-16", lockedByApp = false)
+    assertEquals(90 * 60, normal.log!!.seconds)
+
+    // Right up to midnight, and not past it.
+    val midnight = startedAt + 2 * 3600_000L
+    assertEquals(2 * 3600, TodayRules.applyTimerAction(rules, session, TimerAction.STOP, midnight, "2026-11-17", lockedByApp = false).log!!.seconds)
+    assertEquals(2 * 3600, TodayRules.applyTimerAction(rules, session, TimerAction.STOP, midnight + 1000, "2026-11-17", lockedByApp = false).log!!.seconds)
+
+    // Paused time still comes off the top; the cap is a ceiling, not a target.
+    val paused = session.copy(pauseOffsetMs = 30 * 60_000L)
+    assertEquals(60 * 60, TodayRules.applyTimerAction(rules, paused, TimerAction.STOP, sameEvening, "2026-11-16", lockedByApp = false).log!!.seconds)
+  }
+
   @Test
   fun stopSilencesTheHabitWhateverTheDatabaseSaysNow() {
     val rules = habit(trackOnly)

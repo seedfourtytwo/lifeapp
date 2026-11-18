@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { stopWidgetTimer } from 'life-widget';
 import { i18n } from '../../i18n';
 import {
   pauseHabitSound,
@@ -123,47 +124,88 @@ export async function finishHabitTimer(
   await presentFocusedHabitReady();
 }
 
-export function startHabitTimerSession(elementId: string, config: HabitConfig): void {
-  void enqueueTimerStart(async () => {
-    try {
-      // Wait for persisted-session hydrate + day totals so starts/finishes are consistent.
-      await whenActiveTimersReady();
-      const existing = useEventStore.getState().activeTimerSessions[elementId];
-      if (existing) {
-        if (isActiveTimerPaused(existing)) {
-          resumeHabitTimerSession(elementId, config);
-        }
-        return;
+function alertCouldNotStart(error: unknown): void {
+  Alert.alert(
+    i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
+    error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+  );
+}
+
+function alertTimerRunningInWidget(): void {
+  Alert.alert(
+    i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
+    i18n.t('trackers:habitWidget.timerRunningInWidgetMessage'),
+  );
+}
+
+/** The widget's timer is stale or forgotten: let the user end it and carry on here. */
+function offerWidgetTakeover(elementId: string, config: HabitConfig): void {
+  Alert.alert(
+    i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
+    i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOverMessage'),
+    [
+      { text: i18n.t('common:actions.cancel'), style: 'cancel' },
+      {
+        text: i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOver'),
+        onPress: () => {
+          void enqueueTimerStart(async () => {
+            try {
+              await stopWidgetTimer(elementId);
+            } catch (error) {
+              alertCouldNotStart(error);
+              return;
+            }
+            await startFromIdle(elementId, config, true);
+          });
+        },
+      },
+    ],
+  );
+}
+
+async function startFromIdle(
+  elementId: string,
+  config: HabitConfig,
+  afterWidgetStop: boolean,
+): Promise<void> {
+  try {
+    // Wait for persisted-session hydrate + day totals so starts/finishes are consistent.
+    await whenActiveTimersReady();
+    const existing = useEventStore.getState().activeTimerSessions[elementId];
+    if (existing) {
+      if (isActiveTimerPaused(existing)) {
+        resumeHabitTimerSession(elementId, config);
       }
-      // One stopwatch per habit: two would log the same minutes twice.
-      if (await isTimerRunningInWidget(elementId)) {
-        Alert.alert(
-          i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
-          i18n.t('trackers:habitWidget.timerRunningInWidgetMessage'),
-        );
-        return;
-      }
-      await finalizeOtherTimers(elementId);
-      if (useEventStore.getState().activeTimerSessions[elementId]) return;
-      setFocusedHabitId(elementId);
-      useEventStore.getState().startHabitTimer(elementId);
-      playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
-        void finishHabitTimer(id, cfg, trackCompleted, {
-          playChime: trackCompleted === true,
-        }).catch((error) => {
-          Alert.alert(
-            i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-            error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-          );
-        });
-      });
-    } catch (error) {
-      Alert.alert(
-        i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
-        error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-      );
+      return;
     }
-  });
+    // One stopwatch per habit: two would log the same minutes twice.
+    if (await isTimerRunningInWidget(elementId)) {
+      // A stop that changed nothing (older build): never start a second timer.
+      if (afterWidgetStop) alertTimerRunningInWidget();
+      else offerWidgetTakeover(elementId, config);
+      return;
+    }
+    await finalizeOtherTimers(elementId);
+    if (useEventStore.getState().activeTimerSessions[elementId]) return;
+    setFocusedHabitId(elementId);
+    useEventStore.getState().startHabitTimer(elementId);
+    playSoundForConfig(elementId, config, (id, cfg, trackCompleted) => {
+      void finishHabitTimer(id, cfg, trackCompleted, {
+        playChime: trackCompleted === true,
+      }).catch((error) => {
+        Alert.alert(
+          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+        );
+      });
+    });
+  } catch (error) {
+    alertCouldNotStart(error);
+  }
+}
+
+export function startHabitTimerSession(elementId: string, config: HabitConfig): void {
+  void enqueueTimerStart(() => startFromIdle(elementId, config, false));
 }
 
 export function pauseHabitTimerSession(elementId: string, _config: HabitConfig): void {
