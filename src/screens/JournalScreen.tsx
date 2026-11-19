@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { getDatabase } from '../db/client';
@@ -9,25 +8,42 @@ import * as dailyJournalRepo from '../db/repositories/dailyJournalRepository';
 import * as dayNoteRepo from '../db/repositories/dayNoteRepository';
 import * as elementRepo from '../db/repositories/elementRepository';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
-import { useAppTheme } from '../hooks/useAppTheme';
+import { useReduceMotion } from '../hooks/useReduceMotion';
 import { NoteEditorHost, useNoteEditorSession } from '../notes';
 import { type DailyJournal, type ElementDefinition, type JournalNotebook } from '../protocol';
+import { journalDayEntries, type JournalFilter } from './journal/journalDays';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { newId } from '../utils/id';
+import { useHomePager } from './home/HomePagerContext';
+import type { HomePageProps } from './home/homePager';
 import JournalDayPanel, { type TrackerNoteRow } from './journal/JournalDayPanel';
 import JournalDaysList from './journal/JournalDaysList';
 import JournalNotebooksSection from './journal/JournalNotebooksSection';
-import NotebookMark from './journal/NotebookMark';
+import NotebookChip from './journal/NotebookChip';
+import PageHeader from './shared/PageHeader';
 import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
-type DayFilter = 'all' | 'trackers' | string;
-
-export default function JournalScreen() {
+/**
+ * The Journal page of the Home pager: a place to write, then what was written.
+ *
+ * Top to bottom: the day being written (today, unless a past day was opened),
+ * a row of notebook names to narrow by when there is more than one, and the
+ * days themselves, set as prose. Managing notebooks is a sheet behind the
+ * header's glyph and takes no room on the page.
+ *
+ * It reads the database, so it loads when it becomes the page on screen
+ * (`active`) rather than when it is built — a drag beside it builds it — and
+ * again each time the user comes back to it.
+ */
+export default function JournalScreen({ active }: HomePageProps) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco } = useAppTheme();
+  const { t: tHome } = useTranslation('home');
+  const setPagerSwipeLocked = useHomePager()?.setSwipeLocked;
+  const reduceMotion = useReduceMotion();
+  const scrollRef = useRef<ScrollView>(null);
   const now = useAppCalendarNow();
   const today = currentAppCalendarDate(now);
   const notebooks = useJournalNotebookStore((s) => s.notebooks);
@@ -35,10 +51,12 @@ export default function JournalScreen() {
   const [journals, setJournals] = useState<DailyJournal[]>([]);
   const [elements, setElements] = useState<ElementDefinition[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [filter, setFilter] = useState<DayFilter>('all');
+  const [filter, setFilter] = useState<JournalFilter>('all');
+  /** The notebook the tile writes in; unset means the first. */
+  const [writingIn, setWritingIn] = useState<string | undefined>(undefined);
+  const [notebooksOpen, setNotebooksOpen] = useState(false);
   const [trackerNotes, setTrackerNotes] = useState<TrackerNoteRow[]>([]);
   const [noteOnlyDates, setNoteOnlyDates] = useState<string[]>([]);
-  const [trackerNoteDates, setTrackerNoteDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,11 +108,9 @@ export default function JournalScreen() {
       await reloadNotebooks();
       const rows = await dailyJournalRepo.getAllJournals(db);
       const noteOnly = await dayNoteRepo.getDatesWithTrackerNotesOnly(db, activeIds, today);
-      const trackerDates = await dayNoteRepo.getDatesWithTrackerNotes(db, activeIds);
       setJournals(rows);
       setElements(active);
       setNoteOnlyDates(noteOnly);
-      setTrackerNoteDates(trackerDates);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('screen.couldNotLoadJournalsFallback'));
     } finally {
@@ -102,12 +118,14 @@ export default function JournalScreen() {
     }
   }, [today, t, reloadNotebooks]);
 
+  // Stack focus covers coming back from a pushed screen; `active` covers the
+  // pager, whose swipes and dock taps raise no focus event.
   useFocusEffect(
     useCallback(() => {
-      if (editingRef.current) return;
+      if (!active || editingRef.current) return;
       setLoading(true);
       void reload();
-    }, [reload]),
+    }, [reload, active]),
   );
 
   useEffect(() => {
@@ -115,7 +133,7 @@ export default function JournalScreen() {
   }, [today]);
 
   useEffect(() => {
-    if (filter === 'all' || filter === 'trackers') return;
+    if (filter === 'all') return;
     if (!notebooks.some((notebook) => notebook.id === filter)) {
       setFilter('all');
     }
@@ -134,7 +152,12 @@ export default function JournalScreen() {
     void loadTrackerNotes(selectedDate, elements);
   }, [selectedDate, elements, loadTrackerNotes, noteEditor.session]);
 
-  const openJournalDay = (notebookId: string, date: string, entryId?: string) => {
+  const openChapter = (
+    notebookId: string,
+    date: string,
+    entryId: string | undefined,
+    opts?: { dictate: boolean },
+  ) => {
     const notebook = notebookById.get(notebookId);
     void noteEditor.open(
       {
@@ -145,16 +168,21 @@ export default function JournalScreen() {
         icon: notebook?.icon,
       },
       date,
+      opts?.dictate ? { dictate: true } : undefined,
     );
   };
 
   /**
-   * A fresh chapter is a row id minted before there is any text: the editor
-   * opens blank and the row appears on the first save, so abandoning it leaves
-   * nothing behind.
+   * Writing on a day that already has chapters starts a fresh one: a row id
+   * minted before there is any text. The editor opens blank and the row
+   * appears on the first save, so abandoning it leaves nothing behind. A day
+   * with nothing yet opens its first chapter.
    */
-  const addJournalChapter = (notebookId: string, date: string) => {
-    openJournalDay(notebookId, date, newId());
+  const writeInDay = (notebookId: string, date: string, opts: { dictate: boolean }) => {
+    const hasChapters = journals.some(
+      (journal) => journal.date === date && journal.notebookId === notebookId,
+    );
+    openChapter(notebookId, date, hasChapters ? newId() : undefined, opts);
   };
 
   const openTrackerNote = (row: TrackerNoteRow, date: string) => {
@@ -164,45 +192,65 @@ export default function JournalScreen() {
     );
   };
 
-  const showTrackerNotes = filter === 'all' || filter === 'trackers';
-  const extraDates =
-    filter === 'trackers'
-      ? trackerNoteDates.filter((date) => date !== today)
-      : filter === 'all'
-        ? noteOnlyDates
-        : [];
+  /** A day tapped in the list moves into the tile at the top, so go there. */
+  const openDay = (date: string, notebookId?: string) => {
+    setSelectedDate(date);
+    if (notebookId) setWritingIn(notebookId);
+    scrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+  };
+
+  const chooseFilter = (next: JournalFilter) => {
+    setFilter(next);
+    // Narrowing to a notebook is also saying which one you mean to write in.
+    if (next !== 'all') setWritingIn(next);
+  };
+
+  const dayEntries = useMemo(
+    () => journalDayEntries(journals, notebooks, filter),
+    [journals, notebooks, filter],
+  );
+  const severalNotebooks = notebooks.length > 1;
+  /** A notebook that has since been deleted falls back to the first. */
+  const writingInId = (writingIn != null && notebookById.has(writingIn) ? writingIn : undefined) ??
+    notebooks[0]?.id;
 
   const editorHost = <NoteEditorHost session={noteEditor} />;
 
-  /** The picked filter takes the quiet moss fill; the rest sit as tiles on the page. */
-  const renderFilterWell = (
-    id: DayFilter,
-    label: string,
-    icon: (glyphColor: string, ringColor: string) => React.ReactNode,
-  ) => {
-    const selected = filter === id;
-    const fill = selected ? theme.colors.primaryContainer : theme.colors.surface;
-    const glyph = selected ? theme.colors.primary : theme.colors.onSurfaceVariant;
-    return (
-      <Pressable
-        key={id}
-        onPress={() => setFilter(id)}
-        style={[styles.filterWell, { backgroundColor: fill, borderRadius: deco.radius.md }]}
-        accessibilityRole="button"
-        accessibilityState={{ selected }}
-        accessibilityLabel={label}
-      >
-        {icon(glyph, fill)}
-      </Pressable>
-    );
-  };
+  const header = (
+    <PageHeader
+      title={tHome('dock.journal')}
+      actions={
+        <IconButton
+          icon="notebook-multiple"
+          size={24}
+          iconColor={theme.colors.onSurfaceVariant}
+          onPress={() => setNotebooksOpen(true)}
+          accessibilityLabel={t('notebooks.title')}
+          style={styles.headerAction}
+        />
+      }
+    />
+  );
+  const notebooksSheet = (
+    <JournalNotebooksSection
+      visible={notebooksOpen}
+      onDismiss={() => setNotebooksOpen(false)}
+      notebooks={notebooks}
+      onChanged={() => void reload()}
+    />
+  );
 
+  // The title is known before any entry is, so it is already in place.
   if (loading && journals.length === 0 && notebooks.length === 0 && !error) {
     return (
       <>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" />
+        <View style={styles.loadingPane}>
+          {header}
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" />
+          </View>
         </View>
+        {notebooksSheet}
         {editorHost}
       </>
     );
@@ -210,7 +258,9 @@ export default function JournalScreen() {
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
+        {header}
+
         {error ? (
           <View style={styles.errorBox}>
             <Text style={[typeScale.secondary, { color: theme.colors.error }]}>{error}</Text>
@@ -220,50 +270,71 @@ export default function JournalScreen() {
           </View>
         ) : null}
 
-        <JournalNotebooksSection notebooks={notebooks} onChanged={() => void reload()} />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {renderFilterWell('all', t('screen.filterAll'), (color) => (
-            <MaterialCommunityIcons name="view-grid-outline" size={22} color={color} />
-          ))}
-          {notebooks.map((notebook) =>
-            renderFilterWell(notebook.id, notebook.name, (color, ring) => (
-              <NotebookMark notebook={notebook} glyphColor={color} ringColor={ring} />
-            )),
-          )}
-          {renderFilterWell('trackers', t('screen.trackerNotesLabel'), (color) => (
-            <MaterialCommunityIcons name="note-text-outline" size={22} color={color} />
-          ))}
-        </ScrollView>
-
         <JournalDayPanel
           selectedDate={selectedDate}
           today={today}
           notebooks={notebooks}
           journals={journals}
+          notebookId={writingInId}
+          onChooseNotebook={setWritingIn}
           trackerNotes={trackerNotes}
-          showTrackerNotes={showTrackerNotes}
-          filter={filter}
-          onOpenJournal={openJournalDay}
-          onAddChapter={addJournalChapter}
+          showTrackerNotes={filter === 'all'}
+          onOpenChapter={openChapter}
+          onWrite={writeInDay}
           onOpenTrackerNote={openTrackerNote}
+          onBackToToday={() => setSelectedDate(today)}
         />
+
+        {severalNotebooks ? (
+          /*
+            A sideways scroller inside the sideways pager. Android hands a
+            horizontal drag to the outer one, so while a finger is down in this
+            row the pager is held still and the row scrolls. Once the row has
+            the drag the system keeps it there, so releasing the hold on cancel
+            — which is what the row's own scroll start sends — is safe.
+          */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroller}
+            contentContainerStyle={styles.filterRow}
+            accessibilityRole="radiogroup"
+            onTouchStart={() => setPagerSwipeLocked?.(true)}
+            onTouchEnd={() => setPagerSwipeLocked?.(false)}
+            onTouchCancel={() => setPagerSwipeLocked?.(false)}
+          >
+            <NotebookChip
+              ground="page"
+              label={t('screen.filterAll')}
+              selected={filter === 'all'}
+              onPress={() => chooseFilter('all')}
+            />
+            {notebooks.map((notebook) => (
+              <NotebookChip
+                key={notebook.id}
+                ground="page"
+                label={notebook.name}
+                notebook={notebook}
+                selected={filter === notebook.id}
+                onPress={() => chooseFilter(notebook.id)}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
 
         <JournalDaysList
           today={today}
           selectedDate={selectedDate}
-          journals={journals}
-          filter={filter}
-          extraDates={extraDates}
-          todayTrackerPreview={trackerNotes.length > 0}
-          onSelectDate={setSelectedDate}
+          openNotebookId={writingInId}
+          entries={dayEntries}
+          notebooks={notebooks}
+          showNotebook={severalNotebooks && filter === 'all'}
+          trackerNoteDates={filter === 'all' ? noteOnlyDates : []}
+          onOpenDay={openDay}
         />
       </ScrollView>
 
+      {notebooksSheet}
       {editorHost}
     </>
   );
@@ -272,10 +343,16 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: layout.gutter,
-    paddingTop: space.lg,
+    // The Home pages' top edge, so the title sits where the date does.
+    paddingTop: space.md,
     paddingBottom: space.xxl,
     gap: layout.sectionGap,
     flexGrow: 1,
+  },
+  loadingPane: {
+    flex: 1,
+    paddingHorizontal: layout.gutter,
+    paddingTop: space.md,
   },
   centered: {
     flex: 1,
@@ -289,14 +366,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginLeft: -space.sm,
   },
+  /** Flush with the gutter: the glyph's own box supplies the breathing room. */
+  headerAction: {
+    margin: 0,
+  },
+  /** Runs to the screen's edges, so chips scroll out from under the gutter. */
+  filterScroller: {
+    marginHorizontal: -layout.gutter,
+  },
   filterRow: {
     gap: space.sm,
     alignItems: 'center',
-  },
-  filterWell: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: layout.gutter,
+    // Room for the chips' 48dp touch target above and below the 40dp pill.
+    paddingVertical: space.xs,
   },
 });

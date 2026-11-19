@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { layout, space } from '../../theme/spacing';
 
-/** Shared layout for the Home tabs (Habits, Counters, Nutrition, Todos). */
+/** Shared layout for the Home pages. */
 export const homeTabScreenStyles = StyleSheet.create({
   container: {
     paddingHorizontal: layout.gutter,

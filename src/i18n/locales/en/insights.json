@@ -1,20 +1,6 @@
 {
   "screen": {
-    "emptyBody": "Add habits or counters, then compare them here.",
-    "trackersLabel": "Compare",
-    "capHint": "Max {{count}}",
-    "weatherLabel": "Weather overlay",
-    "tickToPlot": "Select a tracker to plot.",
-    "tickToCompare": "Select trackers above to compare.",
-    "journalLabel": "Journal",
-    "addJournal": "Add journal",
-    "addNote": "Add note",
-    "editJournalForA11y": "Edit journal for {{date}}",
-    "addJournalForA11y": "Add journal for {{date}}",
-    "highTempCondition": "{{temp}} high · {{condition}}",
-    "rainChanceSuffix": " · {{percent}}% rain",
-    "noWeatherForDay": "No weather for this day",
-    "couldNotLoadFallback": "Could not load insights"
+    "addJournalForA11y": "Add journal for {{date}}"
   },
   "history": {
     "chartFooter": "Dashed line: {{window}}-day average",

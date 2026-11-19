@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   deleteJournalChapter,
@@ -27,6 +26,7 @@ import {
 } from './types';
 import { noteEditorSessionKey } from './sessionKey';
 import { newId } from '../utils/id';
+import { notify } from '../components/sheet/confirm';
 
 export type NoteEditorSessionState = {
   target: NoteEditorTarget;
@@ -123,10 +123,10 @@ export function useNoteEditorSession(options: Options = {}) {
         });
       } catch (error) {
         if (generation !== openGenerationRef.current) return;
-        Alert.alert(
-          t('note.couldNotOpenTitle', { noun }),
-          error instanceof Error ? error.message : t('errors.somethingWentWrong'),
-        );
+        void notify({
+          title: t('note.couldNotOpenTitle', { noun }),
+          message: error instanceof Error ? error.message : t('errors.somethingWentWrong'),
+        });
       }
     },
     [t],
@@ -212,10 +212,10 @@ export function useNoteEditorSession(options: Options = {}) {
     try {
       await deleteJournalChapter(doomed, date);
     } catch (error) {
-      Alert.alert(
-        t('note.couldNotSaveTitle', { noun: t('note.journalNoun') }),
-        error instanceof Error ? error.message : t('errors.somethingWentWrongRetry'),
-      );
+      void notify({
+        title: t('note.couldNotSaveTitle', { noun: t('note.journalNoun') }),
+        message: error instanceof Error ? error.message : t('errors.somethingWentWrongRetry'),
+      });
       return;
     }
     const removedAt = journalChapterIndex(current.chapters, entryId);
@@ -244,10 +244,10 @@ export function useNoteEditorSession(options: Options = {}) {
       openGenerationRef.current += 1;
       setSession(null);
     } catch (error) {
-      Alert.alert(
-        t('note.couldNotSaveTitle', { noun }),
-        error instanceof Error ? error.message : t('errors.somethingWentWrongRetry'),
-      );
+      void notify({
+        title: t('note.couldNotSaveTitle', { noun }),
+        message: error instanceof Error ? error.message : t('errors.somethingWentWrongRetry'),
+      });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -329,10 +329,10 @@ export function useNoteEditorSession(options: Options = {}) {
         setSession((s) => (s ? { ...s, shareFingerprint: fingerprint } : s));
       } catch (error) {
         if (generation !== openGenerationRef.current) return;
-        Alert.alert(
-          t('note.couldNotShareTitle'),
-          error instanceof Error ? error.message : t('note.couldNotShareBody'),
-        );
+        void notify({
+          title: t('note.couldNotShareTitle'),
+          message: error instanceof Error ? error.message : t('note.couldNotShareBody'),
+        });
       }
     },
     [gatherJournalShare, t],

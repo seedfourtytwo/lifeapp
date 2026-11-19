@@ -1,6 +1,6 @@
 import { shiftDateString } from '../protocol';
 
-/** Pure chart/aggregation helpers for History + Insights. */
+/** Pure chart/aggregation helpers for History. */
 
 /** Trailing simple moving average; leading windows use available points. */
 export function movingAverage(values: readonly number[], window: number): number[] {
@@ -16,16 +16,6 @@ export function movingAverage(values: readonly number[], window: number): number
     out.push(count === 0 ? 0 : sum / count);
   }
   return out;
-}
-
-/** Normalize each series to 0–1 against its own max in range (min floor 1). */
-export function normalizeSeriesToUnit(
-  seriesValues: readonly (readonly number[])[],
-): number[][] {
-  return seriesValues.map((values) => {
-    const max = Math.max(...values, 1);
-    return values.map((v) => v / max);
-  });
 }
 
 export interface ActivityStats {
@@ -115,4 +105,3 @@ export const HISTORY_RANGES = [7, 30, 90] as const;
 export type HistoryRangeDays = (typeof HISTORY_RANGES)[number];
 export const DEFAULT_HISTORY_RANGE: HistoryRangeDays = 30;
 export const MOVING_AVERAGE_WINDOW = 7;
-export const INSIGHTS_MAX_SERIES = 5;

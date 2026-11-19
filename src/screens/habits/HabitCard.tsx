@@ -1,14 +1,15 @@
 import { memo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Alert, type GestureResponderEvent } from 'react-native';
+import { type GestureResponderEvent } from 'react-native';
+import { notify } from '../../components/sheet/confirm';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import { getKindHandler } from '../../kinds/registry';
 import type { RootStackParamList } from '../../navigation/types';
 import type { ElementDefinition, HabitConfig } from '../../protocol';
-import { isSkippedToday, useEventStore } from '../../store/eventStore';
+import { isRunningInWidget, isSkippedToday, useEventStore } from '../../store/eventStore';
 
 type Props = {
   habit: ElementDefinition;
@@ -54,6 +55,7 @@ function HabitCard({
     score,
     skipped,
     activeTimerSession,
+    runningInWidget,
     toggleHabit,
     setSkipToday,
   } = useEventStore(
@@ -64,6 +66,7 @@ function HabitCard({
       score: state.habitScores[habit.id] ?? 0,
       skipped: isSkippedToday(state, habit.id, state.habitDoneToday[habit.id] ?? false),
       activeTimerSession: state.activeTimerSessions[habit.id] ?? null,
+      runningInWidget: isRunningInWidget(state, habit.id),
       toggleHabit: state.toggleHabit,
       setSkipToday: state.setSkipToday,
     })),
@@ -79,10 +82,10 @@ function HabitCard({
         );
       })
       .catch((error) => {
-        Alert.alert(
-          t('skip.couldNotSkipTitle'),
-          error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-        );
+        notify({
+          title: t('skip.couldNotSkipTitle'),
+          message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+        });
       });
   };
 
@@ -102,6 +105,7 @@ function HabitCard({
       skipped={skipped}
       onSkipToday={skipToday}
       activeTimerSession={activeTimerSession}
+      runningInWidget={runningInWidget}
       hasTodayNote={hasTodayNote}
       onDictateNote={onOpenNote ? () => onOpenNote(habit, true) : undefined}
       onEditNote={onOpenNote ? () => onOpenNote(habit, false) : undefined}
@@ -113,10 +117,10 @@ function HabitCard({
       reorderHint={reorderHint}
       onToggle={() =>
         toggleHabit(habit.id, config).catch((error) => {
-          Alert.alert(
-            t('habitWidget.couldNotUpdateTitle'),
-            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-          );
+          notify({
+            title: t('habitWidget.couldNotUpdateTitle'),
+            message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+          });
         })
       }
       onTimerPress={() => handleTimerPress(habit.id, config)}
@@ -126,10 +130,10 @@ function HabitCard({
         try {
           await handleFinishTimer(habit.id, config, false);
         } catch (error) {
-          Alert.alert(
-            t('habitWidget.couldNotFinishTimerTitle'),
-            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-          );
+          notify({
+            title: t('habitWidget.couldNotFinishTimerTitle'),
+            message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+          });
           throw error;
         }
       }}
@@ -139,10 +143,10 @@ function HabitCard({
             onOfferUndo?.(t('undo.timerReset', { name: habit.name }), undo),
           )
           .catch((error) => {
-          Alert.alert(
-            t('habitWidget.couldNotResetTodayTitle'),
-            error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-          );
+          notify({
+            title: t('habitWidget.couldNotResetTodayTitle'),
+            message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+          });
         })
       }
       onOpenDetails={() => navigation.navigate('TrackerHistory', { elementId: habit.id })}

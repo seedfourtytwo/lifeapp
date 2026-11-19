@@ -19,8 +19,6 @@
     "inDaysMany": "{{title}} in {{count}} days"
   },
   "permissions": {
-    "rebuildRequiredTitle": "Rebuild required",
-    "eveningCheckInRebuildBody": "Evening check-in needs a fresh dev build with notifications. Run: eas build --platform android --profile development",
     "blockedTitle": "Notifications blocked",
     "blockedBody": "Enable notifications in system settings to get evening check-in and habit reminders."
   }

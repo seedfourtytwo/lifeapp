@@ -11,6 +11,7 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import FormSection, { formSectionStyles as styles } from './FormSection';
+import type { TrackerEditorProblemProps } from './types';
 
 const PRESET_INCREMENTS = [1, 5, 10, 25, 50, 100] as const;
 
@@ -21,7 +22,7 @@ type Props = {
   onIncrementsChange: (value: string) => void;
   onDailyTargetChange: (value: string) => void;
   onShowStreakOnCardChange: (value: boolean) => void;
-};
+} & TrackerEditorProblemProps;
 
 function parseIncrementList(raw: string): number[] {
   const seen = new Set<number>();
@@ -56,8 +57,12 @@ function CounterEditorFields({
   onIncrementsChange,
   onDailyTargetChange,
   onShowStreakOnCardChange,
+  problem = null,
+  anchorRef,
 }: Props) {
   const { t } = useTranslation('trackers');
+  const problemFor = (field: NonNullable<typeof problem>['field']) =>
+    problem?.field === field ? problem.message : null;
   const [customValue, setCustomValue] = useState('');
   const values = parseIncrementList(increments);
   const showStreakToggle = hasPositiveDailyTarget(dailyTarget);
@@ -137,6 +142,8 @@ function CounterEditorFields({
             style={styles.timeField}
             onSubmitEditing={addCustom}
             returnKeyType="done"
+            error={problemFor('increments')}
+            ref={anchorRef?.('increments')}
           />
           <Button
             mode="text"
@@ -154,6 +161,8 @@ function CounterEditorFields({
           value={dailyTarget}
           onChangeText={onDailyTargetChange}
           keyboardType="number-pad"
+          error={problemFor('dailyTarget')}
+          ref={anchorRef?.('dailyTarget')}
         />
       </FormSection>
 

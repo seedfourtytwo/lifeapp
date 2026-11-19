@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState, type MutableRefObject } from 'react';
-import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { JournalChapter } from './journalChapters';
 import {
@@ -16,6 +15,7 @@ import {
   type NoteShareStatus,
 } from './noteShareStatus';
 import type { useNoteEditorChrome } from './useNoteEditorChrome';
+import { notify } from '../components/sheet/confirm';
 
 /** Sharing hands text to the OS; copying hands it to the clipboard. Same choice. */
 export type SharePickerMode = 'share' | 'copy';
@@ -140,7 +140,7 @@ export function useNoteEditorExport({
         await Clipboard.setStringAsync(body);
         chrome.showCopied(copiedLabel);
       } catch {
-        Alert.alert(copyErrorTitle, copyErrorBody);
+        void notify({ title: copyErrorTitle, message: copyErrorBody });
       }
     },
     [saving, chrome, exportText, copiedLabel, copyErrorTitle, copyErrorBody],

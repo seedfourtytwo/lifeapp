@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import {
   pauseHabitSound,
   playHabitSound,
@@ -26,6 +25,7 @@ import {
 } from './habitTimerPresentation';
 import { buildHabitTimerLockScreenMeta } from './habitTimerLockScreenMeta';
 import { stopHabitTimerLockScreenTicker } from './habitTimerLockScreen';
+import { notify } from '../../components/sheet/confirm';
 
 let skipChain: Promise<void> = Promise.resolve();
 
@@ -64,10 +64,10 @@ async function startOrToggleFocusedHabit(): Promise<void> {
     }
     await presentFocusedHabitReady();
   } catch (error) {
-    Alert.alert(
-      i18n.t('trackers:habitWidget.couldNotUpdateTitle'),
-      error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-    );
+    void notify({
+      title: i18n.t('trackers:habitWidget.couldNotUpdateTitle'),
+      message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+    });
   }
 }
 
@@ -84,10 +84,10 @@ async function skipHabit(direction: 'next' | 'prev'): Promise<void> {
     try {
       await finishHabitTimer(current.element.id, current.config, false, { advance: false });
     } catch (error) {
-      Alert.alert(
-        i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-        error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-      );
+      void notify({
+        title: i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+        message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+      });
       return;
     }
   }
@@ -169,10 +169,10 @@ export async function restoreHabitTimerPlaybackAfterHydration(): Promise<void> {
       void finishHabitTimer(id, cfg, trackCompleted, {
         playChime: trackCompleted === true,
       }).catch((error) => {
-        Alert.alert(
-          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-        );
+        void notify({
+          title: i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+        });
       });
     });
   }

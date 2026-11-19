@@ -9,6 +9,8 @@ export type EditorSheetPrimaryAction = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  /** Red instead of moss, for a sheet whose whole job is to remove something. */
+  destructive?: boolean;
 };
 
 export type EditorSheetDestructiveAction = {
@@ -58,6 +60,8 @@ export default function SheetFooter({ primaryAction, destructiveAction, testID, 
           onPress={primaryAction.onPress}
           disabled={primaryAction.disabled}
           loading={primaryAction.loading}
+          buttonColor={primaryAction.destructive ? theme.colors.error : undefined}
+          textColor={primaryAction.destructive ? theme.colors.onError : undefined}
           style={[styles.save, { borderRadius: deco.radius.pill }]}
           contentStyle={styles.saveContent}
           labelStyle={styles.saveLabel}

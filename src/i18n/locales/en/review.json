@@ -1,0 +1,73 @@
+{
+  "range": {
+    "week": "Week",
+    "month": "Month",
+    "year": "Year"
+  },
+  "statement": {
+    "up": {
+      "week": "You did <b>{{percent}}%</b> of what you planned, up from {{previous}}% the week before.",
+      "month": "You did <b>{{percent}}%</b> of what you planned, up from {{previous}}% the month before.",
+      "year": "You did <b>{{percent}}%</b> of what you planned, up from {{previous}}% the year before."
+    },
+    "down": {
+      "week": "You did <b>{{percent}}%</b> of what you planned, down from {{previous}}% the week before.",
+      "month": "You did <b>{{percent}}%</b> of what you planned, down from {{previous}}% the month before.",
+      "year": "You did <b>{{percent}}%</b> of what you planned, down from {{previous}}% the year before."
+    },
+    "same": {
+      "week": "You did <b>{{percent}}%</b> of what you planned, about the same as the week before.",
+      "month": "You did <b>{{percent}}%</b> of what you planned, about the same as the month before.",
+      "year": "You did <b>{{percent}}%</b> of what you planned, about the same as the year before."
+    },
+    "plain": {
+      "week": "You did <b>{{percent}}%</b> of what you planned this week.",
+      "month": "You did <b>{{percent}}%</b> of what you planned this month.",
+      "year": "You did <b>{{percent}}%</b> of what you planned this year."
+    },
+    "perfect": {
+      "week": "You did everything you planned this week.",
+      "month": "You did everything you planned this month.",
+      "year": "You did everything you planned this year."
+    },
+    "nothing": {
+      "week": "Nothing was planned this week.",
+      "month": "Nothing was planned this month.",
+      "year": "Nothing was planned this year."
+    }
+  },
+  "footnote": {
+    "slippedDays_one": "{{name}} slipped most: {{done}} of its {{count}} day.",
+    "slippedDays_other": "{{name}} slipped most: {{done}} of its {{count}} days.",
+    "slippedSessions_one": "{{name}} slipped most: {{done}} of its {{count}} session.",
+    "slippedSessions_other": "{{name}} slipped most: {{done}} of its {{count}} sessions.",
+    "nothingSlipped": "Nothing slipped.",
+    "skippedLeftOut": "Skipped days are left out."
+  },
+  "legend": {
+    "done": "done",
+    "missed": "missed",
+    "skipped": "skipped"
+  },
+  "row": {
+    "strength": "strength",
+    "perDay": "{{value}} a day"
+  },
+  "spoken": {
+    "days_one": "{{name}}: {{done}} of {{count}} day done, {{missed}} missed, {{skipped}} skipped",
+    "days_other": "{{name}}: {{done}} of {{count}} days done, {{missed}} missed, {{skipped}} skipped",
+    "sessions_one": "{{name}}: {{done}} of {{count}} session done, {{missed}} missed, {{skipped}} skipped",
+    "sessions_other": "{{name}}: {{done}} of {{count}} sessions done, {{missed}} missed, {{skipped}} skipped",
+    "logged_one": "{{name}}: logged on {{count}} day",
+    "logged_other": "{{name}}: logged on {{count}} days",
+    "nothingDue": "{{name}}: nothing scheduled"
+  },
+  "empty": "No trackers yet.",
+  "couldNotLoad": "Could not load your review.",
+  "history": {
+    "yearTitle": "The past year",
+    "yearA11y": "The past year: {{done}} done, {{missed}} missed, {{skipped}} skipped",
+    "strengthLineCaption": "Last 90 days",
+    "strengthLineA11y": "Strength over the last 90 days, now {{score}}"
+  }
+}

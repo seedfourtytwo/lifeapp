@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View, type TextInput } from 'react-native';
 import { Button } from 'react-native-paper';
 import ChoiceChip from '../ChoiceChip';
 import QuietText from '../QuietText';
@@ -21,6 +21,7 @@ import {
   type HabitTimerPlaybackMode,
 } from '../../protocol';
 import { formSectionStyles as styles } from './FormSection';
+import { notify } from '../sheet/confirm';
 
 type SoundFieldState = {
   habitSoundTrackId: string;
@@ -34,6 +35,9 @@ type Props = {
   onDailyGoalMinutesChange: (value: string) => void;
   onAnySessionCountsChange: (value: boolean) => void;
   onSoundChange: (patch: Partial<SoundFieldState>) => void;
+  /** Why the daily goal cannot be saved, shown under it. */
+  dailyGoalError?: string | null;
+  dailyGoalRef?: React.Ref<TextInput>;
 };
 
 export default function HabitSoundEditorFields({
@@ -43,6 +47,8 @@ export default function HabitSoundEditorFields({
   onDailyGoalMinutesChange,
   onAnySessionCountsChange,
   onSoundChange,
+  dailyGoalError = null,
+  dailyGoalRef,
 }: Props) {
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
@@ -88,7 +94,10 @@ export default function HabitSoundEditorFields({
 
     const previewSound = buildPreviewSound();
     if (!previewSound) {
-      Alert.alert(t('habitSoundFields.noSoundSelectedTitle'), t('habitSoundFields.noSoundSelectedBody'));
+      void notify({
+        title: t('habitSoundFields.noSoundSelectedTitle'),
+        message: t('habitSoundFields.noSoundSelectedBody'),
+      });
       return;
     }
 
@@ -104,10 +113,10 @@ export default function HabitSoundEditorFields({
       });
       if (session !== previewSessionRef.current) return;
       if (!started) {
-        Alert.alert(
-          t('habitSoundFields.couldNotPlaySoundTitle'),
-          t('habitSoundFields.couldNotPlaySoundMissingBody'),
-        );
+        void notify({
+          title: t('habitSoundFields.couldNotPlaySoundTitle'),
+          message: t('habitSoundFields.couldNotPlaySoundMissingBody'),
+        });
         return;
       }
       setPreviewPlaying(true);
@@ -115,7 +124,10 @@ export default function HabitSoundEditorFields({
       if (session !== previewSessionRef.current) return;
       const message =
         error instanceof Error ? error.message : tCommon('errors.somethingWentWrong');
-      Alert.alert(t('habitSoundFields.couldNotPlaySoundTitle'), message);
+      void notify({
+        title: t('habitSoundFields.couldNotPlaySoundTitle'),
+        message: message,
+      });
     } finally {
       if (session === previewSessionRef.current) {
         setPreviewLoading(false);
@@ -148,6 +160,8 @@ export default function HabitSoundEditorFields({
         value={dailyGoalMinutes}
         onChangeText={onDailyGoalMinutesChange}
         keyboardType="number-pad"
+        error={dailyGoalError}
+        ref={dailyGoalRef}
       />
       <View style={styles.switchRow}>
         <View style={styles.switchLabel}>

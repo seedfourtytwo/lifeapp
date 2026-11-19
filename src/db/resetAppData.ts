@@ -177,18 +177,6 @@ export async function clearAppData(options: ClearAppDataOptions): Promise<void> 
   });
 }
 
-/** Wipe all local app data — elements, events, dashboard, calendar, weather, preferences. */
-export async function clearAllAppData(): Promise<void> {
-  await clearAppData({
-    activityHistory: true,
-    activityPeriod: { kind: 'all' },
-    calendar: true,
-    weather: true,
-    preferences: true,
-    definitions: true,
-  });
-}
-
 /** Replace everything before importing a backup bundle. */
 export async function clearDataForImport(db: SQLiteDatabase): Promise<void> {
   for (const { clear } of CLEAR_ORDER) {

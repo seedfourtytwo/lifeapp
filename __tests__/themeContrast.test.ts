@@ -88,7 +88,7 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
 
 /**
  * Colours that are not Paper roles but still paint words and marks: the
- * accent, the Insights series, the notebook amber. Each sits on
+ * accent and the notebook amber. Each sits on
  * the same grounds as body text and is held to the same floor, because each of
  * them colours a label somewhere (a chip, a peek title, a notebook name).
  */
@@ -102,7 +102,6 @@ describe.each(THEMES)('$name palette', ({ name, theme }) => {
   const inks: [string, string][] = [
     ['accent', palette.accent],
     ['amber', palette.amber],
-    ...palette.series.map((s, i): [string, string] => [`series ${i}`, s]),
   ];
 
   it.each(inks.flatMap(([ink, fg]) => grounds.map(([g, bg]) => [`${ink} on ${g}`, fg, bg])))(
@@ -112,8 +111,19 @@ describe.each(THEMES)('$name palette', ({ name, theme }) => {
     },
   );
 
-  it('has five distinct series colours', () => {
-    expect(new Set(palette.series).size).toBe(5);
+  /**
+   * Review's day cells are marks, not words, so they answer to the 3:1 floor
+   * for graphics: a missed day's ring and a skipped day's dot in the quiet
+   * ink, an open day's ring in the accent — on a tile, and on the well a
+   * pressed row washes to. `palette.track` would not hold it.
+   */
+  it.each([
+    ['missed ring on a tile', c.onSurfaceVariant, c.surface],
+    ['missed ring on a pressed row', c.onSurfaceVariant, c.surfaceVariant],
+    ['open ring on a tile', palette.accent, c.surface],
+    ['open ring on a pressed row', palette.accent, c.surfaceVariant],
+  ])('%s clears the non-text floor', (_label, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
   });
 
   /** An empty track has to show on the tinted cards it sits in, not vanish into them. */

@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 
 /** How long "Copied" stays on the menu item before it reverts. */
 const COPY_FEEDBACK_MS = 2000;
-/** Paper Menu overlay animation (~220ms) plus a beat so Alert/remount don't race it. */
+/** Paper Menu overlay animation (~220ms) plus a beat so a confirm sheet or remount doesn't race it. */
 const MENU_SETTLE_MS = 280;
 
 type Options = {
@@ -73,7 +73,7 @@ export function useNoteEditorChrome({
   );
 
   /**
-   * Close the menu, let its overlay finish, then act. Running an Alert or a
+   * Close the menu, let its overlay finish, then act. Opening a confirmation or a
    * remount into a closing Paper Menu drops the next tap on the floor.
    */
   const closeMenuThen = useCallback((action: () => void) => {

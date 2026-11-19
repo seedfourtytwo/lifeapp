@@ -1,4 +1,3 @@
-import { Alert } from 'react-native';
 import { stopWidgetTimer } from 'life-widget';
 import { i18n } from '../../i18n';
 import {
@@ -33,6 +32,7 @@ import {
   refreshLockScreenTicker,
 } from './habitTimerPresentation';
 import { stopHabitTimerLockScreenTicker } from './habitTimerLockScreen';
+import { confirm, notify } from '../../components/sheet/confirm';
 
 function playSoundForConfig(
   elementId: string,
@@ -125,42 +125,36 @@ export async function finishHabitTimer(
 }
 
 function alertCouldNotStart(error: unknown): void {
-  Alert.alert(
-    i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
-    error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-  );
+  void notify({
+    title: i18n.t('trackers:habitWidget.couldNotStartTimerTitle'),
+    message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+  });
 }
 
 function alertTimerRunningInWidget(): void {
-  Alert.alert(
-    i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
-    i18n.t('trackers:habitWidget.timerRunningInWidgetMessage'),
-  );
+  void notify({
+    title: i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
+    message: i18n.t('trackers:habitWidget.timerRunningInWidgetMessage'),
+  });
 }
 
 /** The widget's timer is stale or forgotten: let the user end it and carry on here. */
-function offerWidgetTakeover(elementId: string, config: HabitConfig): void {
-  Alert.alert(
-    i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
-    i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOverMessage'),
-    [
-      { text: i18n.t('common:actions.cancel'), style: 'cancel' },
-      {
-        text: i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOver'),
-        onPress: () => {
-          void enqueueTimerStart(async () => {
-            try {
-              await stopWidgetTimer(elementId);
-            } catch (error) {
-              alertCouldNotStart(error);
-              return;
-            }
-            await startFromIdle(elementId, config, true);
-          });
-        },
-      },
-    ],
-  );
+async function offerWidgetTakeover(elementId: string, config: HabitConfig): Promise<void> {
+  const takeOver = await confirm({
+    title: i18n.t('trackers:habitWidget.timerRunningInWidgetTitle'),
+    message: i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOverMessage'),
+    confirmLabel: i18n.t('trackers:habitWidget.timerRunningInWidgetTakeOver'),
+  });
+  if (!takeOver) return;
+  void enqueueTimerStart(async () => {
+    try {
+      await stopWidgetTimer(elementId);
+    } catch (error) {
+      alertCouldNotStart(error);
+      return;
+    }
+    await startFromIdle(elementId, config, true);
+  });
 }
 
 async function startFromIdle(
@@ -182,7 +176,7 @@ async function startFromIdle(
     if (await isTimerRunningInWidget(elementId)) {
       // A stop that changed nothing (older build): never start a second timer.
       if (afterWidgetStop) alertTimerRunningInWidget();
-      else offerWidgetTakeover(elementId, config);
+      else void offerWidgetTakeover(elementId, config);
       return;
     }
     await finalizeOtherTimers(elementId);
@@ -193,10 +187,10 @@ async function startFromIdle(
       void finishHabitTimer(id, cfg, trackCompleted, {
         playChime: trackCompleted === true,
       }).catch((error) => {
-        Alert.alert(
-          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-        );
+        void notify({
+          title: i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+        });
       });
     });
   } catch (error) {
@@ -228,12 +222,12 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
           ? () => {
               void finishHabitTimer(elementId, config, true, { playChime: true }).catch(
                 (error) => {
-                  Alert.alert(
-                    i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-                    error instanceof Error
+                  void notify({
+                    title: i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+                    message: error instanceof Error
                       ? error.message
                       : i18n.t('common:errors.somethingWentWrong'),
-                  );
+                  });
                 },
               );
             }
@@ -244,10 +238,10 @@ export function resumeHabitTimerSession(elementId: string, config: HabitConfig):
       void finishHabitTimer(id, cfg, trackCompleted, {
         playChime: trackCompleted === true,
       }).catch((error) => {
-        Alert.alert(
-          i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
-          error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
-        );
+        void notify({
+          title: i18n.t('trackers:habitWidget.couldNotFinishTimerTitle'),
+          message: error instanceof Error ? error.message : i18n.t('common:errors.somethingWentWrong'),
+        });
       });
     });
   }

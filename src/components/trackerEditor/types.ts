@@ -1,4 +1,16 @@
+import type { NativeMethods } from 'react-native';
 import type { HabitSchedule, HabitTrackingMode, HabitTimerPlaybackMode, TrackerIconId } from '../../protocol';
+import type { TrackerEditorField, TrackerEditorProblem } from '../../utils/parseTrackerEditorSave';
+
+/**
+ * What Save could not accept, handed to the fields so the one at fault can say
+ * so, and a way for each field to tell the sheet where it is so the sheet can
+ * scroll there.
+ */
+export type TrackerEditorProblemProps = {
+  problem?: TrackerEditorProblem | null;
+  anchorRef?: (field: TrackerEditorField) => (node: Pick<NativeMethods, 'measureLayout'> | null) => void;
+};
 
 export type HabitScheduleType = HabitSchedule['type'];
 

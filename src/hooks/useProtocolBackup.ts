@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   clearAppData,
@@ -14,6 +13,7 @@ import {
 } from '../utils/protocolBackup';
 import { exportBackupAlertKeys } from '../utils/protocolBackupResult';
 import { reloadStoresAfterImport } from '../utils/reloadStoresAfterImport';
+import { confirm, notify } from '../components/sheet/confirm';
 
 export function useProtocolBackup() {
   const { t } = useTranslation(['settings', 'common']);
@@ -24,12 +24,12 @@ export function useProtocolBackup() {
     setBusy(true);
     try {
       const { titleKey, bodyKey } = exportBackupAlertKeys(await exportBackupToFile());
-      Alert.alert(t(titleKey), t(bodyKey));
+      void notify({ title: t(titleKey), message: t(bodyKey) });
     } catch (error) {
-      Alert.alert(
-        t('settings:data.exportFailedTitle'),
-        error instanceof Error ? error.message : t('settings:data.exportFailedBodyFallback'),
-      );
+      void notify({
+        title: t('settings:data.exportFailedTitle'),
+        message: error instanceof Error ? error.message : t('settings:data.exportFailedBodyFallback'),
+      });
     } finally {
       setBusy(false);
     }
@@ -42,12 +42,15 @@ export function useProtocolBackup() {
       if (!imported) return;
 
       await reloadStoresAfterImport();
-      Alert.alert(t('settings:data.importCompleteTitle'), t('settings:data.importCompleteBody'));
+      void notify({
+        title: t('settings:data.importCompleteTitle'),
+        message: t('settings:data.importCompleteBody'),
+      });
     } catch (error) {
-      Alert.alert(
-        t('settings:data.importFailedTitle'),
-        error instanceof Error ? error.message : t('settings:data.importFailedBodyFallback'),
-      );
+      void notify({
+        title: t('settings:data.importFailedTitle'),
+        message: error instanceof Error ? error.message : t('settings:data.importFailedBodyFallback'),
+      });
     } finally {
       setBusy(false);
     }
@@ -55,25 +58,21 @@ export function useProtocolBackup() {
 
   const handleImport = useCallback(() => {
     if (!isImportBackupAvailable()) {
-      Alert.alert(
-        t('common:alerts.rebuildRequiredTitle'),
-        t('settings:data.importRebuildRequiredBody'),
-      );
+      void notify({
+        title: t('common:alerts.rebuildRequiredTitle'),
+        message: t('settings:data.importRebuildRequiredBody'),
+      });
       return;
     }
 
-    Alert.alert(
-      t('settings:data.importConfirmTitle'),
-      t('settings:data.importConfirmBody'),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('settings:data.importConfirmAction'),
-          style: 'destructive',
-          onPress: () => void runImport(),
-        },
-      ],
-    );
+    void confirm({
+      title: t('settings:data.importConfirmTitle'),
+      message: t('settings:data.importConfirmBody'),
+      confirmLabel: t('settings:data.importConfirmAction'),
+      destructive: true,
+    }).then((confirmed) => {
+      if (confirmed) void runImport();
+    });
   }, [runImport, t]);
 
   const runClearData = useCallback(
@@ -94,17 +93,17 @@ export function useProtocolBackup() {
         });
         setClearSheetVisible(false);
         const lines = describeClearPlan(options);
-        Alert.alert(
-          t('settings:data.clearedTitle'),
-          lines.length > 0
+        void notify({
+          title: t('settings:data.clearedTitle'),
+          message: lines.length > 0
             ? lines.map((line) => `• ${line}`).join('\n')
             : t('settings:data.clearedBodyFallback'),
-        );
+        });
       } catch (error) {
-        Alert.alert(
-          t('settings:data.clearFailedTitle'),
-          error instanceof Error ? error.message : t('settings:data.clearFailedBodyFallback'),
-        );
+        void notify({
+          title: t('settings:data.clearFailedTitle'),
+          message: error instanceof Error ? error.message : t('settings:data.clearFailedBodyFallback'),
+        });
       } finally {
         setBusy(false);
       }
@@ -119,26 +118,18 @@ export function useProtocolBackup() {
         (lines.length > 0 ? `${lines.map((line) => `• ${line}`).join('\n')}\n\n` : '') +
         t('settings:data.clearConfirmSuffix');
 
-      if (options.definitions) {
-        Alert.alert(t('settings:data.clearConfirmDefinitionsTitle'), body, [
-          { text: t('common:actions.cancel'), style: 'cancel' },
-          {
-            text: t('settings:data.clearConfirmDefinitionsAction'),
-            style: 'destructive',
-            onPress: () => void runClearData(options),
-          },
-        ]);
-        return;
-      }
-
-      Alert.alert(t('settings:data.clearConfirmTitle'), body, [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('settings:data.clearConfirmAction'),
-          style: 'destructive',
-          onPress: () => void runClearData(options),
-        },
-      ]);
+      void confirm({
+        title: options.definitions
+          ? t('settings:data.clearConfirmDefinitionsTitle')
+          : t('settings:data.clearConfirmTitle'),
+        message: body,
+        confirmLabel: options.definitions
+          ? t('settings:data.clearConfirmDefinitionsAction')
+          : t('settings:data.clearConfirmAction'),
+        destructive: true,
+      }).then((confirmed) => {
+        if (confirmed) void runClearData(options);
+      });
     },
     [runClearData, t],
   );

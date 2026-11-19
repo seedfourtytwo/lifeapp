@@ -45,10 +45,8 @@
     "deleteBody": "« {{name}} » ainsi que tout son historique et ses notes de jour seront supprimés définitivement."
   },
   "card": {
-    "counterBadge": "Compteur",
     "timerBadge": "Minuteur",
     "checkOffBadge": "Coche",
-    "edit": "Modifier",
     "history": "Historique",
     "archive": "Archiver",
     "restore": "Restaurer",
@@ -66,9 +64,10 @@
     "skipped": "{{name}} sauté pour aujourd’hui"
   },
   "editor": {
-    "newCounterTitle": "Nouveau compteur",
+    "newTrackerTitle": "Nouveau suivi",
+    "kindHabit": "Habitude",
+    "kindCounter": "Compteur",
     "editCounterTitle": "Modifier le compteur",
-    "newHabitTitle": "Nouvelle habitude",
     "editHabitTitle": "Modifier l'habitude",
     "nameLabel": "Nom",
     "iconSectionTitle": "Icône",
@@ -133,8 +132,8 @@
     "setFirstDayHint": "Définissez un premier jour (AAAA-MM-JJ).",
     "dueEveryDayFromHint": "Due chaque jour à partir du {{date}}.",
     "dueEveryNDaysFromHint": "Due tous les {{count}} jours à partir du {{date}}.",
-    "timeWindowSectionTitle": "Plage horaire",
-    "timeWindowSectionDescription": "Facultatif. Limite l'affichage de l'habitude dans l'onglet Habitudes et permet de définir un rappel avant le début.",
+    "timeOfDaySectionTitle": "Moment de la journée",
+    "timeOfDaySectionDescription": "Facultatif. Limite l'affichage de l'habitude dans l'onglet Habitudes et permet de définir un rappel avant le début.",
     "useTimeRangeLabel": "Utiliser une plage horaire quotidienne",
     "fromLabel": "De",
     "fromPlaceholder": "06:00",
@@ -145,7 +144,10 @@
     "reminderBeforeStartLabel": "Rappel avant le début",
     "minutesBeforeLabel": "Minutes avant",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Toute la journée",
+    "timeOfDayAny": "Toute la journée",
+    "timeOfDayReminder": "rappel {{count}} min avant",
+    "timeOfDayReminderAtStart": "rappel au début",
+    "timeOfDayHiddenOutside": "masquée en dehors",
     "timesPerWeek": "Fois par semaine",
     "timesPerWeekLabel": "Combien de jours par semaine",
     "timesPerWeekPreset_one": "{{count}} fois par semaine",
@@ -197,6 +199,7 @@
     "couldNotUpdateTitle": "Mise à jour de l'habitude impossible",
     "couldNotStartTimerTitle": "Impossible de démarrer le minuteur",
     "timerRunningInWidgetTitle": "Minuteur en cours dans le widget",
+    "runningInWidget": "En cours dans le widget",
     "timerRunningInWidgetMessage": "Cette habitude est chronométrée depuis le widget de l’écran d’accueil. Arrêtez-le d’abord là-bas.",
     "timerRunningInWidgetTakeOverMessage": "Le widget chronomètre cette habitude. Continuer arrête son minuteur et enregistre le temps écoulé.",
     "timerRunningInWidgetTakeOver": "Arrêter et continuer",
@@ -215,8 +218,8 @@
     "soundPlaysOnceA11y": "Le son est joué une fois, puis le minuteur s'arrête",
     "streakWeeks_one": "{{count}} semaine d’affilée",
     "streakWeeks_other": "{{count}} semaines d’affilée",
-    "strengthLabel": "Solidité",
-    "strengthA11y": "Solidité {{score}} sur 100"
+    "strengthA11y": "Solidité {{score}} sur 100",
+    "strengthLabel": "Solidité"
   },
   "lockScreen": {
     "paused": "En pause",

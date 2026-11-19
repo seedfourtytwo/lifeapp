@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Menu, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +36,7 @@ import { sheetBottomPadding } from '../components/sheet/sheetGesture';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { useKeyboardHeight } from '../hooks/useDialogKeyboardLift';
 import { layout, space } from '../theme/spacing';
+import { confirm, notify } from '../components/sheet/confirm';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CalendarEventEditor'>;
 
@@ -157,14 +158,20 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
 
   const buildDates = (): { start: Date; end: Date } | null => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-      Alert.alert(t('editor.invalidDateTitle'), t('editor.invalidDateBody'));
+      void notify({
+        title: t('editor.invalidDateTitle'),
+        message: t('editor.invalidDateBody'),
+      });
       return null;
     }
     if (allDay) {
       const start = startOfLocalDay(parseDateOnlyLocal(startDate));
       const end = startOfLocalDay(parseDateOnlyLocal(endDate));
       if (end < start) {
-        Alert.alert(t('editor.invalidRangeTitle'), t('editor.invalidRangeBody'));
+        void notify({
+          title: t('editor.invalidRangeTitle'),
+          message: t('editor.invalidRangeBody'),
+        });
         return null;
       }
       return { start, end };
@@ -172,7 +179,10 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
     const start = applyTime(parseDateOnlyLocal(startDate), startTime.hour, startTime.minute);
     const end = applyTime(parseDateOnlyLocal(endDate), endTime.hour, endTime.minute);
     if (end.getTime() <= start.getTime()) {
-      Alert.alert(t('editor.invalidTimeTitle'), t('editor.invalidTimeBody'));
+      void notify({
+        title: t('editor.invalidTimeTitle'),
+        message: t('editor.invalidTimeBody'),
+      });
       return null;
     }
     return { start, end };
@@ -181,7 +191,10 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
   const handleSave = async () => {
     const trimmed = title.trim();
     if (!trimmed) {
-      Alert.alert(t('editor.titleRequiredTitle'), t('editor.titleRequiredBody'));
+      void notify({
+        title: t('editor.titleRequiredTitle'),
+        message: t('editor.titleRequiredBody'),
+      });
       return;
     }
     const dates = buildDates();
@@ -215,34 +228,33 @@ export default function CalendarEventEditorScreen({ navigation, route }: Props) 
       else await createEvent(payload);
       navigation.goBack();
     } catch (error) {
-      Alert.alert(
-        t('editor.couldNotSaveTitle'),
-        error instanceof Error ? error.message : t('common:errors.unknownError'),
-      );
+      void notify({
+        title: t('editor.couldNotSaveTitle'),
+        message: error instanceof Error ? error.message : t('common:errors.unknownError'),
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!eventId) return;
-    Alert.alert(t('editor.deleteConfirmTitle'), t('editor.deleteConfirmBody'), [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      {
-        text: t('common:actions.delete'),
-        style: 'destructive',
-        onPress: () => {
-          void deleteEvent(eventId)
-            .then(() => navigation.goBack())
-            .catch((error) => {
-              Alert.alert(
-                t('editor.couldNotDeleteTitle'),
-                error instanceof Error ? error.message : t('common:errors.unknownError'),
-              );
-            });
-        },
-      },
-    ]);
+    const confirmed = await confirm({
+      title: t('editor.deleteConfirmTitle'),
+      message: t('editor.deleteConfirmBody'),
+      confirmLabel: t('common:actions.delete'),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteEvent(eventId);
+      navigation.goBack();
+    } catch (error) {
+      void notify({
+        title: t('editor.couldNotDeleteTitle'),
+        message: error instanceof Error ? error.message : t('common:errors.unknownError'),
+      });
+    }
   };
 
   const repeatLabel =

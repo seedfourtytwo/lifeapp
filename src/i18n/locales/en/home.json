@@ -1,25 +1,23 @@
 {
   "dock": {
-    "habitsTab": "Habits",
-    "countersTab": "Counters",
-    "nutritionTab": "Nutrition",
-    "todosTab": "Todos",
+    "today": "Today",
+    "journal": "Journal",
+    "calendar": "Calendar",
+    "review": "Review",
     "more": "More"
   },
   "dayStatus": {
     "a11y": "{{date}} · resets at {{time}}"
   },
-  "habitsTab": {
-    "addHabitA11y": "Add a habit",
+  "today": {
+    "now": "Now",
+    "todos": "Todos",
+    "done": "Done",
+    "emptyNoTrackers": "No habits or counters yet. Add one to start your daily list.",
+    "emptyNoActiveTrackers": "No active habits or counters. Restore something from Archive in Trackers.",
+    "addTrackerA11y": "Add a tracker",
     "retry": "Retry",
-    "emptyNoHabits": "No habits yet. Add one to start your daily list.",
-    "emptyNoActiveHabits": "No active habits. Restore something from Archive in Trackers.",
-    "emptyNothingDueToday": "Nothing due today — check schedule or time window in Trackers."
-  },
-  "countersTab": {
-    "retry": "Retry",
-    "emptyNoActiveCounters": "No active counters. Restore something from Archive in Trackers.",
-    "emptyNoCounters": "No counters yet. Add one to track water, steps, or anything countable. Totals reset each day.",
+    "emptyNothingDue": "Nothing due today — check schedule or time window in Trackers.",
     "couldNotLogBody": "Something went wrong"
   },
   "emptyTabState": {
@@ -70,16 +68,13 @@
   },
   "dayHeader": {
     "habitsDone": "{{done}} of {{total}} done",
+    "todayDone": "{{done}} of {{total}} done",
     "habitsNoneDue": "Nothing due",
     "countersLogged_one": "1 counter logged",
     "countersLogged_other": "{{count}} counters logged",
     "countersNone": "Nothing yet",
     "streak_one": "1 day in a row",
     "streak_other": "{{count}} days in a row",
-    "activityA11y_one": "Last {{days}} days, active on 1",
-    "activityA11y_other": "Last {{days}} days, active on {{count}}",
-    "todosOpen_one": "1 open",
-    "todosOpen_other": "{{count}} open",
-    "todosClear": "All clear"
+    "weekA11y": "This week: something logged on {{active}} of {{elapsed}} days. Today: {{logged}} of {{total}} trackers."
   }
 }

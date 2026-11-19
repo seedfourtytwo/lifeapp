@@ -4,18 +4,9 @@
     "action": "Add",
     "dictationTruncated": "That was longer than a todo title holds — the rest was cut."
   },
-  "sections": {
-    "overdue": "Overdue",
-    "today": "Today",
-    "later": "Later",
-    "undated": "No date"
-  },
   "list": {
-    "empty": "Nothing to do.",
     "reorderHint": "Long-press to reorder",
-    "historyA11y": "Completed todos",
-    "loadFailed": "Could not load your todos.",
-    "retry": "Retry"
+    "loadFailed": "Could not load your todos."
   },
   "row": {
     "doneA11y": "Mark {{title}} done",
@@ -35,7 +26,6 @@
     "editTitle": "Edit todo",
     "titleLabel": "Title",
     "noteLabel": "Note",
-    "notePlaceholder": "Anything you want to remember about this",
     "deadlineLabel": "Deadline",
     "deadlineNone": "No date",
     "dueToday": "Today",
@@ -46,7 +36,6 @@
     "deadlinePlaceholder": "YYYY-MM-DD",
     "deadlineInvalid": "Use YYYY-MM-DD, or pick No date",
     "save": "Save",
-    "cancel": "Cancel",
     "delete": "Delete",
     "titleRequired": "Give it a title first",
     "noteDictationTruncated": "Note is at the character limit — some dictation was cut."

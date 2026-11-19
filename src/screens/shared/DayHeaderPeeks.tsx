@@ -19,12 +19,12 @@ interface Props {
 }
 
 /**
- * The two things that sit beside the date on every Home tab: what the weather
+ * The two things that sit beside the date on the Today page: what the weather
  * is, and whether anything is coming up.
  *
  * Both are one glyph that opens the same kind of small panel. They live inside
  * `DayHeader` rather than being passed in through its `actions` slot, because
- * that slot is already taken on four of the five tabs and these two belong to
+ * that slot is already taken on several pages and these two belong to
  * the header itself, not to whichever tab is showing.
  *
  * The calendar glyph is unconditional: it reads nothing until it is tapped, so

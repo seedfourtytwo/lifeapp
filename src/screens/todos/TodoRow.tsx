@@ -1,19 +1,25 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import QuietText from '../../components/QuietText';
 import { useAppTheme } from '../../hooks/useAppTheme';
-import { layout, space } from '../../theme/spacing';
+import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { formatShortDate } from '../../utils/dates';
 import { todoSection, type Todo } from '../../protocol';
+import TodayMark from '../today/TodayMark';
 
 type Props = {
   todo: Todo;
   today: string;
+  /** The box was pressed: the todo is finished. */
   onToggle: (todo: Todo) => void;
+  /** The words were pressed: open the editor. */
   onOpen: (todo: Todo) => void;
+  /** Picked up for a drag: the row keeps its wash while it is carried. */
+  lifted?: boolean;
   onLongPressReorder?: (event: GestureResponderEvent) => void;
   onReorderTouchMove?: (event: GestureResponderEvent) => void;
   onReorderTouchEnd?: (event: GestureResponderEvent) => void;
@@ -29,11 +35,26 @@ function daysLate(dueDate: string, today: string): number {
   return Math.round((now - due) / 86_400_000);
 }
 
-export default function TodoRow({
+/** The box's touch target; the drawn square sits in the middle of it. */
+export const TODO_MARK_TARGET = 48;
+/** Where a todo's words start, from the row's left edge. The quick-add lines up with it. */
+export const TODO_TITLE_INSET = TODO_MARK_TARGET + space.sm;
+
+/**
+ * An open todo, written straight on the page: a box to tick and a line of
+ * words. A tile is kept for the live daily controls — a habit, a counter — so
+ * a one-off errand does not borrow their weight.
+ *
+ * The box is its own target, so finishing is never a mis-tap away from
+ * editing. Pressing the words washes the row in the well colour; nothing is
+ * dimmed.
+ */
+function TodoRow({
   todo,
   today,
   onToggle,
   onOpen,
+  lifted = false,
   onLongPressReorder,
   onReorderTouchMove,
   onReorderTouchEnd,
@@ -48,6 +69,7 @@ export default function TodoRow({
   const section = todoSection(todo, today);
   const overdue = section === 'overdue';
 
+  // Every dated todo says when it is due: the list carries no due headings.
   let deadline: string | null = null;
   if (todo.dueDate != null) {
     if (section === 'today') {
@@ -72,23 +94,18 @@ export default function TodoRow({
       accessibilityHint={reorderHint}
       style={({ pressed }) => [
         styles.row,
-        {
-          backgroundColor: theme.colors.surface,
-          borderRadius: deco.radius.lg,
-          transform: [{ scale: pressed ? PRESSED_SCALE : 1 }],
-        },
+        { borderRadius: deco.radius.lg },
+        (pressed || lifted) && { backgroundColor: theme.colors.surfaceVariant },
       ]}
     >
-      {/* Its own hit target: ticking must never be a mis-tap away from editing. */}
       <Pressable
         onPress={() => onToggle(todo)}
-        hitSlop={0}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: false }}
         accessibilityLabel={t('row.doneA11y', { title: todo.title })}
-        style={styles.tickTarget}
+        style={styles.mark}
       >
-        <View style={[styles.tickRing, { borderColor: theme.colors.onSurfaceVariant }]} />
+        <TodayMark kind="todoOpen" />
       </Pressable>
 
       <View style={styles.body}>
@@ -99,19 +116,17 @@ export default function TodoRow({
         {deadline || todo.note ? (
           <View style={styles.meta}>
             {deadline ? (
-              <Text
-                style={[
-                  typeScale.secondary,
-                  { color: overdue ? theme.colors.error : theme.colors.onSurfaceVariant },
-                ]}
+              <QuietText
+                numberOfLines={1}
+                style={[typeScale.secondary, overdue && { color: theme.colors.error }]}
               >
                 {deadline}
-              </Text>
+              </QuietText>
             ) : null}
             {todo.note ? (
               <MaterialCommunityIcons
                 name="note-text-outline"
-                size={14}
+                size={NOTE_GLYPH}
                 color={theme.colors.onSurfaceVariant}
                 accessibilityLabel={t('row.hasNote')}
               />
@@ -123,34 +138,24 @@ export default function TodoRow({
   );
 }
 
-/** The same give as a habit tile under a finger. */
-const PRESSED_SCALE = 0.98;
-const TICK_TARGET = 48;
-const TICK_RING = 30;
+const NOTE_GLYPH = 14;
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 60,
-    paddingLeft: space.xs,
-    paddingRight: space.lg,
-    paddingVertical: space.sm,
-    marginBottom: layout.rowGap,
-    gap: space.xs,
+    minHeight: 52,
+    gap: space.sm,
+    paddingRight: space.md,
+    paddingVertical: space.xs,
+    marginBottom: space.xs,
   },
-  tickTarget: {
-    width: TICK_TARGET,
-    height: TICK_TARGET,
+  // No text in it, so the target is a fixed box.
+  mark: {
+    width: TODO_MARK_TARGET,
+    height: TODO_MARK_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  tickRing: {
-    width: TICK_RING,
-    height: TICK_RING,
-    // Half the size: the ring is a circle.
-    borderRadius: TICK_RING / 2,
-    borderWidth: 1.5,
   },
   body: {
     flex: 1,
@@ -163,3 +168,6 @@ const styles = StyleSheet.create({
     gap: space.xs + space.xxs,
   },
 });
+
+/** Memoised: with stable callbacks, a tick re-renders the rows that moved. */
+export default memo(TodoRow);

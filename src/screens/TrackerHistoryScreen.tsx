@@ -6,9 +6,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
+import { counterRunStats } from '../components/history/counterRunStats';
 import HistoryRangeControl from '../components/history/HistoryRangeControl';
 import HistoryStatRow from '../components/history/HistoryStatRow';
 import { historyStats } from '../components/history/historyStats';
+import StrengthLine from '../components/history/StrengthLine';
+import YearHeatmap from '../components/history/YearHeatmap';
+import { yearReview, type YearReview } from '../components/history/yearReview';
 import { InteractiveDailyChart } from '../components/InteractiveDailyChart';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { getDatabase } from '../db/client';
@@ -21,6 +25,7 @@ import {
   chartPlotValue,
   chartUnitLabel,
   completedDatesFromHabitEvents,
+  COUNTER_DAY_RULES_SCHEDULE,
   CounterConfigSchema,
   countsAsScheduledDay,
   formatHabitTimerDuration,
@@ -37,14 +42,20 @@ import {
   movingAverage,
   type HistoryRangeDays,
 } from '../utils/chartStats';
+import { HEATMAP_WEEKS, loadReviewData } from '../review';
 import { createdOnLocalDate } from '../utils/createdOnLocalDate';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 import { formatChartLabel, formatFullDate, lastNDates, streakHistorySinceDate } from '../utils/dates';
 import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 import { playChartSelectHaptic } from '../utils/habitHaptics';
-import { computeCounterStreaks } from '../utils/counterStreakCompute';
+import {
+  completedDatesFromCounterDailyTotals,
+  computeCounterStreaks,
+} from '../utils/counterStreakCompute';
 import {
   computeHabitStreaksFromEvents,
+  dayHistoryFromDailyTotals,
   habitDayHistoryFromEvents,
 } from '../utils/habitStreakCompute';
 import {
@@ -54,6 +65,9 @@ import {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TrackerHistory'>;
 
+/** Past this the page stops widening and centres, as Review does. */
+const MAX_CONTENT_WIDTH = 1040;
+
 interface DayRow {
   date: string;
   total: number;
@@ -62,7 +76,7 @@ interface DayRow {
 
 export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const theme = useTheme();
-  const { t } = useTranslation(['insights', 'common', 'trackers']);
+  const { t } = useTranslation(['insights', 'common', 'trackers', 'review']);
   const { decorations: deco } = useAppTheme();
   const { elementId } = route.params;
   const [element, setElement] = useState<ElementDefinition | null>(null);
@@ -74,6 +88,8 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
   const [personalBest, setPersonalBest] = useState(0);
   /** Strength 0–100; null when the tracker has none (a counter without a target). */
   const [score, setScore] = useState<number | null>(null);
+  /** The year heatmap and the strength line; null until loaded. */
+  const [year, setYear] = useState<YearReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notesByDate, setNotesByDate] = useState<Map<string, string>>(new Map());
@@ -110,6 +126,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         setStreak(0);
         setPersonalBest(0);
         setScore(null);
+        setYear(null);
         return true;
       }
 
@@ -160,9 +177,7 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
               ),
         );
       } else {
-        setStreak(0);
         setStreakUnit('days');
-        setPersonalBest(0);
         const target = CounterConfigSchema.safeParse(loaded.config).data?.dailyTarget;
         if (target && target > 0) {
           const yearTotals = await eventRepo.getDailyTotalsByElement(
@@ -171,18 +186,36 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
             streakHistorySinceDate(),
           );
           if (generation !== loadGenerationRef.current) return false;
-          setScore(
-            computeCounterStreaks(
-              yearTotals,
-              target,
-              undefined,
-              createdOnLocalDate(loaded.createdAt),
-            ).score,
+          const result = computeCounterStreaks(
+            yearTotals,
+            target,
+            undefined,
+            createdOnLocalDate(loaded.createdAt),
+          );
+          setStreak(result.streak);
+          setScore(result.score);
+          const history = dayHistoryFromDailyTotals(yearTotals, (total) => total >= target);
+          setPersonalBest(
+            computePersonalBestStreak(
+              completedDatesFromCounterDailyTotals(yearTotals, target),
+              (date) => countsAsScheduledDay(COUNTER_DAY_RULES_SCHEDULE, date, history),
+            ),
           );
         } else {
+          setStreak(0);
+          setPersonalBest(0);
           setScore(null);
         }
       }
+
+      const today = currentAppCalendarDate();
+      const [reviewData] = await loadReviewData(db, {
+        elements: [loaded],
+        days: HEATMAP_WEEKS * 7,
+        today,
+      });
+      if (generation !== loadGenerationRef.current) return false;
+      setYear(reviewData ? yearReview(reviewData, today) : null);
       return true;
     } catch (err) {
       if (generation !== loadGenerationRef.current) return false;
@@ -324,6 +357,8 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         daysLogged: chartModel.activity.activeDays,
         unit: chartModel.chartUnit,
       });
+  // A counter with a target also has a run of days that hit it.
+  const runStats = chartModel.isHabit ? [] : counterRunStats({ streak, bestRun: personalBest });
   const tile = { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg };
 
   return (
@@ -345,19 +380,27 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
                 <QuietText style={typeScale.caption}>{t('history.statStrength')}</QuietText>
               </View>
               <QuietText style={typeScale.secondary}>{t('history.strengthExplainer')}</QuietText>
+              {year && year.strength.length > 0 ? (
+                <View style={styles.strengthLine}>
+                  <StrengthLine
+                    scores={year.strength}
+                    caption={t('review:history.strengthLineCaption')}
+                    accessibilityLabel={t('review:history.strengthLineA11y', { score })}
+                  />
+                </View>
+              ) : null}
             </View>
           ) : null}
+          {runStats.length > 0 ? <HistoryStatRow stats={runStats} /> : null}
           <HistoryStatRow stats={stats} />
           <InteractiveDailyChart
             days={days.map((d) => ({ date: d.date, label: d.label }))}
-            series={[
-              {
-                id: elementId,
-                color: theme.colors.primary,
-                values: chartModel.plotValues,
-                completed: chartModel.completedFlags,
-              },
-            ]}
+            series={{
+              id: elementId,
+              color: theme.colors.primary,
+              values: chartModel.plotValues,
+              completed: chartModel.completedFlags,
+            }}
             selectedDate={selectedDate}
             onSelectDay={handleSelectDay}
             movingAverage={chartModel.ma}
@@ -406,6 +449,20 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
         ) : (
           <QuietText style={typeScale.secondary}>{t('history.tapDayHint')}</QuietText>
         )}
+
+        {year ? (
+          <View style={[styles.tile, styles.yearTile, tile]}>
+            <QuietText style={typeScale.caption}>{t('review:history.yearTitle')}</QuietText>
+            <YearHeatmap
+              columns={year.columns}
+              accessibilityLabel={t('review:history.yearA11y', {
+                done: year.done,
+                missed: year.missed,
+                skipped: year.skipped,
+              })}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       {editorHost}
@@ -415,6 +472,9 @@ export default function TrackerHistoryScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH + layout.gutter * 2,
+    alignSelf: 'center',
     paddingHorizontal: layout.gutter,
     paddingTop: space.lg,
     paddingBottom: space.xxl,
@@ -451,6 +511,12 @@ const styles = StyleSheet.create({
   },
   strengthFigure: {
     alignSelf: 'flex-start',
+  },
+  strengthLine: {
+    marginTop: space.sm,
+  },
+  yearTile: {
+    gap: space.md,
   },
   noteRow: {
     flexDirection: 'row',

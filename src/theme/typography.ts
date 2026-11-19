@@ -34,7 +34,7 @@ export const fontFamily = {
  * their call sites. Roles without a `fontFamily` are the phone's own face.
  */
 export const typeScale = {
-  /** The date a Home tab is showing. One per screen. */
+  /** The date the Today page is showing. One per screen. */
   dayTitle: {
     fontFamily: fontFamily.display,
     fontSize: 34,
@@ -45,6 +45,25 @@ export const typeScale = {
     fontFamily: fontFamily.displayMedium,
     fontSize: 24,
     lineHeight: 30,
+  },
+  /**
+   * Prose the user wrote, read back on the page: a journal entry. The one
+   * place the display face is set at reading size — text meant to be read
+   * slowly, with the leading to match.
+   */
+  reading: {
+    fontFamily: fontFamily.display,
+    fontSize: 18,
+    lineHeight: 27,
+  },
+  /**
+   * A page that opens on a sentence instead of a figure: Review's statement.
+   * Its figures are picked out in `fontFamily.displayMedium`.
+   */
+  statement: {
+    fontFamily: fontFamily.display,
+    fontSize: 27,
+    lineHeight: 34,
   },
   /** A habit, counter or settings row's name. */
   rowName: {

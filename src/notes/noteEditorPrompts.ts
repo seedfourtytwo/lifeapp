@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { confirm } from '../components/sheet/confirm';
 import { i18n } from '../i18n';
 
 /**
@@ -19,20 +19,19 @@ export function confirmClearNoteBody(opts: {
 }): void {
   const { noun, listening, onConfirm } = opts;
   const t = i18n.t.bind(i18n);
-  Alert.alert(
-    listening ? t('common:note.clearExistingTitle') : t('common:note.clearConfirmTitle', { noun }),
-    listening
+  void confirm({
+    title: listening
+      ? t('common:note.clearExistingTitle')
+      : t('common:note.clearConfirmTitle', { noun }),
+    message: listening
       ? t('common:note.clearExistingBody', { noun })
       : t('common:note.clearConfirmBody', { noun }),
-    [
-      { text: t('common:note.cancel'), style: 'cancel' },
-      {
-        text: listening ? t('common:note.clearExistingAction') : t('common:note.clear'),
-        style: 'destructive',
-        onPress: onConfirm,
-      },
-    ],
-  );
+    confirmLabel: listening ? t('common:note.clearExistingAction') : t('common:note.clear'),
+    cancelLabel: t('common:note.cancel'),
+    destructive: true,
+  }).then((confirmed) => {
+    if (confirmed) onConfirm();
+  });
 }
 
 /** Confirm deleting one chapter of a notebook day. `number` is 1-based. */
@@ -42,16 +41,13 @@ export function confirmDeleteChapter(opts: {
 }): void {
   const { number, onConfirm } = opts;
   const t = i18n.t.bind(i18n);
-  Alert.alert(
-    t('journal:chapters.deleteTitle', { number }),
-    t('journal:chapters.deleteBody'),
-    [
-      { text: t('common:note.cancel'), style: 'cancel' },
-      {
-        text: t('journal:chapters.deleteAction'),
-        style: 'destructive',
-        onPress: onConfirm,
-      },
-    ],
-  );
+  void confirm({
+    title: t('journal:chapters.deleteTitle', { number }),
+    message: t('journal:chapters.deleteBody'),
+    confirmLabel: t('journal:chapters.deleteAction'),
+    cancelLabel: t('common:note.cancel'),
+    destructive: true,
+  }).then((confirmed) => {
+    if (confirmed) onConfirm();
+  });
 }

@@ -1,21 +1,18 @@
 {
   "screen": {
     "today": "Aujourd'hui",
-    "journalLabel": "Journal",
     "writeHint": "Écrire…",
     "trackerNotesLabel": "Notes de suivi",
     "filterAll": "Tout",
-    "noTrackerNotes": "Aucune note de suivi ce jour-là",
-    "daysLabel": "Jours",
     "trackerNotesOnly": "Notes de suivi uniquement",
+    "dictateA11y": "Dicter dans {{name}}",
+    "emptyDays": "Rien d'écrit pour l'instant. Ce que vous écrirez se relira ici.",
     "retry": "Réessayer",
     "viewDayA11y": "Voir {{title}}",
-    "editJournalForA11y": "Modifier le journal du {{date}}",
     "addJournalForA11y": "Ajouter un journal pour le {{date}}",
     "editNoteForA11y": "Modifier la note de {{name}}",
     "couldNotLoadJournalsFallback": "Impossible de charger les journaux",
     "chapterHeading": "Chapitre {{number}}",
-    "addChapter": "Ajouter un chapitre",
     "addChapterA11y": "Ajouter un chapitre à {{name}} pour le {{date}}",
     "openChapterA11y": "Ouvrir le chapitre {{number}} de {{name}} pour le {{date}}"
   },
@@ -32,9 +29,6 @@
     "moreA11y": "Plus d’actions pour {{name}}",
     "moveUp": "Monter",
     "moveDown": "Descendre",
-    "moveUpA11y": "Monter {{name}}",
-    "moveDownA11y": "Descendre {{name}}",
-    "deleteA11y": "Supprimer le carnet {{name}}",
     "nameRequiredTitle": "Nom requis",
     "nameRequiredBody": "Donnez un nom à ce carnet.",
     "couldNotSaveTitle": "Impossible d'enregistrer le carnet",
@@ -75,7 +69,6 @@
     "statusCurrent": "Partagé",
     "confirmShare": "Partager",
     "confirmCopy": "Copier",
-    "cancel": "Annuler",
     "nothingSelected": "Choisissez au moins un chapitre"
   }
 }

@@ -18,7 +18,11 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
-import { describeHabitCardSound, habitCardCaption } from './habitCardLabels';
+import {
+  describeHabitCardSound,
+  habitCardCaption,
+  runningInWidgetCaption,
+} from './habitCardLabels';
 import { skipTodayBubbles } from '../skipTodayBubble';
 import { HabitSoundIndicator } from './HabitSoundIndicator';
 import { TrackerCardRoundButton } from '../TrackerCardRoundButton';
@@ -38,6 +42,7 @@ export function HabitTimerWidget({
   onSkipToday,
   isDone,
   activeTimerSession,
+  runningInWidget,
   onTimerPress,
   onTimerFinish,
   onResetToday,
@@ -128,11 +133,15 @@ export function HabitTimerWidget({
 
   const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
-  const caption = habitCardCaption(config, {
-    streak,
-    score,
-    skipped: skipped && !isComplete && !isRunning,
-  });
+  // The app's own session wins: once it has taken the timer over, the clock is here.
+  const caption =
+    runningInWidget && !isRunning
+      ? runningInWidgetCaption()
+      : habitCardCaption(config, {
+          streak,
+          score,
+          skipped: skipped && !isComplete && !isRunning,
+        });
   // Skipping is for a day you are not doing: never offered while a timer runs.
   const skipBubbles = isRunning
     ? []

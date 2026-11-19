@@ -23,7 +23,7 @@ Owner's answers that shaped the plan:
 | 3 | Native Today widget | Done and since extended (see below) |
 | 4 | Forgiving motivation | Done, committed |
 | 5 | Timers and voice from the widget | Timers appear done in later commits; mic/voice not started |
-| 6 | App refocus: Today · Journal · Calendar · Review · More | Not started — both workers died on a usage limit before writing anything |
+| 6 | App refocus: Today · Journal · Calendar · Review · More | Done — see `.cursor/app-refocus.md` |
 
 ### Step 1 — commits 041669e, dbc656a, 6055b38
 - `daysBetween` is a calendar-day difference (every-N-days no longer drifts across a clock change).
@@ -52,7 +52,7 @@ Owner's answers that shaped the plan:
 
 ## Next up
 
-### Step 6 (not started) — the briefs were
+### Step 6 (done; see `.cursor/app-refocus.md`) — the original briefs were
 **Home pager becomes Today · Journal · Calendar · Review · More.**
 - Today = one list: habits and counters in one user order, then a quiet "Todos" label and open todos, then settled (done/skipped) habits. Same structure and order as the widget; if `dashboard_items.sort_order` is per kind, make it one sequence and update the widget's order to match.
 - Journal and Calendar become pages (lazy-mount; all pages mount at startup today). Review hosts the redesigned Insights screen. More keeps Trackers, Todo history, Nutrition + Ingredients, Settings.

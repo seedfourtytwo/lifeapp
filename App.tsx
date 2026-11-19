@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/ibm-plex-mono';
 import './src/i18n';
 import { applyAppLanguage } from './src/i18n';
+import { ConfirmHost } from './src/components/sheet';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
@@ -93,6 +94,7 @@ function ThemedApp() {
         <AppNavigator />
         <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       </NavigationContainer>
+      <ConfirmHost />
     </PaperProvider>
   );
 }

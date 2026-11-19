@@ -1,21 +1,18 @@
 {
   "screen": {
     "today": "Today",
-    "journalLabel": "Journal",
     "writeHint": "Write…",
     "trackerNotesLabel": "Tracker notes",
     "filterAll": "All",
-    "noTrackerNotes": "No tracker notes this day",
-    "daysLabel": "Days",
     "trackerNotesOnly": "Tracker notes only",
+    "dictateA11y": "Dictate in {{name}}",
+    "emptyDays": "Nothing written yet. What you write will be here to read back.",
     "retry": "Retry",
     "viewDayA11y": "View {{title}}",
-    "editJournalForA11y": "Edit journal for {{date}}",
     "addJournalForA11y": "Add journal for {{date}}",
     "editNoteForA11y": "Edit note for {{name}}",
     "couldNotLoadJournalsFallback": "Could not load journals",
     "chapterHeading": "Chapter {{number}}",
-    "addChapter": "Add a chapter",
     "addChapterA11y": "Add a chapter to {{name}} for {{date}}",
     "openChapterA11y": "Open chapter {{number}} of {{name}} for {{date}}"
   },
@@ -32,9 +29,6 @@
     "moreA11y": "More actions for {{name}}",
     "moveUp": "Move up",
     "moveDown": "Move down",
-    "moveUpA11y": "Move {{name}} up",
-    "moveDownA11y": "Move {{name}} down",
-    "deleteA11y": "Delete notebook {{name}}",
     "nameRequiredTitle": "Name needed",
     "nameRequiredBody": "Give this notebook a name.",
     "couldNotSaveTitle": "Could not save notebook",
@@ -75,7 +69,6 @@
     "statusCurrent": "Shared",
     "confirmShare": "Share",
     "confirmCopy": "Copy",
-    "cancel": "Cancel",
     "nothingSelected": "Pick at least one chapter"
   }
 }

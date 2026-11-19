@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useAppCalendarNow } from '../../hooks/useAppCalendarNow';
-import { space } from '../../theme/spacing';
 import DayHeader from './DayHeader';
 import { homeTabScreenStyles } from './screenStyles';
 
@@ -17,7 +16,7 @@ type Props = {
 };
 
 /**
- * Spinner shown while a Home tab waits for its data.
+ * Spinner shown while the Today page waits for its data.
  *
  * It renders the real day header, not a placeholder: the date and the header
  * buttons are known before any tracker or food data is, so showing them
@@ -39,10 +38,14 @@ export default function HomeTabLoadingPane({ actions }: Props) {
   );
 }
 
+const container = StyleSheet.flatten(homeTabScreenStyles.container);
+
 const styles = StyleSheet.create({
+  // The loaded tab's own gutters (`homeTabScreenStyles.container`), read from
+  // it rather than restated: a pixel of difference moves the header when data lands.
   pane: {
     flex: 1,
-    paddingHorizontal: space.lg,
-    paddingTop: space.sm,
+    paddingHorizontal: container.paddingHorizontal,
+    paddingTop: container.paddingTop,
   },
 });

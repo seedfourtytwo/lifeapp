@@ -1,16 +1,17 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { IconButton, Surface, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, Surface, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import type { DailyJournal, JournalNotebook } from '../../protocol';
-import NotebookMark from './NotebookMark';
 import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
+import { formatJournalDay } from './journalDates';
+import NotebookChip from './NotebookChip';
 
 export type TrackerNoteRow = {
   elementId: string;
@@ -23,189 +24,158 @@ type Props = {
   today: string;
   notebooks: JournalNotebook[];
   journals: DailyJournal[];
+  /** The notebook being written in; the chips choose it. */
+  notebookId: string | undefined;
+  onChooseNotebook: (notebookId: string) => void;
   trackerNotes: TrackerNoteRow[];
   showTrackerNotes: boolean;
-  filter: 'all' | 'trackers' | string;
-  /** Open one chapter; no `entryId` means the day's first (or a blank one). */
-  onOpenJournal: (notebookId: string, date: string, entryId?: string) => void;
-  /** Start a fresh chapter in this notebook for the day. */
-  onAddChapter: (notebookId: string, date: string) => void;
+  /** Open one chapter that is already written. */
+  onOpenChapter: (notebookId: string, date: string, entryId: string) => void;
+  /** Write in this notebook for the day — by keyboard, or straight into dictation. */
+  onWrite: (notebookId: string, date: string, opts: { dictate: boolean }) => void;
   onOpenTrackerNote: (row: TrackerNoteRow, date: string) => void;
+  /** Leave a past day and come back to today. */
+  onBackToToday: () => void;
 };
 
 /**
- * Selected-day writing surface: previews first, tap to open the editor.
+ * Where a day is written: the first thing on the Journal page, and today
+ * unless a past day was opened from the list below.
+ *
+ * One tile. The notebooks are words you choose between, not a group each; what
+ * is already written in the chosen one reads as prose above the field; and the
+ * field is roomy, because writing is what the page is for. The field and the
+ * mic open the note editor — typing and dictation both happen there.
  *
  * A notebook day is a stack of chapters, and each one is its own block — a day
- * with a morning entry and an argument at 11pm reads as two things, which is
- * the whole reason they are two rows rather than one body with a blank line in
- * it. The block is also the tap target for that chapter specifically.
+ * with a morning entry and an argument at 11pm reads as two things. The block
+ * is also the tap target for that chapter specifically.
  */
 export default function JournalDayPanel({
   selectedDate,
   today,
   notebooks,
   journals,
+  notebookId,
+  onChooseNotebook,
   trackerNotes,
   showTrackerNotes,
-  filter,
-  onOpenJournal,
-  onAddChapter,
+  onOpenChapter,
+  onWrite,
   onOpenTrackerNote,
+  onBackToToday,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
   const { decorations: deco } = useAppTheme();
-  const entriesForSelected = journals.filter((journal) => journal.date === selectedDate);
-  const grouped = notebooks
-    .map((notebook) => ({
-      notebook,
-      entries: entriesForSelected.filter((entry) => entry.notebookId === notebook.id),
-    }))
-    .filter((group) => {
-      if (filter === 'trackers') return false;
-      if (filter !== 'all' && group.notebook.id !== filter) return false;
-      return true;
-    });
-  const defaultNotebookId = notebooks[0]?.id;
-  const title = selectedDate === today ? t('screen.today') : formatFullDate(selectedDate);
-  const showEmptyTrackerNotes = showTrackerNotes && trackerNotes.length === 0 && filter === 'trackers';
+  const notebook = notebooks.find((candidate) => candidate.id === notebookId) ?? notebooks[0];
+  const entries = notebook
+    ? journals.filter(
+        (journal) => journal.date === selectedDate && journal.notebookId === notebook.id,
+      )
+    : [];
+  const isToday = selectedDate === today;
+  const title = isToday ? t('screen.today') : formatJournalDay(selectedDate, today);
+  const spokenDate = formatFullDate(selectedDate);
 
   return (
     <Surface
-      style={[
-        styles.panel,
-        {
-          backgroundColor: theme.colors.surface,
-          borderRadius: deco.radius.lg,
-        },
-      ]}
+      style={[styles.panel, { backgroundColor: theme.colors.surface, borderRadius: deco.radius.lg }]}
       elevation={0}
     >
-      <Text style={[typeScale.screenTitle, { color: theme.colors.onSurface }]} accessibilityRole="header">
-        {title}
-      </Text>
-
-      {grouped.map(({ notebook, entries }) => (
-        <View
-          key={notebook.id}
-          style={styles.group}
+      <View style={styles.titleRow}>
+        <Text
+          style={[typeScale.rowName, styles.title, { color: theme.colors.onSurface }]}
+          accessibilityRole="header"
         >
-          <View style={styles.groupHeader}>
-            <View
-              style={[
-                styles.well,
-                { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.pill },
-              ]}
-            >
-              <NotebookMark notebook={notebook} ringColor={theme.colors.surfaceVariant} />
-            </View>
-            <Text style={[typeScale.rowName, styles.groupName, { color: theme.colors.onSurface }]}>
-              {notebook.name}
-            </Text>
-            <IconButton
-              icon="plus"
-              size={22}
-              iconColor={theme.colors.onSurfaceVariant}
-              onPress={() => onAddChapter(notebook.id, selectedDate)}
-              accessibilityLabel={t('screen.addChapterA11y', {
-                name: notebook.name,
-                date: formatFullDate(selectedDate),
-              })}
-              style={styles.addChapter}
-            />
-          </View>
+          {title}
+        </Text>
+        {isToday ? null : (
+          <Button mode="text" compact onPress={onBackToToday} style={styles.backToToday}>
+            {t('screen.today')}
+          </Button>
+        )}
+      </View>
 
-          {entries.length === 0 ? (
+      {notebooks.length > 1 ? (
+        <View style={styles.chips} accessibilityRole="radiogroup">
+          {notebooks.map((candidate) => (
+            <NotebookChip
+              key={candidate.id}
+              ground="tile"
+              label={candidate.name}
+              notebook={candidate}
+              selected={candidate.id === notebook?.id}
+              onPress={() => onChooseNotebook(candidate.id)}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {notebook
+        ? entries.map((entry, position) => (
             <Pressable
-              onPress={() => onOpenJournal(notebook.id, selectedDate)}
+              key={entry.id}
+              onPress={() => onOpenChapter(notebook.id, selectedDate, entry.id)}
               accessibilityRole="button"
-              accessibilityLabel={t('screen.addJournalForA11y', {
-                date: formatFullDate(selectedDate),
+              accessibilityLabel={t('screen.openChapterA11y', {
+                number: position + 1,
+                name: notebook.name,
+                date: spokenDate,
               })}
               style={({ pressed }) => [
                 styles.chapter,
-                {
-                  backgroundColor: pressed ? theme.colors.surfaceVariant : theme.colors.background,
+                pressed && {
+                  backgroundColor: theme.colors.surfaceVariant,
                   borderRadius: deco.radius.md,
                 },
               ]}
             >
-              <QuietText style={typeScale.secondary}>{t('screen.writeHint')}</QuietText>
+              {entries.length > 1 ? (
+                <QuietText style={typeScale.caption}>
+                  {t('screen.chapterHeading', { number: position + 1 })}
+                </QuietText>
+              ) : null}
+              <Text style={[typeScale.reading, { color: theme.colors.onSurface }]} numberOfLines={8}>
+                {truncateNotePreview(entry.body, 600)}
+              </Text>
             </Pressable>
-          ) : (
-            entries.map((entry, position) => (
-              <Pressable
-                key={entry.id}
-                onPress={() => onOpenJournal(notebook.id, selectedDate, entry.id)}
-                accessibilityRole="button"
-                accessibilityLabel={t('screen.openChapterA11y', {
-                  number: position + 1,
-                  name: notebook.name,
-                  date: formatFullDate(selectedDate),
-                })}
-                style={({ pressed }) => [
-                  styles.chapter,
-                  {
-                    backgroundColor: pressed ? theme.colors.surfaceVariant : theme.colors.background,
-                    borderRadius: deco.radius.md,
-                  },
-                ]}
-              >
-                {entries.length > 1 ? (
-                  <QuietText style={typeScale.caption}>
-                    {t('screen.chapterHeading', { number: position + 1 })}
-                  </QuietText>
-                ) : null}
-                <Text style={[typeScale.body, { color: theme.colors.onSurface }]} numberOfLines={8}>
-                  {truncateNotePreview(entry.body, 400)}
-                </Text>
-              </Pressable>
-            ))
-          )}
-        </View>
-      ))}
+          ))
+        : null}
 
-      {filter === 'all' && grouped.length === 0 && defaultNotebookId ? (
-        <Pressable
-          onPress={() => onOpenJournal(defaultNotebookId, selectedDate)}
-          accessibilityRole="button"
-          accessibilityLabel={t('screen.addJournalForA11y', {
-            date: formatFullDate(selectedDate),
-          })}
-          style={({ pressed }) => [
-            styles.entry,
-            pressed && { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.md },
+      {notebook ? (
+        <View
+          style={[
+            styles.field,
+            { backgroundColor: theme.colors.background, borderRadius: deco.radius.md },
           ]}
         >
-          <View
-            style={[
-              styles.well,
-              { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.pill },
-            ]}
+          <Pressable
+            onPress={() => onWrite(notebook.id, selectedDate, { dictate: false })}
+            accessibilityRole="button"
+            accessibilityLabel={
+              entries.length > 0
+                ? t('screen.addChapterA11y', { name: notebook.name, date: spokenDate })
+                : t('screen.addJournalForA11y', { date: spokenDate })
+            }
+            style={styles.fieldText}
           >
-            <MaterialCommunityIcons
-              name="notebook-outline"
-              size={22}
-              color={theme.colors.onSurfaceVariant}
-            />
-          </View>
-          <View style={styles.entryText}>
-            <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>
-              {t('screen.journalLabel')}
-            </Text>
-            <QuietText style={typeScale.secondary}>{t('screen.writeHint')}</QuietText>
-          </View>
-        </Pressable>
+            <QuietText style={typeScale.body}>{t('screen.writeHint')}</QuietText>
+          </Pressable>
+          <IconButton
+            icon="microphone-outline"
+            size={24}
+            iconColor={theme.colors.onSurfaceVariant}
+            onPress={() => onWrite(notebook.id, selectedDate, { dictate: true })}
+            accessibilityLabel={t('screen.dictateA11y', { name: notebook.name })}
+            style={styles.mic}
+          />
+        </View>
       ) : null}
 
       {showTrackerNotes && trackerNotes.length > 0 ? (
-        <View
-          style={styles.trackerBlock}
-        >
-          <Text style={[typeScale.caption, styles.trackerLabel, { color: theme.colors.onSurfaceVariant }]}>
-            {t('screen.trackerNotesLabel')}
-          </Text>
+        <View style={styles.trackerBlock}>
+          <QuietText style={typeScale.caption}>{t('screen.trackerNotesLabel')}</QuietText>
           {trackerNotes.map((row) => (
             <Pressable
               key={row.elementId}
@@ -214,7 +184,10 @@ export default function JournalDayPanel({
               accessibilityLabel={t('screen.editNoteForA11y', { name: row.name })}
               style={({ pressed }) => [
                 styles.trackerRow,
-                pressed && { backgroundColor: theme.colors.surfaceVariant, borderRadius: deco.radius.md },
+                pressed && {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderRadius: deco.radius.md,
+                },
               ]}
             >
               <MaterialCommunityIcons
@@ -223,7 +196,7 @@ export default function JournalDayPanel({
                 color={theme.colors.onSurfaceVariant}
                 style={styles.trackerIcon}
               />
-              <View style={styles.entryText}>
+              <View style={styles.trackerText}>
                 <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>{row.name}</Text>
                 <QuietText style={typeScale.secondary} numberOfLines={2}>
                   {truncateNotePreview(row.body, 120)}
@@ -233,71 +206,61 @@ export default function JournalDayPanel({
           ))}
         </View>
       ) : null}
-
-      {showEmptyTrackerNotes ? (
-        <QuietText style={[typeScale.secondary, styles.emptyTrackers]}>
-          {t('screen.noTrackerNotes')}
-        </QuietText>
-      ) : null}
     </Surface>
   );
 }
 
 const styles = StyleSheet.create({
   panel: {
-    padding: space.xl,
-    gap: space.xs,
+    padding: space.lg,
+    gap: space.md,
     overflow: 'hidden',
   },
-  entry: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
-    paddingVertical: space.md,
-    paddingHorizontal: space.sm,
-    marginHorizontal: -space.sm,
+    justifyContent: 'space-between',
+    gap: space.sm,
+    // The floor a text button needs, so the row does not jump when it appears.
+    minHeight: 40,
   },
-  group: {
-    paddingVertical: space.md,
+  title: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  backToToday: {
+    marginRight: -space.sm,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: space.sm,
   },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-  },
-  groupName: {
-    flex: 1,
-    minWidth: 0,
-  },
-  addChapter: {
-    margin: 0,
-    width: 48,
-    height: 48,
-  },
+  /** Bled to the tile's padding so the pressed wash has room round the words. */
   chapter: {
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
+    marginHorizontal: -space.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
     gap: space.xs,
-    minHeight: 48,
   },
-  well: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  field: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    // Roomy on purpose: three lines' worth, so it reads as a place to write.
+    minHeight: 96,
   },
-  entryText: {
+  fieldText: {
     flex: 1,
-    minWidth: 0,
-    gap: space.xxs,
+    alignSelf: 'stretch',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.lg,
+  },
+  mic: {
+    margin: space.xs,
   },
   trackerBlock: {
-    paddingTop: space.sm,
+    paddingTop: space.xs,
     gap: space.xs,
-  },
-  trackerLabel: {
-    marginBottom: space.xs,
   },
   trackerRow: {
     flexDirection: 'row',
@@ -310,7 +273,9 @@ const styles = StyleSheet.create({
   trackerIcon: {
     marginTop: space.xxs,
   },
-  emptyTrackers: {
-    paddingTop: space.sm,
+  trackerText: {
+    flex: 1,
+    minWidth: 0,
+    gap: space.xxs,
   },
 });

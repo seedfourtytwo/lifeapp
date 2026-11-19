@@ -46,7 +46,7 @@ function contentFitsViewport(contentHeight: number, layoutHeight: number): boole
 }
 
 /**
- * Home Habits/Counters list: light rubber-band when the list fits on screen
+ * Home page list: light rubber-band when the list fits on screen
  * (nowhere to scroll). When content overflows, the ScrollView scrolls normally
  * and the bounce pan is detached so it cannot steal vertical gestures.
  * Native Android overscroll is unreliable inside the Home horizontal pager.

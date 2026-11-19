@@ -1,20 +1,6 @@
 {
   "screen": {
-    "emptyBody": "Ajoutez des habitudes ou des compteurs, puis comparez-les ici.",
-    "trackersLabel": "Comparer",
-    "capHint": "Max. {{count}}",
-    "weatherLabel": "Superposer la météo",
-    "tickToPlot": "Sélectionnez un suivi pour tracer.",
-    "tickToCompare": "Sélectionnez des suivis ci-dessus pour comparer.",
-    "journalLabel": "Journal",
-    "addJournal": "Ajouter un journal",
-    "addNote": "Ajouter une note",
-    "editJournalForA11y": "Modifier le journal du {{date}}",
-    "addJournalForA11y": "Ajouter un journal pour le {{date}}",
-    "highTempCondition": "{{temp}} max · {{condition}}",
-    "rainChanceSuffix": " · {{percent}}% de pluie",
-    "noWeatherForDay": "Pas de météo pour ce jour",
-    "couldNotLoadFallback": "Impossible de charger les statistiques"
+    "addJournalForA11y": "Ajouter un journal pour le {{date}}"
   },
   "history": {
     "chartFooter": "Pointillés : moyenne sur {{window}} jours",

@@ -54,7 +54,7 @@ export async function refreshAllDailyData(): Promise<void> {
   ]);
 }
 
-/** Pull-to-refresh on the Habits tab: elements, today's habit state, and streaks. */
+/** Pull-to-refresh of habits: elements, today's habit state, and streaks. */
 export async function refreshAllHabitData(): Promise<void> {
   const { habits } = await reloadElementsAndDeriveInputs();
   if (habits.length === 0) return;
@@ -63,7 +63,7 @@ export async function refreshAllHabitData(): Promise<void> {
   await Promise.all([loadHabitDayState(habits), loadHabitStreaks(habits)]);
 }
 
-/** Pull-to-refresh on the Counters tab: elements, today's totals, and target streaks. */
+/** Pull-to-refresh of counters: elements, today's totals, and target streaks. */
 export async function refreshAllCounterData(): Promise<void> {
   const { counterIds, counterStreaks } = await reloadElementsAndDeriveInputs();
   const { loadCounterTotals, loadCounterStreaks } = useEventStore.getState();
@@ -101,8 +101,13 @@ async function refreshTodayOnce(force: boolean): Promise<void> {
   if (unchanged && !force) return;
 
   const { habits, counterIds, counterStreaks } = deriveInputsFromStore();
-  const { loadHabitDayState, loadHabitStreaks, loadCounterTotals, loadCounterStreaks } =
-    useEventStore.getState();
+  const {
+    loadHabitDayState,
+    loadHabitStreaks,
+    loadCounterTotals,
+    loadCounterStreaks,
+    loadWidgetTimerSessions,
+  } = useEventStore.getState();
   try {
     // Loaders merge in place (no blanking, so no flicker) and skip any element
     // with a write in flight, so an optimistic tick is never painted over.
@@ -111,6 +116,8 @@ async function refreshTodayOnce(force: boolean): Promise<void> {
       habits.length > 0 ? loadHabitStreaks(habits) : Promise.resolve(),
       counterIds.length > 0 ? loadCounterTotals(counterIds) : Promise.resolve(),
       counterStreaks.length > 0 ? loadCounterStreaks(counterStreaks) : Promise.resolve(),
+      // The widget starts and stops its stopwatches in the same file.
+      loadWidgetTimerSessions(),
     ]);
     lastSeenVersion = version === null ? null : { db, version };
   } catch (error) {

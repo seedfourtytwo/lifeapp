@@ -1,5 +1,8 @@
 import type { TrackerEditorSaveData } from '../src/components/trackerEditor/types';
-import { parseTrackerEditorSave } from '../src/utils/parseTrackerEditorSave';
+import {
+  parseTrackerEditorSave,
+  type TrackerEditorField,
+} from '../src/utils/parseTrackerEditorSave';
 
 const habitSaveData = (
   overrides: Partial<Extract<TrackerEditorSaveData, { mode: 'habit' }>> = {},
@@ -40,6 +43,7 @@ describe('parseTrackerEditorSave', () => {
     });
 
     expect(result).toEqual({
+      ok: true,
       kind: 'counter',
       input: {
         name: ' Pushups',
@@ -60,8 +64,7 @@ describe('parseTrackerEditorSave', () => {
       dailyTarget: '8000',
       showStreakOnCard: false,
     });
-    expect(result.kind).toBe('counter');
-    if (result.kind !== 'counter') return;
+    if (!result.ok || result.kind !== 'counter') throw new Error('expected a counter');
     expect(result.input.showStreakOnCard).toBe(false);
     expect(result.input.icon).toBeUndefined();
   });
@@ -75,8 +78,7 @@ describe('parseTrackerEditorSave', () => {
       }),
     );
 
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.timerSound).toEqual({
       trackId: 'meditation15min',
       playbackMode: 'play_once',
@@ -90,8 +92,7 @@ describe('parseTrackerEditorSave', () => {
       }),
     );
 
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.showStreakOnCard).toBe(true);
   });
 
@@ -102,15 +103,13 @@ describe('parseTrackerEditorSave', () => {
       }),
     );
 
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.showStreakOnCard).toBe(false);
   });
 
   it('always saves timeSlot as anytime (slot filters removed)', () => {
     const result = parseTrackerEditorSave(habitSaveData());
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.timeSlot).toBe('anytime');
   });
 
@@ -124,8 +123,7 @@ describe('parseTrackerEditorSave', () => {
       }),
     );
 
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.showStreakOnCard).toBe(true);
   });
 
@@ -136,8 +134,7 @@ describe('parseTrackerEditorSave', () => {
       }),
     );
 
-    expect(result.kind).toBe('habit');
-    if (result.kind !== 'habit') return;
+    if (!result.ok || result.kind !== 'habit') throw new Error('expected a habit');
     expect(result.input.icon).toBe('meditation');
   });
 
@@ -145,22 +142,131 @@ describe('parseTrackerEditorSave', () => {
     const timer = parseTrackerEditorSave(
       habitSaveData({ habitTrackingMode: 'timer', habitDailyGoalMinutes: '15', anySessionCounts: true }),
     );
-    expect(timer.kind === 'habit' && timer.input.anySessionCounts).toBe(true);
+    expect(timer.ok && timer.kind === 'habit' && timer.input.anySessionCounts).toBe(true);
 
     const tick = parseTrackerEditorSave(habitSaveData({ anySessionCounts: true }));
-    expect(tick.kind === 'habit' && tick.input.anySessionCounts).toBe(false);
+    expect(tick.ok && tick.kind === 'habit' && tick.input.anySessionCounts).toBe(false);
   });
 
-  it('rejects invalid increments', () => {
-    expect(() =>
-      parseTrackerEditorSave({
-        mode: 'counter',
-        name: 'Test',
-        icon: null,
-        increments: 'abc',
-        dailyTarget: '',
-        showStreakOnCard: true,
+});
+
+/**
+ * What cannot be saved comes back as a value, not an exception: which field is
+ * wrong and the sentence to put under it. The editor shows it in place and
+ * scrolls there; nothing is thrown at the screen to turn into a pop-up.
+ */
+describe('what cannot be saved', () => {
+  const counter = (overrides: { increments?: string; dailyTarget?: string }) =>
+    parseTrackerEditorSave({
+      mode: 'counter',
+      name: 'Test',
+      icon: null,
+      increments: '5',
+      dailyTarget: '',
+      showStreakOnCard: true,
+      ...overrides,
+    });
+
+  it('names the quick buttons when none is a positive number', () => {
+    expect(counter({ increments: 'abc' })).toEqual({
+      ok: false,
+      field: 'increments',
+      message: expect.stringMatching(/positive number/),
+    });
+  });
+
+  it('names the daily target when it is not a positive whole number', () => {
+    expect(counter({ dailyTarget: '0' })).toMatchObject({ ok: false, field: 'dailyTarget' });
+    expect(counter({ dailyTarget: 'ten' })).toMatchObject({ ok: false, field: 'dailyTarget' });
+    expect(counter({ dailyTarget: '' })).toMatchObject({ ok: true });
+  });
+
+  it('names the timer goal when it is not a positive number of minutes', () => {
+    expect(
+      parseTrackerEditorSave(
+        habitSaveData({ habitTrackingMode: 'timer', habitDailyGoalMinutes: '-5' }),
+      ),
+    ).toMatchObject({ ok: false, field: 'dailyGoalMinutes' });
+  });
+
+  it('ignores a bad timer goal on a check-off habit, which has none', () => {
+    expect(parseTrackerEditorSave(habitSaveData({ habitDailyGoalMinutes: '-5' }))).toMatchObject({
+      ok: true,
+    });
+  });
+
+  const badSchedules: [TrackerEditorField, Parameters<typeof habitSaveData>[0]][] = [
+    ['weekdays', { scheduleType: 'weekdays', scheduleWeekdays: [] }],
+    ['timesPerWeek', { scheduleType: 'times_per_week', scheduleTimesPerWeek: '7' }],
+    ['timesPerWeek', { scheduleType: 'times_per_week', scheduleTimesPerWeek: '' }],
+    ['interval', { scheduleType: 'every_n_days', scheduleInterval: '0' }],
+    ['interval', { scheduleType: 'every_n_days', scheduleInterval: 'x' }],
+    ['anchorDate', { scheduleType: 'every_n_days', scheduleAnchorDate: '30/06/2025' }],
+  ];
+
+  it.each(badSchedules)('names %s for a schedule that cannot repeat', (field, overrides) => {
+    const result = parseTrackerEditorSave(habitSaveData(overrides));
+    expect(result).toMatchObject({ ok: false, field });
+    expect(result.ok ? '' : result.message).not.toBe('');
+  });
+
+  it('names the time range when a time is not HH:mm', () => {
+    expect(
+      parseTrackerEditorSave(
+        habitSaveData({ useTimeRange: true, timeRangeStart: '7am', timeRangeEnd: '09:00' }),
+      ),
+    ).toMatchObject({ ok: false, field: 'timeRange', message: expect.stringMatching(/HH:mm/) });
+  });
+
+  it('names the time range when visibility is limited without one', () => {
+    expect(
+      parseTrackerEditorSave(habitSaveData({ useTimeRange: false, visibleOnlyInTimeRange: true })),
+    ).toMatchObject({ ok: false, field: 'timeRange' });
+  });
+
+  it('names the reminder minutes when they are not zero or more', () => {
+    const withReminder = (remindMinutesBefore: string) =>
+      parseTrackerEditorSave(
+        habitSaveData({
+          useTimeRange: true,
+          timeRangeStart: '07:00',
+          timeRangeEnd: '09:00',
+          useReminder: true,
+          remindMinutesBefore,
+        }),
+      );
+    expect(withReminder('-1')).toMatchObject({ ok: false, field: 'remindMinutesBefore' });
+    expect(withReminder('soon')).toMatchObject({ ok: false, field: 'remindMinutesBefore' });
+    const ok = withReminder('0');
+    expect(ok.ok && ok.kind === 'habit' && ok.input.remindMinutesBefore).toBe(0);
+  });
+
+  it('keeps a reminder on an every-N-days habit: those fire as one-shot dates', () => {
+    const result = parseTrackerEditorSave(
+      habitSaveData({
+        scheduleType: 'every_n_days',
+        scheduleInterval: '3',
+        useTimeRange: true,
+        timeRangeStart: '07:00',
+        timeRangeEnd: '09:00',
+        useReminder: true,
+        remindMinutesBefore: '10',
       }),
-    ).toThrow(/positive number/);
+    );
+    expect(result.ok && result.kind === 'habit' && result.input.remindMinutesBefore).toBe(10);
+  });
+
+  it('reports the first problem in the order the form reads', () => {
+    expect(
+      parseTrackerEditorSave(
+        habitSaveData({
+          scheduleType: 'weekdays',
+          scheduleWeekdays: [],
+          useTimeRange: true,
+          timeRangeStart: 'x',
+          timeRangeEnd: 'y',
+        }),
+      ),
+    ).toMatchObject({ ok: false, field: 'weekdays' });
   });
 });

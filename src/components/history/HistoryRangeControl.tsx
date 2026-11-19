@@ -8,7 +8,7 @@ type Props = {
   onChange: (days: HistoryRangeDays) => void;
 };
 
-/** 7 / 30 / 90 days, the same control on Insights and on every history screen. */
+/** 7 / 30 / 90 days, the control on the tracker history screen. */
 export default function HistoryRangeControl({ value, onChange }: Props) {
   const { t } = useTranslation('insights');
   return (

@@ -12,7 +12,7 @@ import {
 } from '../protocol';
 
 /**
- * Free-text journalling about food, reachable from the Nutrition tab.
+ * Free-text journalling about food, reachable from the Nutrition screen.
  *
  * This is a plain journal notebook — not a table, not a kind, not a catalog.
  * A notebook day already holds as many chapters as you write, so the whole

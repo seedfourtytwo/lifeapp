@@ -10,7 +10,7 @@
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
 import { TextInput } from 'react-native';
-import { Text } from 'react-native-paper';
+import { IconButton, Text } from 'react-native-paper';
 import '../src/i18n';
 import type { DictationLivePreview } from '../src/dictation/livePreview';
 
@@ -67,7 +67,6 @@ jest.mock('../src/dictation/useDictationField', () => ({
 
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires */
 const TodoQuickAdd = require('../src/screens/todos/TodoQuickAdd').default;
-const FilledField = require('../src/components/sheet/FilledField').default;
 /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires */
 
 type Adornment = { props: Record<string, unknown> } | null | undefined;
@@ -89,13 +88,14 @@ function render(props: { value?: string; onSubmit?: () => void }) {
   });
   mounted.push(tree);
   const input = tree.root.findByType(TextInput);
-  const field = tree.root.findByType(FilledField);
+  // The line's one trailing control; the plus that leads it is a glyph, not a button.
+  const trailing = tree.root.findAllByType(IconButton);
   return {
     tree,
     input,
     onChangeText,
     onSubmit,
-    right: field.props.rightAccessory as Adornment,
+    right: (trailing[0] ?? null) as Adornment,
   };
 }
 
@@ -177,7 +177,7 @@ describe('todo quick-add trailing control', () => {
   });
 
   it('leaves the engine asleep until the mic is actually asked for', () => {
-    // The Todos tab is mounted for the whole app session. Waking the engine on
+    // The Today page is mounted for the whole app session. Waking the engine on
     // mount would load a 123M-parameter model into memory at every cold start.
     const { right } = render({});
     expect(mockOptions.current?.active).toBe(false);

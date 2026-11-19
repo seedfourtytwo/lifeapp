@@ -1,5 +1,7 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   StyleSheet,
@@ -9,8 +11,10 @@ import {
 import { Icon, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { i18n } from '../i18n';
-import { useAppTheme } from '../hooks/useAppTheme';
+import { useReduceMotion } from '../hooks/useReduceMotion';
+import { space } from '../theme/spacing';
 import { DOCK_RESERVE, EDGE_PAD } from '../ui/homeInsets';
+import { timingOrSnap } from '../utils/motion';
 
 export type ActionBubble = {
   key: string;
@@ -32,18 +36,27 @@ type Props = {
 type Placement = {
   top: number;
   left: number;
+  /** Which side of the tray faces the control it grew out of. */
+  below: boolean;
 };
 
 const BUBBLE_SIZE = 48;
 /** Clear air between the control bottom and the bubble row. */
-const TRAY_GAP = 12;
-const BUBBLE_GAP = 8;
+const TRAY_GAP = space.md;
+const BUBBLE_GAP = space.sm;
 const MIN_ANCHOR = 48;
+/** Quick enough to feel attached to the press that opened it. */
+const POP_MS = 140;
+/** Where the tray starts from: nearly full size, so it grows rather than flies in. */
+const POP_FROM_SCALE = 0.8;
 
 /**
  * Floating long-press bubbles below the anchor (flip above near the dock).
  * Measures the anchor *before* the Modal mounts — measuring under an open
  * Modal is unreliable on Android and parked the tray on the button.
+ *
+ * The tray grows out of the corner nearest the control and fades in, then
+ * shrinks back into it; the Modal stays up until that has finished.
  */
 export function ActionBubbleTray({
   open,
@@ -52,18 +65,17 @@ export function ActionBubbleTray({
   children,
 }: Props) {
   const theme = useTheme();
-  const { decorations: deco } = useAppTheme();
+  const reduceMotion = useReduceMotion();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const anchorRef = useRef<View>(null);
   const anchorSizeRef = useRef({ width: MIN_ANCHOR, height: MIN_ANCHOR });
   const [placement, setPlacement] = useState<Placement | null>(null);
+  const pop = useRef(new Animated.Value(0)).current;
 
   useLayoutEffect(() => {
-    if (!open) {
-      setPlacement(null);
-      return;
-    }
+    // Closing keeps the last placement: the tray shrinks away where it stood.
+    if (!open) return;
 
     const trayWidth =
       bubbles.length * BUBBLE_SIZE + Math.max(0, bubbles.length - 1) * BUBBLE_GAP;
@@ -95,7 +107,7 @@ export function ActionBubbleTray({
         windowWidth - trayWidth - EDGE_PAD,
       );
 
-      setPlacement({ top, left });
+      setPlacement({ top, left, below: fitsBelow });
     });
   }, [
     open,
@@ -106,13 +118,31 @@ export function ActionBubbleTray({
     insets.top,
   ]);
 
+  const placed = placement != null;
+  useEffect(() => {
+    if (!placed) return;
+    const animation = timingOrSnap(
+      pop,
+      {
+        toValue: open ? 1 : 0,
+        duration: POP_MS,
+        easing: open ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      },
+      reduceMotion,
+    );
+    animation.start(({ finished }) => {
+      if (finished && !open) setPlacement(null);
+    });
+    return () => animation.stop();
+  }, [open, placed, pop, reduceMotion]);
+
   if (bubbles.length === 0) {
     return <>{children}</>;
   }
 
   const bubbleBg = theme.colors.primaryContainer;
   const bubbleFg = theme.colors.onPrimaryContainer;
-  const modalVisible = open && placement != null;
 
   return (
     <>
@@ -131,7 +161,7 @@ export function ActionBubbleTray({
       </View>
 
       <Modal
-        visible={modalVisible}
+        visible={placed}
         transparent
         animationType="none"
         statusBarTranslucent
@@ -145,16 +175,27 @@ export function ActionBubbleTray({
             accessibilityRole="button"
           />
           {placement ? (
-            <View
+            <Animated.View
+              testID="bubble-tray"
               style={[
                 styles.tray,
                 {
                   top: placement.top,
                   left: placement.left,
+                  transformOrigin: placement.below ? 'right top' : 'right bottom',
+                  opacity: pop,
+                  transform: [
+                    {
+                      scale: pop.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [POP_FROM_SCALE, 1],
+                      }),
+                    },
+                  ],
                 },
               ]}
               accessibilityRole="menu"
-              pointerEvents="box-none"
+              pointerEvents={open ? 'box-none' : 'none'}
             >
               {bubbles.map((bubble) => (
                 <Pressable
@@ -167,7 +208,6 @@ export function ActionBubbleTray({
                     styles.bubble,
                     {
                       backgroundColor: bubbleBg,
-                      borderRadius: Math.max(deco.radius.lg, 24),
                       opacity: pressed ? 0.85 : 1,
                     },
                   ]}
@@ -183,7 +223,7 @@ export function ActionBubbleTray({
                   ) : null}
                 </Pressable>
               ))}
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       </Modal>
@@ -207,6 +247,8 @@ const styles = StyleSheet.create({
   bubble: {
     width: BUBBLE_SIZE,
     height: BUBBLE_SIZE,
+    // Geometry: half the size is what makes it a disc.
+    borderRadius: BUBBLE_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,

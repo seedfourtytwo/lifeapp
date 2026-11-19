@@ -1,0 +1,73 @@
+{
+  "range": {
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année"
+  },
+  "statement": {
+    "up": {
+      "week": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, plus que les {{previous}} % de la semaine précédente.",
+      "month": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, plus que les {{previous}} % du mois précédent.",
+      "year": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, plus que les {{previous}} % de l’année précédente."
+    },
+    "down": {
+      "week": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, moins que les {{previous}} % de la semaine précédente.",
+      "month": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, moins que les {{previous}} % du mois précédent.",
+      "year": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, moins que les {{previous}} % de l’année précédente."
+    },
+    "same": {
+      "week": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, à peu près autant que la semaine précédente.",
+      "month": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, à peu près autant que le mois précédent.",
+      "year": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu, à peu près autant que l’année précédente."
+    },
+    "plain": {
+      "week": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu cette semaine.",
+      "month": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu ce mois-ci.",
+      "year": "Vous avez fait <b>{{percent}} %</b> de ce que vous aviez prévu cette année."
+    },
+    "perfect": {
+      "week": "Vous avez fait tout ce que vous aviez prévu cette semaine.",
+      "month": "Vous avez fait tout ce que vous aviez prévu ce mois-ci.",
+      "year": "Vous avez fait tout ce que vous aviez prévu cette année."
+    },
+    "nothing": {
+      "week": "Rien n’était prévu cette semaine.",
+      "month": "Rien n’était prévu ce mois-ci.",
+      "year": "Rien n’était prévu cette année."
+    }
+  },
+  "footnote": {
+    "slippedDays_one": "{{name}} a le plus décroché : {{done}} jour sur {{count}}.",
+    "slippedDays_other": "{{name}} a le plus décroché : {{done}} jours sur {{count}}.",
+    "slippedSessions_one": "{{name}} a le plus décroché : {{done}} séance sur {{count}}.",
+    "slippedSessions_other": "{{name}} a le plus décroché : {{done}} séances sur {{count}}.",
+    "nothingSlipped": "Rien n’a décroché.",
+    "skippedLeftOut": "Les jours sautés ne sont pas comptés."
+  },
+  "legend": {
+    "done": "fait",
+    "missed": "manqué",
+    "skipped": "sauté"
+  },
+  "row": {
+    "strength": "solidité",
+    "perDay": "{{value}} par jour"
+  },
+  "spoken": {
+    "days_one": "{{name}} : {{done}} jour fait sur {{count}}, {{missed}} manqués, {{skipped}} sautés",
+    "days_other": "{{name}} : {{done}} jours faits sur {{count}}, {{missed}} manqués, {{skipped}} sautés",
+    "sessions_one": "{{name}} : {{done}} séance faite sur {{count}}, {{missed}} manquées, {{skipped}} sautées",
+    "sessions_other": "{{name}} : {{done}} séances faites sur {{count}}, {{missed}} manquées, {{skipped}} sautées",
+    "logged_one": "{{name}} : noté {{count}} jour",
+    "logged_other": "{{name}} : noté {{count}} jours",
+    "nothingDue": "{{name}} : rien de prévu"
+  },
+  "empty": "Aucun suivi pour l’instant.",
+  "couldNotLoad": "Impossible de charger le bilan.",
+  "history": {
+    "yearTitle": "L’année écoulée",
+    "yearA11y": "L’année écoulée : {{done}} faits, {{missed}} manqués, {{skipped}} sautés",
+    "strengthLineCaption": "90 derniers jours",
+    "strengthLineA11y": "Solidité sur les 90 derniers jours, {{score}} aujourd’hui"
+  }
+}

@@ -6,12 +6,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../navigation/types';
+import { space } from '../../theme/spacing';
 
 type Props = {
   message: string;
 };
 
-/** Empty Habits/Counters tab with a single CTA into Trackers. */
+/** Today with no habit or counter on it: one sentence and one way into Trackers. */
 export default function EmptyTabState({ message }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation('home');
@@ -31,9 +32,9 @@ export default function EmptyTabState({ message }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    marginTop: 48,
-    paddingHorizontal: 24,
-    gap: 16,
+    marginTop: space.xxl,
+    paddingHorizontal: space.xl,
+    gap: space.lg,
   },
   message: {
     textAlign: 'center',

@@ -14,15 +14,18 @@ Active plan for Life Dashboard. Intent only — do not scaffold protocol, DB, or
 
 | Area | Notes |
 |------|--------|
+| App shape | Five pages: **Today · Journal · Calendar · Review · More**. Dock shows icon + word; pages mount lazily. **Today** is one list mirroring the widget (Now · habits · counters · Todos · Done) with a single undo bar. More is the settings page, with Manage on top. |
 | Habits / Counters | Check-off, timers, +/undo, drag-reorder, streaks (habit + counter target-hit) |
 | Trackers | Create / edit / archive / delete; curated icons + identity marks on Home |
 | Notes / journals | Per-tracker day notes + daily journals; mic dictation (on-device ASI only) |
 | Calendar | Local events, recurrence, reminders, Home peek (ambient) |
 | Weather | Home mood chip, forecast strip, fling physics (ambient); coarse location |
 | Data | Full JSON backup; granular Clear data… |
-| Nutrition | Food catalog standard (protocol catalog, not a kind) + day log. Home tab shows **this week's plate** with catalogue search to add; **Ingredients** manager (virtualised) under More builds the catalogue. Mon–Sun distinct-plant count toward 30. Catalogue starts empty. |
-| Todos | Home tab: open list with due dates, drag-reorder; completed rows kept (never deleted) and browsable in Todo history. App data, not an `ElementKind`. |
-| Insights | Charts over event history, under More |
+| Nutrition | Food catalog standard (protocol catalog, not a kind) + day log. **Food** (this week's plate, catalogue search to add) and **Ingredients** manager (virtualised) are pushed screens under More → Manage. Mon–Sun distinct-plant count toward 30. Catalogue starts empty. |
+| Todos | Open list on Today with due dates, drag-reorder; completed rows kept (never deleted) and browsable in Todo history. App data, not an `ElementKind`. |
+| Review | Replaces Insights: Week / Month / Year completion rate with plain-sentence comparison, one tile per tracker (strength + day strip), tap through to tracker history (year heatmap, 90-day strength line, counter target-hit streak). |
+| In-app confirm sheet | `confirm()` / `notify()` replace every stock `Alert`; works on web too. |
+| Evening check-in | Switch + time in More → Reminders. |
 | Privacy | No accounts/cloud; `allowBackup=false`; no Google speech / network dictation |
 | i18n | EN + FR (Todos strings EN-only, served to FR via `fallbackLng`) |
 
@@ -36,11 +39,10 @@ Ordered for day-to-day work. Skip or reorder when a bug blocks use.
 
 | # | Item | Notes |
 |---|------|--------|
-| 1 | **T2c** Tracker editor / settings menus | Clearer sections; less clutter. Worktree may exist: `feature/habit-editor-polish` |
-| 2 | **T2e** Sheet transitions + journal expand | Smooth open; journal vs notes IA |
-| 3 | **T2f** Haptics / chime taste | After layouts settle |
-| 4 | **Session Lock** | One media-session for habit timers; no duplicate lock-screen controls. Then decide lock-screen dictation/Done. Worktree: `feature/lock-screen-media-controls` |
-| 5 | **Session Export** | Granular export/import by type (+ optional date range); plain journal/notes share as a preset |
+| 1 | **T2e** Sheet transitions + journal expand | Smooth open; journal vs notes IA |
+| 2 | **T2f** Haptics / chime taste | After layouts settle |
+| 3 | **Session Lock** | One media-session for habit timers; no duplicate lock-screen controls. Then decide lock-screen dictation/Done. Worktree: `feature/lock-screen-media-controls` |
+| 4 | **Session Export** | Granular export/import by type (+ optional date range); plain journal/notes share as a preset |
 
 ### Nutrition — next steps
 
@@ -54,8 +56,6 @@ Catalog + weekly plant count shipped. In order:
 ### Smaller leftovers
 
 - Counter hold-+5/+10
-- Counter target-hit streak in History / Insights (Home cache is not stats)
-- Insights content redesign (not just chrome)
 - Note undo/redo
 - Voice “Done” / formatting keywords (after Echo — Echo is shipped)
 - Calendar: event-type UI, weekly BYDAY multi-select, native pickers

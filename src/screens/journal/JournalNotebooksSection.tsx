@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Menu, Surface, Text, useTheme } from 'react-native-paper';
+import { Menu, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import Rule from '../../components/Rule';
 import { EditorSheet, FilledField } from '../../components/sheet';
 import IconPickerField from '../../components/trackerEditor/IconPickerField';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -25,8 +24,11 @@ import {
   updateJournalNotebook,
 } from '../../notes/journalNotebooks';
 import NotebookMark from './NotebookMark';
+import { confirm, notify } from '../../components/sheet/confirm';
 
 type Props = {
+  visible: boolean;
+  onDismiss: () => void;
   notebooks: JournalNotebook[];
   onChanged: () => void;
 };
@@ -58,7 +60,20 @@ function NotebookWell({ notebook }: { notebook: Pick<JournalNotebook, 'color' | 
   );
 }
 
-export default function JournalNotebooksSection({ notebooks, onChanged }: Props) {
+/**
+ * Everything about managing notebooks — add, rename, colour and glyph,
+ * reorder, delete — in one sheet opened from the Journal header. None of it
+ * sits on the page: the page is for writing and reading.
+ *
+ * Editing one notebook opens a second sheet over this one. It mounts later, so
+ * it draws on top and is the first to answer the back button.
+ */
+export default function JournalNotebooksSection({
+  visible,
+  onDismiss,
+  notebooks,
+  onChanged,
+}: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
   const { decorations: deco } = useAppTheme();
@@ -88,7 +103,10 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
     if (!draft || busy) return;
     const name = draft.name.trim();
     if (!name) {
-      Alert.alert(t('notebooks.nameRequiredTitle'), t('notebooks.nameRequiredBody'));
+      void notify({
+        title: t('notebooks.nameRequiredTitle'),
+        message: t('notebooks.nameRequiredBody'),
+      });
       return;
     }
     setBusy(true);
@@ -105,10 +123,10 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
       setDraft(null);
       onChanged();
     } catch (error) {
-      Alert.alert(
-        t('notebooks.couldNotSaveTitle'),
-        error instanceof Error ? error.message : t('screen.couldNotLoadJournalsFallback'),
-      );
+      void notify({
+        title: t('notebooks.couldNotSaveTitle'),
+        message: error instanceof Error ? error.message : t('screen.couldNotLoadJournalsFallback'),
+      });
     } finally {
       setBusy(false);
     }
@@ -116,142 +134,132 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
 
   const confirmDelete = (notebook: JournalNotebook) => {
     if (notebooks.length <= 1) {
-      Alert.alert(t('notebooks.cannotDeleteLastTitle'), t('notebooks.cannotDeleteLastBody'));
+      void notify({
+        title: t('notebooks.cannotDeleteLastTitle'),
+        message: t('notebooks.cannotDeleteLastBody'),
+      });
       return;
     }
-    Alert.alert(t('notebooks.deleteTitle', { name: notebook.name }), t('notebooks.deleteBody'), [
-      { text: t('editorSheet.cancel'), style: 'cancel' },
-      {
-        text: t('notebooks.deleteAction'),
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            setBusy(true);
-            try {
-              await deleteJournalNotebook(notebook.id);
-              if (draft?.id === notebook.id) setDraft(null);
-              onChanged();
-            } catch (error) {
-              Alert.alert(
-                t('notebooks.couldNotDeleteTitle'),
-                error instanceof Error ? error.message : t('screen.couldNotLoadJournalsFallback'),
-              );
-            } finally {
-              setBusy(false);
-            }
-          })();
-        },
-      },
-    ]);
+    void (async () => {
+      const confirmed = await confirm({
+        title: t('notebooks.deleteTitle', { name: notebook.name }),
+        message: t('notebooks.deleteBody'),
+        confirmLabel: t('notebooks.deleteAction'),
+        cancelLabel: t('editorSheet.cancel'),
+        destructive: true,
+      });
+      if (!confirmed) return;
+      setBusy(true);
+      try {
+        await deleteJournalNotebook(notebook.id);
+        if (draft?.id === notebook.id) setDraft(null);
+        onChanged();
+      } catch (error) {
+        void notify({
+          title: t('notebooks.couldNotDeleteTitle'),
+          message:
+            error instanceof Error ? error.message : t('screen.couldNotLoadJournalsFallback'),
+        });
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   return (
-    <View style={styles.wrap}>
-      <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
-        {t('notebooks.title')}
-      </Text>
-      <Surface
-        style={[
-          styles.surface,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: deco.radius.lg,
-          },
-        ]}
-        elevation={0}
-      >
-        <View style={styles.header}>
-          {!canAdd ? (
-            <Text style={[typeScale.secondary, { color: theme.colors.onSurfaceVariant, flex: 1 }]}>
-              {t('notebooks.maxReached', { count: JOURNAL_NOTEBOOK_MAX })}
-            </Text>
-          ) : (
-            <View style={styles.headerSpacer} />
-          )}
+    <>
+      <EditorSheet visible={visible} onDismiss={onDismiss} title={t('notebooks.title')}>
+        <View>
+          {notebooks.map((notebook, index) => (
+            <React.Fragment key={notebook.id}>
+              <View style={styles.row}>
+                <Pressable
+                  onPress={() => startEdit(notebook)}
+                  style={styles.rowMain}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('notebooks.editA11y', { name: notebook.name })}
+                >
+                  <NotebookWell notebook={notebook} />
+                  <Text
+                    style={[typeScale.rowName, styles.rowName, { color: theme.colors.onSurface }]}
+                    numberOfLines={1}
+                  >
+                    {notebook.name}
+                  </Text>
+                </Pressable>
+                <Menu
+                  visible={menuId === notebook.id}
+                  onDismiss={() => setMenuId(null)}
+                  anchor={
+                    <Pressable
+                      onPress={() => setMenuId(notebook.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('notebooks.moreA11y', { name: notebook.name })}
+                      hitSlop={8}
+                      style={styles.headerAction}
+                    >
+                      <MaterialCommunityIcons
+                        name="dots-vertical"
+                        size={22}
+                        color={theme.colors.onSurfaceVariant}
+                      />
+                    </Pressable>
+                  }
+                >
+                  <Menu.Item
+                    leadingIcon="chevron-up"
+                    title={t('notebooks.moveUp')}
+                    disabled={busy || index === 0}
+                    onPress={() => {
+                      setMenuId(null);
+                      void moveJournalNotebook(notebook.id, 'up').then(onChanged);
+                    }}
+                  />
+                  <Menu.Item
+                    leadingIcon="chevron-down"
+                    title={t('notebooks.moveDown')}
+                    disabled={busy || index === notebooks.length - 1}
+                    onPress={() => {
+                      setMenuId(null);
+                      void moveJournalNotebook(notebook.id, 'down').then(onChanged);
+                    }}
+                  />
+                  <Menu.Item
+                    leadingIcon="delete-outline"
+                    title={t('notebooks.deleteAction')}
+                    disabled={busy || notebooks.length <= 1}
+                    onPress={() => {
+                      setMenuId(null);
+                      confirmDelete(notebook);
+                    }}
+                  />
+                </Menu>
+              </View>
+            </React.Fragment>
+          ))}
+
           {canAdd ? (
             <Pressable
               onPress={startNew}
-              disabled={busy || draft?.id === 'new'}
+              disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={t('notebooks.add')}
-              hitSlop={8}
-              style={styles.headerAction}
+              style={styles.rowMain}
             >
-              <MaterialCommunityIcons name="plus" size={22} color={theme.colors.primary} />
+              <View style={styles.well}>
+                <MaterialCommunityIcons name="plus" size={22} color={theme.colors.primary} />
+              </View>
+              <Text style={[typeScale.rowName, styles.rowName, { color: theme.colors.primary }]}>
+                {t('notebooks.add')}
+              </Text>
             </Pressable>
-          ) : null}
+          ) : (
+            <Text style={[typeScale.secondary, styles.maxReached, { color: theme.colors.onSurfaceVariant }]}>
+              {t('notebooks.maxReached', { count: JOURNAL_NOTEBOOK_MAX })}
+            </Text>
+          )}
         </View>
-
-        {notebooks.map((notebook, index) => (
-          <React.Fragment key={notebook.id}>
-            <Rule style={styles.rule} />
-            <View style={styles.row}>
-              <Pressable
-                onPress={() => startEdit(notebook)}
-                style={styles.rowMain}
-                accessibilityRole="button"
-                accessibilityLabel={t('notebooks.editA11y', { name: notebook.name })}
-              >
-                <NotebookWell notebook={notebook} />
-                <Text
-                  style={[typeScale.rowName, styles.rowName, { color: theme.colors.onSurface }]}
-                  numberOfLines={1}
-                >
-                  {notebook.name}
-                </Text>
-              </Pressable>
-              <Menu
-                visible={menuId === notebook.id}
-                onDismiss={() => setMenuId(null)}
-                anchor={
-                  <Pressable
-                    onPress={() => setMenuId(notebook.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('notebooks.moreA11y', { name: notebook.name })}
-                    hitSlop={8}
-                    style={styles.headerAction}
-                  >
-                    <MaterialCommunityIcons
-                      name="dots-vertical"
-                      size={22}
-                      color={theme.colors.onSurfaceVariant}
-                    />
-                  </Pressable>
-                }
-              >
-                <Menu.Item
-                  leadingIcon="chevron-up"
-                  title={t('notebooks.moveUp')}
-                  disabled={busy || index === 0}
-                  onPress={() => {
-                    setMenuId(null);
-                    void moveJournalNotebook(notebook.id, 'up').then(onChanged);
-                  }}
-                />
-                <Menu.Item
-                  leadingIcon="chevron-down"
-                  title={t('notebooks.moveDown')}
-                  disabled={busy || index === notebooks.length - 1}
-                  onPress={() => {
-                    setMenuId(null);
-                    void moveJournalNotebook(notebook.id, 'down').then(onChanged);
-                  }}
-                />
-                <Menu.Item
-                  leadingIcon="delete-outline"
-                  title={t('notebooks.deleteAction')}
-                  disabled={busy || notebooks.length <= 1}
-                  onPress={() => {
-                    setMenuId(null);
-                    confirmDelete(notebook);
-                  }}
-                />
-              </Menu>
-            </View>
-          </React.Fragment>
-        ))}
-
-      </Surface>
+      </EditorSheet>
 
       <EditorSheet
         visible={draft != null}
@@ -314,49 +322,36 @@ export default function JournalNotebooksSection({ notebooks, onChanged }: Props)
           </>
         ) : null}
       </EditorSheet>
-    </View>
+    </>
   );
 }
 
-/** Where a row's name starts: the gutter, the 40dp well and its gap. */
-const NAME_INSET = space.lg + 40 + space.md;
-
 const styles = StyleSheet.create({
-  wrap: { gap: space.sm },
-  sectionTitle: { ...typeScale.caption, fontSize: 14, paddingHorizontal: space.xs },
-  surface: { overflow: 'hidden' },
-  header: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: space.lg,
-    paddingRight: space.xs,
-  },
-  headerSpacer: {
-    flex: 1,
-  },
   headerAction: {
     width: 48,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rule: { marginLeft: NAME_INSET },
   row: {
-    minHeight: 64,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: space.lg,
-    paddingRight: space.xs,
     gap: space.xs,
+    // The overflow glyph's box supplies its own room at the sheet's edge.
+    marginRight: -space.md,
   },
   rowMain: {
     flex: 1,
     minWidth: 0,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     paddingVertical: space.sm,
+  },
+  maxReached: {
+    paddingVertical: space.md,
   },
   well: {
     width: 40,

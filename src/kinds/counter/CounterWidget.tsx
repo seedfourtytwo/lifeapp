@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { EditorSheet, FilledField } from '../../components/sheet';
@@ -16,6 +16,7 @@ import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { counterCardCaption } from './counterCardLabels';
 import { skipTodayBubbles } from '../skipTodayBubble';
+import { notify } from '../../components/sheet/confirm';
 
 const NOTE_ICON_SIZE = 24;
 
@@ -76,7 +77,10 @@ export function CounterWidget({
   const saveEdit = async () => {
     const total = parseInt(editValue.trim(), 10);
     if (Number.isNaN(total) || total < 0) {
-      Alert.alert(t('counterWidget.invalidTotalTitle'), t('counterWidget.invalidTotalBody'));
+      void notify({
+        title: t('counterWidget.invalidTotalTitle'),
+        message: t('counterWidget.invalidTotalBody'),
+      });
       return;
     }
     setSaving(true);
@@ -84,10 +88,10 @@ export function CounterWidget({
       await onSetDailyTotal?.(total);
       setEditVisible(false);
     } catch (error) {
-      Alert.alert(
-        t('counterWidget.couldNotUpdateTitle'),
-        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-      );
+      void notify({
+        title: t('counterWidget.couldNotUpdateTitle'),
+        message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+      });
     } finally {
       setSaving(false);
     }

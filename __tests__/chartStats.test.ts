@@ -2,7 +2,6 @@ import {
   computeActivityStats,
   computePersonalBestStreak,
   movingAverage,
-  normalizeSeriesToUnit,
 } from '../src/utils/chartStats';
 
 describe('movingAverage', () => {
@@ -12,19 +11,6 @@ describe('movingAverage', () => {
 
   it('returns zeros for empty window size', () => {
     expect(movingAverage([1, 2], 0)).toEqual([0, 0]);
-  });
-});
-
-describe('normalizeSeriesToUnit', () => {
-  it('scales each series to its own max', () => {
-    expect(normalizeSeriesToUnit([[0, 5, 10], [2, 2, 2]])).toEqual([
-      [0, 0.5, 1],
-      [1, 1, 1],
-    ]);
-  });
-
-  it('uses max floor of 1 so empty series stays zero', () => {
-    expect(normalizeSeriesToUnit([[0, 0]])).toEqual([[0, 0]]);
   });
 });
 

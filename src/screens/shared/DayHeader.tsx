@@ -6,9 +6,10 @@ import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { formatShortDate } from '../../utils/dates';
 import { APP_DAY_RESET_TIME_LABEL, currentAppCalendarDate } from '../../utils/dayRollover';
-import ActivityStrip, { type ActivityDay } from './ActivityStrip';
+import WeekStrip from './WeekStrip';
 import DayHeaderPeeks from './DayHeaderPeeks';
 import type { DayHeaderMeta } from './dayHeaderMeta';
+import type { WeekDay } from '../today/weekActivity';
 
 type Props = {
   /** Calendar "now" from `useAppCalendarNow` — advances on day rollover. */
@@ -19,9 +20,9 @@ type Props = {
    * the right: "2 of 6 done" … "13 days in a row".
    */
   meta?: string | DayHeaderMeta | null;
-  /** Recent days for the strip; empty hides it. */
-  activity?: ActivityDay[];
-  activityLabel?: string;
+  /** This week, Monday to Sunday, for the strip; empty hides it. */
+  week?: WeekDay[];
+  weekLabel?: string;
   /**
    * Tab-specific buttons, aligned with the date — journal notebooks, a history
    * shortcut. The weather chip and the calendar glyph are *not* passed in here:
@@ -32,8 +33,8 @@ type Props = {
 };
 
 /**
- * The top of a Home tab: which day this is, how it is going, and how the last
- * fortnight went.
+ * The top of the Today page: which day this is, how it is going, and how the week
+ * has gone so far.
  *
  * This inverts what was here before. The date was `bodyMedium` at 85% opacity
  * next to a 15pt refresh glyph — the quietest thing on a screen whose whole
@@ -44,8 +45,8 @@ type Props = {
 export default function DayHeader({
   now,
   meta = null,
-  activity = [],
-  activityLabel,
+  week = [],
+  weekLabel,
   actions,
 }: Props) {
   const theme = useTheme();
@@ -87,8 +88,8 @@ export default function DayHeader({
         </View>
       ) : null}
 
-      {activity.length > 0 && activityLabel ? (
-        <ActivityStrip days={activity} accessibilityLabel={activityLabel} />
+      {week.length > 0 && weekLabel ? (
+        <WeekStrip days={week} accessibilityLabel={weekLabel} />
       ) : null}
     </View>
   );

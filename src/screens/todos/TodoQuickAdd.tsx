@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
-import FilledField from '../../components/sheet/FilledField';
 import { TODO_TITLE_MAX_LENGTH } from '../../protocol';
 import { dictationMicIcon } from '../../dictation/dictationField';
 import { livePreviewText } from '../../dictation/livePreview';
 import { useDictationField } from '../../dictation/useDictationField';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
+import { typeScale } from '../../theme/typography';
+import { TODO_MARK_TARGET, TODO_TITLE_INSET } from './TodoRow';
 
 type Props = {
   value: string;
@@ -23,17 +26,18 @@ type Props = {
 };
 
 /**
- * The one-line composer at the top of the Todos tab.
+ * The first line of the todo list: a plus where a todo's box stands and a
+ * plain input where its words do, written on the page like the rows under it.
+ * Focus shows as an accent underline.
  *
- * The field has one trailing slot, so it shows whichever control the field
- * is waiting for: the mic while nothing has been entered, the tick while a take
- * is open, the plus once there is a title to file. Dictation deliberately stops
- * short of creating the todo — a misheard task filed on its own is worse than
- * one more tap, and the plus is already sitting there.
+ * It has one trailing slot, so it shows whichever control the line is waiting
+ * for: the mic while nothing has been entered, the tick while a take is open,
+ * the plus once there is a title to file. Dictation deliberately stops short
+ * of creating the todo — a misheard task filed on its own is worse than one
+ * more tap, and the plus is already sitting there.
  *
  * Where dictation does not exist — iOS, web, an Android phone without the
- * engine — the mic is absent rather than disabled, and the field is exactly
- * what it was before.
+ * engine — the mic is absent rather than disabled.
  */
 export default function TodoQuickAdd({
   value,
@@ -49,6 +53,8 @@ export default function TodoQuickAdd({
   // warms the engine — which means loading a 123M-parameter model into memory.
   // Nothing wakes until the mic is pressed; that same press carries the take in
   // through auto-start, so arming and speaking are still one gesture.
+  const { decorations: deco } = useAppTheme();
+  const [focused, setFocused] = useState(false);
   const [micPresses, setMicPresses] = useState(0);
   const armed = micPresses > 0;
 
@@ -82,24 +88,47 @@ export default function TodoQuickAdd({
 
   return (
     <View style={styles.wrap}>
-      <FilledField
-        fill="page"
-        value={shown}
-        onChangeText={(next) => {
-          dictation.clearNotices();
-          onChangeText(next);
-        }}
-        placeholder={t('add.placeholder')}
-        maxLength={TODO_TITLE_MAX_LENGTH}
-        returnKeyType="done"
-        onSubmitEditing={onSubmit}
-        blurOnSubmit={false}
-        editable={!dictation.sessionOpen}
-        rightAccessory={
-          showMic ? (
+      {/* A todo row's geometry: a glyph where the box stands, words where the title does. */}
+      <View style={styles.row}>
+        <View style={styles.mark} importantForAccessibility="no" accessibilityElementsHidden>
+          <MaterialCommunityIcons name="plus" size={GLYPH} color={theme.colors.onSurfaceVariant} />
+        </View>
+        <View
+          style={[
+            styles.field,
+            {
+              borderBottomWidth: deco.borderWidth,
+              // Always there, so focusing moves nothing; it only takes the accent.
+              borderBottomColor: focused ? theme.colors.primary : 'transparent',
+            },
+          ]}
+        >
+          <TextInput
+            value={shown}
+            onChangeText={(next) => {
+              dictation.clearNotices();
+              onChangeText(next);
+            }}
+            placeholder={t('add.placeholder')}
+            accessibilityLabel={t('add.placeholder')}
+            maxLength={TODO_TITLE_MAX_LENGTH}
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
+            blurOnSubmit={false}
+            editable={!dictation.sessionOpen}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            selectionColor={theme.colors.primary}
+            cursorColor={theme.colors.primary}
+            underlineColorAndroid="transparent"
+            textAlignVertical="center"
+            style={[typeScale.body, styles.input, { color: theme.colors.onSurface }]}
+          />
+          {showMic ? (
             <IconButton
               icon={mic.icon}
-              size={22}
+              size={GLYPH}
               iconColor={theme.colors.onSurfaceVariant}
               disabled={mic.disabled}
               onPress={
@@ -112,18 +141,20 @@ export default function TodoQuickAdd({
                   ? tCommon('dictation.finishA11y')
                   : tCommon('dictation.startA11y')
               }
+              style={styles.action}
             />
           ) : hasText ? (
             <IconButton
               icon="plus"
-              size={22}
+              size={GLYPH}
               iconColor={theme.colors.primary}
               onPress={onSubmit}
               accessibilityLabel={t('add.action')}
+              style={styles.action}
             />
-          ) : undefined
-        }
-      />
+          ) : null}
+        </View>
+      </View>
 
       {line ? (
         line.tone === 'error' ? (
@@ -144,12 +175,39 @@ export default function TodoQuickAdd({
   );
 }
 
+const GLYPH = 22;
+
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: space.xl,
+    marginBottom: space.xs,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 52,
+    gap: space.sm,
+  },
+  mark: {
+    width: TODO_MARK_TARGET,
+    alignItems: 'center',
+  },
+  field: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 0,
+    paddingVertical: space.sm,
+    // The underline already shows focus; the browser's ring drew a frame on web.
+    outlineWidth: 0,
+  },
+  action: {
+    margin: 0,
   },
   line: {
     marginTop: space.xs,
-    paddingHorizontal: space.xs,
+    paddingLeft: TODO_TITLE_INSET,
   },
 });

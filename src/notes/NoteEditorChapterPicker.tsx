@@ -1,10 +1,12 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Checkbox, Modal, Portal, Text, TouchableRipple, useTheme } from 'react-native-paper';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
+import { EditorSheet, SheetCheck } from '../components/sheet';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import { journalChapterPreview } from './journalChapters';
 import type { ShareChapterView } from './journalShareSelection';
 import {
@@ -26,11 +28,9 @@ type Props = {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onConfirm: () => void;
+  /** The scrim, a pull down and Android back: nothing leaves the journal. */
   onCancel: () => void;
 };
-
-const PICKER_MAX_WIDTH = 400;
-const PICKER_GUTTER = 24;
 
 /**
  * Which chapters leave the journal.
@@ -77,131 +77,93 @@ export default function NoteEditorChapterPicker({
       idle: theme.colors.onSurfaceVariant,
     });
 
+  // The sheet keeps its last title while it slides shut.
+  const lastMode = React.useRef<SharePickerMode>('share');
+  if (mode) lastMode.current = mode;
+  const copying = lastMode.current === 'copy';
+
   return (
-    <Portal>
-      <Modal
-        visible={mode != null}
-        onDismiss={onCancel}
-        style={styles.wrap}
-        contentContainerStyle={[
-          styles.modal,
-          {
-            maxWidth: PICKER_MAX_WIDTH,
-            marginHorizontal: PICKER_GUTTER,
-            backgroundColor: theme.colors.surface,
-            borderRadius: deco.radius.lg,
-          },
-        ]}
-      >
-        <Text variant="titleMedium">
-          {mode === 'copy' ? t('share.copyTitle') : t('share.shareTitle')}
-        </Text>
-        <View style={styles.toolbar}>
-          <QuietText variant="labelSmall" style={styles.count}>
-            {t('share.selectedCount', { count: chosenCount, total: withText.length })}
-          </QuietText>
-          <Button compact mode="text" onPress={onSelectAll}>
-            {t('share.selectAll')}
-          </Button>
-          <Button compact mode="text" onPress={onSelectNone}>
-            {t('share.selectNone')}
-          </Button>
-        </View>
+    <EditorSheet
+      visible={mode != null}
+      onDismiss={onCancel}
+      title={copying ? t('share.copyTitle') : t('share.shareTitle')}
+      primaryAction={{
+        label: copying ? t('share.confirmCopy') : t('share.confirmShare'),
+        onPress: onConfirm,
+        disabled: chosenCount === 0,
+      }}
+    >
+      <View style={styles.toolbar}>
+        <QuietText style={[typeScale.caption, styles.count]}>
+          {chosenCount === 0
+            ? t('share.nothingSelected')
+            : t('share.selectedCount', { count: chosenCount, total: withText.length })}
+        </QuietText>
+        <Button compact mode="text" onPress={onSelectAll}>
+          {t('share.selectAll')}
+        </Button>
+        <Button compact mode="text" onPress={onSelectNone}>
+          {t('share.selectNone')}
+        </Button>
+      </View>
 
-        <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-          {chapters.map((chapter) => {
-            const status = statuses[chapter.id] ?? 'never';
-            const preview = journalChapterPreview(chapter.body);
-            const checked = picked.has(chapter.id);
-            return (
-              <TouchableRipple
-                key={chapter.id}
-                onPress={() => onToggle(chapter.id)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked }}
-                accessibilityLabel={`${t('share.toggleA11y', { number: chapter.number })}. ${statusLabel(status)}`}
-                style={[styles.row, { borderRadius: deco.radius.sm }]}
-              >
-                <View style={styles.rowInner}>
-                  <Checkbox status={checked ? 'checked' : 'unchecked'} />
-                  <View style={styles.rowText}>
-                    <Text variant="bodyMedium" numberOfLines={1}>
-                      {preview
-                        ? t('chapters.jumpLabel', { number: chapter.number, preview })
-                        : t('chapters.label', { number: chapter.number })}
-                    </Text>
-                    <Text variant="labelSmall" style={{ color: statusColor(status) }}>
-                      {statusLabel(status)}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableRipple>
-            );
-          })}
-        </ScrollView>
-
-        {chosenCount === 0 ? (
-          <QuietText variant="labelSmall" style={styles.hint}>
-            {t('share.nothingSelected')}
-          </QuietText>
-        ) : null}
-
-        <View style={styles.actions}>
-          <Button mode="text" onPress={onCancel}>
-            {t('share.cancel')}
-          </Button>
-          <Button mode="contained" disabled={chosenCount === 0} onPress={onConfirm}>
-            {mode === 'copy' ? t('share.confirmCopy') : t('share.confirmShare')}
-          </Button>
-        </View>
-      </Modal>
-    </Portal>
+      <View>
+        {chapters.map((chapter) => {
+          const status = statuses[chapter.id] ?? 'never';
+          const preview = journalChapterPreview(chapter.body);
+          const checked = picked.has(chapter.id);
+          return (
+            <Pressable
+              key={chapter.id}
+              onPress={() => onToggle(chapter.id)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked }}
+              accessibilityLabel={`${t('share.toggleA11y', { number: chapter.number })}. ${statusLabel(status)}`}
+              android_ripple={{ color: theme.colors.outlineVariant }}
+              style={[styles.row, { borderRadius: deco.radius.sm }]}
+            >
+              <SheetCheck checked={checked} />
+              <View style={styles.rowText}>
+                <Text
+                  style={[typeScale.body, { color: theme.colors.onSurface }]}
+                  numberOfLines={1}
+                >
+                  {preview
+                    ? t('chapters.jumpLabel', { number: chapter.number, preview })
+                    : t('chapters.label', { number: chapter.number })}
+                </Text>
+                <Text style={[typeScale.caption, { color: statusColor(status) }]}>
+                  {statusLabel(status)}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </EditorSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    justifyContent: 'center',
-  },
-  modal: {
-    alignSelf: 'center',
-    width: '100%',
-    padding: space.lg,
-  },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: space.xs,
   },
   count: {
     flex: 1,
     minWidth: 0,
   },
-  list: {
-    maxHeight: 280,
-  },
   row: {
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  rowInner: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    paddingRight: space.sm,
+    gap: space.md,
+    paddingVertical: space.sm,
+    overflow: 'hidden',
   },
   rowText: {
     flex: 1,
     minWidth: 0,
-  },
-  hint: {
-    marginTop: space.xs,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: space.sm,
-    marginTop: space.md,
+    gap: space.xxs,
   },
 });

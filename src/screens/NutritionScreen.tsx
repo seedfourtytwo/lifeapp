@@ -48,18 +48,19 @@ import { homeTabScreenStyles } from './shared/screenStyles';
 const SEARCH_RESULT_LIMIT = 50;
 
 type Props = {
-  /** Every journal notebook Home knows about today. */
+  /** Every journal notebook, with today's chapter counts. */
   notebooks: HomeNotebookChip[];
   /** Tap the food journal: today's entry + dictation. */
   onDictateNotebook: (notebookId: string) => void;
   /** Long-press, and the tap that just created it: today's entry, no mic. */
   onEditNotebook: (notebookId: string) => void;
-  /** A notebook was created here — Home's chip list needs refetching. */
+  /** A notebook was created here — the chip list needs refetching. */
   onNotebooksChanged?: () => void;
 };
 
 /**
- * Home Nutrition tab. Shows this week's plate, not the catalogue: the default
+ * The Food screen, pushed from More (`NutritionRoute` supplies the notebooks
+ * and hosts the journal sheet). Shows this week's plate, not the catalogue: the default
  * list is only what has been logged this week, and searching reaches into the
  * full catalogue to add something new. That keeps the rendered set small by
  * design — the catalogue itself is browsed and edited under More → Ingredients.
@@ -218,7 +219,7 @@ function NutritionScreen({
   });
 
   /**
-   * Once the notebook exists this is the same control every other Home tab
+   * Once the notebook exists this is the same control the Today page
    * shows — tap to dictate, long-press to edit, badged with today's chapters.
    * Until then it is an offer, because a notebook is a fifth of the budget.
    */
@@ -273,7 +274,7 @@ function NutritionScreen({
     [trimmedQuery, named, items],
   );
 
-  // The same header the loaded tab draws, so the date and the food-journal
+  // The same header the loaded screen draws, so the date and the food-journal
   // button are already where they belong when the week's rows arrive.
   if (!loaded && loading) {
     return <HomeTabLoadingPane actions={headerActions} />;
@@ -412,8 +413,5 @@ const styles = StyleSheet.create({
   },
 });
 
-/**
- * Memoised because it takes no props: a Home tab change re-renders HomeScreen,
- * and this page has no reason to follow it.
- */
+/** Memoised: its route re-renders whenever the notebook chips reload. */
 export default memo(NutritionScreen);

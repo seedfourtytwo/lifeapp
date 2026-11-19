@@ -1,25 +1,23 @@
 {
   "dock": {
-    "habitsTab": "Habitudes",
-    "countersTab": "Compteurs",
-    "nutritionTab": "Nutrition",
-    "todosTab": "Tâches",
+    "today": "Aujourd'hui",
+    "journal": "Journal",
+    "calendar": "Agenda",
+    "review": "Bilan",
     "more": "Plus"
   },
   "dayStatus": {
     "a11y": "{{date}} · remise à zéro à {{time}}"
   },
-  "habitsTab": {
-    "addHabitA11y": "Ajouter une habitude",
+  "today": {
+    "now": "En cours",
+    "todos": "Tâches",
+    "done": "Terminé",
+    "emptyNoTrackers": "Pas encore d'habitude ni de compteur. Ajoutez-en un pour démarrer votre liste quotidienne.",
+    "emptyNoActiveTrackers": "Aucune habitude ni compteur actif. Restaurez-en un depuis les archives dans Suivis.",
+    "addTrackerA11y": "Ajouter un suivi",
     "retry": "Réessayer",
-    "emptyNoHabits": "Pas encore d'habitude. Ajoutez-en une pour démarrer votre liste quotidienne.",
-    "emptyNoActiveHabits": "Aucune habitude active. Restaurez-en une depuis les archives dans Suivis.",
-    "emptyNothingDueToday": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis."
-  },
-  "countersTab": {
-    "retry": "Réessayer",
-    "emptyNoActiveCounters": "Aucun compteur actif. Restaurez-en un depuis les archives dans Suivis.",
-    "emptyNoCounters": "Pas encore de compteur. Ajoutez-en un pour suivre l'eau, les pas, ou tout ce qui se compte. Les totaux sont remis à zéro chaque jour.",
+    "emptyNothingDue": "Rien de prévu aujourd'hui — vérifiez la programmation ou la plage horaire dans Suivis.",
     "couldNotLogBody": "Une erreur s'est produite"
   },
   "emptyTabState": {
@@ -70,16 +68,13 @@
   },
   "dayHeader": {
     "habitsDone": "{{done}} sur {{total}} faites",
+    "todayDone": "{{done}} sur {{total}} faits",
     "habitsNoneDue": "Rien de prévu",
     "countersLogged_one": "1 compteur noté",
     "countersLogged_other": "{{count}} compteurs notés",
     "countersNone": "Rien pour l'instant",
     "streak_one": "1 jour d'affilée",
     "streak_other": "{{count}} jours d'affilée",
-    "activityA11y_one": "{{days}} derniers jours, actif sur 1",
-    "activityA11y_other": "{{days}} derniers jours, actif sur {{count}}",
-    "todosOpen_one": "1 à faire",
-    "todosOpen_other": "{{count}} à faire",
-    "todosClear": "Tout est fait"
+    "weekA11y": "Cette semaine : quelque chose de noté {{active}} jours sur {{elapsed}}. Aujourd'hui : {{logged}} suivis sur {{total}}."
   }
 }

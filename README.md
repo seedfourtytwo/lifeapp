@@ -9,17 +9,17 @@ Data stays in SQLite on the phone: no account, no cloud sync.
 
 | Area | Notes |
 |------|--------|
-| **Home** | Habits / Counters / Nutrition / Todos tabs; weather chip + calendar glyph in the day header, each opening a peek panel |
+| **Today** | One list mirroring the widget: running timers, habits, counters, todos, then done; weather chip + calendar glyph in the day header, each opening a peek panel |
 | **Habits** | Check-off or timer; streaks; drag-reorder |
 | **Counters** | +/undo/edit total; optional daily target + streak; drag-reorder; daily reset |
-| **Nutrition** | Food catalog (protocol *catalog*, not a kind) + day log; weekly distinct-plant count |
+| **Nutrition** | Food catalog (protocol *catalog*, not a kind) + day log; weekly distinct-plant count; pushed from More |
 | **Todos** | Open list with due dates + drag-reorder; completed rows kept as history |
 | **Trackers** | Create, edit, archive/restore, delete; curated icons |
 | **Notes / journals** | Per-tracker day notes + journal notebooks; on-device mic dictation |
 | **Calendar** | Local events, recurrence, reminders (ambient — not a protocol kind) |
 | **Weather** | Header chip (icon + temperature) opening a forecast peek with humidity (ambient); coarse location only |
-| **Insights** | Cross-tracker charts over event history |
-| **Settings → Data** | JSON export/import; granular Clear data… |
+| **Review** | Week / Month / Year completion rate and one tile per tracker; tap for its history |
+| **More → Your data** | JSON export/import; granular Clear data… |
 | **i18n** | English + French (Todos strings are English-only, served to FR via fallback) |
 | **Life Protocol v1** | Zod-validated elements + events |
 
@@ -33,29 +33,26 @@ The authoritative value is `CURRENT_SCHEMA_VERSION` in [`src/db/migrations.ts`](
 ## App structure
 
 ```
-Home (default)
-├── Habits tab
-├── Counters tab
-├── Nutrition tab — this week's plate
-├── Todos tab
-├── Day header — date, weather chip, calendar glyph (both peeks toggleable in Settings)
-└── More
-    ├── Insights — charts over event history
-    ├── Journal — notebooks, dated feed
-    ├── Calendar — month browse / edit
-    ├── Trackers — manage habits & counters (active + archive)
-    ├── Ingredients — build the food catalogue (virtualised list)
-    └── App settings — theme, language, widgets, backup, about
+Pager (dock: icon + word)
+├── Today — one list: Now · habits · counters · Todos · Done
+│   └── Day header — date, weather chip, calendar glyph (both peeks toggleable in More)
+├── Journal — notebooks, dated feed
+├── Calendar — month browse / edit
+├── Review — Week / Month / Year, one tile per tracker
+└── More — settings page
+    ├── Manage: Trackers · Finished todos · Food · Ingredients
+    ├── Look · General · Reminders (evening check-in)
+    └── Your data — backup, restore, clear
 ```
 
-Each Home tab opens on the same day header: the date in the display face, a
+Today opens on a day header: the date in the display face, a
 one-line status under it, and a fortnight strip showing which of the last 14
 days had anything logged. Beside the date sit two glyphs — the weather chip
 (condition and temperature, nothing else) and the calendar — and each opens a
 `HeaderPeekSheet`: one small bottom panel, written once and used twice.
 
-- **Active** trackers appear on Home.
-- **Archive** hides from Home; history kept.
+- **Active** trackers appear on Today.
+- **Archive** hides from Today; history kept.
 - **Delete** removes the element and its events.
 
 ## Appearance

@@ -3,8 +3,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { CollapseChevron, Collapsible } from './Collapsible';
 import QuietText from './QuietText';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
 import Rule from './Rule';
 
 type Props = {
@@ -66,7 +69,7 @@ export default function TrackersCollapsibleSection({
         >
           <MaterialCommunityIcons name={icon} size={22} color={theme.colors.onSurfaceVariant} />
         </View>
-        <Text variant="titleMedium" style={styles.title}>
+        <Text style={[typeScale.rowName, styles.title, { color: theme.colors.onSurface }]}>
           {title}
         </Text>
         <View style={[styles.countBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -87,32 +90,22 @@ export default function TrackersCollapsibleSection({
             </Pressable>
           </View>
         ) : null}
-        <MaterialCommunityIcons
-          name={collapsed ? 'chevron-down' : 'chevron-up'}
-          size={22}
-          color={theme.colors.onSurfaceVariant}
-        />
+        <CollapseChevron open={!collapsed} size={22} color={theme.colors.onSurfaceVariant} />
       </Pressable>
 
-      {!collapsed ? (
-        <>
-          <Rule />
-          {isEmpty ? (
-            <QuietText variant="bodySmall" style={styles.empty}>
-              {emptyMessage}
-            </QuietText>
-          ) : (
-            items.map((child, index) => (
-              <React.Fragment key={index}>
-                {index > 0 ? (
-                  <Rule />
-                ) : null}
-                {child}
-              </React.Fragment>
-            ))
-          )}
-        </>
-      ) : null}
+      <Collapsible open={!collapsed}>
+        <Rule />
+        {isEmpty ? (
+          <QuietText style={[typeScale.secondary, styles.empty]}>{emptyMessage}</QuietText>
+        ) : (
+          items.map((child, index) => (
+            <React.Fragment key={index}>
+              {index > 0 ? <Rule /> : null}
+              {child}
+            </React.Fragment>
+          ))
+        )}
+      </Collapsible>
     </Surface>
   );
 }
@@ -124,9 +117,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    gap: space.md,
     minHeight: 52,
   },
   iconWrap: {
@@ -147,7 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: space.sm,
   },
   addHit: {
     width: 40,
@@ -156,7 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   empty: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: space.lg,
   },
 });

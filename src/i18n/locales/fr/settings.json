@@ -1,11 +1,9 @@
 {
   "menu": {
-    "insightsTitle": "Statistiques",
-    "journalTitle": "Journal",
-    "calendarTitle": "Calendrier",
+    "sectionTitle": "Gérer",
     "trackersTitle": "Suivis",
-    "settingsTitle": "Paramètres",
-    "backA11y": "Retour",
+    "finishedTodosTitle": "Tâches terminées",
+    "foodTitle": "Alimentation",
     "ingredientsTitle": "Ingrédients"
   },
   "appearance": {
@@ -19,7 +17,7 @@
     "themeDark": "Sombre"
   },
   "homeChrome": {
-    "weatherTitle": "Météo sur l’accueil",
+    "weatherTitle": "Météo sur Aujourd’hui",
     "on": "Activé",
     "off": "Désactivé"
   },
@@ -62,8 +60,6 @@
     "clearNotebookConfirmTitle": "Effacer tout « {{name}} » ?",
     "clearNotebookConfirmBody": "Tous les jours de ce carnet sont supprimés. Le carnet lui-même reste. Cette action est irréversible.",
     "clearNotebookConfirmAction": "Effacer le carnet",
-    "clearNotebookCancel": "Annuler",
-    "clearNotebookClose": "Fermer",
     "clearNotebookDoneTitle": "Carnet effacé",
     "clearNotebookDoneBody": "Tous les jours de {{name}} ont été supprimés.",
     "clearNotebookFailedTitle": "Impossible d’effacer le carnet"
@@ -72,15 +68,12 @@
     "version": "Life {{version}}"
   },
   "weather": {
-    "sectionTitle": "Météo",
     "locationTitle": "Position",
-    "widgetTitle": "Bulle météo sur l'accueil",
     "usePhoneLocationTitle": "Utiliser la position du téléphone",
     "descriptionRebuildRequired": "Nécessite une nouvelle version — définissez une ville ci-dessous",
     "descriptionLocating": "Localisation en cours…",
     "descriptionUsingGps": "Utilise le GPS",
     "descriptionPreferGps": "Préfère le GPS si autorisé",
-    "getLocationA11y": "Localisation en cours",
     "refreshHint": "Appuyez à nouveau pour rafraîchir la position du téléphone",
     "cityHint": "Ou recherchez une ville, puis choisissez le résultat",
     "cityLabel": "Ville",
@@ -116,6 +109,7 @@
       "before": "Avant…",
       "beforeDateLabel": "Avant le",
       "beforeDatePlaceholder": "AAAA-MM-JJ",
+      "beforeDateError": "Utilisez le format AAAA-MM-JJ.",
       "keepHint": "Conserve l'activité récente ; supprime seulement les jours plus anciens."
     },
     "calendar": {
@@ -128,7 +122,7 @@
     },
     "appPreferences": {
       "label": "Préférences de l'application",
-      "description": "Thème, options, position de la bulle"
+      "description": "Thème, langue, météo, rappels"
     },
     "habitsCounters": {
       "label": "Habitudes et compteurs",
@@ -143,10 +137,19 @@
       "activityAll": "Tout l'historique d'activité (validations, minuteurs, compteurs, notes du jour, journaux, tâches terminées)",
       "calendar": "Événements du calendrier, rappels et occurrences marquées",
       "weather": "Prévisions météo en cache",
-      "preferences": "Préférences de l'application (thème, options, position de la bulle)"
+      "preferences": "Préférences de l'application (thème, langue, météo, rappels)"
     }
   },
   "general": {
     "sectionTitle": "Général"
+  },
+  "reminders": {
+    "sectionTitle": "Rappels",
+    "eveningTitle": "Point du soir",
+    "eveningDescription": "Une notification s’il reste quelque chose à faire",
+    "timeTitle": "Heure du point du soir",
+    "timePlaceholder": "20:00",
+    "timeInvalid": "Indiquez une heure sur 24 h, comme 20:00.",
+    "timeNotSaved": "Impossible d’enregistrer l’heure."
   }
 }

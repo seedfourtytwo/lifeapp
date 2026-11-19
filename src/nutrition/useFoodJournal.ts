@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { HomeNotebookChip } from '../notes';
 import { JOURNAL_NOTEBOOK_MAX } from '../protocol';
 import { useJournalNotebookStore } from '../store/journalNotebookStore';
 import { readFoodJournalNotebookId, resolveFoodJournalNotebook } from './foodJournal';
+import { confirm, notify } from '../components/sheet/confirm';
 
 type Options = {
   /** Every notebook Home knows about today — the pointer is resolved against these. */
@@ -27,13 +27,13 @@ export type FoodJournalAffordance = {
 };
 
 /**
- * The Nutrition tab's food journal affordance.
+ * The Nutrition screen's food journal affordance.
  *
  * Two states and no third: either the notebook exists and this behaves exactly
- * like the notebook buttons on every other Home tab, or it does not and the
- * tab offers to start one. Creating costs a fifth of the five-notebook budget,
+ * like the notebook buttons on the Today page, or it does not and the
+ * screen offers to start one. Creating costs a fifth of the five-notebook budget,
  * so it is confirmed, never automatic — and deleting the notebook by hand puts
- * the tab back in the offering state rather than quietly rebuilding it.
+ * the screen back in the offering state rather than quietly rebuilding it.
  */
 export function useFoodJournal({
   notebooks,
@@ -67,7 +67,7 @@ export function useFoodJournal({
         const id = await readFoodJournalNotebookId();
         if (!cancelled) setStoredId(id);
       } catch {
-        // Non-fatal — the tab stays in its opt-in state until the next read.
+        // Non-fatal — the screen stays in its opt-in state until the next read.
       } finally {
         if (!cancelled) setReady(true);
       }
@@ -89,24 +89,27 @@ export function useFoodJournal({
     try {
       const result = await startNotebook();
       if (result.status === 'atCap') {
-        Alert.alert(t('foodJournal.capTitle'), t('foodJournal.capBody', { max: result.max }));
+        void notify({
+          title: t('foodJournal.capTitle'),
+          message: t('foodJournal.capBody', { max: result.max }),
+        });
         return;
       }
       if (result.status === 'discarded') {
-        Alert.alert(
-          t('foodJournal.couldNotStartTitle'),
-          tCommon('errors.dataReplacedTryAgain'),
-        );
+        void notify({
+          title: t('foodJournal.couldNotStartTitle'),
+          message: tCommon('errors.dataReplacedTryAgain'),
+        });
         return;
       }
       setStoredId(result.notebookId);
       onCreatedRef.current?.();
       onOpenRef.current(result.notebookId);
     } catch (error) {
-      Alert.alert(
-        t('foodJournal.couldNotStartTitle'),
-        error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-      );
+      void notify({
+        title: t('foodJournal.couldNotStartTitle'),
+        message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+      });
     } finally {
       startingRef.current = false;
       setStarting(false);
@@ -114,15 +117,14 @@ export function useFoodJournal({
   }, [startNotebook, t, tCommon]);
 
   const start = useCallback(() => {
-    Alert.alert(
-      t('foodJournal.confirmTitle'),
-      t('foodJournal.confirmBody', { max: JOURNAL_NOTEBOOK_MAX }),
-      [
-        { text: tCommon('actions.cancel'), style: 'cancel' },
-        { text: t('foodJournal.confirmStart'), onPress: () => void create() },
-      ],
-    );
-  }, [create, t, tCommon]);
+    void confirm({
+      title: t('foodJournal.confirmTitle'),
+      message: t('foodJournal.confirmBody', { max: JOURNAL_NOTEBOOK_MAX }),
+      confirmLabel: t('foodJournal.confirmStart'),
+    }).then((confirmed) => {
+      if (confirmed) void create();
+    });
+  }, [create, t]);
 
   return { ready, notebook, starting, start };
 }

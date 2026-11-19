@@ -63,7 +63,7 @@ export function useAppBootstrap(): void {
     void loadElements();
     void useCalendarStore.getState().load();
     // Loaded at boot, not on tab focus: the evening check-in counts todos due
-    // today whether or not you have opened the Todos tab.
+    // today whether or not you have opened the Today page.
     void useTodoStore.getState().load();
   }, [loadElements, settingsLoaded]);
 

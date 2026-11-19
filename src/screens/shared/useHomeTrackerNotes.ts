@@ -13,7 +13,7 @@ type Options = {
 >;
 
 /**
- * Per-tracker day-note sheet for a Home tab (Habits / Counters).
+ * Per-tracker day-note sheet for the Today page.
  *
  * Owns the three couplings both tabs need and neither should re-derive:
  * the sheet closes when Home's journal opens or the tab goes inactive, the

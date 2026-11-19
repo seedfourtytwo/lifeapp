@@ -126,7 +126,7 @@ describe('fetchDailyWeatherRange stays humidity-free', () => {
     mockFetch.mockReset();
   });
 
-  it('does not request humidity for the Insights history range', async () => {
+  it('does not request humidity for the history range', async () => {
     mockFetch.mockResolvedValue(apiResponse());
     const { fetchDailyWeatherRange } = await import('../src/weather/openMeteo');
     await fetchDailyWeatherRange(52.52, 13.4, '2026-07-23', '2026-07-24');

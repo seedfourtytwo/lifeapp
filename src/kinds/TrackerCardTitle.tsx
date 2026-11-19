@@ -19,11 +19,9 @@ type Props = TrackerCardTitleInteractionProps & {
   progress?: number | null;
   /** Done: the disc fills moss. */
   complete?: boolean;
-  /** "4 days in a row", under the name; null shows nothing. */
-  streakLabel?: string | null;
   /**
    * The line under the name when it is more than a plain run — "Skipped today",
-   * "Strength 62" (figure in the mono face). Wins over `streakLabel`.
+   * "Strength 62" (figure in the mono face).
    */
   caption?: TrackerCardCaption | null;
 };
@@ -37,8 +35,7 @@ export function TrackerCardTitle({
   icon = null,
   progress = null,
   complete = false,
-  streakLabel = null,
-  caption = null,
+  caption: line = null,
   onOpenDetails,
   onLongPressReorder,
   onReorderTouchMove,
@@ -51,8 +48,6 @@ export function TrackerCardTitle({
   const { t } = useTranslation('trackers');
   const pressTile = useTilePress();
   const interactive = Boolean(onOpenDetails || onLongPressReorder);
-  const line: TrackerCardCaption | null =
-    caption ?? (streakLabel ? { text: streakLabel, a11y: streakLabel } : null);
   const a11yHint = [
     onOpenDetails ? t('homeIdentity.historyHint') : null,
     onLongPressReorder ? reorderHint : null,

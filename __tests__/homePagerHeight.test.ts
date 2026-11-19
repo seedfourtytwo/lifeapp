@@ -28,7 +28,8 @@ jest.mock('@react-navigation/native', () => ({
     const { useEffect } = jest.requireActual<typeof import('react')>('react');
     useEffect(effect, [effect]);
   },
-  useNavigation: () => ({ navigate: () => {} }),
+  useNavigation: () => ({ navigate: () => {}, setParams: () => {} }),
+  useRoute: () => ({ params: undefined }),
   useIsFocused: () => true,
 }));
 
@@ -39,12 +40,19 @@ jest.mock('../src/db/client', () => ({
 }));
 
 // The pages themselves are not what is under test, and each drags in its own
-// stores; empty stand-ins keep this about the layout.
-jest.mock('../src/screens/HabitsScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/CountersScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/NutritionScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/TodosScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/settings/SettingsMenuScreen', () => ({
+// stores; empty stand-ins keep this about the layout. Only Today is built at
+// startup, but a page still has its slot — and its height — before it is.
+jest.mock('../src/screens/TodayScreen', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('../src/screens/JournalScreen', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/screens/CalendarScreen', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/screens/ReviewScreen', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('../src/screens/settings/MoreScreen', () => ({
   __esModule: true,
   default: () => null,
 }));

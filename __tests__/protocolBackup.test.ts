@@ -1,7 +1,7 @@
 /* eslint-disable import/first -- jest mocks must load before module imports */
 import { getDatabase } from '../src/db/client';
 import { readAppSettings, writeAppSettings } from '../src/db/appSettingsBackup';
-import { clearAllAppData, clearAppData } from '../src/db/resetAppData';
+import { clearAppData } from '../src/db/resetAppData';
 import { importProtocolBundle, serializeBundle } from '../src/db/export';
 import * as elementRepo from '../src/db/repositories/elementRepository';
 import * as settingsRepo from '../src/db/repositories/settingsRepository';
@@ -368,7 +368,14 @@ describe('protocol backup settings', () => {
   });
 
   it('clears protocol tables, calendar, and app settings', async () => {
-    await clearAllAppData();
+    await clearAppData({
+      activityHistory: true,
+      activityPeriod: { kind: 'all' },
+      calendar: true,
+      weather: true,
+      preferences: true,
+      definitions: true,
+    });
 
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM daily_journals');
     expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM journal_notebooks');
