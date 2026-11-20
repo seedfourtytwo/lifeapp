@@ -1,6 +1,6 @@
 # Handover — Life rework (18 Nov 2026)
 
-For the next session picking this up locally. Branch: `claude/focused-sagan-ykt3du` (pushed; `main` untouched, no PR opened).
+For the next session picking this up locally. **Updated 18 Nov, evening: all of this is now merged into `main` (PR #4) and released as 1.7.0 on the phone.** The lines below marked “was” describe what the earlier author believed; read the correction under each.
 
 ## Goal the owner set
 
@@ -22,8 +22,8 @@ Owner's answers that shaped the plan:
 | 2 | Reminders with Done / Snooze / Skip buttons | Not started |
 | 3 | Native Today widget | Done and since extended (see below) |
 | 4 | Forgiving motivation | Done, committed |
-| 5 | Timers and voice from the widget | Timers appear done in later commits; mic/voice not started |
-| 6 | App refocus: Today · Journal · Calendar · Review · More | Done — see `.cursor/app-refocus.md` |
+| 5 | Timers and voice from the widget | Timers done and tested on the device; mic/voice not started |
+| 6 | App refocus: Today · Journal · More in the dock, Calendar and Review as pages | Done — see `.cursor/app-refocus.md` |
 
 ### Step 1 — commits 041669e, dbc656a, 6055b38
 - `daysBetween` is a calendar-day difference (every-N-days no longer drifts across a clock change).
@@ -45,10 +45,19 @@ Owner's answers that shaped the plan:
 - Colours are one fixed dress (`res/values/colors.xml`), the same in light and dark and on every Android version; the app's themes repeat it (`src/theme/themes.ts`, `src/theme/palette.ts`). Only the corner radii come from the system, on API 31+ (`res/values-v31/dimens.xml`).
 - Commits 453d5cc … dda0396 (16–17 Nov) were made in a separate session on `aero` with the phone attached. This handover's author did not write or review them; from their messages they add: timer minutes and in-widget timers with sound, cards and section headings, a pinned running habit with a live clock, counter progress, todo due dates and a Done section. **Read those commits before changing the widget**, and check whether the fixture test and `npm test` still pass after them.
 
-## What is not verified
-- This author never saw the widget on a device. Anything in the first widget commit is compile- and unit-tested only. The later commits were presumably tested on the phone by the session that made them.
-- Checks last run by this author at d52e229: `npm test` 124 suites / 1622 tests, `tsc`, `lint` all clean. Not re-run on the current head.
-- Gradle can report a cached test result as a pass. Force it: `./gradlew :life-widget:testDebugUnitTest --rerun` and read the XML under `modules/life-widget/android/build/test-results`. This caught two real rule mismatches once.
+## What is verified, and what is not (18 Nov, evening)
+
+Verified on the device (Pixel 9, lock-screen page, dev package):
+- Ticking and unticking a habit: the row moves to Done, the header tally appears and goes.
+- Starting a widget timer, the pinned card ticking, stopping it: the session row is removed and a `timer_session` event is written with the right start, end and duration.
+- The release APK carries all six sounds as `res/raw/assets_sounds_*` and keeps `android:process=":widget"` on all four components.
+
+Not verified by anyone yet:
+- **The widget's sound in a release build has never been heard.** Debug loads sounds as module assets; release looks them up as `res/raw/assets_sounds_<lowercased id>`. The resources are confirmed present in the APK, but the prod widget is not placed on any screen, so it cannot be exercised from a laptop. Place it and start a sound-backed timer.
+- **The app's "the widget is timing this habit — stop it and continue" alert has never appeared on a screen.** Five unit tests cover it. Seeing it needs the app open.
+- Gradle can report a cached test result as a pass. Force it: `./gradlew :life-widget:testDebugUnitTest --rerun` and read the XML under `modules/life-widget/android/build/test-results`. This caught two real rule mismatches once, and a silently skipped fixture test is reported as a pass.
+
+Checks at the merge commit: `npm test` 126 suites / 1633 tests, `tsc`, `lint` clean; `:life-widget:testDebugUnitTest` 37 tests, 0 skipped. CI runs these on every push to `main` and every PR.
 
 ## Next up
 
@@ -77,7 +86,16 @@ Mic button on the widget that dictates into today's journal (on-device Moonshine
 - Timer persistence writes outside the write lock.
 - Widget follows the phone's language and dark mode, not the app's own settings.
 - Midnight / time-window widget refresh uses an inexact alarm (up to ~10 min late).
-- A GitHub Actions Android compile-check workflow was written but could not be pushed (the GitHub app lacks the Workflows permission). It lived only in the cloud container and is not on the remote. Regenerate it if wanted.
+- ~~A GitHub Actions workflow could not be pushed and is not on the remote.~~ **Wrong.**
+  `.github/workflows/ci.yml` was in the repo all along and runs lint, type-check, expo-doctor
+  and the test suite. What was missing was the `workflow` token scope, which is why pushes
+  touching it were rejected; `gh auth refresh -h github.com -s workflow` fixed that. The jobs
+  also pinned Node 20, where `node:sqlite` does not exist, so fourteen database suites could
+  not load and CI had been red since September — they now take the version from `.nvmrc` (22).
+  There is still **no Android compile check** in CI; that part is worth adding.
+- The app has a week-old paused timer on "Study" in `active_timer_sessions`, from 11 Nov. It
+  is the app's own, not the widget's, which is why the widget row reads "Paused in the app"
+  with no buttons. Nothing clears it but finishing or clearing it in the app.
 
 ## Build and safety
 - Build procedure: `.cursor/rules/android-build-workflow.mdc`.
