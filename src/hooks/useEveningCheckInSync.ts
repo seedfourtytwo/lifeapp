@@ -35,7 +35,7 @@ function unfinishedTotal(): number {
  * This runs at the app root, so it deliberately reads the stores through
  * `subscribe` rather than through hooks: the counts it needs live in the
  * highest-churn slices there are (`dailyTotals` moves on every counter tap),
- * and subscribing to those from the root would re-render every Home tab each
+ * and subscribing to those from the root would re-render the Today page each
  * time. Nothing here affects what is on screen — only what the notification
  * will say — so it belongs off the render path entirely.
  */

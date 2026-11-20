@@ -11,6 +11,7 @@ import { skipTodayBubbles } from '../skipTodayBubble';
 import { TrackerCardTick } from '../TrackerCardTick';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
+import { rowKindColour } from '../rowKind';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 
 const NOTE_ICON_SIZE = 24;
@@ -46,8 +47,8 @@ export function HabitBooleanWidget({
       <View style={styles.oneLineRow}>
         <TrackerCardTitle
           name={element.name}
+          kind={rowKindColour({ kind: 'habit', trackingMode: config.trackingMode })}
           icon={config.icon}
-          complete={done}
           caption={caption}
           {...trackerCardTitleInteractions({
             onOpenDetails,

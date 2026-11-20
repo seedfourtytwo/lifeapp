@@ -45,10 +45,8 @@
     "deleteBody": "\"{{name}}\" and all its history and day notes will be removed permanently."
   },
   "card": {
-    "counterBadge": "Counter",
     "timerBadge": "Timer",
     "checkOffBadge": "Check off",
-    "edit": "Edit",
     "history": "History",
     "archive": "Archive",
     "restore": "Restore",
@@ -66,9 +64,10 @@
     "skipped": "{{name}} skipped for today"
   },
   "editor": {
-    "newCounterTitle": "New counter",
+    "newTrackerTitle": "New tracker",
+    "kindHabit": "Habit",
+    "kindCounter": "Counter",
     "editCounterTitle": "Edit counter",
-    "newHabitTitle": "New habit",
     "editHabitTitle": "Edit habit",
     "nameLabel": "Name",
     "iconSectionTitle": "Icon",
@@ -133,8 +132,8 @@
     "setFirstDayHint": "Set a first day (YYYY-MM-DD).",
     "dueEveryDayFromHint": "Due every day from {{date}}.",
     "dueEveryNDaysFromHint": "Due every {{count}} days from {{date}}.",
-    "timeWindowSectionTitle": "Time window",
-    "timeWindowSectionDescription": "Optional. Limit when the habit shows on the Habits tab, and set a reminder before it starts.",
+    "timeOfDaySectionTitle": "Time of day",
+    "timeOfDaySectionDescription": "Optional. Limit when the habit shows on the Habits tab, and set a reminder before it starts.",
     "useTimeRangeLabel": "Use a daily time range",
     "fromLabel": "From",
     "fromPlaceholder": "06:00",
@@ -145,7 +144,10 @@
     "reminderBeforeStartLabel": "Reminder before start",
     "minutesBeforeLabel": "Minutes before",
     "minutesBeforePlaceholder": "15",
-    "timeWindowOff": "Any time",
+    "timeOfDayAny": "Any time",
+    "timeOfDayReminder": "reminder {{count}} min before",
+    "timeOfDayReminderAtStart": "reminder at the start",
+    "timeOfDayHiddenOutside": "hidden outside it",
     "timesPerWeek": "Times a week",
     "timesPerWeekLabel": "How many days each week",
     "timesPerWeekPreset_one": "{{count}} time a week",
@@ -197,6 +199,7 @@
     "couldNotUpdateTitle": "Could not update habit",
     "couldNotStartTimerTitle": "Could not start timer",
     "timerRunningInWidgetTitle": "Timer running in the widget",
+    "runningInWidget": "Running in the widget",
     "timerRunningInWidgetMessage": "This habit is being timed from the home-screen widget. Stop it there first.",
     "timerRunningInWidgetTakeOverMessage": "The widget is timing this habit. Continuing stops the widget's timer and logs the time it ran.",
     "timerRunningInWidgetTakeOver": "Stop it and continue",
@@ -215,8 +218,8 @@
     "soundPlaysOnceA11y": "Sound plays once, then the timer stops",
     "streakWeeks_one": "{{count}} week in a row",
     "streakWeeks_other": "{{count}} weeks in a row",
-    "strengthLabel": "Strength",
-    "strengthA11y": "Strength {{score}} out of 100"
+    "strengthA11y": "Strength {{score}} out of 100",
+    "strengthLabel": "Strength"
   },
   "lockScreen": {
     "paused": "Paused",

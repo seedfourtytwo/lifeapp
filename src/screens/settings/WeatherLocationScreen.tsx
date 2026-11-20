@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
@@ -15,6 +15,7 @@ import {
 import { formatCoordLabel } from '../../weather/format';
 import { searchPlaces, type GeocodeHit } from '../../weather/openMeteo';
 import { classifyWeatherFetchError } from '../../weather/errors';
+import { notify } from '../../components/sheet/confirm';
 
 export default function WeatherLocationScreen() {
   const theme = useTheme();
@@ -47,19 +48,28 @@ export default function WeatherLocationScreen() {
   const handleUseDeviceLocation = async () => {
     if (locating) return;
     if (!deviceLocationAvailable) {
-      Alert.alert(t('common:alerts.rebuildRequiredTitle'), t('weather.rebuildRequiredBody'));
+      void notify({
+        title: t('common:alerts.rebuildRequiredTitle'),
+        message: t('weather.rebuildRequiredBody'),
+      });
       return;
     }
     setLocating(true);
     try {
       const granted = await requestDeviceLocationPermission();
       if (!granted) {
-        Alert.alert(t('weather.locationBlockedTitle'), t('weather.locationBlockedBody'));
+        void notify({
+          title: t('weather.locationBlockedTitle'),
+          message: t('weather.locationBlockedBody'),
+        });
         return;
       }
       const coords = await getDeviceCoords();
       if (!coords) {
-        Alert.alert(t('weather.locationUnavailableTitle'), t('weather.locationUnavailableBody'));
+        void notify({
+          title: t('weather.locationUnavailableTitle'),
+          message: t('weather.locationUnavailableBody'),
+        });
         return;
       }
       const placeName = coords.placeName ?? formatCoordLabel(coords.lat, coords.lon);
@@ -75,12 +85,12 @@ export default function WeatherLocationScreen() {
       void refreshWeather({ force: true, refreshGps: true });
     } catch (error) {
       const kind = classifyWeatherFetchError(error);
-      Alert.alert(
-        t('weather.locationUnavailableTitle'),
-        kind === 'offline'
+      void notify({
+        title: t('weather.locationUnavailableTitle'),
+        message: kind === 'offline'
           ? t('weather.locationUnavailableOfflineBody')
           : t('weather.locationUnavailableBody'),
-      );
+      });
     } finally {
       setLocating(false);
     }
@@ -89,7 +99,10 @@ export default function WeatherLocationScreen() {
   const handleSearchPlaces = async () => {
     const query = placeQuery.trim();
     if (query.length < 2) {
-      Alert.alert(t('weather.cityRequiredTitle'), t('weather.cityRequiredBody'));
+      void notify({
+        title: t('weather.cityRequiredTitle'),
+        message: t('weather.cityRequiredBody'),
+      });
       return;
     }
     setPlaceBusy(true);

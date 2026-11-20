@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import {
-  Button,
-  Checkbox,
-  Modal,
-  Portal,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_CLEAR_OPTIONS,
@@ -19,6 +11,10 @@ import {
 } from '../db/clearDataPlan';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { space } from '../theme/spacing';
+import { typeScale } from '../theme/typography';
+import ChoiceChip from './ChoiceChip';
+import QuietText from './QuietText';
+import { EditorSheet, FilledField, SheetCheck } from './sheet';
 
 type PeriodChoice = 'all' | 'keep7' | 'keep30' | 'before';
 
@@ -146,190 +142,123 @@ export default function ClearDataSheet({
     !/^\d{4}-\d{2}-\d{2}$/.test(beforeDate.trim());
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={busy ? undefined : onDismiss}
-        contentContainerStyle={[
-          styles.sheet,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: deco.radius.lg,
-          },
-        ]}
-      >
-        <ScrollView keyboardShouldPersistTaps="handled">
-          <Text
-            variant="titleMedium"
-            style={styles.title}
-          >
-            {t('clearData.title')}
-          </Text>
-          <Text
-            variant="bodySmall"
-            style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
-          >
-            {t('clearData.subtitle')}
-          </Text>
+    <EditorSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      dismissable={!busy}
+      title={t('clearData.title')}
+      subtitle={t('clearData.subtitle')}
+      primaryAction={{
+        label: t('clearData.confirmButton'),
+        onPress: handleConfirm,
+        loading: busy,
+        disabled: busy || nothingSelected || beforeInvalid,
+        destructive: true,
+      }}
+    >
+      {onExportFirst ? (
+        <Button
+          mode="outlined"
+          icon="export"
+          onPress={onExportFirst}
+          disabled={busy}
+          style={[styles.exportBtn, { borderRadius: deco.radius.pill }]}
+        >
+          {t('clearData.exportFirstButton')}
+        </Button>
+      ) : null}
 
-          {onExportFirst ? (
-            <Button
-              mode="outlined"
-              icon="export"
-              onPress={onExportFirst}
-              disabled={busy}
-              style={[styles.exportBtn, { borderRadius: deco.buttonRadius }]}
-            >
-              {t('clearData.exportFirstButton')}
-            </Button>
-          ) : null}
+      <View>
+        <ScopeRow
+          label={t('clearData.activityHistory.label')}
+          description={t('clearData.activityHistory.description')}
+          checked={options.activityHistory || options.definitions}
+          disabled={options.definitions}
+          onToggle={(v) => toggle('activityHistory', v)}
+        />
 
-          <ScopeRow
-            label={t('clearData.activityHistory.label')}
-            description={t('clearData.activityHistory.description')}
-            checked={options.activityHistory || options.definitions}
-            disabled={options.definitions}
-            onToggle={(v) => toggle('activityHistory', v)}
-          />
-
-          {activityEnabled ? (
-            <View style={styles.periodBlock}>
-              <Text variant="labelLarge" style={{ marginBottom: 8 }}>
-                {t('clearData.period.label')}
-              </Text>
-              <View style={styles.chipRow}>
-                {periodOptions.map((option) => {
-                  const selected = periodChoice === option.id;
-                  return (
-                    <Pressable
-                      key={option.id}
-                      onPress={() => setPeriod(option.id)}
-                      style={[
-                        styles.chip,
-                        {
-                          borderWidth: 1,
-                          borderRadius: deco.buttonRadius,
-                          borderColor: selected
-                            ? theme.colors.primary
-                            : theme.colors.outlineVariant,
-                          backgroundColor: selected
-                            ? theme.colors.primaryContainer
-                            : 'transparent',
-                        },
-                      ]}
-                    >
-                      <Text
-                        variant="labelMedium"
-                        style={{
-                          color: selected
-                            ? theme.colors.onPrimaryContainer
-                            : theme.colors.onSurface,
-                        }}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {periodChoice === 'before' ? (
-                <TextInput
-                  label={t('clearData.period.beforeDateLabel')}
-                  value={beforeDate}
-                  onChangeText={setBeforeDate}
-                  mode="outlined"
-                  dense
-                  placeholder={t('clearData.period.beforeDatePlaceholder')}
-                  style={{ marginTop: 8 }}
-                  error={beforeInvalid}
+        {activityEnabled ? (
+          <View style={styles.periodBlock}>
+            <QuietText style={typeScale.caption}>{t('clearData.period.label')}</QuietText>
+            <View style={styles.chipRow}>
+              {periodOptions.map((option) => (
+                <ChoiceChip
+                  key={option.id}
+                  label={option.label}
+                  selected={periodChoice === option.id}
+                  onPress={() => setPeriod(option.id)}
                 />
-              ) : null}
-              {periodChoice === 'keep7' || periodChoice === 'keep30' ? (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: theme.colors.onSurfaceVariant, marginTop: 6 }}
-                >
-                  {t('clearData.period.keepHint')}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View style={styles.sectionGap} />
-
-          <ScopeRow
-            label={t('clearData.calendar.label')}
-            description={t('clearData.calendar.description')}
-            checked={options.calendar}
-            onToggle={(v) => toggle('calendar', v)}
-          />
-          <ScopeRow
-            label={t('clearData.weatherCache.label')}
-            description={t('clearData.weatherCache.description')}
-            checked={options.weather}
-            onToggle={(v) => toggle('weather', v)}
-          />
-          <ScopeRow
-            label={t('clearData.appPreferences.label')}
-            description={t('clearData.appPreferences.description')}
-            checked={options.preferences}
-            onToggle={(v) => toggle('preferences', v)}
-          />
-          <ScopeRow
-            label={t('clearData.habitsCounters.label')}
-            description={t('clearData.habitsCounters.description')}
-            checked={options.definitions}
-            danger
-            onToggle={(v) => toggle('definitions', v)}
-          />
-
-          {summary.length > 0 ? (
-            <View
-              style={[
-                styles.summary,
-                {
-                  backgroundColor: theme.colors.errorContainer,
-                  borderRadius: deco.radius.sm,
-                },
-              ]}
-            >
-              <Text
-                variant="labelLarge"
-                style={{ color: theme.colors.onErrorContainer, marginBottom: 4 }}
-              >
-                {t('clearData.willRemoveTitle')}
-              </Text>
-              {summary.map((line) => (
-                <Text
-                  key={line}
-                  variant="bodySmall"
-                  style={{ color: theme.colors.onErrorContainer }}
-                >
-                  • {line}
-                </Text>
               ))}
             </View>
-          ) : null}
-
-          <View style={styles.actions}>
-            <Button mode="text" onPress={onDismiss} disabled={busy}>
-              {t('common:actions.cancel')}
-            </Button>
-            <Button
-              mode="contained"
-              buttonColor={theme.colors.error}
-              textColor={theme.colors.onError}
-              style={{ borderRadius: deco.buttonRadius }}
-              onPress={handleConfirm}
-              loading={busy}
-              disabled={busy || nothingSelected || beforeInvalid}
-            >
-              {t('clearData.confirmButton')}
-            </Button>
+            {periodChoice === 'before' ? (
+              <FilledField
+                label={t('clearData.period.beforeDateLabel')}
+                value={beforeDate}
+                onChangeText={setBeforeDate}
+                placeholder={t('clearData.period.beforeDatePlaceholder')}
+                autoCapitalize="none"
+                autoCorrect={false}
+                error={
+                  beforeInvalid && beforeDate.trim().length > 0
+                    ? t('clearData.period.beforeDateError')
+                    : null
+                }
+              />
+            ) : null}
+            {periodChoice === 'keep7' || periodChoice === 'keep30' ? (
+              <QuietText style={typeScale.caption}>{t('clearData.period.keepHint')}</QuietText>
+            ) : null}
           </View>
-        </ScrollView>
-      </Modal>
-    </Portal>
+        ) : null}
+
+        <ScopeRow
+          label={t('clearData.calendar.label')}
+          description={t('clearData.calendar.description')}
+          checked={options.calendar}
+          onToggle={(v) => toggle('calendar', v)}
+        />
+        <ScopeRow
+          label={t('clearData.weatherCache.label')}
+          description={t('clearData.weatherCache.description')}
+          checked={options.weather}
+          onToggle={(v) => toggle('weather', v)}
+        />
+        <ScopeRow
+          label={t('clearData.appPreferences.label')}
+          description={t('clearData.appPreferences.description')}
+          checked={options.preferences}
+          onToggle={(v) => toggle('preferences', v)}
+        />
+        <ScopeRow
+          label={t('clearData.habitsCounters.label')}
+          description={t('clearData.habitsCounters.description')}
+          checked={options.definitions}
+          danger
+          onToggle={(v) => toggle('definitions', v)}
+        />
+      </View>
+
+      {summary.length > 0 ? (
+        <View
+          style={[
+            styles.summary,
+            { backgroundColor: theme.colors.errorContainer, borderRadius: deco.radius.md },
+          ]}
+        >
+          <Text style={[typeScale.caption, { color: theme.colors.onErrorContainer }]}>
+            {t('clearData.willRemoveTitle')}
+          </Text>
+          {summary.map((line) => (
+            <Text
+              key={line}
+              style={[typeScale.secondary, { color: theme.colors.onErrorContainer }]}
+            >
+              • {line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </EditorSheet>
   );
 }
 
@@ -351,81 +280,53 @@ function ScopeRow({
   const theme = useTheme();
   return (
     <Pressable
-      onPress={() => !disabled && onToggle(!checked)}
-      style={[styles.scopeRow, disabled && { opacity: 0.55 }]}
+      onPress={() => onToggle(!checked)}
+      disabled={disabled}
+      style={[styles.scopeRow, disabled ? styles.disabled : null]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: !!disabled }}
     >
-      <View style={{ flex: 1 }}>
-        <Text
-          variant="bodyLarge"
-          style={danger ? { color: theme.colors.error, fontWeight: '600' } : undefined}
-        >
+      <View style={styles.scopeText}>
+        <Text style={[typeScale.body, { color: danger ? theme.colors.error : theme.colors.onSurface }]}>
           {label}
         </Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          {description}
-        </Text>
+        <QuietText style={typeScale.secondary}>{description}</QuietText>
       </View>
-      <Checkbox
-        status={checked ? 'checked' : 'unchecked'}
-        disabled={disabled}
-        onPress={() => !disabled && onToggle(!checked)}
-        color={danger ? theme.colors.error : undefined}
-      />
+      <SheetCheck checked={checked} danger={danger} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    marginHorizontal: 16,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    maxHeight: '88%',
-  },
-  title: {
-    fontWeight: '700',
-    marginBottom: 4,
-  },
   exportBtn: {
-    marginBottom: 8,
     alignSelf: 'flex-start',
   },
   scopeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
+    gap: space.md,
+    minHeight: 56,
+    paddingVertical: space.sm,
+  },
+  scopeText: {
+    flex: 1,
+    minWidth: 0,
+    gap: space.xxs,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   periodBlock: {
-    paddingLeft: 4,
-    paddingBottom: 4,
+    gap: space.sm,
+    paddingBottom: space.sm,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  sectionGap: {
-    height: space.sm,
+    gap: space.sm,
   },
   summary: {
-    padding: 12,
-    marginTop: 8,
-    gap: 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 4,
+    padding: space.md,
+    gap: space.xxs,
   },
 });

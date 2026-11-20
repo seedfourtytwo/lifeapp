@@ -6,7 +6,7 @@
   android:background="@drawable/life_widget_background"
   android:orientation="vertical"
   android:paddingStart="12dp"
-  android:paddingTop="10dp"
+  android:paddingTop="14dp"
   android:paddingEnd="12dp"
   android:paddingBottom="12dp">
 
@@ -15,10 +15,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minHeight="48dp"
+    android:layout_marginBottom="6dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="6dp"
-    android:paddingEnd="6dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="2dp">
 
     <TextView
       android:id="@+id/widget_date"
@@ -26,21 +27,32 @@
       android:layout_height="wrap_content"
       android:layout_weight="1"
       android:ellipsize="end"
-      android:fontFamily="sans-serif-medium"
+      android:fontFamily="serif"
       android:maxLines="1"
       android:textColor="@color/life_widget_text"
-      android:textSize="26sp" />
+      android:textSize="28sp" />
 
+    <!-- The day's tally: what is done, bright; out of how many, quiet. -->
     <TextView
       android:id="@+id/widget_progress"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_marginStart="8dp"
+      android:fontFamily="sans-serif-medium"
       android:fontFeatureSettings="tnum"
       android:maxLines="1"
+      android:textColor="@color/life_widget_text"
+      android:textSize="18sp" />
+
+    <TextView
+      android:id="@+id/widget_progress_total"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
       android:fontFamily="sans-serif-medium"
-      android:textColor="@color/life_widget_accent"
-      android:textSize="20sp" />
+      android:fontFeatureSettings="tnum"
+      android:maxLines="1"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="18sp" />
 
     <!-- The one deliberate way into the app; from the lock screen it asks for the unlock. -->
     <ImageView
@@ -53,17 +65,16 @@
       android:src="@drawable/life_widget_ic_open_muted" />
   </LinearLayout>
 
-  <ProgressBar
-    android:id="@+id/widget_progress_bar"
-    style="?android:attr/progressBarStyleHorizontal"
+  <!-- The day as a row of segments, one per habit due; filled in from the provider. -->
+  <LinearLayout
+    android:id="@+id/widget_segments"
     android:layout_width="match_parent"
-    android:layout_height="8dp"
+    android:layout_height="6dp"
     android:layout_marginStart="6dp"
-    android:layout_marginTop="2dp"
     android:layout_marginEnd="6dp"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="14dp"
     android:importantForAccessibility="no"
-    android:progressDrawable="@drawable/life_widget_progress" />
+    android:orientation="horizontal" />
 
   <!--
     The habit being timed now. It looks like a list item but sits outside the
@@ -82,13 +93,11 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:fontFamily="sans-serif-medium"
-      android:letterSpacing="0.08"
       android:paddingStart="6dp"
       android:paddingBottom="6dp"
       android:text="@string/life_widget_label_now"
-      android:textAllCaps="true"
-      android:textColor="@color/life_widget_accent"
-      android:textSize="12sp" />
+      android:textColor="@color/life_widget_timer"
+      android:textSize="13sp" />
 
     <LinearLayout
       android:id="@+id/widget_now_card"
@@ -107,7 +116,7 @@
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:importantForAccessibility="no"
-        android:src="@drawable/life_widget_disc_timer_running" />
+        android:src="@drawable/life_widget_tile_timer_running" />
 
       <LinearLayout
         android:layout_width="0dp"
@@ -133,10 +142,10 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:fontFamily="sans-serif-medium"
-          android:fontFeatureSettings="tnum"
+      android:fontFeatureSettings="tnum"
           android:maxLines="1"
-          android:textColor="@color/life_widget_accent"
-          android:textSize="20sp" />
+          android:textColor="@color/life_widget_timer"
+          android:textSize="18sp" />
 
         <ProgressBar
           android:id="@+id/widget_now_progress"
@@ -145,7 +154,7 @@
           android:layout_height="6dp"
           android:layout_marginTop="6dp"
           android:importantForAccessibility="no"
-          android:progressDrawable="@drawable/life_widget_progress" />
+          android:progressDrawable="@drawable/life_widget_progress_timer" />
       </LinearLayout>
 
       <ImageView
@@ -154,8 +163,7 @@
 
       <ImageView
         android:id="@+id/widget_now_stop"
-        style="@style/LifeWidgetIconButton"
-        android:layout_marginStart="2dp" />
+        style="@style/LifeWidgetIconButton" />
     </LinearLayout>
   </LinearLayout>
 
@@ -169,7 +177,7 @@
       android:layout_width="match_parent"
       android:layout_height="match_parent"
       android:divider="@android:color/transparent"
-      android:dividerHeight="6dp"
+      android:dividerHeight="8dp"
       android:scrollbars="none" />
 
     <TextView

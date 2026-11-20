@@ -4,15 +4,15 @@ import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { useStackScreenOptions } from './useStackScreenOptions';
 import HomeScreen from '../screens/HomeScreen';
+import CalendarScreen from '../screens/CalendarScreen';
+import ReviewRoute from '../screens/ReviewRoute';
 import TrackersScreen from '../screens/TrackersScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import IngredientEditorScreen from '../screens/IngredientEditorScreen';
-import SettingsNavigator from './SettingsNavigator';
+import NutritionRoute from '../screens/NutritionRoute';
+import WeatherLocationScreen from '../screens/settings/WeatherLocationScreen';
 import TrackerHistoryScreen from '../screens/TrackerHistoryScreen';
-import InsightsScreen from '../screens/InsightsScreen';
-import JournalScreen from '../screens/JournalScreen';
 import TodoHistoryScreen from '../screens/TodoHistoryScreen';
-import CalendarScreen from '../screens/CalendarScreen';
 import CalendarEventEditorScreen from '../screens/CalendarEventEditorScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -31,9 +31,24 @@ export default function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: t('settings:menu.calendarTitle') }}
+      />
+      <Stack.Screen
+        name="Review"
+        component={ReviewRoute}
+        options={{ title: t('settings:menu.reviewTitle') }}
+      />
+      <Stack.Screen
         name="Trackers"
         component={TrackersScreen}
         options={{ title: t('settings:menu.trackersTitle') }}
+      />
+      <Stack.Screen
+        name="Nutrition"
+        component={NutritionRoute}
+        options={{ title: t('settings:menu.foodTitle') }}
       />
       <Stack.Screen
         name="Ingredients"
@@ -51,9 +66,9 @@ export default function AppNavigator() {
         })}
       />
       <Stack.Screen
-        name="AppSettings"
-        component={SettingsNavigator}
-        options={{ headerShown: false }}
+        name="WeatherLocation"
+        component={WeatherLocationScreen}
+        options={{ title: t('settings:weather.locationTitle') }}
       />
       <Stack.Screen
         name="TrackerHistory"
@@ -61,24 +76,9 @@ export default function AppNavigator() {
         options={{ title: t('trackers:card.history') }}
       />
       <Stack.Screen
-        name="Insights"
-        component={InsightsScreen}
-        options={{ title: t('settings:menu.insightsTitle') }}
-      />
-      <Stack.Screen
-        name="Journal"
-        component={JournalScreen}
-        options={{ title: t('settings:menu.journalTitle') }}
-      />
-      <Stack.Screen
         name="TodoHistory"
         component={TodoHistoryScreen}
         options={{ title: t('todos:history.title') }}
-      />
-      <Stack.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{ title: t('settings:menu.calendarTitle') }}
       />
       <Stack.Screen
         name="CalendarEventEditor"

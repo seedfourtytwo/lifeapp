@@ -70,17 +70,5 @@
     "monthlyInterval": "Every {{count}} months",
     "yearlyInterval": "Every {{count}} years",
     "weeklyOnDays": "Weekly ({{days}})"
-  },
-  "peek": {
-    "close": "Close forecast"
-  },
-  "notification": {
-    "title": "Calendar",
-    "atStart": "{{title}}",
-    "inMinutes": "{{title}} in {{count}} min",
-    "inHoursOne": "{{title}} in {{count}} hour",
-    "inHoursMany": "{{title}} in {{count}} hours",
-    "inDaysOne": "{{title}} in {{count}} day",
-    "inDaysMany": "{{title}} in {{count}} days"
   }
 }

@@ -6,6 +6,6 @@
   android:viewportWidth="24"
   android:viewportHeight="24">
   <path
-    android:fillColor="@color/life_widget_on_button"
+    android:fillColor="@color/life_widget_timer"
     android:pathData="M7,5 H10.5 V19 H7 Z M13.5,5 H17 V19 H13.5 Z" />
 </vector>

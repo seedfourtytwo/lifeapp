@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,7 @@ import MonthPicker from './nutrition/MonthPicker';
 import ChoiceChip from '../components/ChoiceChip';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsSwitch from '../components/settings/SettingsSwitch';
+import { confirm, notify } from '../components/sheet/confirm';
 import FilledField from '../components/sheet/FilledField';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { layout, space } from '../theme/spacing';
@@ -178,30 +179,25 @@ export default function IngredientEditorScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!existing) return;
-    Alert.alert(
+    const confirmed = await confirm({
       // The stored name is the English one for seed foods — show what the user sees.
-      t('remove.confirmTitle', { name: foodDisplayName(existing, i18n.language) }),
-      t('remove.confirmBody'),
-      [
-        { text: tCommon('actions.cancel'), style: 'cancel' },
-        {
-          text: t('remove.action'),
-          style: 'destructive',
-          onPress: () => {
-            void remove(existing.id)
-              .then((result) => {
-                if (result === 'archived') {
-                  Alert.alert(t('remove.archivedTitle'), t('remove.archivedBody'));
-                }
-                navigation.goBack();
-              })
-              .catch(() => Alert.alert(t('remove.failed')));
-          },
-        },
-      ],
-    );
+      title: t('remove.confirmTitle', { name: foodDisplayName(existing, i18n.language) }),
+      message: t('remove.confirmBody'),
+      confirmLabel: t('remove.action'),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      const result = await remove(existing.id);
+      if (result === 'archived') {
+        void notify({ title: t('remove.archivedTitle'), message: t('remove.archivedBody') });
+      }
+      navigation.goBack();
+    } catch {
+      void notify({ title: t('remove.failed') });
+    }
   };
 
   const numericLabel = (field: NumericNutrientField) => t(`fields.${field}`);

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A todo's control, still open: a 40dp rounded box in a 56dp touch target. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="8dp">
+  <shape android:shape="rectangle">
+    <solid android:color="#00000000" />
+    <stroke android:width="2dp" android:color="@color/life_widget_todo" />
+    <corners android:radius="12dp" />
+  </shape>
+</inset>

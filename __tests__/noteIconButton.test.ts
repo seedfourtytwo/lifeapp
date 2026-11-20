@@ -60,11 +60,11 @@ describe('NoteIconButton', () => {
   });
 
   it("keeps a notebook's colour off the glyph and on a dot", () => {
-    const root = render({ dotColor: '#9A5B00', icon: 'notebook-outline' });
+    const root = render({ dotColor: '#8F5400', icon: 'notebook-outline' });
     expect(glyphColor(root)).toBe(theme.colors.onSurfaceVariant);
     const [dot] = dots(root);
     const style = flat(dot.props.style);
-    expect(style.backgroundColor).toBe('#9A5B00');
+    expect(style.backgroundColor).toBe('#8F5400');
     // 7dp of colour inside its ring of page ground.
     expect((style.width as number) - 2 * (style.borderWidth as number)).toBe(7);
   });

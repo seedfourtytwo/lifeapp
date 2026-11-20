@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,6 +20,7 @@ import { isPlantFood, type FoodItem } from '../protocol';
 import { useFoodStore } from '../store/foodStore';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import { FOOD_GROUP_ICONS } from './nutrition/foodGroupIcons';
+import { notify } from '../components/sheet/confirm';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -121,7 +122,7 @@ export default function IngredientsScreen() {
     navigation.navigate('IngredientEditor', foodId ? { foodId } : {});
 
   const handleRestore = (id: string) => {
-    void restore(id).catch(() => Alert.alert(tCommon('errors.somethingWentWrong')));
+    void restore(id).catch(() => void notify({ title: tCommon('errors.somethingWentWrong') }));
   };
 
   /**

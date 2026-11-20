@@ -67,6 +67,12 @@ export function skippedCaption(): TrackerCardCaption {
   return { text, a11y: text };
 }
 
+/** The widget's stopwatch is on this habit: said in words, since the app shows no clock for it. */
+export function runningInWidgetCaption(): TrackerCardCaption {
+  const text = i18n.t('trackers:habitWidget.runningInWidget');
+  return { text, a11y: text };
+}
+
 /**
  * Home caption for a habit, in priority order:
  * 1. skipped today → "Skipped today" (in words, never by dimming the row);

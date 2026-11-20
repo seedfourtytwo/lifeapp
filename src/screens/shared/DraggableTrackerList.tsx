@@ -44,6 +44,120 @@ function sameIdSet(a: readonly string[], b: readonly string[]): boolean {
   return true;
 }
 
+/** How long a row takes to fade and give up its place — or to open one. */
+const EXIT_MS = 180;
+
+const NO_ENTRIES: ReadonlySet<string> = new Set();
+
+/** A row that left `itemIds`, kept on screen while it fades out. */
+type LeavingRow = {
+  id: string;
+  /** The row it stood under, or null at the top. */
+  anchor: string | null;
+  height: number;
+  /** What it last rendered: its owner may no longer be able to render it. */
+  node: React.ReactNode;
+};
+
+type ExitProps = {
+  height: number;
+  reduceMotion: boolean;
+  onGone: () => void;
+  children: React.ReactNode;
+};
+
+/**
+ * The last moment of a row that left the list: it fades while its place closes
+ * under it, so the rows below slide up rather than jump. Height is laid out,
+ * so this cannot ride the native driver; it is one row for 180ms.
+ */
+function ExitingRow({ height, reduceMotion, onGone, children }: ExitProps) {
+  const presence = useRef(new Animated.Value(1)).current;
+  const exit = useRef({ reduceMotion, onGone });
+  exit.current = { reduceMotion, onGone };
+
+  useEffect(() => {
+    const leaving = timingOrSnap(
+      presence,
+      { toValue: 0, duration: EXIT_MS, useNativeDriver: false },
+      exit.current.reduceMotion,
+    );
+    leaving.start(() => exit.current.onGone());
+    return () => leaving.stop();
+  }, [presence]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.leaving,
+        {
+          opacity: presence,
+          height: presence.interpolate({ inputRange: [0, 1], outputRange: [0, height] }),
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+type EnterProps = {
+  reduceMotion: boolean;
+  onArrived: () => void;
+  children: React.ReactNode;
+};
+
+/**
+ * The first moment of a row that came into the list after it mounted — an
+ * un-ticked habit, a reopened todo: the mirror of `ExitingRow`. Its place
+ * opens from nothing while it fades in, so the rows below move down with it.
+ * The height to open to is the row's own, measured once it has laid out.
+ */
+function EnteringRow({ reduceMotion, onArrived, children }: EnterProps) {
+  const presence = useRef(new Animated.Value(0)).current;
+  const [height, setHeight] = useState<number | null>(null);
+  const entry = useRef({ reduceMotion, onArrived });
+  entry.current = { reduceMotion, onArrived };
+
+  useEffect(() => {
+    if (height == null) return;
+    const arriving = timingOrSnap(
+      presence,
+      { toValue: 1, duration: EXIT_MS, useNativeDriver: false },
+      entry.current.reduceMotion,
+    );
+    arriving.start(({ finished }) => {
+      if (finished) entry.current.onArrived();
+    });
+    return () => arriving.stop();
+  }, [height, presence]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.leaving,
+        {
+          opacity: presence,
+          height:
+            height == null
+              ? 0
+              : presence.interpolate({ inputRange: [0, 1], outputRange: [0, height] }),
+        },
+      ]}
+    >
+      <View
+        onLayout={(event) => {
+          const measured = event.nativeEvent.layout.height;
+          setHeight((known) => known ?? measured);
+        }}
+      >
+        {children}
+      </View>
+    </Animated.View>
+  );
+}
+
 export type DraggableRenderContext = {
   /**
    * Wire these to the title Pressable so the *same* finger that long-presses
@@ -78,6 +192,10 @@ type Props = {
 /**
  * Long-press drag-and-drop for Home tracker rows.
  * Continues on the activating touch via Pressable onTouchMove/End.
+ *
+ * A row whose id leaves `itemIds` — a ticked habit, a finished todo — does not
+ * blink out: it fades and its place closes (`ExitingRow`). One that arrives
+ * after the list mounted opens its place the same way (`EnteringRow`).
  */
 export function DraggableTrackerList({
   itemIds,
@@ -99,6 +217,11 @@ export function DraggableTrackerList({
   const [hoverIndex, setHoverIndex] = useState(0);
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState<LeavingRow[]>([]);
+  /** Ids that arrived after mount and are still opening their place. */
+  const [entering, setEntering] = useState<ReadonlySet<string>>(NO_ENTRIES);
+  /** Each row's latest render, kept so a row can still be drawn once it has left. */
+  const lastNodesRef = useRef(new Map<string, React.ReactNode>());
 
   const orderRef = useRef(order);
   const itemIdsRef = useRef(itemIds);
@@ -129,6 +252,60 @@ export function DraggableTrackerList({
   hoverIndexRef.current = hoverIndex;
   heightsRef.current = heights;
 
+  /**
+   * Take the parent's ids as the order. Rows that are no longer among them are
+   * handed to `leaving`, each under the surviving row it stood below.
+   */
+  const adopt = useCallback((next: readonly string[]) => {
+    const staying = new Set(next);
+    const gone: LeavingRow[] = [];
+    /** Each departing id → the staying row above it. */
+    const anchors = new Map<string, string | null>();
+    let anchor: string | null = null;
+    for (const id of orderRef.current) {
+      if (staying.has(id)) {
+        anchor = id;
+        continue;
+      }
+      anchors.set(id, anchor);
+      const height = heightsRef.current[id];
+      const node = lastNodesRef.current.get(id);
+      // Never measured or never drawn: nothing to fade.
+      if (height != null && height > 0 && node != null) gone.push({ id, anchor, height, node });
+    }
+    if (gone.length > 0) {
+      setLeaving((current) => [
+        ...current
+          .filter((row) => !staying.has(row.id) && !anchors.has(row.id))
+          // A row still fading under one that now leaves moves up with it.
+          .map((row) =>
+            row.anchor != null && anchors.has(row.anchor)
+              ? { ...row, anchor: anchors.get(row.anchor) ?? null }
+              : row,
+          ),
+        ...gone,
+      ]);
+    }
+    // Rows that were not here a moment ago open their place rather than pop
+    // in. Never on mount — this only runs once the list already has an order —
+    // and with motion reduced they are simply there.
+    const before = new Set(orderRef.current);
+    const arrived = next.filter((id) => !before.has(id));
+    if (arrived.length > 0 && !reduceMotionRef.current) {
+      setEntering((current) => new Set([...current, ...arrived]));
+    }
+    setOrder([...next]);
+  }, []);
+
+  const settleEntry = useCallback((id: string) => {
+    setEntering((current) => {
+      if (!current.has(id)) return current;
+      const rest = new Set(current);
+      rest.delete(id);
+      return rest.size > 0 ? rest : NO_ENTRIES;
+    });
+  }, []);
+
   useEffect(() => {
     if (draggingId) return;
 
@@ -136,7 +313,7 @@ export function DraggableTrackerList({
     if (pending) {
       if (sameIdOrder(itemIds, pending)) {
         pendingOrderRef.current = null;
-        setOrder([...itemIds]);
+        adopt(itemIds);
         return;
       }
       // Persist may land while parent re-parks non-draggable rows (e.g. done habits).
@@ -144,19 +321,19 @@ export function DraggableTrackerList({
       const propPeers = itemIds.filter((id) => draggableSet.has(id));
       if (sameIdOrder(pendingPeers, propPeers) && sameIdSet(itemIds, pending)) {
         pendingOrderRef.current = null;
-        setOrder([...itemIds]);
+        adopt(itemIds);
         return;
       }
       // Membership changed (archive / filter) — abandon optimistic hold.
       if (!sameIdSet(itemIds, pending)) {
         pendingOrderRef.current = null;
-        setOrder([...itemIds]);
+        adopt(itemIds);
       }
       return;
     }
 
-    setOrder((prev) => (sameIdOrder(prev, itemIds) ? prev : [...itemIds]));
-  }, [draggableSet, itemIds, draggingId]);
+    if (!sameIdOrder(orderRef.current, itemIds)) adopt(itemIds);
+  }, [adopt, draggableSet, itemIds, draggingId]);
 
   const canDrag = draggableSet.size >= 2;
 
@@ -333,6 +510,8 @@ export function DraggableTrackerList({
       if (from < 0) return;
 
       pendingOrderRef.current = null;
+      // A drag measures every row: anything still opening its place snaps open.
+      setEntering(NO_ENTRIES);
       originIndexRef.current = from;
       hoverIndexRef.current = from;
       startPageYRef.current = pageY;
@@ -459,6 +638,9 @@ export function DraggableTrackerList({
     for (const id of [...rowHandlersRef.current.keys()]) {
       if (!live.has(id)) rowHandlersRef.current.delete(id);
     }
+    for (const id of [...lastNodesRef.current.keys()]) {
+      if (!live.has(id)) lastNodesRef.current.delete(id);
+    }
     setHeights((prev) => {
       const idSet = new Set(order);
       let changed = false;
@@ -497,14 +679,45 @@ export function DraggableTrackerList({
     [dropPulse],
   );
 
+  const present = new Set(order);
+  /** The fading rows that stood under `anchor`; one that came back is not drawn twice. */
+  const leavingUnder = (anchor: string | null) =>
+    leaving
+      .filter(
+        (row) =>
+          !present.has(row.id) &&
+          (row.anchor === anchor || (anchor == null && row.anchor != null && !present.has(row.anchor))),
+      )
+      .map((row) => (
+        <ExitingRow
+          key={`leaving:${row.id}`}
+          height={row.height}
+          reduceMotion={reduceMotionRef.current}
+          onGone={() => setLeaving((current) => current.filter((other) => other !== row))}
+        >
+          {row.node}
+        </ExitingRow>
+      ));
+
   return (
     <View style={styles.root} collapsable={false}>
-      {order.map((id, index) => {
+      {leavingUnder(null)}
+      {order.flatMap((id, index) => {
         const isDragging = draggingId === id;
         const isJustDropped = justDroppedId === id;
         const slotOffsetY = isDragging ? 0 : slotOffsetForIndex(index);
+        const node = renderItem(id, {
+          ...rowHandlersFor(id),
+          delayLongPress: LONG_PRESS_MS,
+          isDragging,
+          canDrag,
+        });
+        // The owner may stop rendering a row a render before its id leaves
+        // (a finished todo is gone from its map at once): keep the last one.
+        if (node != null) lastNodesRef.current.set(id, node);
+        const shown = node ?? lastNodesRef.current.get(id);
 
-        return (
+        return [
           <Animated.View
             key={id}
             onLayout={(event) => onRowLayout(id, event)}
@@ -543,14 +756,16 @@ export function DraggableTrackerList({
                 ]}
               />
             ) : null}
-            {renderItem(id, {
-              ...rowHandlersFor(id),
-              delayLongPress: LONG_PRESS_MS,
-              isDragging,
-              canDrag,
-            })}
-          </Animated.View>
-        );
+            {entering.has(id) ? (
+              <EnteringRow reduceMotion={reduceMotionRef.current} onArrived={() => settleEntry(id)}>
+                {shown}
+              </EnteringRow>
+            ) : (
+              shown
+            )}
+          </Animated.View>,
+          ...leavingUnder(id),
+        ];
       })}
     </View>
   );
@@ -563,6 +778,11 @@ const styles = StyleSheet.create({
   row: {
     width: '100%',
     position: 'relative',
+  },
+  /** A row on its way out or in: clipped to the place it is closing or opening. */
+  leaving: {
+    width: '100%',
+    overflow: 'hidden',
   },
   dropFlash: {
     ...StyleSheet.absoluteFillObject,

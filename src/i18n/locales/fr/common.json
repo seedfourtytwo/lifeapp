@@ -2,30 +2,21 @@
   "appName": "Life",
   "actions": {
     "save": "Enregistrer",
+    "ok": "OK",
     "cancel": "Annuler",
     "delete": "Supprimer",
-    "edit": "Modifier",
     "close": "Fermer",
     "done": "Terminé",
     "retry": "Réessayer",
-    "add": "Ajouter",
-    "clear": "Effacer",
-    "archive": "Archiver",
     "restore": "Restaurer",
-    "undo": "Annuler",
-    "search": "Rechercher",
-    "openTrackers": "Ouvrir les suivis",
-    "more": "Plus",
-    "editText": "Modifier le texte"
+    "undo": "Annuler"
   },
   "alerts": {
     "couldNotSave": "Enregistrement impossible",
     "couldNotDelete": "Suppression impossible",
-    "couldNotUpdate": "Mise à jour impossible",
     "couldNotArchive": "Archivage impossible",
     "couldNotRestore": "Restauration impossible",
     "couldNotLog": "Enregistrement impossible",
-    "couldNotMarkDone": "Impossible de marquer comme fait",
     "rebuildRequiredTitle": "Reconstruction nécessaire"
   },
   "errors": {
@@ -69,10 +60,7 @@
     "copied": "Copié",
     "couldNotCopyTitle": "Impossible de copier",
     "couldNotCopyBody": "Réessayez.",
-    "copyA11y": "Copier {{noun}} dans le presse-papiers",
-    "editText": "Modifier le texte",
     "save": "Enregistrer",
-    "close": "Fermer",
     "cancel": "Annuler",
     "characterCount": "{{count}} / {{max}}",
     "characterCountLimitReachedA11y": "{{count}} sur {{max}} caractères, limite atteinte",
@@ -98,12 +86,8 @@
     "dictateWithMic": "Dicter avec le micro",
     "moreActions": "Autres actions de note",
     "dictatingA11y": "Dictée en cours",
-    "tapToAddNote": "Appuyez pour ajouter une note",
-    "addNote": "Ajouter une note",
-    "editNoteFor": "Modifier la note de {{name}}",
     "couldNotOpenTitle": "Impossible d'ouvrir {{noun}}",
     "couldNotSaveTitle": "Impossible d'enregistrer {{noun}}",
-    "share": "Partager",
     "shareA11y": "Partager {{noun}}",
     "shareStatusNeverA11y": "Pas encore partagé",
     "shareStatusStaleA11y": "La copie partagée n'est plus à jour",
@@ -134,11 +118,6 @@
   },
   "dateTime": {
     "today": "Aujourd'hui",
-    "tomorrow": "Demain",
-    "inMinutes": "dans {{count}} min",
-    "inHoursOne": "dans {{count}} heure",
-    "inHoursMany": "dans {{count}} heures",
-    "inDaysOne": "dans {{count}} jour",
-    "inDaysMany": "dans {{count}} jours"
+    "tomorrow": "Demain"
   }
 }

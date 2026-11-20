@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { Button, List, Modal, Portal, Text, useTheme } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
 import type { JournalNotebook } from '../protocol';
+import { space } from '../theme/spacing';
+import SettingsRow, { settingsRowStyles } from './settings/SettingsRow';
+import { confirm, EditorSheet } from './sheet';
 
 type Props = {
   visible: boolean;
@@ -13,6 +14,8 @@ type Props = {
   onClear: (notebook: JournalNotebook) => Promise<void>;
 };
 
+const SWATCH = 16;
+
 /** Wipe every day in one notebook; the notebook itself stays. */
 export default function ClearNotebookSheet({
   visible,
@@ -21,94 +24,68 @@ export default function ClearNotebookSheet({
   onDismiss,
   onClear,
 }: Props) {
-  const theme = useTheme();
   const { t } = useTranslation('settings');
-  const { decorations: deco } = useAppTheme();
   const [clearingId, setClearingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) setClearingId(null);
   }, [visible]);
 
-  const confirmClear = (notebook: JournalNotebook) => {
-    Alert.alert(
-      t('data.clearNotebookConfirmTitle', { name: notebook.name }),
-      t('data.clearNotebookConfirmBody'),
-      [
-        { text: t('data.clearNotebookCancel'), style: 'cancel' },
-        {
-          text: t('data.clearNotebookConfirmAction'),
-          style: 'destructive',
-          onPress: () => {
-            setClearingId(notebook.id);
-            void onClear(notebook).finally(() => setClearingId(null));
-          },
-        },
-      ],
-    );
+  const working = busy || clearingId != null;
+
+  const confirmClear = async (notebook: JournalNotebook) => {
+    const confirmed = await confirm({
+      title: t('data.clearNotebookConfirmTitle', { name: notebook.name }),
+      message: t('data.clearNotebookConfirmBody'),
+      confirmLabel: t('data.clearNotebookConfirmAction'),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setClearingId(notebook.id);
+    try {
+      await onClear(notebook);
+    } finally {
+      setClearingId(null);
+    }
   };
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={busy ? undefined : onDismiss}
-        contentContainerStyle={[
-          styles.modal,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: deco.radius.lg,
-          },
-        ]}
-      >
-        <Text variant="titleMedium">{t('data.clearNotebookTitle')}</Text>
-        <Text
-          variant="bodySmall"
-          style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {t('data.clearNotebookDescription')}
-        </Text>
-        <View style={styles.list}>
-          {notebooks.map((notebook) => (
-            <List.Item
-              key={notebook.id}
-              title={notebook.name}
-              left={() => (
+    <EditorSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      dismissable={!working}
+      title={t('data.clearNotebookTitle')}
+      subtitle={t('data.clearNotebookDescription')}
+    >
+      <View style={styles.list}>
+        {notebooks.map((notebook) => (
+          <SettingsRow
+            key={notebook.id}
+            title={notebook.name}
+            left={
+              <View style={settingsRowStyles.iconSlot}>
                 <View style={[styles.swatch, { backgroundColor: notebook.color }]} />
-              )}
-              onPress={
-                busy || clearingId ? undefined : () => confirmClear(notebook)
-              }
-              disabled={busy || clearingId != null}
-            />
-          ))}
-        </View>
-        <Button mode="text" onPress={onDismiss} disabled={busy || clearingId != null}>
-          {t('data.clearNotebookClose')}
-        </Button>
-      </Modal>
-    </Portal>
+              </View>
+            }
+            onPress={() => void confirmClear(notebook)}
+            busy={clearingId === notebook.id}
+            disabled={working}
+          />
+        ))}
+      </View>
+    </EditorSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  modal: {
-    marginHorizontal: 24,
-    padding: 16,
-    gap: 8,
-  },
-  subtitle: {
-    lineHeight: 20,
-  },
   list: {
-    marginVertical: 8,
+    // The rows carry their own gutter; pull them back onto the sheet's.
+    marginHorizontal: -space.lg,
   },
   swatch: {
-    width: 16,
-    height: 16,
+    width: SWATCH,
+    height: SWATCH,
     // Geometric: half the size is what makes it round.
-    borderRadius: 8,
-    alignSelf: 'center',
-    marginLeft: 8,
+    borderRadius: SWATCH / 2,
   },
 });

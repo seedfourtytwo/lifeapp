@@ -2,30 +2,21 @@
   "appName": "Life",
   "actions": {
     "save": "Save",
+    "ok": "OK",
     "cancel": "Cancel",
     "delete": "Delete",
-    "edit": "Edit",
     "close": "Close",
     "done": "Done",
     "retry": "Retry",
-    "add": "Add",
-    "clear": "Clear",
-    "archive": "Archive",
     "restore": "Restore",
-    "undo": "Undo",
-    "search": "Search",
-    "openTrackers": "Open Trackers",
-    "more": "More",
-    "editText": "Edit text"
+    "undo": "Undo"
   },
   "alerts": {
     "couldNotSave": "Could not save",
     "couldNotDelete": "Could not delete",
-    "couldNotUpdate": "Could not update",
     "couldNotArchive": "Could not archive",
     "couldNotRestore": "Could not restore",
     "couldNotLog": "Could not log",
-    "couldNotMarkDone": "Could not mark done",
     "rebuildRequiredTitle": "Rebuild required"
   },
   "errors": {
@@ -69,10 +60,7 @@
     "copied": "Copied",
     "couldNotCopyTitle": "Could not copy",
     "couldNotCopyBody": "Try again.",
-    "copyA11y": "Copy {{noun}} to clipboard",
-    "editText": "Edit text",
     "save": "Save",
-    "close": "Close",
     "cancel": "Cancel",
     "characterCount": "{{count}} / {{max}}",
     "characterCountLimitReachedA11y": "{{count}} of {{max}} characters, limit reached",
@@ -98,12 +86,8 @@
     "dictateWithMic": "Dictate with microphone",
     "moreActions": "More note actions",
     "dictatingA11y": "Dictating",
-    "tapToAddNote": "Tap to add a note",
-    "addNote": "Add note",
-    "editNoteFor": "Edit note for {{name}}",
     "couldNotOpenTitle": "Could not open {{noun}}",
     "couldNotSaveTitle": "Could not save {{noun}}",
-    "share": "Share",
     "shareA11y": "Share {{noun}}",
     "shareStatusNeverA11y": "Not shared yet",
     "shareStatusStaleA11y": "Shared copy is out of date",
@@ -134,11 +118,6 @@
   },
   "dateTime": {
     "today": "Today",
-    "tomorrow": "Tomorrow",
-    "inMinutes": "in {{count}} min",
-    "inHoursOne": "in {{count}} hour",
-    "inHoursMany": "in {{count}} hours",
-    "inDaysOne": "in {{count}} day",
-    "inDaysMany": "in {{count}} days"
+    "tomorrow": "Tomorrow"
   }
 }

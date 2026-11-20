@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A tick-off habit: a small sun, for something done once a day, on the moss tile. Its tick sits at the row's end. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="36dp"
+  android:height="36dp"
+  android:viewportWidth="100"
+  android:viewportHeight="100">
+  <group android:pivotX="50" android:pivotY="50" android:scaleX="1" android:scaleY="1">
+    <path android:fillColor="@color/life_widget_tick" android:pathData="M50,2C85,2 98,15 98,50C98,85 85,98 50,98C15,98 2,85 2,50C2,15 15,2 50,2Z" />
+    <group android:translateX="15" android:translateY="15" android:scaleX="2.5" android:scaleY="2.5">
+      <path android:fillColor="#00000000" android:strokeColor="@color/life_widget_ink" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M14,10.5 A3.5,3.5 0 1,1 14,17.5 A3.5,3.5 0 1,1 14,10.5 Z M14,5 L14,6.5 M14,21.5 L14,23 M5,14 L6.5,14 M21.5,14 L23,14 M7.6,7.6 L8.7,8.7 M19.3,19.3 L20.4,20.4 M7.6,20.4 L8.7,19.3 M19.3,8.7 L20.4,7.6" />
+    </group>
+  </group>
+</vector>

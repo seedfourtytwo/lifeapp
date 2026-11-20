@@ -23,7 +23,7 @@ Owner's answers that shaped the plan:
 | 3 | Native Today widget | Done and since extended (see below) |
 | 4 | Forgiving motivation | Done, committed |
 | 5 | Timers and voice from the widget | Timers done and tested on the device; mic/voice not started |
-| 6 | App refocus: Today · Journal · Calendar · Review · More | Not started. The widget's own list already follows the agreed Today order: habits and counters in one run, then Todos, then Done |
+| 6 | App refocus: Today · Journal · More in the dock, Calendar and Review as pages | Done — see `.cursor/app-refocus.md` |
 
 ### Step 1 — commits 041669e, dbc656a, 6055b38
 - `daysBetween` is a calendar-day difference (every-N-days no longer drifts across a clock change).
@@ -42,7 +42,7 @@ Owner's answers that shaped the plan:
 ### Step 3 — commit 2c06f52, then ten commits made in a session on the owner's computer
 - `modules/life-widget`: RemoteViews `AppWidgetProvider` + `RemoteViewsService`, no JavaScript on the tap path.
 - **Runs in its own process (`android:process=":widget"`). Keep it that way:** expo-sqlite bundles its own SQLite, and the framework's SQLite opening the same file in the same process breaks file locks and can corrupt the database.
-- Colours, corners and font come from the system (Material You) palette on API 31+; the app palette is the fallback.
+- Colours are one fixed dress (`res/values/colors.xml`), the same in light and dark and on every Android version; the app's themes repeat it (`src/theme/themes.ts`, `src/theme/palette.ts`). Only the corner radii come from the system, on API 31+ (`res/values-v31/dimens.xml`).
 - Commits 453d5cc … dda0396 (16–17 Nov) were made in a separate session on `aero` with the phone attached. This handover's author did not write or review them; from their messages they add: timer minutes and in-widget timers with sound, cards and section headings, a pinned running habit with a live clock, counter progress, todo due dates and a Done section. **Read those commits before changing the widget**, and check whether the fixture test and `npm test` still pass after them.
 
 ## What is verified, and what is not (18 Nov, evening)
@@ -61,7 +61,7 @@ Checks at the merge commit: `npm test` 126 suites / 1633 tests, `tsc`, `lint` cl
 
 ## Next up
 
-### Step 6 (not started) — the briefs were
+### Step 6 (done; see `.cursor/app-refocus.md`) — the original briefs were
 **Home pager becomes Today · Journal · Calendar · Review · More.**
 - Today = one list: habits and counters in one user order, then a quiet "Todos" label and open todos, then settled (done/skipped) habits. Same structure and order as the widget; if `dashboard_items.sort_order` is per kind, make it one sequence and update the widget's order to match.
 - Journal and Calendar become pages (lazy-mount; all pages mount at startup today). Review hosts the redesigned Insights screen. More keeps Trackers, Todo history, Nutrition + Ingredients, Settings.

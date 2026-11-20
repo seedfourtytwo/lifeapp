@@ -1,7 +1,7 @@
 /**
  * How tall a Home page is.
  *
- * The five pages sit side by side inside a horizontal ScrollView, and a
+ * The three pages sit side by side inside a horizontal ScrollView, and a
  * ScrollView will not give its children a cross-axis size — so each page is
  * handed an explicit height, measured at runtime.
  *
@@ -39,12 +39,14 @@ jest.mock('../src/db/client', () => ({
 }));
 
 // The pages themselves are not what is under test, and each drags in its own
-// stores; empty stand-ins keep this about the layout.
-jest.mock('../src/screens/HabitsScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/CountersScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/NutritionScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/TodosScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/settings/SettingsMenuScreen', () => ({
+// stores; empty stand-ins keep this about the layout. Only Today is built at
+// startup, but a page still has its slot — and its height — before it is.
+jest.mock('../src/screens/TodayScreen', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('../src/screens/JournalScreen', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/screens/settings/MoreScreen', () => ({
   __esModule: true,
   default: () => null,
 }));
@@ -71,7 +73,7 @@ function render(): ReactTestRenderer {
   return tree;
 }
 
-/** The horizontal pager the five pages live in. */
+/** The horizontal pager the pages live in. */
 function pagerOf(tree: ReactTestRenderer) {
   return tree.root.find(
     (node) => node.props.horizontal === true && node.props.pagingEnabled === true,
@@ -108,7 +110,7 @@ describe('the height a Home page is given', () => {
     });
 
     const heights = pageHeights(tree);
-    expect(heights).toHaveLength(5);
+    expect(heights).toHaveLength(3);
     for (const height of heights) expect(height).toBe(PAGER_HEIGHT);
 
     act(() => {

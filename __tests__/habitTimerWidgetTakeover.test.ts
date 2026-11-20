@@ -33,8 +33,12 @@ jest.mock('../src/kinds/habit/habitTimerLockScreen', () => ({
   stopHabitTimerLockScreenTicker: jest.fn(),
 }));
 
-import { Alert, type AlertButton } from 'react-native';
 import { stopWidgetTimer } from 'life-widget';
+import {
+  attachConfirmHost,
+  settleConfirm,
+  type SheetRequest,
+} from '../src/components/sheet/confirm';
 import { startHabitTimerSession } from '../src/kinds/habit/habitTimerControls';
 import { isTimerRunningInWidget, useEventStore } from '../src/store/eventStore';
 
@@ -43,22 +47,33 @@ const runningInWidget = isTimerRunningInWidget as jest.Mock;
 const startHabitTimer = jest.fn();
 const config = {} as HabitConfig;
 
+/** Every sheet the app asked for, in order — the stand-in for ConfirmHost. */
+let asked: SheetRequest[] = [];
+let detach: () => void = () => undefined;
+
 function flush(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-async function openPrompt(): Promise<AlertButton[]> {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+async function openPrompt(): Promise<SheetRequest> {
   startHabitTimerSession('h1', config);
   await flush();
-  expect(alert).toHaveBeenCalledTimes(1);
-  return alert.mock.calls[0][2] as AlertButton[];
+  expect(asked).toHaveLength(1);
+  return asked[0];
+}
+
+async function answer(confirmed: boolean): Promise<void> {
+  settleConfirm(confirmed);
+  await flush();
 }
 
 describe('taking a habit timer over from the widget', () => {
   beforeEach(() => {
-    jest.restoreAllMocks();
     jest.clearAllMocks();
+    asked = [];
+    detach = attachConfirmHost((request) => {
+      if (request) asked.push(request);
+    });
     (useEventStore.getState as jest.Mock).mockReturnValue({
       activeTimerSessions: {},
       startHabitTimer,
@@ -67,29 +82,31 @@ describe('taking a habit timer over from the widget', () => {
     stopWidget.mockResolvedValue(undefined);
   });
 
-  it('offers cancel and a confirm button, starting nothing yet', async () => {
-    const buttons = await openPrompt();
+  afterEach(() => detach());
 
-    expect(buttons).toHaveLength(2);
-    expect(buttons[0].style).toBe('cancel');
+  it('asks before taking over, starting nothing yet', async () => {
+    const prompt = await openPrompt();
+
+    expect(prompt).toMatchObject({
+      kind: 'confirm',
+      confirmLabel: 'trackers:habitWidget.timerRunningInWidgetTakeOver',
+    });
     expect(stopWidget).not.toHaveBeenCalled();
     expect(startHabitTimer).not.toHaveBeenCalled();
   });
 
   it('cancel starts nothing and leaves the widget alone', async () => {
-    const buttons = await openPrompt();
-    buttons[0].onPress?.();
-    await flush();
+    await openPrompt();
+    await answer(false);
 
     expect(stopWidget).not.toHaveBeenCalled();
     expect(startHabitTimer).not.toHaveBeenCalled();
   });
 
   it('confirm stops the widget timer, then starts the app timer', async () => {
-    const buttons = await openPrompt();
+    await openPrompt();
     runningInWidget.mockResolvedValue(false);
-    buttons[1].onPress?.();
-    await flush();
+    await answer(true);
 
     expect(stopWidget).toHaveBeenCalledWith('h1');
     expect(startHabitTimer).toHaveBeenCalledWith('h1');
@@ -99,26 +116,25 @@ describe('taking a habit timer over from the widget', () => {
   });
 
   it('starts nothing when the widget timer survives the stop call', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-    startHabitTimerSession('h1', config);
-    await flush();
-    const buttons = alert.mock.calls[0][2] as AlertButton[];
-    buttons[1].onPress?.();
-    await flush();
+    await openPrompt();
+    await answer(true);
 
     expect(stopWidget).toHaveBeenCalledWith('h1');
     expect(startHabitTimer).not.toHaveBeenCalled();
-    expect(alert).toHaveBeenCalledTimes(2);
-    expect(alert.mock.calls[1][1]).toBe('trackers:habitWidget.timerRunningInWidgetMessage');
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toMatchObject({
+      kind: 'notify',
+      message: 'trackers:habitWidget.timerRunningInWidgetMessage',
+    });
   });
 
   it('reports a failed stop and starts nothing', async () => {
-    const buttons = await openPrompt();
+    await openPrompt();
     stopWidget.mockRejectedValue(new Error('boom'));
-    buttons[1].onPress?.();
-    await flush();
+    await answer(true);
 
     expect(startHabitTimer).not.toHaveBeenCalled();
-    expect(Alert.alert).toHaveBeenCalledTimes(2);
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toMatchObject({ kind: 'notify', message: 'boom' });
   });
 });

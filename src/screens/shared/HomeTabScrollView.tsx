@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import {
   Animated,
+  type GestureResponderEvent,
+  Keyboard,
   PanResponder,
   ScrollView,
   StyleSheet,
@@ -17,13 +19,26 @@ import {
   type ScrollViewProps,
   View,
 } from 'react-native';
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '../../hooks/useDialogKeyboardLift';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { springOrSnap } from '../../utils/motion';
+import {
+  keyboardOverlap,
+  keyboardRevealDelta,
+  keyboardTopInWindow,
+  touchIsOutside,
+} from './keyboardField';
 
 const RUBBER = 0.28;
 const MAX_PULL = 64;
 /** Treat as fitting when content is within 1px of the viewport (subpixel noise). */
 const FITS_EPSILON = 1;
+/**
+ * List kept in view under a field the keyboard is open for: about one row, so
+ * what was just filed from the field can be seen landing.
+ */
+const KEYBOARD_FIELD_PEEK = 72;
 
 export type HomeTabScrollViewHandle = {
   getScrollOffsetY: () => number;
@@ -38,6 +53,13 @@ type Props = Omit<
 > & {
   /** Freeze scrolling / rubber-band while a row is being drag-reordered. */
   scrollLocked?: boolean;
+  /**
+   * The line holding the text field that has focus; null while none does.
+   * While it is set the list ends at the keyboard instead of running under it,
+   * the line is scrolled into the room that is left, and a touch anywhere else
+   * in the list puts the keyboard away.
+   */
+  keyboardField?: React.RefObject<View | null> | null;
 };
 
 function contentFitsViewport(contentHeight: number, layoutHeight: number): boolean {
@@ -46,7 +68,7 @@ function contentFitsViewport(contentHeight: number, layoutHeight: number): boole
 }
 
 /**
- * Home Habits/Counters list: light rubber-band when the list fits on screen
+ * Home page list: light rubber-band when the list fits on screen
  * (nowhere to scroll). When content overflows, the ScrollView scrolls normally
  * and the bounce pan is detached so it cannot steal vertical gestures.
  * Native Android overscroll is unreliable inside the Home horizontal pager.
@@ -61,6 +83,7 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
       onLayout,
       onContentSizeChange,
       scrollLocked = false,
+      keyboardField = null,
       ...rest
     },
     ref,
@@ -74,6 +97,9 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     const contentSizeH = useRef(0);
     const layoutH = useRef(0);
     const windowTop = useRef(0);
+    /** The list's own box, in the coordinates the keyboard and touches use. */
+    const pageTop = useRef(0);
+    const pageBottom = useRef(0);
     const dragOrigin = useRef(0);
     const scrollLockedRef = useRef(scrollLocked);
     scrollLockedRef.current = scrollLocked;
@@ -134,7 +160,60 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
       rootRef.current?.measureInWindow((_x, y) => {
         windowTop.current = y;
       });
+      // `measure`, not `measureInWindow`: on Android the latter is shifted up by
+      // the status bar under edge-to-edge, and the keyboard's edge, the safe-area
+      // frame and a touch's pageY are not.
+      rootRef.current?.measure((_x, _y, _width, height, _pageX, pageY) => {
+        pageTop.current = pageY;
+        pageBottom.current = pageY + height;
+      });
     }, []);
+
+    // Edge-to-edge: the window keeps its height under the keyboard, so the
+    // list gives up the covered part itself. The page around it — the dock —
+    // is not resized and stays behind the keyboard.
+    const insets = useSafeAreaInsets();
+    const frame = useSafeAreaFrame();
+    const keyboardHeight = useKeyboardHeight(keyboardField != null);
+    const keyboardTop =
+      keyboardField != null
+        ? keyboardTopInWindow({
+            windowHeight: frame.height,
+            safeBottom: insets.bottom,
+            keyboardHeight,
+          })
+        : null;
+    const coveredByKeyboard = keyboardOverlap({ viewBottom: pageBottom.current, keyboardTop });
+
+    /**
+     * Called once the list has its new height or its content has grown — a todo
+     * filed from the field pushes it down a row — so the scroll range is the real one.
+     */
+    const revealKeyboardField = () => {
+      const field = keyboardField?.current;
+      if (keyboardTop == null || !field) return;
+      field.measure((_x, _y, _width, height, _pageX, pageY) => {
+        const delta = keyboardRevealDelta({
+          fieldTop: pageY,
+          fieldBottom: pageY + height,
+          viewportTop: pageTop.current,
+          keyboardTop,
+          peek: KEYBOARD_FIELD_PEEK,
+        });
+        if (delta === 0) return;
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, scrollY.current + delta),
+          animated: !reduceMotionRef.current,
+        });
+      });
+    };
+
+    const dismissKeyboardOnOutsideTouch = (event: GestureResponderEvent) => {
+      const { pageX, pageY } = event.nativeEvent;
+      keyboardField?.current?.measure((_x, _y, width, height, x, y) => {
+        if (touchIsOutside({ x: pageX, y: pageY }, { x, y, width, height })) Keyboard.dismiss();
+      });
+    };
 
     const pan = useRef(
       PanResponder.create({
@@ -169,8 +248,9 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
     return (
       <View
         ref={rootRef}
-        style={[styles.fill, style]}
+        style={[styles.fill, style, { paddingBottom: coveredByKeyboard }]}
         {...(rubberBandActive ? pan.panHandlers : {})}
+        onTouchStart={keyboardField ? dismissKeyboardOnOutsideTouch : undefined}
         onLayout={measureWindowTop}
         collapsable={false}
       >
@@ -197,11 +277,13 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
               layoutH.current = event.nativeEvent.layout.height;
               recomputeFits();
               measureWindowTop();
+              revealKeyboardField();
               onLayout?.(event);
             }}
             onContentSizeChange={(width, height) => {
               contentSizeH.current = height;
               recomputeFits();
+              revealKeyboardField();
               onContentSizeChange?.(width, height);
             }}
           >
@@ -213,6 +295,8 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
               }}
             >
               {children}
+              {/* Scroll room for the peek when the field is the last thing on the page. */}
+              {keyboardTop != null ? <View style={styles.keyboardPeek} /> : null}
             </View>
           </ScrollView>
         </Animated.View>
@@ -224,5 +308,8 @@ export const HomeTabScrollView = forwardRef<HomeTabScrollViewHandle, Props>(
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
+  },
+  keyboardPeek: {
+    height: KEYBOARD_FIELD_PEEK,
   },
 });

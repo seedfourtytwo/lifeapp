@@ -2,7 +2,7 @@
   "expo": {
     "name": "Life",
     "slug": "lifeapp",
-    "version": "1.7.0",
+    "version": "1.10.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ECEEEA"
+      "backgroundColor": "#F1ECE6"
     },
     "ios": {
       "supportsTablet": true,
@@ -31,17 +31,17 @@
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
-        "backgroundColor": "#ECEEEA",
+        "backgroundColor": "#F1ECE6",
         "dark": {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#0B0E0C"
+          "backgroundColor": "#1B1630"
         }
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "allowBackup": false,
+      "allowBackup": true,
       "package": "com.lifeapp.dashboard",
-      "versionCode": 30,
+      "versionCode": 33,
       "permissions": [
         "WAKE_LOCK",
         "ACCESS_COARSE_LOCATION",

@@ -1,18 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  Animated,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { Modal, Portal, Text, useTheme } from 'react-native-paper';
+import React from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppTheme } from '../hooks/useAppTheme';
-import { useReduceMotion } from '../hooks/useReduceMotion';
 import { space } from '../theme/spacing';
-import { typeScale } from '../theme/typography';
-import { timingOrSnap } from '../utils/motion';
-import QuietText from './QuietText';
+import { SheetBase } from './sheet';
+import { sheetBottomPadding } from './sheet/sheetGesture';
 
 export type HeaderPeekSheetProps = {
   visible: boolean;
@@ -28,21 +19,15 @@ export type HeaderPeekSheetProps = {
   children: React.ReactNode;
 };
 
-/** How far the sheet travels on the way in. */
-const RISE_PX = 24;
-const OPEN_MS = 200;
+const FOOTER_MIN_HEIGHT = 48;
 
 /**
  * The one bottom sheet the day header opens.
  *
  * Both header glyphs — weather and calendar — lead to the same kind of panel:
- * a heading, a quiet line, a small body, a row of buttons. Written once so the
- * two peeks cannot drift apart, and so safe-area insets, the back button and
- * "remove animations" are answered in a single place.
- *
- * Paper's `Modal` centres its content and reserves the bottom inset as a
- * margin; both are overridden here so the sheet sits flush against the bottom
- * edge and pads its own contents clear of the navigation bar instead.
+ * a heading, a quiet line, a small body, a row of buttons. It is the editor
+ * sheet's shell (`SheetBase`) at a shorter height, so it rises, dims the
+ * screen, pulls down and answers the back button exactly as an editor does.
  */
 export default function HeaderPeekSheet({
   visible,
@@ -53,129 +38,39 @@ export default function HeaderPeekSheet({
   maxHeightRatio = 0.7,
   children,
 }: HeaderPeekSheetProps) {
-  const theme = useTheme();
-  const { decorations: deco } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const reduceMotion = useReduceMotion();
-  const rise = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // The sheet still arrives and leaves; reduced motion drops the travel and
-    // keeps the end state, so an open sheet is open either way.
-    timingOrSnap(
-      rise,
-      {
-        toValue: visible ? 1 : 0,
-        duration: OPEN_MS,
-        useNativeDriver: true,
-      },
-      reduceMotion,
-    ).start();
-  }, [visible, rise, reduceMotion]);
-
-  const translateY = rise.interpolate({
-    inputRange: [0, 1],
-    outputRange: [RISE_PX, 0],
-  });
-
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onDismiss}
-        style={styles.wrapper}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <Animated.View
-          testID="peek-sheet"
-          style={[
-            styles.sheet,
-            deco.sheetShadow,
-            {
-              maxHeight: Math.round(windowHeight * maxHeightRatio),
-              paddingBottom: space.xl + insets.bottom,
-              backgroundColor: theme.colors.surface,
-              borderTopLeftRadius: deco.radius.xl,
-              borderTopRightRadius: deco.radius.xl,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          <View
-            testID="peek-grabber"
-            style={[styles.grabber, { backgroundColor: theme.colors.outlineVariant }]}
-          />
-
-          <View style={styles.headingRow}>
-            <Text
-              style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
-              accessibilityRole="header"
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-          </View>
-
-          {subtitle ? (
-            <QuietText variant="bodySmall" style={styles.subtitle}>
-              {subtitle}
-            </QuietText>
-          ) : null}
-
-          <View style={styles.body}>{children}</View>
-
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </Animated.View>
-      </Modal>
-    </Portal>
+    <SheetBase
+      testID="peek-sheet"
+      visible={visible}
+      onDismiss={onDismiss}
+      title={title}
+      subtitle={subtitle}
+      titleLines={1}
+      maxHeight={Math.round(windowHeight * maxHeightRatio)}
+      paddingBottom={sheetBottomPadding({ keyboardHeight: 0, safeBottom: insets.bottom })}
+    >
+      <View testID="peek-sheet-body" style={styles.body}>
+        {children}
+      </View>
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
+    </SheetBase>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    justifyContent: 'flex-end',
-    // Paper reserves the bottom inset here; the sheet pads its own contents.
-    marginBottom: 0,
-  },
-  contentContainer: {
-    // The sheet below owns the surface; this layer only positions it.
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    width: '100%',
-    paddingHorizontal: space.xl,
-    paddingTop: space.md,
-  },
-  /** The handle every sheet in the app carries: a sheet, not a pop-up. */
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    // Geometric: half the height is what makes it a capsule.
-    borderRadius: 2,
-    marginBottom: space.lg,
-  },
-  headingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.sm,
-    minHeight: 32,
-  },
-  subtitle: {
-    marginTop: space.xxs,
-  },
   body: {
     flexShrink: 1,
-    marginTop: space.md,
+    paddingHorizontal: space.xl,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: space.xl,
     marginTop: space.lg,
-    minHeight: 48,
+    minHeight: FOOTER_MIN_HEIGHT,
   },
 });

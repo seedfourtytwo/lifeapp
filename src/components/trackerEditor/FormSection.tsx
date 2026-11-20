@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CollapseChevron, Collapsible } from '../Collapsible';
 import QuietText from '../QuietText';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
@@ -18,6 +18,11 @@ type Props = {
   defaultCollapsed?: boolean;
   /** What a collapsible row is set to now: a word, or a small glyph. */
   value?: React.ReactNode;
+  /**
+   * Opens a collapsed section each time this changes to something — the
+   * problem Save found inside it, which nobody could see while it was shut.
+   */
+  openFor?: object | null;
   children: React.ReactNode;
 };
 
@@ -29,10 +34,15 @@ export default function FormSection({
   collapsible = false,
   defaultCollapsed = false,
   value,
+  openFor = null,
   children,
 }: Props) {
   const theme = useTheme();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+  useEffect(() => {
+    if (openFor) setCollapsed(false);
+  }, [openFor]);
 
   if (!collapsible) {
     return (
@@ -60,28 +70,28 @@ export default function FormSection({
           {title}
         </Text>
         {typeof value === 'string' ? (
-          <QuietText style={[typeScale.secondary, formSectionStyles.rowValue]} numberOfLines={1}>
+          <QuietText style={[typeScale.secondary, formSectionStyles.rowValue]} numberOfLines={2}>
             {value}
           </QuietText>
         ) : (
           <View style={formSectionStyles.rowGlyph}>{value}</View>
         )}
-        <MaterialCommunityIcons
-          name={collapsed ? 'chevron-down' : 'chevron-up'}
-          size={20}
-          color={theme.colors.onSurfaceVariant}
-        />
+        <CollapseChevron open={!collapsed} size={20} color={theme.colors.onSurfaceVariant} />
       </Pressable>
-      {!collapsed ? (
-        <View style={formSectionStyles.openBody}>
-          {description ? (
-            <QuietText style={[typeScale.caption, formSectionStyles.hint]}>{description}</QuietText>
-          ) : null}
-          {children}
-        </View>
-      ) : null}
+      <Collapsible open={!collapsed} contentStyle={formSectionStyles.openBody}>
+        {description ? (
+          <QuietText style={[typeScale.caption, formSectionStyles.hint]}>{description}</QuietText>
+        ) : null}
+        {children}
+      </Collapsible>
     </View>
   );
+}
+
+/** One red line under a control that is not a text field — a row of chips, a pair of times. */
+export function FieldProblemText({ children }: { children: string }) {
+  const theme = useTheme();
+  return <Text style={[typeScale.caption, { color: theme.colors.error }]}>{children}</Text>;
 }
 
 export const formSectionStyles = StyleSheet.create({

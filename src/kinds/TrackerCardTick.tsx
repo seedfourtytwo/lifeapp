@@ -1,11 +1,11 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from 'react-native-paper';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { useDoneFill } from './useDoneFill';
 
 /** The drawn ring; the touch target around it is the full 48. */
-const RING = 30;
+const RING = 38;
 const TARGET = 48;
 
 type Props = {
@@ -18,8 +18,8 @@ type Props = {
 };
 
 /**
- * A habit's tick: an empty ring at rest, a solid moss disc with a check once
- * done. The ring is small so the row stays calm; the target is not.
+ * A habit's tick: an empty ring in the tick colour at rest, a solid disc of it
+ * with a check once done.
  */
 export function TrackerCardTick({
   done,
@@ -28,7 +28,8 @@ export function TrackerCardTick({
   accessibilityLabel,
   accessibilityHint,
 }: Props) {
-  const theme = useTheme();
+  const { palette } = useAppTheme();
+  const ink = palette.kind.tick.ink;
   const doneFill = useDoneFill(done);
 
   return (
@@ -44,11 +45,9 @@ export function TrackerCardTick({
       accessibilityHint={accessibilityHint}
     >
       <View style={styles.ring}>
-        <View style={[styles.outline, { borderColor: theme.colors.outlineVariant }]} />
-        <Animated.View
-          style={[styles.fill, { backgroundColor: theme.colors.primary, opacity: doneFill }]}
-        >
-          <MaterialCommunityIcons name="check" size={18} color={theme.colors.onPrimary} />
+        <View style={[styles.outline, { borderColor: ink }]} />
+        <Animated.View style={[styles.fill, { backgroundColor: ink, opacity: doneFill }]}>
+          <MaterialCommunityIcons name="check" size={22} color={palette.onKind} />
         </Animated.View>
       </View>
     </Pressable>
@@ -66,7 +65,7 @@ const styles = StyleSheet.create({
     width: RING,
     height: RING,
   },
-  /** The empty ring. The moss fill is drawn over it, so a done tick has no edge. */
+  /** The empty ring. The fill is drawn over it in the same colour. */
   outline: {
     ...StyleSheet.absoluteFillObject,
     // Geometry: a circle.

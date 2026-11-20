@@ -3,14 +3,14 @@ import { layout, space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
 /**
- * Shared Home tracker row layout (tick-off, timer, counter).
- * Owned by TrackerCard + kind widgets — do not fork per kind.
+ * Shared Today row layout (tick-off, timer, counter, todo).
+ * Owned by TrackerCard + the rows — do not fork per kind.
  */
 export const trackerCardStyles = StyleSheet.create({
   card: {
     marginBottom: layout.rowGap,
   },
-  /** Tracker one-liner: disc and name · spacer · trailing actions. */
+  /** One row: tile and words · figure · the control at the end. */
   oneLineRow: {
     flexDirection: 'row',
     alignItems: 'center',

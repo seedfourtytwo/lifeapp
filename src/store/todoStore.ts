@@ -4,6 +4,7 @@ import { withGuardedWrite } from '../db/dataGeneration';
 import * as todoRepo from '../db/repositories/todoRepository';
 import type { NewTodo, TodoPatch } from '../db/repositories/todoRepository';
 import type { Todo } from '../protocol';
+import { currentAppCalendarDate } from '../utils/dayRollover';
 
 let loadGeneration = 0;
 
@@ -14,6 +15,12 @@ interface TodoState {
    * nothing, since nothing on the open list depends on them.
    */
   todos: Todo[];
+  /**
+   * Todos ticked on the current app day, oldest tick first — the order the
+   * widget lists them in. Today keeps them under Done so a slip can be reopened;
+   * the day's handful is all that is held, never the history.
+   */
+  doneToday: Todo[];
   loaded: boolean;
   loading: boolean;
   error: string | null;
@@ -28,13 +35,17 @@ interface TodoState {
   reorder: (orderedIds: readonly string[]) => Promise<void>;
 }
 
-async function fetchOpen(): Promise<Todo[]> {
+async function fetchLists(): Promise<Pick<TodoState, 'todos' | 'doneToday'>> {
   const db = await getDatabase();
-  return todoRepo.getOpenTodos(db);
+  // Sequential reads — concurrent prepareAsync can fail on shared SQLite.
+  const todos = await todoRepo.getOpenTodos(db);
+  const newestFirst = await todoRepo.getCompletedTodos(db, { date: currentAppCalendarDate() });
+  return { todos, doneToday: newestFirst.reverse() };
 }
 
 export const useTodoStore = create<TodoState>((set, get) => ({
   todos: [],
+  doneToday: [],
   loaded: false,
   loading: false,
   error: null,
@@ -49,9 +60,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     const generation = ++loadGeneration;
     set({ loading: true });
     try {
-      const todos = await fetchOpen();
+      const lists = await fetchLists();
       if (generation !== loadGeneration) return;
-      set({ todos, loaded: true, loading: false, error: null });
+      set({ ...lists, loaded: true, loading: false, error: null });
     } catch (error) {
       if (generation !== loadGeneration) return;
       console.warn('Failed to load todos', error);

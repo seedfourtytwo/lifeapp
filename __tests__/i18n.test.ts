@@ -43,7 +43,7 @@ describe('i18n language resolution', () => {
   it('switches catalogs, date locale, and speech locale language', async () => {
     await applyAppLanguage('fr');
     expect(i18n.t('settings:appearance.languageFr')).toBe('Français');
-    expect(i18n.t('home:dock.habitsTab')).toBe('Habitudes');
+    expect(i18n.t('home:dock.more')).toBe('Plus');
     expect(getDateLocale()).toBe('fr-FR');
     expect(getSpeechLocale().toLowerCase().startsWith('fr')).toBe(true);
 
@@ -207,7 +207,6 @@ describe('journal namespace copy', () => {
         'statusCurrent',
         'confirmShare',
         'confirmCopy',
-        'cancel',
         'nothingSelected',
       ]) {
         expect(typeof share![key]).toBe('string');

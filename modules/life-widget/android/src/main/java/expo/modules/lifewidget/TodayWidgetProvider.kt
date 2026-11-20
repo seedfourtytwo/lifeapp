@@ -225,13 +225,21 @@ internal object WidgetUpdater {
     // untouched day is a scoreboard of what has not happened yet, and this widget
     // is the first thing seen on waking — the count should arrive as a reward.
     if (snapshot is WidgetSnapshot.Ready && snapshot.model.due > 0 && snapshot.model.done > 0) {
-      views.setTextViewText(R.id.widget_progress, "${snapshot.model.done}/${snapshot.model.due}")
+      views.setTextViewText(R.id.widget_progress, "${snapshot.model.done}")
+      views.setTextViewText(R.id.widget_progress_total, " / ${snapshot.model.due}")
       views.setViewVisibility(R.id.widget_progress, View.VISIBLE)
-      views.setProgressBar(R.id.widget_progress_bar, snapshot.model.due, snapshot.model.done, false)
-      views.setViewVisibility(R.id.widget_progress_bar, View.VISIBLE)
+      views.setViewVisibility(R.id.widget_progress_total, View.VISIBLE)
+      // One segment per habit due, the done ones filled: the bar is counted, not measured.
+      views.removeAllViews(R.id.widget_segments)
+      for (index in 0 until snapshot.model.due) {
+        val segment = if (index < snapshot.model.done) R.layout.life_widget_segment_done else R.layout.life_widget_segment_open
+        views.addView(R.id.widget_segments, RemoteViews(context.packageName, segment))
+      }
+      views.setViewVisibility(R.id.widget_segments, View.VISIBLE)
     } else {
       views.setViewVisibility(R.id.widget_progress, View.GONE)
-      views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
+      views.setViewVisibility(R.id.widget_progress_total, View.GONE)
+      views.setViewVisibility(R.id.widget_segments, View.GONE)
     }
 
     views.setTextViewText(

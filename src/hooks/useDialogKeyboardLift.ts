@@ -11,6 +11,9 @@ export function useKeyboardHeight(active: boolean): number {
       setHeight(0);
       return;
     }
+    // Already up when this starts listening: no show event is coming for it.
+    // The web has no on-screen keyboard to measure, and no `metrics` to ask.
+    setHeight(Platform.OS === 'web' ? 0 : (Keyboard.metrics()?.height ?? 0));
     const names = keyboardEventNames(Platform.OS);
     const show = Keyboard.addListener(names.show, (e) => setHeight(e.endCoordinates.height));
     const hide = Keyboard.addListener(names.hide, () => setHeight(0));

@@ -52,7 +52,7 @@ export function isElementDayComplete(element: ElementDefinition, dailyTotal: num
   return isHabitDayComplete(dailyTotal, config);
 }
 
-/** History/Insights chart y-axis unit label — 'min' and 'done' are literal labels, not i18n keys. */
+/** History chart y-axis unit label — 'min' and 'done' are literal labels, not i18n keys. */
 export function chartUnitLabel(element: ElementDefinition): string {
   if (element.kind === 'counter') {
     return CounterConfigSchema.parse(element.config).unit;

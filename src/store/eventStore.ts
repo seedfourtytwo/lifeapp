@@ -14,6 +14,7 @@ import {
   type ActiveTimerSession,
   type HabitConfig,
   type LifeEvent,
+  type WidgetTimerSession,
 } from '../protocol';
 import { playHabitCompleteChime } from '../audio/habitCompleteSound';
 import { sumEventValues } from '../utils/events';
@@ -25,8 +26,10 @@ import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 import {
   loadPersistedActiveTimerSessions,
+  loadWidgetTakenTimers,
   loadWidgetTimerSessions,
   persistActiveTimerSessions,
+  withoutTimersTakenByWidget,
 } from '../db/repositories/activeTimerRepository';
 import {
   loadHabitStreakForElement,
@@ -119,12 +122,26 @@ interface EventState extends ResettableMirror {
   /** Strength score 0–100 for counters with a daily target. */
   counterScores: Record<string, number>;
   activeTimerSessions: Record<string, ActiveTimerSession>;
+  /**
+   * Stopwatches the Android widget is running, by habit id. A read-only copy
+   * of what the widget keeps in `app_settings`: the widget writes it from its
+   * own process, so this is only as fresh as the last `loadWidgetTimerSessions`.
+   * Read it through `isRunningInWidget`.
+   */
+  widgetTimerSessions: Record<string, WidgetTimerSession>;
   /** True after at least one successful habit day-state load this process. */
   dayStateReady: boolean;
   /** True after at least one successful counter totals load this process. */
   counterTotalsReady: boolean;
   /** Restore in-progress timers after process death (call once at bootstrap). */
   hydrateActiveTimerSessions: () => Promise<void>;
+  /** Re-read the widget's running timers. Never throws; a failed read keeps the last copy. */
+  loadWidgetTimerSessions: () => Promise<void>;
+  /**
+   * Lets go of any timer the Android widget took over while the app was away,
+   * without logging it: the widget logs it. Resolves to the habits released.
+   */
+  releaseTimersTakenByWidget: () => Promise<string[]>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
@@ -413,6 +430,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   counterStreaks: {},
   counterScores: {},
   activeTimerSessions: {},
+  widgetTimerSessions: {},
   dayStateReady: false,
   counterTotalsReady: false,
 
@@ -432,13 +450,46 @@ export const useEventStore = create<EventState>((set, get) => ({
       counterStreaks: {},
       counterScores: {},
       activeTimerSessions: {},
+      widgetTimerSessions: {},
       dayStateReady: false,
       counterTotalsReady: false,
     });
   },
 
+  loadWidgetTimerSessions: async () => {
+    try {
+      const sessions = await loadWidgetTimerSessions(await getDatabase());
+      // Same contents, same object: this runs on every refresh, and a fresh
+      // map each time would re-render every subscriber for nothing.
+      if (JSON.stringify(sessions) === JSON.stringify(get().widgetTimerSessions)) return;
+      set({ widgetTimerSessions: sessions });
+    } catch (error) {
+      console.warn('Failed to read widget timer sessions', error);
+    }
+  },
+
+  releaseTimersTakenByWidget: async () => {
+    if (Object.keys(get().activeTimerSessions).length === 0) return [];
+    const taken = await loadWidgetTakenTimers(await getDatabase());
+    // Read memory again after the await: a timer may have been stopped meanwhile.
+    const { kept, released } = withoutTimersTakenByWidget(get().activeTimerSessions, taken);
+    if (released.length === 0) return released;
+    set({ activeTimerSessions: kept });
+    schedulePersistActiveTimers(kept);
+    return released;
+  },
+
   hydrateActiveTimerSessions: async () => {
-    const sessions = await loadPersistedActiveTimerSessions(await getDatabase());
+    const db = await getDatabase();
+    // A session the widget took over is the widget's: restoring it here would
+    // time, and at the next stop log, the same minutes a second time.
+    const { kept: sessions, released } = withoutTimersTakenByWidget(
+      await loadPersistedActiveTimerSessions(db),
+      await loadWidgetTakenTimers(db),
+    );
+    if (released.length > 0 && Object.keys(sessions).length === 0) {
+      schedulePersistActiveTimers(sessions);
+    }
     if (Object.keys(sessions).length === 0) return;
     // Do not clobber a timer started before hydration finished.
     if (Object.keys(get().activeTimerSessions).length > 0) return;
@@ -1200,6 +1251,18 @@ export function counterStreakInputsFromElements(
     });
   }
   return inputs;
+}
+
+/**
+ * The widget is timing this habit right now. One it holds paused does not
+ * count: nothing is running, and the app's own play button can take it over.
+ */
+export function isRunningInWidget(
+  state: Pick<EventState, 'widgetTimerSessions'>,
+  elementId: string,
+): boolean {
+  const session = state.widgetTimerSessions[elementId];
+  return session != null && session.pausedAt == null;
 }
 
 /**

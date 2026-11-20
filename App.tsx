@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/ibm-plex-mono';
 import './src/i18n';
 import { applyAppLanguage } from './src/i18n';
+import { ConfirmHost } from './src/components/sheet';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useCalendarReminderSync } from './src/hooks/useCalendarReminderSync';
@@ -30,11 +31,14 @@ import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useWidgetSync } from './src/hooks/useWidgetSync';
 import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
-import { getAppTheme } from './src/theme';
+import { appDarkTheme, appLightTheme, getAppTheme } from './src/theme';
 
+/** Navigation paints its own ground behind a screen in transit; it takes the app's, not Material's. */
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavigationDefaultTheme,
   reactNavigationDark: NavigationDarkTheme,
+  materialLight: appLightTheme,
+  materialDark: appDarkTheme,
 });
 
 function ThemedApp() {
@@ -93,6 +97,7 @@ function ThemedApp() {
         <AppNavigator />
         <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       </NavigationContainer>
+      <ConfirmHost />
     </PaperProvider>
   );
 }

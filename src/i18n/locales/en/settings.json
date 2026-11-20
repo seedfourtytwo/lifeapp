@@ -1,11 +1,11 @@
 {
   "menu": {
-    "insightsTitle": "Insights",
-    "journalTitle": "Journal",
+    "sectionTitle": "Manage",
     "calendarTitle": "Calendar",
+    "reviewTitle": "Review",
     "trackersTitle": "Trackers",
-    "settingsTitle": "Settings",
-    "backA11y": "Back",
+    "finishedTodosTitle": "Finished todos",
+    "foodTitle": "Food",
     "ingredientsTitle": "Ingredients"
   },
   "appearance": {
@@ -19,7 +19,7 @@
     "themeDark": "Dark"
   },
   "homeChrome": {
-    "weatherTitle": "Weather on Home",
+    "weatherTitle": "Weather on Today",
     "on": "On",
     "off": "Off"
   },
@@ -62,8 +62,6 @@
     "clearNotebookConfirmTitle": "Clear all of {{name}}?",
     "clearNotebookConfirmBody": "Every day in this notebook is deleted. The notebook itself stays. This cannot be undone.",
     "clearNotebookConfirmAction": "Clear notebook",
-    "clearNotebookCancel": "Cancel",
-    "clearNotebookClose": "Close",
     "clearNotebookDoneTitle": "Notebook cleared",
     "clearNotebookDoneBody": "All days in {{name}} were deleted.",
     "clearNotebookFailedTitle": "Could not clear notebook"
@@ -72,15 +70,12 @@
     "version": "Life {{version}}"
   },
   "weather": {
-    "sectionTitle": "Weather",
     "locationTitle": "Location",
-    "widgetTitle": "Home weather bubble",
     "usePhoneLocationTitle": "Use phone location",
     "descriptionRebuildRequired": "Needs a fresh app build — set a city below",
     "descriptionLocating": "Getting location…",
     "descriptionUsingGps": "Using GPS",
     "descriptionPreferGps": "Prefer GPS when permitted",
-    "getLocationA11y": "Getting location",
     "refreshHint": "Tap again to refresh phone location",
     "cityHint": "Or search a city, then pick the match",
     "cityLabel": "City",
@@ -116,6 +111,7 @@
       "before": "Before…",
       "beforeDateLabel": "Before date",
       "beforeDatePlaceholder": "YYYY-MM-DD",
+      "beforeDateError": "Use the form YYYY-MM-DD.",
       "keepHint": "Keeps recent activity; deletes older days only."
     },
     "calendar": {
@@ -128,7 +124,7 @@
     },
     "appPreferences": {
       "label": "App preferences",
-      "description": "Theme, toggles, bubble position"
+      "description": "Theme, language, weather, reminders"
     },
     "habitsCounters": {
       "label": "Habits & counters",
@@ -143,10 +139,19 @@
       "activityAll": "All activity history (check-offs, timers, counter logs, day notes, journals, completed todos)",
       "calendar": "Calendar events, reminders, and clears",
       "weather": "Cached weather forecasts",
-      "preferences": "App preferences (theme, toggles, bubble position)"
+      "preferences": "App preferences (theme, language, weather, reminders)"
     }
   },
   "general": {
     "sectionTitle": "General"
+  },
+  "reminders": {
+    "sectionTitle": "Reminders",
+    "eveningTitle": "Evening check-in",
+    "eveningDescription": "A notification if something is still open",
+    "timeTitle": "Check-in time",
+    "timePlaceholder": "20:00",
+    "timeInvalid": "Use a 24-hour time, like 20:00.",
+    "timeNotSaved": "Could not save the time."
   }
 }

@@ -1,18 +1,18 @@
 import type { HomeNotebookChip } from '../../notes';
 
-/** Props Home passes to each tracker tab (Habits / Counters). */
+/** Props Home passes to the Today page. */
 export type HomeTrackerTabProps = {
   notebooks: HomeNotebookChip[];
   onDictateNotebook: (notebookId: string) => void;
   onEditNotebook: (notebookId: string) => void;
-  /** True while Home's journal sheet is open — dismisses this tab's tracker note sheet. */
+  /** True while Home's journal sheet is open — dismisses this page's tracker note sheet. */
   journalOpen?: boolean;
-  /** False while another Home tab is active — dismisses this tab's tracker note sheet. */
+  /** False while another Home page is active — dismisses this page's tracker note sheet. */
   notesActive?: boolean;
   /** Called before opening a tracker note so Home can dismiss the journal sheet. */
   onBeforeOpenTrackerNote?: () => void;
-  /** Lets Home lock the tab swipe while this tab's note sheet is open. */
+  /** Lets Home lock the page swipe while this page's note sheet is open. */
   onTrackerNotesOpenChange?: (open: boolean) => void;
-  /** Lets Home lock the tab swipe while dragging to reorder. */
+  /** Lets Home lock the page swipe while dragging to reorder. */
   onTrackerDragActiveChange?: (active: boolean) => void;
 };

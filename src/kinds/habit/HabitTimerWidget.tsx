@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { playHabitCompleteChime } from '../../audio/habitCompleteSound';
 import { ActionBubbleTray } from '../../components/ActionBubbleTray';
@@ -18,12 +18,18 @@ import { shouldPlayHabitCompletionChime } from '../../utils/habitCompletionChime
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as styles } from '../trackerCardStyles';
-import { describeHabitCardSound, habitCardCaption } from './habitCardLabels';
+import {
+  describeHabitCardSound,
+  habitCardCaption,
+  runningInWidgetCaption,
+} from './habitCardLabels';
 import { skipTodayBubbles } from '../skipTodayBubble';
 import { HabitSoundIndicator } from './HabitSoundIndicator';
+import { TrackerCardFigure } from '../TrackerCardFigure';
 import { TrackerCardRoundButton } from '../TrackerCardRoundButton';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
+import { rowKindColour } from '../rowKind';
 import { NoteIconButton } from '../../notes/NoteIconButton';
 
 const NOTE_ICON_SIZE = 24;
@@ -38,6 +44,7 @@ export function HabitTimerWidget({
   onSkipToday,
   isDone,
   activeTimerSession,
+  runningInWidget,
   onTimerPress,
   onTimerFinish,
   onResetToday,
@@ -126,13 +133,16 @@ export function HabitTimerWidget({
     }
   }, [config, displayTotal, hasSecondsTarget, isPaused, isRunning]);
 
-  const progress = hasCompletionTarget && effectiveTarget ? displayTotal / effectiveTarget : 0;
   const canResetToday = Boolean(onResetToday) && (isRunning || displayTotal > 0);
-  const caption = habitCardCaption(config, {
-    streak,
-    score,
-    skipped: skipped && !isComplete && !isRunning,
-  });
+  // The app's own session wins: once it has taken the timer over, the clock is here.
+  const caption =
+    runningInWidget && !isRunning
+      ? runningInWidgetCaption()
+      : habitCardCaption(config, {
+          streak,
+          score,
+          skipped: skipped && !isComplete && !isRunning,
+        });
   // Skipping is for a day you are not doing: never offered while a timer runs.
   const skipBubbles = isRunning
     ? []
@@ -158,10 +168,6 @@ export function HabitTimerWidget({
     isRunning,
   });
 
-  const metaColor = isComplete
-    ? theme.colors.primary
-    : theme.colors.onSurfaceVariant;
-
   const playIcon = isRunning && !isPaused ? 'pause' : 'play';
 
   const playA11y = !isRunning
@@ -177,9 +183,8 @@ export function HabitTimerWidget({
       <View style={styles.oneLineRow}>
         <TrackerCardTitle
           name={element.name}
+          kind={rowKindColour({ kind: 'habit', trackingMode: config.trackingMode })}
           icon={config.icon}
-          progress={hasCompletionTarget ? progress : null}
-          complete={isComplete}
           caption={caption}
           {...trackerCardTitleInteractions({
             onOpenDetails,
@@ -200,15 +205,7 @@ export function HabitTimerWidget({
             />
           ) : null}
 
-          {totalLabel ? (
-            <Text
-              numberOfLines={1}
-              style={[styles.timerLabel, { color: metaColor }]}
-              accessibilityLabel={totalLabel}
-            >
-              {totalLabel}
-            </Text>
-          ) : null}
+          {totalLabel ? <TrackerCardFigure figure={totalLabel} /> : null}
 
           <ActionBubbleTray
             open={resetBubblesOpen}
@@ -241,7 +238,6 @@ export function HabitTimerWidget({
           {showManualDone ? (
             <TrackerCardRoundButton
               icon="check"
-              tone="solid"
               onPress={() => void onTimerFinish?.()}
               accessibilityLabel={t('habitWidget.finishSessionA11y')}
             />

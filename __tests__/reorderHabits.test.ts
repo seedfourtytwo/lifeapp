@@ -34,7 +34,7 @@ describe('applyVisibleOrder', () => {
     expect(applyVisibleOrder(['a', 'b'], ['a', 'x'])).toBeNull();
   });
 
-  it('supports incomplete-only peers like the Habits tab (done parked elsewhere)', () => {
+  it('supports incomplete-only peers like the Today list (done parked elsewhere)', () => {
     // Global habit order still includes done "d"; visible incomplete peers reorder among themselves.
     expect(applyVisibleOrder(['a', 'd', 'b', 'c'], ['b', 'a', 'c'])).toEqual([
       'b',

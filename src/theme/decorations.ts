@@ -62,13 +62,13 @@ const SHARED = {
 const LIGHT: ThemeDecorations = {
   ...SHARED,
   sheetShadow: {
-    shadowColor: '#18201C',
+    shadowColor: '#221C2E',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.14,
     shadowRadius: 32,
     elevation: 12,
   },
-  scrim: 'rgba(24, 32, 28, 0.36)',
+  scrim: 'rgba(34, 28, 46, 0.36)',
 };
 
 const DARK: ThemeDecorations = {

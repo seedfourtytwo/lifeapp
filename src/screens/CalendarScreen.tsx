@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Button, FAB, Text, useTheme } from 'react-native-paper';
+import { Button, IconButton, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addLocalDays, monthGridRange, startOfLocalDay, toDateString } from '../calendar/dates';
 import EmptyState from '../components/EmptyState';
@@ -16,13 +15,20 @@ import { formatDayHeading, formatOccurrenceTime, formatMonthTitle } from '../cal
 import { occurrencesOnDay } from '../calendar/occurrences';
 import type { RootStackParamList } from '../navigation/types';
 import { useCalendarStore } from '../store/calendarStore';
+import { notify } from '../components/sheet/confirm';
 
 const WEEKDAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
+/**
+ * The Calendar screen, pushed from the calendar peek beside the date and from
+ * More; the stack header carries its title, the way back and the add button.
+ * Everything it shows comes from the calendar store, which is loaded at
+ * startup, so it has nothing to fetch when it is built. Adding and editing
+ * push the event editor on the stack.
+ */
 export default function CalendarScreen() {
   const theme = useTheme();
   const { decorations: deco } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation(['calendar', 'common']);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const events = useCalendarStore((s) => s.events);
@@ -71,241 +77,232 @@ export default function CalendarScreen() {
     cells.push(new Date(d));
   }
 
+  const seedDate = toDateString(selectedDay);
+  const addEvent = () => navigation.navigate('CalendarEventEditor', { seedDate });
+
+  const addLabel = t('calendar:screen.addEvent');
+  const addColor = theme.colors.onSurfaceVariant;
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <IconButton
+          icon="plus"
+          size={24}
+          iconColor={addColor}
+          onPress={() => navigation.navigate('CalendarEventEditor', { seedDate })}
+          accessibilityLabel={addLabel}
+          style={styles.addButton}
+        />
+      ),
+    });
+  }, [navigation, seedDate, addLabel, addColor]);
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 88 + insets.bottom }}>
-        <View style={styles.monthHeader}>
-          <Pressable
-            onPress={() => setCursor(new Date(year, monthIndex - 1, 1))}
-            accessibilityRole="button"
-            accessibilityLabel={t('calendar:screen.previousMonth')}
-            style={styles.monthNav}
-          >
-            <MaterialCommunityIcons
-              name="chevron-left"
-              size={24}
-              color={theme.colors.onSurfaceVariant}
-            />
-          </Pressable>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.monthHeader}>
+        <Pressable
+          onPress={() => setCursor(new Date(year, monthIndex - 1, 1))}
+          accessibilityRole="button"
+          accessibilityLabel={t('calendar:screen.previousMonth')}
+          style={styles.monthNav}
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={24}
+            color={theme.colors.onSurfaceVariant}
+          />
+        </Pressable>
+        <Text
+          style={[typeScale.rowName, { color: theme.colors.onSurface }]}
+          accessibilityRole="header"
+        >
+          {formatMonthTitle(year, monthIndex)}
+        </Text>
+        <Pressable
+          onPress={() => setCursor(new Date(year, monthIndex + 1, 1))}
+          accessibilityRole="button"
+          accessibilityLabel={t('calendar:screen.nextMonth')}
+          style={styles.monthNav}
+        >
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={theme.colors.onSurfaceVariant}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.weekRow}>
+        {WEEKDAY_ORDER.map((key) => (
           <Text
-            style={[typeScale.screenTitle, { color: theme.colors.onSurface }]}
-            accessibilityRole="header"
+            key={key}
+            style={[typeScale.caption, styles.weekLabel, { color: theme.colors.onSurfaceVariant }]}
           >
-            {formatMonthTitle(year, monthIndex)}
+            {t(`common:weekdaysShort.${key}`)}
           </Text>
-          <Pressable
-            onPress={() => setCursor(new Date(year, monthIndex + 1, 1))}
-            accessibilityRole="button"
-            accessibilityLabel={t('calendar:screen.nextMonth')}
-            style={styles.monthNav}
-          >
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={theme.colors.onSurfaceVariant}
-            />
-          </Pressable>
-        </View>
+        ))}
+      </View>
 
-        <View style={styles.weekRow}>
-          {WEEKDAY_ORDER.map((key) => (
-            <Text
+      <View style={styles.grid}>
+        {cells.map((day) => {
+          const key = toDateString(day);
+          const inMonth = day.getMonth() === monthIndex;
+          const selected = key === toDateString(selectedDay);
+          const isToday = key === toDateString(today);
+          const hasEvents = daysWithEvents.has(key);
+          return (
+            <Pressable
               key={key}
-              style={[typeScale.caption, styles.weekLabel, { color: theme.colors.onSurfaceVariant }]}
+              onPress={() => setSelectedDay(day)}
+              style={[
+                styles.dayCell,
+                { borderRadius: deco.radius.md },
+                selected && { backgroundColor: theme.colors.primary },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={
+                hasEvents ? t('calendar:screen.dayHasEventsA11y', { date: key }) : key
+              }
             >
-              {t(`common:weekdaysShort.${key}`)}
-            </Text>
-          ))}
-        </View>
-
-        <View style={styles.grid}>
-          {cells.map((day) => {
-            const key = toDateString(day);
-            const inMonth = day.getMonth() === monthIndex;
-            const selected = key === toDateString(selectedDay);
-            const isToday = key === toDateString(today);
-            const hasEvents = daysWithEvents.has(key);
-            return (
-              <Pressable
-                key={key}
-                onPress={() => setSelectedDay(day)}
+              <Text
                 style={[
-                  styles.dayCell,
-                  { borderRadius: deco.radius.md },
-                  selected && { backgroundColor: theme.colors.primary },
+                  typeScale.body,
+                  styles.dayNumber,
+                  {
+                    color: selected
+                      ? theme.colors.onPrimary
+                      : !inMonth
+                        ? theme.colors.onSurfaceVariant
+                        : isToday
+                          ? theme.colors.primary
+                          : theme.colors.onSurface,
+                    fontWeight: isToday || selected ? '600' : '400',
+                  },
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  hasEvents ? t('calendar:screen.dayHasEventsA11y', { date: key }) : key
-                }
               >
-                <Text
+                {day.getDate()}
+              </Text>
+              {hasEvents ? (
+                <View
                   style={[
-                    typeScale.body,
-                    styles.dayNumber,
+                    styles.dot,
                     {
-                      color: selected
-                        ? theme.colors.onPrimary
-                        : !inMonth
-                          ? theme.colors.onSurfaceVariant
-                          : isToday
-                            ? theme.colors.primary
-                            : theme.colors.onSurface,
-                      fontWeight: isToday || selected ? '600' : '400',
+                      backgroundColor: selected ? theme.colors.onPrimary : theme.colors.primary,
                     },
                   ]}
+                />
+              ) : (
+                <View style={styles.dotSpacer} />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.daySection}>
+        <Text style={[styles.dayHeading, { color: theme.colors.onSurfaceVariant }]}>
+          {formatDayHeading(selectedDay)}
+        </Text>
+        {dayOccurrences.length === 0 ? (
+          <EmptyState
+            message={t('calendar:screen.noEvents')}
+            actionLabel={t('calendar:screen.addEvent')}
+            onAction={addEvent}
+          />
+        ) : (
+          dayOccurrences.map((occ) => {
+            const cleared = clearedByKey[occ.occurrenceKey] != null;
+            return (
+              <View
+                key={occ.occurrenceKey}
+                style={[
+                  styles.eventRow,
+                  { borderRadius: deco.radius.lg, backgroundColor: theme.colors.surface },
+                ]}
+              >
+                <Pressable
+                  onPress={() => {
+                    const action = cleared
+                      ? unclearedOccurrence(occ.occurrenceKey)
+                      : clearOccurrence(occ);
+                    void action.catch((error) => {
+                      void notify({
+                        title: cleared
+                          ? t('calendar:screen.couldNotRestoreTitle')
+                          : t('calendar:screen.couldNotMarkDoneTitle'),
+                        message: error instanceof Error
+                          ? error.message
+                          : t('common:errors.somethingWentWrong'),
+                      });
+                    });
+                  }}
+                  hitSlop={6}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: cleared }}
+                  accessibilityLabel={
+                    cleared
+                      ? t('calendar:screen.undoDoneA11y')
+                      : t('calendar:screen.markDoneA11y')
+                  }
+                  style={styles.checkHit}
                 >
-                  {day.getDate()}
-                </Text>
-                {hasEvents ? (
+                  <MaterialCommunityIcons
+                    name={cleared ? 'check-circle' : 'circle-outline'}
+                    size={28}
+                    color={cleared ? theme.colors.primary : theme.colors.outline}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate('CalendarEventEditor', { eventId: occ.eventId })
+                  }
+                  style={styles.eventPress}
+                >
                   <View
                     style={[
-                      styles.dot,
-                      {
-                        backgroundColor: selected ? theme.colors.onPrimary : theme.colors.primary,
-                      },
+                      styles.colorBar,
+                      { backgroundColor: occ.color, borderRadius: deco.radius.pill },
                     ]}
                   />
-                ) : (
-                  <View style={styles.dotSpacer} />
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={styles.daySection}>
-          <Text style={[styles.dayHeading, { color: theme.colors.onSurfaceVariant }]}>
-            {formatDayHeading(selectedDay)}
-          </Text>
-          {dayOccurrences.length === 0 ? (
-            <EmptyState
-              message={t('calendar:screen.noEvents')}
-              actionLabel={t('calendar:screen.addEvent')}
-              onAction={() =>
-                navigation.navigate('CalendarEventEditor', {
-                  seedDate: toDateString(selectedDay),
-                })
-              }
-            />
-          ) : (
-            dayOccurrences.map((occ) => {
-              const cleared = clearedByKey[occ.occurrenceKey] != null;
-              return (
-                <View
-                  key={occ.occurrenceKey}
-                  style={[
-                    styles.eventRow,
-                    { borderRadius: deco.radius.lg, backgroundColor: theme.colors.surface },
-                  ]}
-                >
-                  <Pressable
-                    onPress={() => {
-                      const action = cleared
-                        ? unclearedOccurrence(occ.occurrenceKey)
-                        : clearOccurrence(occ);
-                      void action.catch((error) => {
-                        Alert.alert(
-                          cleared
-                            ? t('calendar:screen.couldNotRestoreTitle')
-                            : t('calendar:screen.couldNotMarkDoneTitle'),
-                          error instanceof Error
-                            ? error.message
-                            : t('common:errors.somethingWentWrong'),
-                        );
-                      });
-                    }}
-                    hitSlop={6}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: cleared }}
-                    accessibilityLabel={
-                      cleared
-                        ? t('calendar:screen.undoDoneA11y')
-                        : t('calendar:screen.markDoneA11y')
-                    }
-                    style={styles.checkHit}
-                  >
-                    <MaterialCommunityIcons
-                      name={cleared ? 'check-circle' : 'circle-outline'}
-                      size={28}
-                      color={cleared ? theme.colors.primary : theme.colors.outline}
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() =>
-                      navigation.navigate('CalendarEventEditor', { eventId: occ.eventId })
-                    }
-                    style={styles.eventPress}
-                  >
-                    <View
+                  <View style={styles.eventBody}>
+                    <Text
                       style={[
-                        styles.colorBar,
-                        { backgroundColor: occ.color, borderRadius: deco.radius.pill },
+                        typeScale.rowName,
+                        {
+                          color: theme.colors.onSurface,
+                          textDecorationLine: cleared ? 'line-through' : 'none',
+                        },
                       ]}
-                    />
-                    <View style={styles.eventBody}>
-                      <Text
-                        style={[
-                          typeScale.rowName,
-                          {
-                            color: theme.colors.onSurface,
-                            textDecorationLine: cleared ? 'line-through' : 'none',
-                          },
-                        ]}
-                      >
-                        {occ.title}
-                      </Text>
-                      <QuietText style={typeScale.secondary}>
-                        {cleared ? t('calendar:screen.doneLabel') : ''}
-                        {formatOccurrenceTime(occ)}
-                      </QuietText>
-                    </View>
-                    <MaterialCommunityIcons
-                      name="chevron-right"
-                      size={20}
-                      color={theme.colors.onSurfaceVariant}
-                    />
-                  </Pressable>
-                </View>
-              );
-            })
-          )}
-          {dayOccurrences.length > 0 ? (
-            <Button
-              mode="text"
-              icon="plus"
-              onPress={() =>
-                navigation.navigate('CalendarEventEditor', {
-                  seedDate: toDateString(selectedDay),
-                })
-              }
-              style={styles.addEvent}
-            >
-              {t('calendar:screen.addEvent')}
-            </Button>
-          ) : null}
-        </View>
-      </ScrollView>
-
-      <FAB
-        icon="plus"
-        style={[
-          styles.fab,
-          {
-            bottom: space.lg + insets.bottom,
-            backgroundColor: theme.colors.primary,
-            borderRadius: deco.radius.pill,
-          },
-        ]}
-        color={theme.colors.onPrimary}
-        onPress={() =>
-          navigation.navigate('CalendarEventEditor', {
-            seedDate: toDateString(selectedDay),
+                    >
+                      {occ.title}
+                    </Text>
+                    <QuietText style={typeScale.secondary}>
+                      {cleared ? t('calendar:screen.doneLabel') : ''}
+                      {formatOccurrenceTime(occ)}
+                    </QuietText>
+                  </View>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={20}
+                    color={theme.colors.onSurfaceVariant}
+                  />
+                </Pressable>
+              </View>
+            );
           })
-        }
-        accessibilityLabel={t('calendar:screen.addEvent')}
-      />
-    </View>
+        )}
+        {dayOccurrences.length > 0 ? (
+          <Button
+            mode="text"
+            icon="plus"
+            onPress={addEvent}
+            style={styles.addEvent}
+          >
+            {t('calendar:screen.addEvent')}
+          </Button>
+        ) : null}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -313,7 +310,15 @@ export default function CalendarScreen() {
 const GRID_INSET = layout.gutter - space.xs;
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  container: {
+    paddingTop: space.md,
+    paddingBottom: space.xxl,
+    flexGrow: 1,
+  },
+  /** Flush with the header's edge: the glyph's own box supplies the breathing room. */
+  addButton: {
+    margin: 0,
+  },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -398,9 +403,5 @@ const styles = StyleSheet.create({
   addEvent: {
     alignSelf: 'flex-start',
     marginTop: space.xs,
-  },
-  fab: {
-    position: 'absolute',
-    right: layout.gutter,
   },
 });

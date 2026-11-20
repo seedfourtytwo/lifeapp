@@ -67,7 +67,7 @@ export const useFoodStore = create<FoodState>((set, get) => ({
 
   reset: async () => {
     // `weekStart` and `loaded` go too, or the loaded-week guard in `loadWeek`
-    // short-circuits the refetch and the Nutrition tab keeps the pre-clear
+    // short-circuits the refetch and the Nutrition screen keeps the pre-clear
     // catalog and counts.
     set({
       items: [],

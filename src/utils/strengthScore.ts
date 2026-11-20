@@ -35,16 +35,31 @@ export function strengthMultiplier(frequency: number): number {
   return Math.pow(0.5, Math.sqrt(frequency) / 13);
 }
 
-export function computeStrengthScore(input: {
+/** What a strength walk reads. */
+export interface StrengthInput {
   schedule: HabitSchedule;
   history: TrackerDayHistory;
   today: string;
   createdOn?: string | null;
-}): number {
+}
+
+/** The score (0–100) as it stood after one day of the walk. */
+export interface StrengthPoint {
+  date: string;
+  score: number;
+}
+
+/**
+ * The score after each day of the walk, oldest first — one point per calendar
+ * day, carried over on days that do not move it. Empty when the tracker starts
+ * after `today`. The last point is `computeStrengthScore`.
+ */
+export function computeStrengthSeries(input: StrengthInput): StrengthPoint[] {
   const { schedule, history, today, createdOn } = input;
   const lookbackStart = shiftDateString(today, -(STRENGTH_LOOKBACK_DAYS - 1));
   const start = createdOn && createdOn > lookbackStart ? createdOn : lookbackStart;
-  if (start > today) return 0;
+  const series: StrengthPoint[] = [];
+  if (start > today) return series;
 
   const isCompleted = (date: string) =>
     history.completed.has(date) && !(createdOn && date < createdOn);
@@ -74,10 +89,16 @@ export function computeStrengthScore(input: {
           : 0
         : null;
     }
-    if (value === null) continue;
-    if (date === today && value === 0) continue;
-    score = score * multiplier + value * (1 - multiplier);
+    if (value !== null && !(date === today && value === 0)) {
+      score = score * multiplier + value * (1 - multiplier);
+    }
+    series.push({ date, score: Math.round(score * 100) });
   }
 
-  return Math.round(score * 100);
+  return series;
+}
+
+export function computeStrengthScore(input: StrengthInput): number {
+  const series = computeStrengthSeries(input);
+  return series.length === 0 ? 0 : series[series.length - 1].score;
 }

@@ -510,6 +510,66 @@ export async function getDayStatesForElementsOnDate(
 }
 
 /**
+ * True for a timer session whose play-once track finished (`trackCompleted`),
+ * the one completion rule that lives in meta rather than in the SUM.
+ */
+const IS_TRACK_COMPLETED_ROW_SQL =
+  "(CASE WHEN json_valid(meta_json) THEN json_extract(meta_json, '$.source') = 'timer_session' AND json_extract(meta_json, '$.trackCompleted') = 1 END)";
+
+/** One element's day as an aggregate: SUM(value), a skip row, a finished track. */
+export interface DayFactsRow {
+  date: string;
+  total: number;
+  skipped: boolean;
+  /** A `timer_session` row with `trackCompleted: true` (play-once timer habits). */
+  trackCompleted: boolean;
+}
+
+/**
+ * Per element and day since a date: SUM, skip flag and finished-track flag, in
+ * one query — every day rule, the meta-based play-once completion included,
+ * without loading event rows.
+ */
+export async function getDayFactsForElementsSince(
+  db: SQLiteDatabase,
+  elementIds: readonly string[],
+  sinceDate: string,
+): Promise<Map<string, DayFactsRow[]>> {
+  const byElement = new Map<string, DayFactsRow[]>();
+  for (const id of elementIds) {
+    byElement.set(id, []);
+  }
+  if (elementIds.length === 0) return byElement;
+
+  const rows = await db.getAllAsync<{
+    element_id: string;
+    date: string;
+    total: number;
+    skipped: number;
+    track_completed: number;
+  }>(
+    `SELECT element_id, date, COALESCE(SUM(value), 0) as total,
+       MAX(CASE WHEN ${IS_SKIP_ROW_SQL} THEN 1 ELSE 0 END) as skipped,
+       MAX(CASE WHEN ${IS_TRACK_COMPLETED_ROW_SQL} THEN 1 ELSE 0 END) as track_completed
+     FROM events
+     WHERE date >= ? AND element_id IN (${placeholdersFor(elementIds)})
+     GROUP BY element_id, date
+     ORDER BY date ASC`,
+    sinceDate,
+    ...elementIds,
+  );
+  for (const row of rows) {
+    byElement.get(row.element_id)?.push({
+      date: row.date,
+      total: row.total,
+      skipped: row.skipped === 1,
+      trackCompleted: row.track_completed === 1,
+    });
+  }
+  return byElement;
+}
+
+/**
  * Daily SUM(value) per element since a date, with a skip flag per day — for
  * streaks and the strength score without loading every row.
  */

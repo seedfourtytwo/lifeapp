@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A tick-off habit's control, still open: a 44dp ring in a 56dp touch target, where a timer has its play disc. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="6dp">
+  <shape android:shape="oval">
+    <solid android:color="#00000000" />
+    <stroke android:width="2dp" android:color="@color/life_widget_tick" />
+  </shape>
+</inset>

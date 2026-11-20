@@ -1,115 +1,165 @@
 /**
- * Home's horizontal pager, now that More is a page of it rather than a screen
- * pushed on the stack.
+ * Home's horizontal pager: Today · Journal · More — the three words in the
+ * dock. Calendar and Review are pushed screens, not pages.
  *
- * The push had no way back by swipe: `gestureEnabled` on native-stack is iOS
- * only, so on Android More was the one part of Home you could reach by tap and
- * leave only by the system back button. Making it the fifth page buys both
- * directions from the pager that already carries the other four.
+ * The pages are places, not slices of one day, and only Today mounts at
+ * startup. The parts with edge cases are pure functions, pinned here:
  *
- * Two things stop being free once that happens, and both live here:
- *
- *  - the offset→page mapping has to cover five pages, including the overscroll
- *    either end where a fling lands outside the content;
- *  - back has to mean something on the More page. It used to pop the stack and
- *    land on whichever tab you left, so it still does — without that it would
- *    fall through to the navigator and quietly exit the app.
+ *  - the offset→page mapping, including the overscroll either end where a
+ *    fling lands outside the content;
+ *  - which pages are mounted: a page is built the first time it is visited, or
+ *    when a drag towards it begins, and is never torn down again;
+ *  - back: the Journal steps back to Today, Today exits, and More returns to
+ *    the page it was opened from — without that it would fall through to the
+ *    navigator and quietly exit the app;
+ *  - the stored last page, which may still name a page from an earlier pager.
  */
 import {
-  HOME_DOCK_ITEMS,
   HOME_TAB_ORDER,
   homeBackTarget,
+  homePagesAfterDragStart,
+  homePagesAfterVisit,
   homeStartTab,
   homeTabAtOffset,
   homeTabIndex,
+  type HomeTab,
 } from '../src/screens/home/homePager';
 
 const PAGE = 400;
 
+function pages(...tabs: HomeTab[]): ReadonlySet<HomeTab> {
+  return new Set(tabs);
+}
+
 describe('page order', () => {
-  it('puts More last, so a right-to-left swipe from Todos enters it', () => {
-    expect(HOME_TAB_ORDER[HOME_TAB_ORDER.length - 1]).toBe('more');
-    expect(homeTabIndex('more')).toBe(homeTabIndex('todos') + 1);
+  it('is Today, Journal, More — the dock, and nothing the dock does not name', () => {
+    // The dock is drawn from this list, so a page here is a word there.
+    expect([...HOME_TAB_ORDER]).toEqual(['today', 'journal', 'more']);
   });
 
-  it('starts on Habits', () => {
-    expect(homeTabIndex('habits')).toBe(0);
+  it('puts More last, so a right-to-left swipe from the Journal enters it', () => {
+    expect(homeTabIndex('more')).toBe(homeTabIndex('journal') + 1);
   });
 
-  it('offers every page in the dock, in page order', () => {
-    // A page with no dock item is unreachable by tap; a dock item with no page
-    // scrolls to an index that does not exist.
-    expect(HOME_DOCK_ITEMS.map((item) => item.value)).toEqual([...HOME_TAB_ORDER]);
+  it('starts on Today', () => {
+    expect(homeTabIndex('today')).toBe(0);
   });
 });
 
 describe('which page an offset lands on', () => {
   it('maps each page start to its own page', () => {
-    expect(homeTabAtOffset(0, PAGE)).toBe('habits');
-    expect(homeTabAtOffset(PAGE, PAGE)).toBe('counters');
-    expect(homeTabAtOffset(2 * PAGE, PAGE)).toBe('nutrition');
-    expect(homeTabAtOffset(3 * PAGE, PAGE)).toBe('todos');
-    expect(homeTabAtOffset(4 * PAGE, PAGE)).toBe('more');
+    expect(homeTabAtOffset(0, PAGE)).toBe('today');
+    expect(homeTabAtOffset(PAGE, PAGE)).toBe('journal');
+    expect(homeTabAtOffset(2 * PAGE, PAGE)).toBe('more');
   });
 
   it('rounds to the nearest page when momentum stops between two', () => {
-    expect(homeTabAtOffset(3.4 * PAGE, PAGE)).toBe('todos');
-    expect(homeTabAtOffset(3.6 * PAGE, PAGE)).toBe('more');
+    expect(homeTabAtOffset(1.4 * PAGE, PAGE)).toBe('journal');
+    expect(homeTabAtOffset(1.6 * PAGE, PAGE)).toBe('more');
   });
 
   it('clamps overscroll past either end', () => {
-    expect(homeTabAtOffset(-120, PAGE)).toBe('habits');
+    expect(homeTabAtOffset(-120, PAGE)).toBe('today');
     expect(homeTabAtOffset(9 * PAGE, PAGE)).toBe('more');
   });
 
   it('survives a zero or unmeasured page width', () => {
     // First layout: width can still be 0, and dividing by it must not produce
     // an out-of-range index (or NaN) that blanks the pager.
-    expect(homeTabAtOffset(0, 0)).toBe('habits');
-    expect(homeTabAtOffset(Number.NaN, PAGE)).toBe('habits');
+    expect(homeTabAtOffset(0, 0)).toBe('today');
+    expect(homeTabAtOffset(Number.NaN, PAGE)).toBe('today');
+  });
+});
+
+describe('which pages are mounted', () => {
+  it('mounts a page the first time it is visited', () => {
+    expect([...homePagesAfterVisit(pages('today'), 'journal')].sort()).toEqual([
+      'journal',
+      'today',
+    ]);
+  });
+
+  it('does not mount the page a dock tap scrolls past', () => {
+    expect(homePagesAfterVisit(pages('today'), 'more').has('journal')).toBe(false);
+  });
+
+  it('mounts both neighbours when a drag begins', () => {
+    // The finger can go either way, and the page has to be there before it shows.
+    expect([...homePagesAfterDragStart(pages('journal'), 'journal')].sort()).toEqual([
+      'journal',
+      'more',
+      'today',
+    ]);
+  });
+
+  it('mounts only the one neighbour an end page has', () => {
+    expect([...homePagesAfterDragStart(pages('today'), 'today')].sort()).toEqual([
+      'journal',
+      'today',
+    ]);
+    expect([...homePagesAfterDragStart(pages('today', 'more'), 'more')].sort()).toEqual([
+      'journal',
+      'more',
+      'today',
+    ]);
+  });
+
+  it('never unmounts a page', () => {
+    const before = pages('today', 'journal');
+    expect(homePagesAfterVisit(before, 'more').has('journal')).toBe(true);
+    expect(homePagesAfterDragStart(before, 'today').has('journal')).toBe(true);
+  });
+
+  it('hands back the same set when nothing new mounts, so React can skip the render', () => {
+    const mounted = pages('today', 'journal');
+    expect(homePagesAfterVisit(mounted, 'journal')).toBe(mounted);
+    expect(homePagesAfterDragStart(mounted, 'today')).toBe(mounted);
   });
 });
 
 describe('the Android back button on Home', () => {
-  it('exits from Habits, the first page', () => {
-    expect(homeBackTarget('habits', 'habits')).toBeNull();
+  it('exits from Today, the first page', () => {
+    expect(homeBackTarget('today', 'today')).toBeNull();
   });
 
-  it('goes to Habits from the other content pages instead of leaving the app', () => {
-    // Opening on the last-used tab means back can no longer mean "exit" on
-    // every page: one press from Todos would close the app mid-thought.
-    for (const tab of ['counters', 'nutrition', 'todos'] as const) {
-      expect(homeBackTarget(tab, 'habits')).toBe('habits');
-    }
+  it('goes to Today from the Journal instead of leaving the app', () => {
+    // Opening on the last-used page means back can no longer mean "exit" on
+    // every page: one press from the Journal would close the app mid-thought.
+    expect(homeBackTarget('journal', 'today')).toBe('today');
   });
 
   it('returns from More to the page it was opened from', () => {
-    expect(homeBackTarget('more', 'counters')).toBe('counters');
-    expect(homeBackTarget('more', 'habits')).toBe('habits');
-    expect(homeBackTarget('more', 'todos')).toBe('todos');
+    expect(homeBackTarget('more', 'journal')).toBe('journal');
+    expect(homeBackTarget('more', 'today')).toBe('today');
   });
 
   it('falls back to the page beside More if nothing was recorded', () => {
     // Never answer "go to More" while already on More, which would swallow
     // the press and trap the user on the page.
-    const beside = HOME_TAB_ORDER[HOME_TAB_ORDER.length - 2];
-    expect(homeBackTarget('more', 'more')).toBe(beside);
+    expect(homeBackTarget('more', 'more')).toBe('journal');
   });
 });
 
 describe('the page Home opens on', () => {
   it('reopens the content page used last', () => {
-    expect(homeStartTab('counters')).toBe('counters');
-    expect(homeStartTab('todos')).toBe('todos');
+    expect(homeStartTab('today')).toBe('today');
+    expect(homeStartTab('journal')).toBe('journal');
   });
 
-  it('never reopens on More, which is a menu, not a place to be', () => {
-    expect(homeStartTab('more')).toBe('habits');
+  it('never reopens on More, which is a place you pass through', () => {
+    expect(homeStartTab('more')).toBe('today');
   });
 
-  it('starts on Habits when nothing or nonsense was stored', () => {
-    expect(homeStartTab(null)).toBe('habits');
-    expect(homeStartTab('')).toBe('habits');
-    expect(homeStartTab('calendar')).toBe('habits');
+  it('opens on Today for a page of an earlier pager', () => {
+    // Today holds the first four now; Calendar and Review are pushed screens.
+    for (const stored of ['habits', 'counters', 'todos', 'nutrition', 'calendar', 'review']) {
+      expect(homeStartTab(stored)).toBe('today');
+    }
+  });
+
+  it('starts on Today when nothing or nonsense was stored', () => {
+    expect(homeStartTab(null)).toBe('today');
+    expect(homeStartTab('')).toBe('today');
+    expect(homeStartTab('insights')).toBe('today');
   });
 });

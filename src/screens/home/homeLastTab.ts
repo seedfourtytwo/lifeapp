@@ -4,7 +4,7 @@ import * as settingsRepo from '../../db/repositories/settingsRepository';
 import { APP_SETTING_KEYS } from '../../protocol/appSettings';
 import { homeStartTab, type HomeTab } from './homePager';
 
-/** The page Home should open on. Any failure just means Habits. */
+/** The page Home should open on. Any failure just means Today. */
 export async function loadHomeStartTab(): Promise<HomeTab> {
   try {
     const db = await getDatabase();

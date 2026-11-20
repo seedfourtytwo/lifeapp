@@ -129,7 +129,13 @@ data class TimerOutcome(
 )
 
 /** A timer running in the app (`ActiveTimerSessionSchema`), reduced to what a clock needs. */
-data class AppTimer(val startedAtMs: Long, val pausedAtMs: Long?, val pauseOffsetMs: Long)
+data class AppTimer(
+  val startedAtMs: Long,
+  val pausedAtMs: Long?,
+  val pauseOffsetMs: Long,
+  /** `startedAt` exactly as the app wrote it: what names this session when the widget takes it over. */
+  val startedAt: String,
+)
 
 /**
  * The headings the list can carry, in display order. NOW holds the habits whose
@@ -521,7 +527,11 @@ object TodayRules {
     minuteOfDay: Int,
     /** Habit id → the timer the widget is running on it. */
     runningTimers: Map<String, RunningTimer> = emptyMap(),
-    /** Habit id → the timer the app is running on it. Shown, never controlled, by the widget. */
+    /**
+     * Habit id → the timer the app holds on it. One that is running is shown and
+     * left alone; one the app has paused can be resumed or stopped from the
+     * widget, which takes it over (WidgetDb.timerAction).
+     */
     appTimers: Map<String, AppTimer> = emptyMap(),
     /** Todos completed today: listed under Done, and counted in the header. */
     doneTodos: List<TodoInput> = emptyList(),
@@ -535,7 +545,7 @@ object TodayRules {
 
     for (habit in habits) {
       // A running timer always keeps its row: without it there is nothing to stop it with.
-      // The app's timer wins the display: the widget never controls it.
+      // The app's timer wins the display.
       val appTimer = appTimers[habit.id]
       val shown = appTimer?.let { RunningTimer(it.startedAtMs, "", it.pausedAtMs, it.pauseOffsetMs) }
         ?: runningTimers[habit.id]
@@ -664,6 +674,15 @@ object TodayRules {
   /** `ACTIVE_TIMER_SESSIONS_KEY` (activeTimerRepository.ts): written by the app only. */
   const val APP_TIMERS_KEY = "active_timer_sessions"
 
+  /**
+   * `WIDGET_TAKEN_TIMERS_KEY` (activeTimerRepository.ts): written by the widget only.
+   * Habit id → the `startedAt` of the app session the widget took over. The widget
+   * cannot remove that session from the app's own record (the app rewrites it whole
+   * from memory), so it says here which one it took; the app drops it when it next
+   * looks, and until then the widget reads it as gone.
+   */
+  const val WIDGET_TAKEN_TIMERS_KEY = "widget_taken_timers"
+
   /** `WIDGET_TIMER_SESSIONS_KEY` (activeTimerRepository.ts): written by the widget only. */
   const val WIDGET_TIMERS_KEY = "widget_timer_sessions"
 
@@ -704,17 +723,40 @@ object TodayRules {
     }
 
   /** The app's persisted sessions. Entries that do not parse are skipped. */
-  fun parseAppTimers(json: String?): Map<String, AppTimer> {
+  /**
+   * The app's timers that are today's and still the app's. A session dated another
+   * day is a leftover the app closes onto its own day when it next opens; one the
+   * widget has taken over (`taken`) is the widget's now.
+   */
+  fun parseAppTimers(json: String?, today: String, taken: Map<String, String> = emptyMap()): Map<String, AppTimer> {
     val root = MiniJson.parseObjectOrNull(json) ?: return emptyMap()
     val result = LinkedHashMap<String, AppTimer>()
     for ((id, raw) in root) {
       val entry = raw as? Map<*, *> ?: continue
-      val startedAt = parseInstantMs(entry["startedAt"]) ?: continue
+      val startedAt = entry["startedAt"] as? String ?: continue
+      val startedAtMs = parseInstantMs(startedAt) ?: continue
+      if (entry["calendarDate"] != today) continue
+      if (taken[id] == startedAt) continue
       val offset = (entry["pauseOffsetMs"] as? Double ?: 0.0).toLong()
-      result[id] = AppTimer(startedAt, parseInstantMs(entry["pausedAt"]), offset)
+      result[id] = AppTimer(startedAtMs, parseInstantMs(entry["pausedAt"]), offset, startedAt)
     }
     return result
   }
+
+  /** The app's paused session as the widget's own timer: same start, same pauses, so no time is lost or counted twice. */
+  fun takeOver(timer: AppTimer, today: String): RunningTimer =
+    RunningTimer(timer.startedAtMs, today, timer.pausedAtMs, timer.pauseOffsetMs)
+
+  /** Anything malformed reads as nothing taken: the worst that follows is a row shown as the app's. */
+  fun parseTakenTimers(json: String?): Map<String, String> {
+    val root = MiniJson.parseObjectOrNull(json) ?: return emptyMap()
+    val result = LinkedHashMap<String, String>()
+    for ((id, startedAt) in root) result[id] = startedAt as? String ?: return emptyMap()
+    return result
+  }
+
+  fun takenTimersJson(taken: Map<String, String>): String =
+    taken.entries.joinToString(",", "{", "}") { (id, startedAt) -> "${jsonString(id)}:${jsonString(startedAt)}" }
 
   /** Seconds as `DateUtils.formatElapsedTime` prints them, which is what a Chronometer shows. */
   fun formatElapsed(seconds: Int): String {
@@ -826,6 +868,10 @@ object TodayRules {
     }
 
     val pausedAt = current.pausedAtMs
+    if (trackId == null && pausedAt != null && action == TimerAction.TOGGLE) {
+      // A stopwatch the app paused and the widget took over: its play button resumes it.
+      return TimerOutcome(current.copy(pausedAtMs = null, pauseOffsetMs = current.pauseOffsetMs + (nowMs - pausedAt)), null, PlayerCommand.None)
+    }
     if (trackId != null && (action == TimerAction.TOGGLE || action == TimerAction.PAUSE)) {
       if (pausedAt == null) {
         return TimerOutcome(current.copy(pausedAtMs = nowMs), null, PlayerCommand.Pause)

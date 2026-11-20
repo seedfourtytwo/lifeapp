@@ -161,6 +161,8 @@ jest.mock('../src/db/repositories/todoRepository', () => ({
       },
     ];
   }),
+  // The store reads today's ticked todos in the same reload.
+  getCompletedTodos: jest.fn(async () => []),
 }));
 
 const staleForecast = {

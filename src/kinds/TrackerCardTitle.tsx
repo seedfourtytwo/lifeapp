@@ -4,6 +4,7 @@ import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
 import type { TrackerIconId } from '../protocol';
+import type { KindColour } from '../theme/palette';
 import { typeScale } from '../theme/typography';
 import type { TrackerCardCaption } from './habit/habitCardLabels';
 import { useTilePress } from './TrackerCard';
@@ -13,32 +14,26 @@ import type { TrackerCardTitleInteractionProps } from './trackerCardTitleInterac
 
 type Props = TrackerCardTitleInteractionProps & {
   name: string;
-  /** Optional curated tracker icon, shown as the disc before the name. */
+  /** Whose colour the row's tile wears. */
+  kind: KindColour;
+  /** The tracker's own icon, drawn on the tile in place of the kind's glyph. */
   icon?: TrackerIconId | null;
-  /** 0–1 of today's target (timers/counters), shown round the disc. */
-  progress?: number | null;
-  /** Done: the disc fills moss. */
-  complete?: boolean;
-  /** "4 days in a row", under the name; null shows nothing. */
-  streakLabel?: string | null;
   /**
    * The line under the name when it is more than a plain run — "Skipped today",
-   * "Strength 62" (figure in the mono face). Wins over `streakLabel`.
+   * "Strength 62" (figure in the mono face).
    */
   caption?: TrackerCardCaption | null;
 };
 
 /**
- * Home row title: the disc (when there is an icon), the name, and the run under
- * it in a quiet caption. One tap opens history; a hold reorders.
+ * Home row title: the kind's tile, the name, and the run under it in a quiet
+ * caption. One tap opens history; a hold reorders.
  */
 export function TrackerCardTitle({
   name,
+  kind,
   icon = null,
-  progress = null,
-  complete = false,
-  streakLabel = null,
-  caption = null,
+  caption: line = null,
   onOpenDetails,
   onLongPressReorder,
   onReorderTouchMove,
@@ -51,8 +46,6 @@ export function TrackerCardTitle({
   const { t } = useTranslation('trackers');
   const pressTile = useTilePress();
   const interactive = Boolean(onOpenDetails || onLongPressReorder);
-  const line: TrackerCardCaption | null =
-    caption ?? (streakLabel ? { text: streakLabel, a11y: streakLabel } : null);
   const a11yHint = [
     onOpenDetails ? t('homeIdentity.historyHint') : null,
     onLongPressReorder ? reorderHint : null,
@@ -76,7 +69,7 @@ export function TrackerCardTitle({
       accessibilityLabel={line ? `${name}, ${line.a11y}` : name}
       accessibilityHint={a11yHint || undefined}
     >
-      {icon ? <TrackerIdentityMark icon={icon} progress={progress} complete={complete} /> : null}
+      <TrackerIdentityMark kind={kind} icon={icon} />
       <View style={styles.nameWrap}>
         <Text numberOfLines={1} style={[styles.name, { color: theme.colors.onSurface }]}>
           {name}

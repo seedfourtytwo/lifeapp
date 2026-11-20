@@ -1,7 +1,7 @@
 import { i18n } from '../../i18n';
 
 /**
- * The status line under a Home tab's date, as two halves: how today stands on
+ * A day header's status line in words, as two halves: how today stands on
  * the left, the longest run going on the right. Two halves rather than one
  * string joined by a dot, so each reads as its own fact at arm's length.
  */

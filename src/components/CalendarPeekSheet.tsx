@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +14,7 @@ import { useCalendarStore } from '../store/calendarStore';
 import { space } from '../theme/spacing';
 import HeaderPeekSheet from './HeaderPeekSheet';
 import QuietText from './QuietText';
+import { notify } from './sheet/confirm';
 
 interface Props {
   visible: boolean;
@@ -25,7 +26,7 @@ interface Props {
  *
  * Attention list only — a cleared occurrence drops off rather than being
  * ticked, so silence means nothing needs you. Full history stays on the
- * Calendar screen, one tap away through the heading.
+ * Calendar screen, one tap away through the footer.
  */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
@@ -50,7 +51,7 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
 
   const openFullCalendar = () => {
     onClose();
-    // Defer so the sheet can dismiss before the stack push.
+    // Defer so the sheet can dismiss before the screen is pushed.
     setTimeout(() => navigation.navigate('Calendar'), 0);
   };
 
@@ -123,12 +124,12 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
                   <Pressable
                     onPress={() =>
                       void clearOccurrence(occ).catch((error) => {
-                        Alert.alert(
-                          t('calendarPeek.couldNotMarkDoneTitle'),
-                          error instanceof Error
+                        void notify({
+                          title: t('calendarPeek.couldNotMarkDoneTitle'),
+                          message: error instanceof Error
                             ? error.message
                             : tCommon('errors.somethingWentWrong'),
-                        );
+                        });
                       })
                     }
                     hitSlop={8}

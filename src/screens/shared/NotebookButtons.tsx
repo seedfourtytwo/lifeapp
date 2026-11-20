@@ -14,7 +14,7 @@ type Props = {
 };
 
 /**
- * The journal notebook buttons that sit at the top-right of a Home tab.
+ * The journal notebook buttons that sit at the top-right of the Today page.
  *
  * Split out of the old meta row so the day header and the loading pane can
  * both show them in the same place — the row must not jump once data lands.

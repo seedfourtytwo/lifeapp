@@ -1,200 +1,165 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Surface, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
-import Rule from '../../components/Rule';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { notebookInk } from '../../notes/notebookInk';
+import type { JournalNotebook } from '../../protocol';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
-import type { DailyJournal } from '../../protocol';
-import { formatFullDate } from '../../utils/dates';
 import { truncateNotePreview } from '../../utils/trackerHistoryFormat';
+import { formatJournalDay } from './journalDates';
+import type { JournalDayEntry } from './journalDays';
 
-type DayFilter = 'all' | 'trackers' | string;
+/** The notebook's colour mark beside its name; half of it is its radius. */
+const DOT = 8;
+/** How much of a day shows before it is opened. */
+const PREVIEW_LINES = 4;
+/** Enough characters to fill those lines on a wide screen, and no more to lay out. */
+const PREVIEW_CHARS = 400;
 
 type Props = {
   today: string;
+  /** The day and notebook open in the tile above; that entry is not repeated here. */
   selectedDate: string;
-  journals: DailyJournal[];
-  filter: DayFilter;
-  extraDates: string[];
-  todayTrackerPreview: boolean;
-  onSelectDate: (date: string) => void;
+  openNotebookId: string | undefined;
+  /** Days with something written, newest first. */
+  entries: JournalDayEntry[];
+  notebooks: JournalNotebook[];
+  /** Say which notebook each day is from — when showing all of several. */
+  showNotebook: boolean;
+  /** Days that hold only tracker notes, newest first; empty when filtered. */
+  trackerNoteDates: string[];
+  onOpenDay: (date: string, notebookId?: string) => void;
 };
 
-/** Timeline of days under the writing panel. */
+/**
+ * The days, written on the page: a quiet line saying which day, then what was
+ * written, set in the display face at reading size. No tiles, no rules, no
+ * glyphs — the space between days is what separates them, and the words are
+ * what you came for. A day shows its first few lines; tapping it opens the
+ * whole day in the tile at the top.
+ */
 export default function JournalDaysList({
   today,
   selectedDate,
-  journals,
-  filter,
-  extraDates,
-  todayTrackerPreview,
-  onSelectDate,
+  openNotebookId,
+  entries,
+  notebooks,
+  showNotebook,
+  trackerNoteDates,
+  onOpenDay,
 }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('journal');
-  const { decorations: deco } = useAppTheme();
+  const { decorations: deco, themeMode } = useAppTheme();
+  const notebookById = new Map(notebooks.map((notebook) => [notebook.id, notebook]));
 
-  const journalDates = (() => {
-    const seen = new Set<string>();
-    const dates: { date: string; preview: string }[] = [];
-    for (const journal of journals) {
-      if (filter !== 'all' && filter !== 'trackers' && journal.notebookId !== filter) {
-        continue;
-      }
-      if (filter === 'trackers') continue;
-      if (seen.has(journal.date)) continue;
-      seen.add(journal.date);
-      dates.push({ date: journal.date, preview: journal.body });
-    }
-    return dates;
-  })();
+  if (entries.length === 0 && trackerNoteDates.length === 0) {
+    return <QuietText style={[typeScale.secondary, styles.empty]}>{t('screen.emptyDays')}</QuietText>;
+  }
 
-  const todayPreview = journalDates.find((row) => row.date === today);
-  const pastJournalDates = journalDates.filter((row) => row.date !== today);
+  type Row =
+    | { kind: 'entry'; date: string; key: string; entry: JournalDayEntry }
+    | { kind: 'trackerNotes'; date: string; key: string };
 
-  const todayDescription = todayPreview
-    ? truncateNotePreview(todayPreview.preview, 80)
-    : filter === 'trackers'
-      ? todayTrackerPreview
-        ? t('screen.trackerNotesOnly')
-        : undefined
-      : undefined;
-
-  type DayItem = {
-    key: string;
-    date: string;
-    title: string;
-    description?: string;
-    filled: boolean;
-    noteOnly?: boolean;
-  };
-
-  const items: DayItem[] = [
-    {
-      key: `today:${today}`,
-      date: today,
-      title: t('screen.today'),
-      description: todayDescription,
-      filled: todayPreview != null,
-    },
-    ...pastJournalDates.map((row) => ({
-      key: `journal:${row.date}`,
-      date: row.date,
-      title: formatFullDate(row.date),
-      description: truncateNotePreview(row.preview, 80),
-      filled: true,
-    })),
-    ...extraDates.map((date) => ({
-      key: `extra:${date}`,
-      date,
-      title: formatFullDate(date),
-      description: t('screen.trackerNotesOnly'),
-      filled: false,
-      noteOnly: true,
-    })),
-  ];
+  const rows: Row[] = [
+    ...entries.map((entry): Row => ({ kind: 'entry', date: entry.date, key: entry.key, entry })),
+    ...trackerNoteDates.map(
+      (date): Row => ({ kind: 'trackerNotes', date, key: `tracker-notes|${date}` }),
+    ),
+  ]
+    .filter(
+      (row) =>
+        row.date !== selectedDate ||
+        (row.kind === 'entry' && row.entry.notebookId !== openNotebookId),
+    )
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <View style={styles.wrap}>
-      <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>
-        {t('screen.daysLabel')}
-      </Text>
-      <Surface
-        style={[
-          styles.surface,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: deco.radius.lg,
-          },
-        ]}
-        elevation={0}
-      >
-        {items.map((item, index) => {
-          const selected = item.date === selectedDate;
-          return (
-            <React.Fragment key={item.key}>
-              {index > 0 ? <Rule style={styles.rule} /> : null}
-              <Pressable
-                onPress={() => onSelectDate(item.date)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={t('screen.viewDayA11y', { title: item.title })}
-                style={({ pressed }) => [
-                  styles.row,
-                  selected
-                    ? { backgroundColor: theme.colors.primaryContainer }
-                    : pressed
-                      ? { backgroundColor: theme.colors.surfaceVariant }
-                      : null,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.accent,
-                    {
-                      backgroundColor: selected ? theme.colors.primary : 'transparent',
-                      borderRadius: deco.radius.xs,
-                    },
-                  ]}
-                />
-                <MaterialCommunityIcons
-                  name={
-                    item.noteOnly
-                      ? 'note-text-outline'
-                      : item.filled
-                        ? 'notebook'
-                        : 'notebook-outline'
-                  }
-                  size={22}
-                  color={selected ? theme.colors.primary : theme.colors.onSurfaceVariant}
-                />
-                <View style={styles.rowText}>
-                  <Text style={[typeScale.rowName, { color: theme.colors.onSurface }]}>
-                    {item.title}
-                  </Text>
-                  {item.description ? (
-                    <QuietText style={typeScale.secondary} numberOfLines={2}>
-                      {item.description}
-                    </QuietText>
-                  ) : null}
+    <View style={styles.days}>
+      {rows.map((row) => {
+        const day = row.date === today ? t('screen.today') : formatJournalDay(row.date, today);
+        const notebook = row.kind === 'entry' ? notebookById.get(row.entry.notebookId) : undefined;
+        return (
+          <Pressable
+            key={row.key}
+            onPress={() => onOpenDay(row.date, row.kind === 'entry' ? row.entry.notebookId : undefined)}
+            accessibilityRole="button"
+            accessibilityLabel={t('screen.viewDayA11y', { title: day })}
+            style={({ pressed }) => [
+              styles.day,
+              pressed && { backgroundColor: theme.colors.surface, borderRadius: deco.radius.md },
+            ]}
+          >
+            <View style={styles.caption}>
+              <QuietText style={typeScale.caption}>{day}</QuietText>
+              {showNotebook && notebook ? (
+                <View style={styles.notebook}>
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: notebookInk(notebook.color, themeMode) },
+                    ]}
+                  />
+                  <QuietText style={[typeScale.caption, styles.notebookName]} numberOfLines={1}>
+                    {notebook.name}
+                  </QuietText>
                 </View>
-              </Pressable>
-            </React.Fragment>
-          );
-        })}
-      </Surface>
+              ) : null}
+            </View>
+            {row.kind === 'entry' ? (
+              <Text
+                style={[typeScale.reading, { color: theme.colors.onSurface }]}
+                numberOfLines={PREVIEW_LINES}
+              >
+                {truncateNotePreview(row.entry.text, PREVIEW_CHARS)}
+              </Text>
+            ) : (
+              <QuietText style={typeScale.secondary}>{t('screen.trackerNotesOnly')}</QuietText>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
-/** Where a row's words start: accent, its gap, the glyph and its gap. */
-const TEXT_INSET = space.sm + 3 + space.md + 22 + space.md;
-
 const styles = StyleSheet.create({
-  wrap: { gap: space.sm },
-  sectionTitle: { ...typeScale.caption, fontSize: 14, paddingHorizontal: space.xs },
-  surface: { overflow: 'hidden' },
-  rule: { marginLeft: TEXT_INSET },
-  row: {
+  days: {
+    gap: space.xl,
+  },
+  /** Bled past the text so the pressed wash has room round the words. */
+  day: {
+    marginHorizontal: -space.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
+    gap: space.xs,
+  },
+  caption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
-    paddingVertical: space.md,
-    paddingRight: space.lg,
-    paddingLeft: space.sm,
-    minHeight: 64,
+    flexWrap: 'wrap',
+    columnGap: space.md,
   },
-  accent: {
-    width: 3,
-    alignSelf: 'stretch',
-  },
-  rowText: {
-    flex: 1,
+  notebook: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    flexShrink: 1,
     minWidth: 0,
-    gap: space.xxs,
+  },
+  notebookName: {
+    flexShrink: 1,
+  },
+  dot: {
+    width: DOT,
+    height: DOT,
+    // Geometry: half the box is what makes the dot round.
+    borderRadius: DOT / 2,
+  },
+  empty: {
+    paddingHorizontal: space.xs,
   },
 });

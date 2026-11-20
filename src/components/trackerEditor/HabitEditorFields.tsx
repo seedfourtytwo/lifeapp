@@ -11,9 +11,10 @@ import { typeScale } from '../../theme/typography';
 import type { TFunction } from 'i18next';
 import { getDateLocale } from '../../i18n';
 import { parseLocalDate, toDateString, type HabitTrackingMode } from '../../protocol';
-import FormSection, { formSectionStyles as styles } from './FormSection';
+import FormSection, { FieldProblemText, formSectionStyles as styles } from './FormSection';
+import { timeOfDaySummary } from './habitSummaries';
 import HabitSoundEditorFields from './HabitSoundEditorFields';
-import type { HabitEditorFieldState, HabitScheduleType } from './types';
+import type { HabitEditorFieldState, HabitScheduleType, TrackerEditorProblemProps } from './types';
 
 const WEEKDAY_KEYS = [
   'weekdaySun',
@@ -104,16 +105,27 @@ function repeatSummary(state: HabitEditorFieldState, t: TFunction): string {
 type Props = {
   state: HabitEditorFieldState;
   onChange: (patch: Partial<HabitEditorFieldState>) => void;
-};
+} & TrackerEditorProblemProps;
+
+type ProblemField = NonNullable<TrackerEditorProblemProps['problem']>['field'];
+const REPEAT_FIELDS: readonly ProblemField[] = ['weekdays', 'timesPerWeek', 'interval', 'anchorDate'];
+const TIME_OF_DAY_FIELDS: readonly ProblemField[] = ['timeRange', 'remindMinutesBefore'];
 
 /**
  * Memoized: a keystroke in the editor's name field re-renders the dialog, and
  * these props are referentially stable, so re-rendering here is pure waste that
  * used to starve the name TextInput. See __tests__/trackerEditorRerender.test.ts.
  */
-function HabitEditorFields({ state, onChange }: Props) {
+function HabitEditorFields({ state, onChange, problem = null, anchorRef }: Props) {
   const { t } = useTranslation('trackers');
   const locale = getDateLocale();
+  const problemFor = (field: ProblemField) => (problem?.field === field ? problem.message : null);
+  const problemIn = (fields: readonly ProblemField[]) =>
+    problem && fields.includes(problem.field) ? problem : null;
+  const weekdaysProblem = problemFor('weekdays');
+  const timesPerWeekProblem = problemFor('timesPerWeek');
+  const intervalProblem = problemFor('interval');
+  const timeRangeProblem = problemFor('timeRange');
   const toggleWeekday = (day: number) => {
     const next = state.scheduleWeekdays.includes(day)
       ? state.scheduleWeekdays.filter((d) => d !== day)
@@ -125,10 +137,7 @@ function HabitEditorFields({ state, onChange }: Props) {
     onChange({
       scheduleType: next,
       ...(next === 'every_n_days'
-        ? {
-            useReminder: false,
-            scheduleAnchorDate: state.scheduleAnchorDate || toDateString(new Date()),
-          }
+        ? { scheduleAnchorDate: state.scheduleAnchorDate || toDateString(new Date()) }
         : {}),
     });
   };
@@ -165,6 +174,8 @@ function HabitEditorFields({ state, onChange }: Props) {
             }
             onAnySessionCountsChange={(anySessionCounts) => onChange({ anySessionCounts })}
             onSoundChange={(patch) => onChange(patch)}
+            dailyGoalError={problemFor('dailyGoalMinutes')}
+            dailyGoalRef={anchorRef?.('dailyGoalMinutes')}
           />
         ) : (
           <FilledField
@@ -177,32 +188,12 @@ function HabitEditorFields({ state, onChange }: Props) {
       </FormSection>
 
       <FormSection
-        title={t('habitFields.streakSectionTitle')}
-        collapsible
-        defaultCollapsed
-        value={state.showStreakOnCard ? t('editor.streakShown') : t('editor.streakHidden')}
-      >
-        <View style={styles.switchRow}>
-          <View style={styles.switchLabel}>
-            <Text style={typeScale.body}>{t('habitFields.showStreakLabel')}</Text>
-            <QuietText style={[typeScale.caption, styles.hint]}>
-              {t('habitFields.showStreakHint')}
-            </QuietText>
-          </View>
-          <SettingsSwitch
-            value={state.showStreakOnCard}
-            onValueChange={(showStreakOnCard) => onChange({ showStreakOnCard })}
-            accessibilityLabel={t('habitFields.showStreakLabel')}
-          />
-        </View>
-      </FormSection>
-
-      <FormSection
         title={t('habitFields.repeatSectionTitle')}
         description={t('habitFields.repeatSectionDescription')}
         collapsible
         defaultCollapsed
         value={repeatSummary(state, t)}
+        openFor={problemIn(REPEAT_FIELDS)}
       >
         <View
           style={styles.chipRow}
@@ -219,20 +210,23 @@ function HabitEditorFields({ state, onChange }: Props) {
           ))}
         </View>
         {state.scheduleType === 'weekdays' ? (
-          <View style={styles.chipRow}>
-            {WEEKDAY_KEYS.map((key, value) => (
-              <ChoiceChip
-                key={value}
-                role="checkbox"
-                label={t(`habitFields.${key}`)}
-                selected={state.scheduleWeekdays.includes(value)}
-                onPress={() => toggleWeekday(value)}
-              />
-            ))}
+          <View style={styles.sectionBody} ref={anchorRef?.('weekdays')} collapsable={false}>
+            <View style={styles.chipRow}>
+              {WEEKDAY_KEYS.map((key, value) => (
+                <ChoiceChip
+                  key={value}
+                  role="checkbox"
+                  label={t(`habitFields.${key}`)}
+                  selected={state.scheduleWeekdays.includes(value)}
+                  onPress={() => toggleWeekday(value)}
+                />
+              ))}
+            </View>
+            {weekdaysProblem ? <FieldProblemText>{weekdaysProblem}</FieldProblemText> : null}
           </View>
         ) : null}
         {state.scheduleType === 'times_per_week' ? (
-          <View style={styles.sectionBody}>
+          <View style={styles.sectionBody} ref={anchorRef?.('timesPerWeek')} collapsable={false}>
             <QuietText style={typeScale.caption}>{t('habitFields.timesPerWeekLabel')}</QuietText>
             <View
               style={styles.chipRow}
@@ -249,9 +243,13 @@ function HabitEditorFields({ state, onChange }: Props) {
                 />
               ))}
             </View>
-            <QuietText style={[typeScale.caption, styles.hint]}>
-              {t('habitFields.timesPerWeekHint')}
-            </QuietText>
+            {timesPerWeekProblem ? (
+              <FieldProblemText>{timesPerWeekProblem}</FieldProblemText>
+            ) : (
+              <QuietText style={[typeScale.caption, styles.hint]}>
+                {t('habitFields.timesPerWeekHint')}
+              </QuietText>
+            )}
           </View>
         ) : null}
         {state.scheduleType === 'every_n_days' ? (
@@ -283,6 +281,8 @@ function HabitEditorFields({ state, onChange }: Props) {
                 value={state.scheduleInterval}
                 onChangeText={(scheduleInterval) => onChange({ scheduleInterval })}
                 keyboardType="number-pad"
+                error={intervalProblem}
+                ref={anchorRef?.('interval')}
               />
             ) : null}
             <View style={styles.switchRow}>
@@ -308,6 +308,8 @@ function HabitEditorFields({ state, onChange }: Props) {
               onChangeText={(scheduleAnchorDate) => onChange({ scheduleAnchorDate })}
               autoCapitalize="none"
               autoCorrect={false}
+              error={problemFor('anchorDate')}
+              ref={anchorRef?.('anchorDate')}
             />
             <QuietText style={[typeScale.caption, styles.hint]}>
               {everyNDaysSummary(state.scheduleInterval, state.scheduleAnchorDate, locale, t)}
@@ -317,17 +319,14 @@ function HabitEditorFields({ state, onChange }: Props) {
       </FormSection>
 
       <FormSection
-        title={t('habitFields.timeWindowSectionTitle')}
-        description={t('habitFields.timeWindowSectionDescription')}
+        title={t('habitFields.timeOfDaySectionTitle')}
+        description={t('habitFields.timeOfDaySectionDescription')}
         collapsible
         defaultCollapsed
-        value={
-          state.useTimeRange && state.timeRangeStart && state.timeRangeEnd
-            ? `${state.timeRangeStart}–${state.timeRangeEnd}`
-            : t('habitFields.timeWindowOff')
-        }
+        value={timeOfDaySummary(state, t)}
+        openFor={problemIn(TIME_OF_DAY_FIELDS)}
       >
-        <View style={styles.switchRow}>
+        <View style={styles.switchRow} ref={anchorRef?.('timeRange')} collapsable={false}>
           <Text style={[typeScale.body, styles.switchLabel]}>
             {t('habitFields.useTimeRangeLabel')}
           </Text>
@@ -337,6 +336,7 @@ function HabitEditorFields({ state, onChange }: Props) {
             accessibilityLabel={t('habitFields.useTimeRangeLabel')}
           />
         </View>
+        {timeRangeProblem ? <FieldProblemText>{timeRangeProblem}</FieldProblemText> : null}
         {state.useTimeRange ? (
           <View style={styles.sectionBody}>
             <View style={styles.timeRow}>
@@ -387,10 +387,33 @@ function HabitEditorFields({ state, onChange }: Props) {
                 value={state.remindMinutesBefore}
                 onChangeText={(remindMinutesBefore) => onChange({ remindMinutesBefore })}
                 keyboardType="number-pad"
+                error={problemFor('remindMinutesBefore')}
+                ref={anchorRef?.('remindMinutesBefore')}
               />
             ) : null}
           </View>
         ) : null}
+      </FormSection>
+
+      <FormSection
+        title={t('habitFields.streakSectionTitle')}
+        collapsible
+        defaultCollapsed
+        value={state.showStreakOnCard ? t('editor.streakShown') : t('editor.streakHidden')}
+      >
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabel}>
+            <Text style={typeScale.body}>{t('habitFields.showStreakLabel')}</Text>
+            <QuietText style={[typeScale.caption, styles.hint]}>
+              {t('habitFields.showStreakHint')}
+            </QuietText>
+          </View>
+          <SettingsSwitch
+            value={state.showStreakOnCard}
+            onValueChange={(showStreakOnCard) => onChange({ showStreakOnCard })}
+            accessibilityLabel={t('habitFields.showStreakLabel')}
+          />
+        </View>
       </FormSection>
     </>
   );

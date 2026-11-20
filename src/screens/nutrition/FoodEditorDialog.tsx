@@ -25,7 +25,7 @@ type Props = {
 };
 
 /**
- * Quick add from the Nutrition tab: name and group, nothing else. Editing an
+ * Quick add from the Nutrition screen: name and group, nothing else. Editing an
  * existing food — season, nutrients, GI, portions — happens on the full
  * Ingredients editor screen, so there is only ever one form that can change a
  * food and no risk of a partial form silently dropping fields it cannot show.

@@ -34,7 +34,7 @@ function formatTime(iso: string): string {
 /**
  * Completed todos, newest first. Read straight from SQLite rather than through
  * the todo store: the store holds the open list, and years of finished todos
- * have no business sitting in memory behind the Home tab.
+ * have no business sitting in memory behind the Today page.
  */
 export default function TodoHistoryScreen() {
   const theme = useTheme();

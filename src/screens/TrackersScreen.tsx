@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, Alert } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,10 +13,10 @@ import {
   editorSessionFromCounter,
   editorSessionFromHabit,
   newEditorSession,
-  type TrackerEditorSaveData,
   type TrackerEditorSession,
 } from '../components/trackerEditor';
 import type { RootStackParamList } from '../navigation/types';
+import { space } from '../theme/spacing';
 import {
   CounterConfigSchema,
   HabitConfigSchema,
@@ -25,7 +25,8 @@ import {
 import { useElementStore } from '../store/elementStore';
 import { counterMetaLines, habitMetaLines } from '../utils/trackerMetaLines';
 import { isElementArchived } from '../utils/dashboardElements';
-import { parseTrackerEditorSave } from '../utils/parseTrackerEditorSave';
+import type { TrackerEditorSaved } from '../utils/parseTrackerEditorSave';
+import { confirm, notify } from '../components/sheet/confirm';
 
 function runElementMutation(
   action: () => Promise<void>,
@@ -33,10 +34,10 @@ function runElementMutation(
   tCommon: TFunction,
 ): void {
   void action().catch((error) => {
-    Alert.alert(
-      errorTitle,
-      error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
-    );
+    void notify({
+      title: errorTitle,
+      message: error instanceof Error ? error.message : tCommon('errors.somethingWentWrong'),
+    });
   });
 }
 
@@ -96,7 +97,8 @@ export default function TrackersScreen() {
   useEffect(() => {
     if (!addFromHome) return;
     returnAfterEditor.current = true;
-    setEditorSession(newEditorSession({ mode: addFromHome }));
+    // `true` is "new, kind not chosen yet": the sheet opens on a habit and offers the switch.
+    setEditorSession(newEditorSession({ mode: addFromHome === true ? 'habit' : addFromHome }));
     navigation.setParams({ add: undefined });
   }, [addFromHome, navigation]);
 
@@ -125,32 +127,26 @@ export default function TrackersScreen() {
 
   const confirmDelete = useCallback(
     (elementId: string, elementName: string, kindLabel: string) => {
-      Alert.alert(
-        t('confirm.deleteTitle', { kind: kindLabel }),
-        t('confirm.deleteBody', { name: elementName }),
-        [
-          { text: tCommon('actions.cancel'), style: 'cancel' },
-          {
-            text: tCommon('actions.delete'),
-            style: 'destructive',
-            onPress: () => {
-              void (async () => {
-                setDeleting(true);
-                try {
-                  await deleteElement(elementId);
-                  setEditorSession(null);
-                } catch (error) {
-                  const message =
-                    error instanceof Error ? error.message : tCommon('errors.failedToDelete');
-                  Alert.alert(tCommon('alerts.couldNotDelete'), message);
-                } finally {
-                  setDeleting(false);
-                }
-              })();
-            },
-          },
-        ],
-      );
+      void (async () => {
+        const confirmed = await confirm({
+          title: t('confirm.deleteTitle', { kind: kindLabel }),
+          message: t('confirm.deleteBody', { name: elementName }),
+          confirmLabel: tCommon('actions.delete'),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        setDeleting(true);
+        try {
+          await deleteElement(elementId);
+          setEditorSession(null);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : tCommon('errors.failedToDelete');
+          void notify({ title: tCommon('alerts.couldNotDelete'), message });
+        } finally {
+          setDeleting(false);
+        }
+      })();
     },
     [deleteElement, t, tCommon],
   );
@@ -240,12 +236,11 @@ export default function TrackersScreen() {
     ],
   );
 
-  const handleSave = async (data: TrackerEditorSaveData) => {
+  const handleSave = async (parsed: TrackerEditorSaved) => {
     if (saving) return;
     const editingId = editorSession?.editingId ?? null;
     setSaving(true);
     try {
-      const parsed = parseTrackerEditorSave(data);
       if (parsed.kind === 'counter') {
         if (editingId) {
           await updateCounter(editingId, parsed.input);
@@ -260,7 +255,7 @@ export default function TrackersScreen() {
       closeEditor();
     } catch (error) {
       const message = error instanceof Error ? error.message : tCommon('errors.failedToSave');
-      Alert.alert(tCommon('alerts.couldNotSave'), message);
+      void notify({ title: tCommon('alerts.couldNotSave'), message });
     } finally {
       setSaving(false);
     }
@@ -320,7 +315,7 @@ export default function TrackersScreen() {
         saving={saving}
         deleting={deleting}
         onDismiss={closeEditor}
-        onSave={(data) => void handleSave(data)}
+        onSave={(saved) => void handleSave(saved)}
         onDelete={
           editingElement
             ? () =>
@@ -344,6 +339,6 @@ export default function TrackersScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 32, gap: 16 },
+  container: { padding: space.lg, paddingBottom: space.xl + space.sm, gap: space.lg },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

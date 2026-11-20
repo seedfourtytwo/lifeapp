@@ -99,7 +99,7 @@ const AppSettingsObjectSchema = z.object({
   weatherLat: z.number().min(-90).max(90).optional(),
   weatherLon: z.number().min(-180).max(180).optional(),
   /**
-   * Which journal notebook the Nutrition tab writes food notes into. A link,
+   * Which journal notebook the Nutrition screen writes food notes into. A link,
    * not a preference — it travels in backup so a restore does not offer to
    * create a second food journal. An id nothing answers to is simply ignored.
    */

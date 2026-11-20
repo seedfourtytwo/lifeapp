@@ -40,6 +40,10 @@ const deco = getThemeDecorations('light');
 const byTestId = (tree: ReactTestRenderer, id: string): ReactTestInstance[] =>
   tree.root.findAll((node) => node.props.testID === id);
 
+/** The node drawn with this test id — not the component that passes the id down. */
+const styledByTestId = (tree: ReactTestRenderer, id: string): ReactTestInstance =>
+  byTestId(tree, id).filter((node) => node.props.style !== undefined)[0];
+
 const styleOf = (node: ReactTestInstance): ViewStyle =>
   StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>);
 
@@ -54,12 +58,12 @@ describe('peek sheet shell', () => {
         { visible: true, onDismiss: () => {}, title: 'Calendar', children: null },
       ),
     );
-    expect(styleOf(byTestId(tree, 'peek-grabber')[0])).toMatchObject({ width: 36, height: 4 });
+    expect(styleOf(styledByTestId(tree, 'peek-sheet-grabber'))).toMatchObject({ width: 36, height: 4 });
 
-    const sheet = styleOf(byTestId(tree, 'peek-sheet')[0]);
+    const sheet = styleOf(styledByTestId(tree, 'peek-sheet'));
     expect(sheet.borderTopLeftRadius).toBe(deco.radius.xl);
     expect(sheet.shadowRadius).toBe(deco.sheetShadow.shadowRadius);
-    expect(sheet.paddingHorizontal).toBe(24);
+    expect(styleOf(styledByTestId(tree, 'peek-sheet-body')).paddingHorizontal).toBe(24);
     act(() => tree.unmount());
   });
 });

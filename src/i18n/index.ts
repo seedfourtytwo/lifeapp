@@ -8,6 +8,7 @@ import enInsights from './locales/en/insights.json';
 import enJournal from './locales/en/journal.json';
 import enNotifications from './locales/en/notifications.json';
 import enNutrition from './locales/en/nutrition.json';
+import enReview from './locales/en/review.json';
 import enSettings from './locales/en/settings.json';
 import enTodos from './locales/en/todos.json';
 import enTrackers from './locales/en/trackers.json';
@@ -19,6 +20,7 @@ import frInsights from './locales/fr/insights.json';
 import frJournal from './locales/fr/journal.json';
 import frNotifications from './locales/fr/notifications.json';
 import frNutrition from './locales/fr/nutrition.json';
+import frReview from './locales/fr/review.json';
 import frSettings from './locales/fr/settings.json';
 import frTodos from './locales/fr/todos.json';
 import frTrackers from './locales/fr/trackers.json';
@@ -36,6 +38,7 @@ export const resources = {
     calendar: enCalendar,
     journal: enJournal,
     insights: enInsights,
+    review: enReview,
     notifications: enNotifications,
     nutrition: enNutrition,
     todos: enTodos,
@@ -48,6 +51,7 @@ export const resources = {
     calendar: frCalendar,
     journal: frJournal,
     insights: frInsights,
+    review: frReview,
     notifications: frNotifications,
     nutrition: frNutrition,
     todos: frTodos,
