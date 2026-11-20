@@ -2,23 +2,31 @@ import { MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
 import type { ResolvedTheme } from '../protocol/appSettings';
 
 /**
- * Life is a well-made pocket instrument: stone-grey ground, ink-dark type, and
- * one deep moss green that appears only when something is done or can be done.
+ * Life wears the same dress as its lock-screen widget
+ * (`modules/life-widget/android/src/main/res/values/colors.xml`): a plum
+ * ground with cream type in the evening, warm paper with plum ink by day, and
+ * one moss green that appears only when something is done or can be done.
  *
  * Every Paper role is set here, so a screen picks the look up by naming a role
  * and never a hex. Roles nothing in the app should reach for (tertiary, the
  * inverse primary) are still mapped onto the same ramp: left at MD3's defaults
  * they are Material's purple seed, and one leaking through paints a control
- * lavender. `themeTokens.test.ts` pins the roles, `themeContrast.test.ts` every
- * pair the app renders, `themeNoLavender.test.ts` every colour a theme carries.
+ * lavender beside the app's plum. `themeTokens.test.ts` pins the roles,
+ * `themeContrast.test.ts` every pair the app renders,
+ * `themeNoMaterialSeed.test.ts` every colour a theme carries.
+ */
+
+/**
+ * Day: warm paper. The tile is a step lighter than the ground, so rows read as
+ * separate objects by tone alone, with no outline drawn round them.
  */
 const LIGHT = {
-  ground: '#ECEEEA',
-  surface: '#FFFFFF',
-  well: '#E3E7E2',
-  ink: '#18201C',
-  ink2: '#58635D',
-  line: '#D5DAD4',
+  ground: '#F1ECE6',
+  surface: '#FFFCF7',
+  well: '#E7E0D7',
+  ink: '#221C2E',
+  ink2: '#5F5870',
+  line: '#DDD5CB',
   moss: '#2E6A4E',
   mossTint: '#DCEADF',
   onMossTint: '#1E4A35',
@@ -27,21 +35,20 @@ const LIGHT = {
 } as const;
 
 /**
- * Green-black, not navy: the old slate read as "web app". Moss lightens so done states glow.
- * The ground sits near black and the tile a clear step above it, so rows read as
- * separate objects by tone alone, with no outline drawn round them.
+ * Evening: the widget's plum. Moss lightens so done states glow, and the tile
+ * sits a clear step above the ground, so rows separate by tone alone here too.
  */
 const DARK = {
-  ground: '#0B0E0C',
-  surface: '#1C2220',
-  well: '#2A312D',
-  ink: '#E6EBE7',
-  ink2: '#9AA59E',
-  line: '#353D38',
+  ground: '#1B1630',
+  surface: '#2A2343',
+  well: '#383058',
+  ink: '#F6F1E8',
+  ink2: '#B3AEC6',
+  line: '#40385F',
   moss: '#86C9A3',
-  mossTint: '#253B2F',
+  mossTint: '#2B4A46',
   onMossTint: '#BFE3CD',
-  onMoss: '#0E1A13',
+  onMoss: '#14251C',
   danger: '#F2B8B5',
 } as const;
 
@@ -94,16 +101,16 @@ export const appLightTheme: MD3Theme = {
     onSurface: LIGHT.ink,
     surfaceVariant: LIGHT.well,
     onSurfaceVariant: LIGHT.ink2,
-    outline: '#A9B2AB',
+    outline: '#B0A79C',
     outlineVariant: LIGHT.line,
     inverseSurface: LIGHT.ink,
-    inverseOnSurface: '#EEF2EE',
+    inverseOnSurface: '#F6F1E8',
     inversePrimary: DARK.moss,
-    surfaceDisabled: 'rgba(24, 32, 28, 0.12)',
-    onSurfaceDisabled: 'rgba(24, 32, 28, 0.38)',
+    surfaceDisabled: 'rgba(34, 28, 46, 0.12)',
+    onSurfaceDisabled: 'rgba(34, 28, 46, 0.38)',
     shadow: LIGHT.ink,
     scrim: LIGHT.ink,
-    backdrop: 'rgba(24, 32, 28, 0.36)',
+    backdrop: 'rgba(34, 28, 46, 0.36)',
     elevation: flatElevation(LIGHT.surface),
   },
 };
@@ -135,13 +142,13 @@ export const appDarkTheme: MD3Theme = {
     onSurface: DARK.ink,
     surfaceVariant: DARK.well,
     onSurfaceVariant: DARK.ink2,
-    outline: '#56615A',
+    outline: '#6A6288',
     outlineVariant: DARK.line,
     inverseSurface: DARK.ink,
     inverseOnSurface: DARK.surface,
     inversePrimary: LIGHT.moss,
-    surfaceDisabled: 'rgba(230, 235, 231, 0.12)',
-    onSurfaceDisabled: 'rgba(230, 235, 231, 0.38)',
+    surfaceDisabled: 'rgba(246, 241, 232, 0.12)',
+    onSurfaceDisabled: 'rgba(246, 241, 232, 0.38)',
     shadow: '#000000',
     scrim: '#000000',
     backdrop: 'rgba(0, 0, 0, 0.5)',

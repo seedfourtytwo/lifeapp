@@ -1,50 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getDatabase } from '../../db/client';
-import * as eventRepo from '../../db/repositories/eventRepository';
 import type { ElementDefinition } from '../../protocol';
-import {
-  isMissable,
-  loadReviewData,
-  REVIEW_RANGE_DAYS,
-  reviewWindowDates,
-  type ReviewTrackerData,
-} from '../../review';
+import { loadReviewData, type ReviewTrackerData } from '../../review';
 
 /** One load of everything Review draws, for the day it was read on. */
 export interface ReviewData {
   today: string;
   trackers: ReviewTrackerData[];
-  /** Daily totals by tracker then date — only counters without a target have any. */
-  totals: ReadonlyMap<string, ReadonlyMap<string, number>>;
 }
 
 /**
- * Twice the longest range: the Year headline compares with the year before.
- * Week and Month are cut from the same load, so switching range reads nothing.
+ * Two years: the Year headline compares 52 weeks with the 52 before them, and
+ * the run of full days is counted back through the same load. Week and Month
+ * are cut from it too, so switching range reads nothing.
  */
-const LOAD_DAYS = 2 * REVIEW_RANGE_DAYS.year;
+export const REVIEW_LOAD_DAYS = 730;
 
 async function readReviewData(
   elements: readonly ElementDefinition[],
   today: string,
 ): Promise<ReviewData> {
   const db = await getDatabase();
-  const trackers = await loadReviewData(db, { elements, days: LOAD_DAYS, today });
-
-  // The day history says whether a day was logged, not how much. Only a
-  // counter without a target shows an amount, so only those are read.
-  const untargeted = trackers
-    .filter(({ tracker }) => !isMissable(tracker.rules))
-    .map(({ tracker }) => tracker.id);
-  const totals = new Map<string, Map<string, number>>();
-  if (untargeted.length > 0) {
-    const since = reviewWindowDates(today, REVIEW_RANGE_DAYS.year)[0];
-    const rows = await eventRepo.getDailyTotalsForElementsSince(db, untargeted, since);
-    for (const [id, days] of rows) {
-      totals.set(id, new Map(days.map((day) => [day.date, day.total])));
-    }
-  }
-  return { today, trackers, totals };
+  return { today, trackers: await loadReviewData(db, { elements, days: REVIEW_LOAD_DAYS, today }) };
 }
 
 /**

@@ -36,31 +36,32 @@
       "year": "Nothing was planned this year."
     }
   },
-  "footnote": {
-    "slippedDays_one": "{{name}} slipped most: {{done}} of its {{count}} day.",
-    "slippedDays_other": "{{name}} slipped most: {{done}} of its {{count}} days.",
-    "slippedSessions_one": "{{name}} slipped most: {{done}} of its {{count}} session.",
-    "slippedSessions_other": "{{name}} slipped most: {{done}} of its {{count}} sessions.",
-    "nothingSlipped": "Nothing slipped.",
-    "skippedLeftOut": "Skipped days are left out."
+  "facts": {
+    "fullDays_one": "full day",
+    "fullDays_other": "full days",
+    "run_one": "day in a row now",
+    "run_other": "days in a row now",
+    "bestDay": "your best day",
+    "bestDayUnknown": "Not enough days yet to name your best day"
   },
-  "legend": {
-    "done": "done",
-    "missed": "missed",
-    "skipped": "skipped"
+  "heat": {
+    "less": "Less",
+    "more": "More",
+    "title": {
+      "week": "This week",
+      "year": "The past year"
+    },
+    "a11y": "{{title}}. Full days: {{full}}. Partly done: {{partial}}. Nothing done: {{empty}}."
   },
-  "row": {
-    "strength": "strength",
-    "perDay": "{{value}} a day"
+  "sections": {
+    "holding": "Holding",
+    "slipping": "Slipping"
   },
   "spoken": {
     "days_one": "{{name}}: {{done}} of {{count}} day done, {{missed}} missed, {{skipped}} skipped",
     "days_other": "{{name}}: {{done}} of {{count}} days done, {{missed}} missed, {{skipped}} skipped",
     "sessions_one": "{{name}}: {{done}} of {{count}} session done, {{missed}} missed, {{skipped}} skipped",
-    "sessions_other": "{{name}}: {{done}} of {{count}} sessions done, {{missed}} missed, {{skipped}} skipped",
-    "logged_one": "{{name}}: logged on {{count}} day",
-    "logged_other": "{{name}}: logged on {{count}} days",
-    "nothingDue": "{{name}}: nothing scheduled"
+    "sessions_other": "{{name}}: {{done}} of {{count}} sessions done, {{missed}} missed, {{skipped}} skipped"
   },
   "empty": "No trackers yet.",
   "couldNotLoad": "Could not load your review.",

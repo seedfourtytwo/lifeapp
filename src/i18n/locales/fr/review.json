@@ -36,31 +36,32 @@
       "year": "Rien n’était prévu cette année."
     }
   },
-  "footnote": {
-    "slippedDays_one": "{{name}} a le plus décroché : {{done}} jour sur {{count}}.",
-    "slippedDays_other": "{{name}} a le plus décroché : {{done}} jours sur {{count}}.",
-    "slippedSessions_one": "{{name}} a le plus décroché : {{done}} séance sur {{count}}.",
-    "slippedSessions_other": "{{name}} a le plus décroché : {{done}} séances sur {{count}}.",
-    "nothingSlipped": "Rien n’a décroché.",
-    "skippedLeftOut": "Les jours sautés ne sont pas comptés."
+  "facts": {
+    "fullDays_one": "jour complet",
+    "fullDays_other": "jours complets",
+    "run_one": "jour d’affilée",
+    "run_other": "jours d’affilée",
+    "bestDay": "votre meilleur jour",
+    "bestDayUnknown": "Pas encore assez de jours pour désigner votre meilleur jour"
   },
-  "legend": {
-    "done": "fait",
-    "missed": "manqué",
-    "skipped": "sauté"
+  "heat": {
+    "less": "Moins",
+    "more": "Plus",
+    "title": {
+      "week": "Cette semaine",
+      "year": "L’année écoulée"
+    },
+    "a11y": "{{title}}. Jours complets : {{full}}. Faits en partie : {{partial}}. Rien de fait : {{empty}}."
   },
-  "row": {
-    "strength": "solidité",
-    "perDay": "{{value}} par jour"
+  "sections": {
+    "holding": "Ça tient",
+    "slipping": "Ça décroche"
   },
   "spoken": {
     "days_one": "{{name}} : {{done}} jour fait sur {{count}}, {{missed}} manqués, {{skipped}} sautés",
     "days_other": "{{name}} : {{done}} jours faits sur {{count}}, {{missed}} manqués, {{skipped}} sautés",
     "sessions_one": "{{name}} : {{done}} séance faite sur {{count}}, {{missed}} manquées, {{skipped}} sautées",
-    "sessions_other": "{{name}} : {{done}} séances faites sur {{count}}, {{missed}} manquées, {{skipped}} sautées",
-    "logged_one": "{{name}} : noté {{count}} jour",
-    "logged_other": "{{name}} : noté {{count}} jours",
-    "nothingDue": "{{name}} : rien de prévu"
+    "sessions_other": "{{name}} : {{done}} séances faites sur {{count}}, {{missed}} manquées, {{skipped}} sautées"
   },
   "empty": "Aucun suivi pour l’instant.",
   "couldNotLoad": "Impossible de charger le bilan.",

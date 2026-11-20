@@ -9,7 +9,10 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
-import { TextInput } from 'react-native';
+import { Keyboard, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
+import { ROW_TILE_SIZE } from '../src/kinds/TrackerIdentityMark';
+import { trackerCardStyles } from '../src/kinds/trackerCardStyles';
+import { TODO_TITLE_INSET } from '../src/screens/todos/TodoRow';
 import { IconButton, Text } from 'react-native-paper';
 import '../src/i18n';
 import type { DictationLivePreview } from '../src/dictation/livePreview';
@@ -73,7 +76,11 @@ type Adornment = { props: Record<string, unknown> } | null | undefined;
 
 const mounted: ReactTestRenderer[] = [];
 
-function render(props: { value?: string; onSubmit?: () => void }) {
+function render(props: {
+  value?: string;
+  onSubmit?: () => void;
+  onFocusChange?: (focused: boolean) => void;
+}) {
   const onChangeText = jest.fn();
   const onSubmit = props.onSubmit ?? jest.fn();
   let tree!: ReactTestRenderer;
@@ -83,6 +90,7 @@ function render(props: { value?: string; onSubmit?: () => void }) {
         value: props.value ?? '',
         onChangeText,
         onSubmit,
+        onFocusChange: props.onFocusChange,
       }),
     );
   });
@@ -210,5 +218,143 @@ describe('todo quick-add trailing control', () => {
       .findAllByType(Text)
       .map((node) => node.props.children);
     expect(shown).toContain('Allow Microphone for Life');
+  });
+});
+
+/**
+ * Filing todos in a row, and letting go of the keyboard cleanly.
+ *
+ * The field keeps the keyboard through a submit so several todos can be typed
+ * one after another. What it must not do is keep focus once the keyboard has
+ * gone: on Android, Back closes the keyboard and leaves the caret blinking, and
+ * a focused field brings the keyboard back the next time anything on the page
+ * is touched — ticking a todo's box reopened it.
+ */
+describe('todo quick-add keyboard', () => {
+  type Listener = () => void;
+  const listeners = new Map<string, Listener[]>();
+
+  beforeEach(() => {
+    listeners.clear();
+    jest.spyOn(Keyboard, 'addListener').mockImplementation(((name: string, cb: Listener) => {
+      listeners.set(name, [...(listeners.get(name) ?? []), cb]);
+      return {
+        remove: () => listeners.set(name, (listeners.get(name) ?? []).filter((l) => l !== cb)),
+      };
+    }) as unknown as typeof Keyboard.addListener);
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  // The mocked TextInput shares one blur across instances; one field is mounted at a time.
+  const blur = TextInput.prototype.blur as unknown as jest.Mock;
+
+  it('files a typed todo and keeps the keyboard for the next one', () => {
+    const { input, onSubmit } = render({ value: 'buy milk' });
+    expect(input.props.submitBehavior).toBe('submit');
+    act(() => {
+      (input.props.onSubmitEditing as () => void)();
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(blur).not.toHaveBeenCalled();
+  });
+
+  it('takes an empty submit as "done": nothing filed, keyboard away', () => {
+    const { input, onSubmit } = render({ value: '   ' });
+    act(() => {
+      (input.props.onSubmitEditing as () => void)();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(blur).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not take the second half of a hardware Enter for "done"', () => {
+    // Android reports the key on the way down and on the way up; by the second
+    // report the first has already emptied the field.
+    const { tree, input, onSubmit } = render({ value: 'buy milk' });
+    act(() => {
+      (input.props.onSubmitEditing as () => void)();
+    });
+    act(() => {
+      tree.update(
+        React.createElement(TodoQuickAdd, { value: '', onChangeText: jest.fn(), onSubmit }),
+      );
+    });
+    act(() => {
+      (tree.root.findByType(TextInput).props.onSubmitEditing as () => void)();
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(blur).not.toHaveBeenCalled();
+  });
+
+  it('gives up focus when the keyboard is closed from outside, as Back does', () => {
+    const { input } = render({});
+    act(() => {
+      (input.props.onFocus as () => void)();
+    });
+    act(() => {
+      listeners.get('keyboardDidHide')?.forEach((listener) => listener());
+    });
+    expect(blur).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not listen for the keyboard while it has no focus', () => {
+    const { input } = render({});
+    expect(listeners.get('keyboardDidHide') ?? []).toHaveLength(0);
+    act(() => {
+      (input.props.onFocus as () => void)();
+    });
+    act(() => {
+      (input.props.onBlur as () => void)();
+    });
+    expect(listeners.get('keyboardDidHide') ?? []).toHaveLength(0);
+  });
+
+  it('tells the page when it takes and loses focus', () => {
+    const onFocusChange = jest.fn();
+    const { input } = render({ onFocusChange });
+    act(() => {
+      (input.props.onFocus as () => void)();
+    });
+    expect(onFocusChange).toHaveBeenLastCalledWith(true);
+    act(() => {
+      (input.props.onBlur as () => void)();
+    });
+    expect(onFocusChange).toHaveBeenLastCalledWith(false);
+  });
+});
+
+/**
+ * The line is written under the todo rows, so it keeps their columns: its plus
+ * stands where their tiles do and its words start where theirs do.
+ */
+describe('todo quick-add columns', () => {
+  const flat = (style: unknown) => StyleSheet.flatten(style as ViewStyle);
+
+  it('puts the plus in the tile column and the words in the title column', () => {
+    const { tree } = render({});
+    const views = tree.root.findAllByType(View);
+    const row = views.find((view) => flat(view.props.style)?.flexDirection === 'row');
+    const mark = views.find((view) => view.props.importantForAccessibility === 'no');
+    const rowStyle = flat(row?.props.style);
+    const markStyle = flat(mark?.props.style);
+    const card = flat(trackerCardStyles.oneLineRow);
+
+    expect(rowStyle.paddingLeft).toBe(card.paddingLeft);
+    expect(markStyle.width).toBe(ROW_TILE_SIZE);
+
+    const field = views.find((view) => flat(view.props.style)?.flex === 1 && view !== row);
+    const wordsStart =
+      Number(rowStyle.paddingLeft) +
+      Number(markStyle.width) +
+      Number(rowStyle.gap) +
+      Number(flat(field?.props.style).marginLeft);
+    expect(wordsStart).toBe(TODO_TITLE_INSET);
+  });
+
+  it('measures the title column the way a todo row builds it', () => {
+    const card = flat(trackerCardStyles.oneLineRow);
+    // Row padding, the tile, the row gap, and the 4pt the words stand off it.
+    expect(TODO_TITLE_INSET).toBe(Number(card.paddingLeft) + ROW_TILE_SIZE + Number(card.gap) + 4);
   });
 });

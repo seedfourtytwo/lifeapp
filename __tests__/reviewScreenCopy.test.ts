@@ -1,12 +1,11 @@
 /**
- * What Review says in words: the statement it opens on, the quiet line under
- * it, and how the figures in a sentence are picked out.
+ * What Review says in words: the statement it opens on, and how the figure in
+ * it is picked out.
  */
 import type { ReviewSummary } from '../src/review';
 import {
   emphasisParts,
   percentOf,
-  reviewFootnote,
   reviewStatement,
 } from '../src/screens/review/reviewCopy';
 
@@ -14,15 +13,11 @@ const summary = (over: Partial<ReviewSummary> = {}): ReviewSummary => ({
   current: { done: 62, due: 80, rate: 62 / 80 },
   previous: { done: 57, due: 80, rate: 57 / 80 },
   comparison: 'up',
-  slipped: { trackerId: 'stretch', done: 9, due: 21 },
   perfect: false,
   ...over,
 });
 const NOTHING_DUE = { done: 0, due: 0, rate: null };
-const PERFECT = summary({ current: { done: 80, due: 80, rate: 1 }, slipped: null, perfect: true });
-const names = (id: string) =>
-  id === 'stretch' ? ({ name: 'Stretch', unit: 'days' } as const) : undefined;
-const LEFT_OUT = { key: 'footnote.skippedLeftOut' };
+const PERFECT = summary({ current: { done: 80, due: 80, rate: 1 }, perfect: true });
 
 describe('percentOf', () => {
   it('rounds a rate to a whole percentage', () => {
@@ -75,37 +70,6 @@ describe('reviewStatement', () => {
     expect(reviewStatement(summary({ current: NOTHING_DUE, comparison: 'none' }), 'month')).toEqual({
       key: 'statement.nothing.month',
     });
-  });
-});
-
-describe('reviewFootnote', () => {
-  it('names the tracker that slipped most, then that skips are left out', () => {
-    expect(reviewFootnote(summary(), names)).toEqual([
-      { key: 'footnote.slippedDays', params: { name: 'Stretch', done: 9, count: 21 } },
-      LEFT_OUT,
-    ]);
-  });
-
-  it('counts a times-a-week habit that slipped in sessions', () => {
-    const run = () => ({ name: 'Run', unit: 'sessions' }) as const;
-    expect(reviewFootnote(summary(), run)[0].key).toBe('footnote.slippedSessions');
-  });
-
-  it('says nothing slipped when no tracker did', () => {
-    expect(reviewFootnote(summary({ slipped: null }), names)).toEqual([
-      { key: 'footnote.nothingSlipped' },
-      LEFT_OUT,
-    ]);
-  });
-
-  it('does not name a tracker it cannot find', () => {
-    const gone = summary({ slipped: { trackerId: 'gone', done: 1, due: 9 } });
-    expect(reviewFootnote(gone, names)[0]).toEqual({ key: 'footnote.nothingSlipped' });
-  });
-
-  it('keeps only the skip reminder when the range is perfect or empty', () => {
-    expect(reviewFootnote(PERFECT, names)).toEqual([LEFT_OUT]);
-    expect(reviewFootnote(summary({ current: NOTHING_DUE, slipped: null }), names)).toEqual([LEFT_OUT]);
   });
 });
 

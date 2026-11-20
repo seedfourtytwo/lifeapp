@@ -4,7 +4,7 @@ import { useReduceMotion } from '../hooks/useReduceMotion';
 import { springOrSnap } from '../utils/motion';
 
 /**
- * 0 → 1 as a row turns done, for the moss that floods its disc and tick.
+ * 0 → 1 as a row turns done, for the colour that floods its tick.
  * A short, unbouncy spring (about 160ms); reduced motion lands on the end state.
  */
 export function useDoneFill(done: boolean): Animated.Value {

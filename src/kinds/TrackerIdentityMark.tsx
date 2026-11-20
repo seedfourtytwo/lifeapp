@@ -1,78 +1,58 @@
 import React from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
-import { useTheme } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { TrackerIconId } from '../protocol';
 import { TrackerIcon } from '../components/trackerIcons/TrackerIcon';
-import { clamp01 } from '../utils/clamp01';
-import { useDoneFill } from './useDoneFill';
+import { useAppTheme } from '../hooks/useAppTheme';
+import type { KindColour } from '../theme/palette';
+import { ROW_KIND_GLYPHS } from './rowKind';
 
-const MARK_SIZE = 44;
-const ICON_SIZE = 22;
-const ARC_STROKE = 3;
-const ARC_RADIUS = (MARK_SIZE - ARC_STROKE) / 2;
-const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS;
+/** The tile on a live row, and the column a settled row's smaller tile sits in. */
+export const ROW_TILE_SIZE = 40;
+const SMALL_TILE_SIZE = 28;
 
 type Props = {
-  icon: TrackerIconId;
-  /** 0–1 of today's target, drawn as an arc round the disc while under way. */
-  progress?: number | null;
-  /** Done: the disc fills solid moss and the glyph turns filled. */
-  complete?: boolean;
+  /** Whose colour the tile wears. */
+  kind: KindColour;
+  /** The row's own icon; without one the tile draws its kind's glyph. */
+  icon?: TrackerIconId | null;
+  /** The slim tile of a settled row. */
+  small?: boolean;
 };
 
 /**
- * A row's leading disc. At rest it is a quiet well with an outline glyph; done,
- * it floods moss — the one bold thing on Home. A timer or counter part of the
- * way to its target shows that share as a moss arc round the well.
+ * A row's leading tile, as on the lock-screen widget: a rounded square in the
+ * kind's colour with the row's glyph on it. The colour says what sort of row
+ * this is before the words do.
  */
-export function TrackerIdentityMark({ icon, progress = null, complete = false }: Props) {
-  const theme = useTheme();
-  const doneFill = useDoneFill(complete);
-  const share = clamp01(progress ?? 0);
-  const underWay = !complete && share > 0;
+export function TrackerIdentityMark({ kind, icon = null, small = false }: Props) {
+  const { decorations: deco, palette } = useAppTheme();
+  const size = small ? SMALL_TILE_SIZE : ROW_TILE_SIZE;
+  const glyphSize = small ? 16 : 22;
 
   return (
-    <View style={[styles.disc, { backgroundColor: theme.colors.surfaceVariant }]}>
-      {underWay ? (
-        <Svg width={MARK_SIZE} height={MARK_SIZE} style={StyleSheet.absoluteFill}>
-          <Circle
-            cx={MARK_SIZE / 2}
-            cy={MARK_SIZE / 2}
-            r={ARC_RADIUS}
-            stroke={theme.colors.primary}
-            strokeWidth={ARC_STROKE}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${ARC_CIRCUMFERENCE} ${ARC_CIRCUMFERENCE}`}
-            strokeDashoffset={ARC_CIRCUMFERENCE * (1 - share)}
-            transform={`rotate(-90 ${MARK_SIZE / 2} ${MARK_SIZE / 2})`}
-          />
-        </Svg>
-      ) : null}
-      <TrackerIcon name={icon} size={ICON_SIZE} color={theme.colors.onSurfaceVariant} />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.fill, { backgroundColor: theme.colors.primary, opacity: doneFill }]}
-      >
-        <TrackerIcon name={icon} size={ICON_SIZE} color={theme.colors.onPrimary} filled />
-      </Animated.View>
+    <View
+      style={[
+        styles.tile,
+        {
+          width: size,
+          height: size,
+          borderRadius: small ? deco.radius.sm : deco.radius.md,
+          backgroundColor: palette.kind[kind].ink,
+        },
+      ]}
+    >
+      {icon ? (
+        <TrackerIcon name={icon} size={glyphSize} color={palette.onKind} />
+      ) : (
+        <MaterialCommunityIcons name={ROW_KIND_GLYPHS[kind]} size={glyphSize} color={palette.onKind} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  disc: {
-    width: MARK_SIZE,
-    height: MARK_SIZE,
-    // Geometry: half the size is what makes it a circle.
-    borderRadius: MARK_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  fill: {
-    ...StyleSheet.absoluteFillObject,
+  tile: {
     alignItems: 'center',
     justifyContent: 'center',
   },

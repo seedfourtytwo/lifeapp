@@ -1,6 +1,8 @@
 {
   "menu": {
     "sectionTitle": "Gérer",
+    "calendarTitle": "Agenda",
+    "reviewTitle": "Bilan",
     "trackersTitle": "Suivis",
     "finishedTodosTitle": "Tâches terminées",
     "foodTitle": "Alimentation",

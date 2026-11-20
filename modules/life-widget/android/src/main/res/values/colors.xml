@@ -3,9 +3,12 @@
   One fixed dress, the same in light and dark and on every Android version: the
   widget sits on a wallpaper, not on the app's page, so it wears the evening
   ground of the home screen's icon tiles rather than the app's light theme.
-  Each kind of row has one colour, taken from the app's dark chart series
-  (src/theme/palette.ts): timers amber, tick-off habits moss, counters blue,
-  todos lilac. Every colour is flat; nothing here is a gradient.
+  Each kind of row has one colour: timers amber, tick-off habits moss, counters
+  blue, todos lilac. Every colour is flat; nothing here is a gradient.
+  The app takes its colours from this dress: its evening theme and its kind
+  colours (src/theme/themes.ts, src/theme/palette.ts) repeat the text, ink,
+  accent and kind values below, and __tests__/themeTokens.test.ts fails when
+  the two files disagree.
 -->
 <resources>
   <!-- The panel, a little see-through, and its hairline edge. -->

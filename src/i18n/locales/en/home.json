@@ -2,8 +2,6 @@
   "dock": {
     "today": "Today",
     "journal": "Journal",
-    "calendar": "Calendar",
-    "review": "Review",
     "more": "More"
   },
   "dayStatus": {
@@ -75,6 +73,6 @@
     "countersNone": "Nothing yet",
     "streak_one": "1 day in a row",
     "streak_other": "{{count}} days in a row",
-    "weekA11y": "This week: something logged on {{active}} of {{elapsed}} days. Today: {{logged}} of {{total}} trackers."
+    "openReviewHint": "Opens Review"
   }
 }

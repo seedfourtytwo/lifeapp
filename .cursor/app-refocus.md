@@ -101,8 +101,10 @@ Home).
 
 ### 5. Craft
 
-- Visual language stays moss / stone / ink, Newsreader + Plex Mono. Montara lends
-  structure and voice, not palette.
+- Visual language is the widget's dress, shared with the phone's icon pack: a plum
+  evening and a warm paper day, moss for what is done or can be done, one colour
+  per kind (timers amber, tick-offs moss, counters blue, todos lilac). Colours are
+  flat; no gradients. Newsreader + Plex Mono. Montara lends structure and voice.
 - Todos use the tracker tile and tick: same height, same done-fill, same haptic.
 - Anything that appears, disappears or moves does so with a transition, through
   `springOrSnap` / `timingOrSnap` (reduce-motion safe). No `LayoutAnimation`.

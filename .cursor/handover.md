@@ -42,7 +42,7 @@ Owner's answers that shaped the plan:
 ### Step 3 — commit 2c06f52, then ten commits made in a session on the owner's computer
 - `modules/life-widget`: RemoteViews `AppWidgetProvider` + `RemoteViewsService`, no JavaScript on the tap path.
 - **Runs in its own process (`android:process=":widget"`). Keep it that way:** expo-sqlite bundles its own SQLite, and the framework's SQLite opening the same file in the same process breaks file locks and can corrupt the database.
-- Colours, corners and font come from the system (Material You) palette on API 31+; the app palette is the fallback.
+- Colours are one fixed dress (`res/values/colors.xml`), the same in light and dark and on every Android version; the app's themes repeat it (`src/theme/themes.ts`, `src/theme/palette.ts`). Only the corner radii come from the system, on API 31+ (`res/values-v31/dimens.xml`).
 - Commits 453d5cc … dda0396 (16–17 Nov) were made in a separate session on `aero` with the phone attached. This handover's author did not write or review them; from their messages they add: timer minutes and in-widget timers with sound, cards and section headings, a pinned running habit with a live clock, counter progress, todo due dates and a Done section. **Read those commits before changing the widget**, and check whether the fixture test and `npm test` still pass after them.
 
 ## What is not verified

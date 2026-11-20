@@ -158,6 +158,18 @@ function MoreScreen() {
 
           <SettingsGroup title={t('menu.sectionTitle')}>
             <SettingsRow
+              icon="calendar-blank-outline"
+              title={t('menu.calendarTitle')}
+              chevron
+              onPress={() => navigation.navigate('Calendar')}
+            />
+            <SettingsRow
+              icon="chart-box-outline"
+              title={t('menu.reviewTitle')}
+              chevron
+              onPress={() => navigation.navigate('Review')}
+            />
+            <SettingsRow
               icon="checkbox-multiple-marked-outline"
               title={t('menu.trackersTitle')}
               chevron

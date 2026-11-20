@@ -14,14 +14,12 @@ import { idSet } from './idSet';
 import type { TodayHabitFacts } from './todayModel';
 
 export type TodayHabits = {
-  /** Every active habit, in the user's order — the strip and the notes cover all of them. */
+  /** Every active habit, in the user's order — the notes cover all of them. */
   activeIds: string[];
   /** Today's facts for the model, in the user's order. */
   facts: TodayHabitFacts[];
   byId: ReadonlyMap<string, ElementDefinition>;
   configs: ReadonlyMap<string, HabitConfig>;
-  /** Best day run among the habits listed today; weekly habits count weeks and stay out. */
-  bestStreak: number;
   /** Habits that exist at all, archived included. */
   totalCount: number;
   /** Elements, or today's completion map, have not landed yet. */
@@ -133,18 +131,9 @@ export function useTodayHabits(now: Date): TodayHabits {
     }));
   }, [activeIds, offeredIds, doneKey, skippedKey, runningKey]);
 
-  // The header says days, so a times-a-week habit's run (in weeks) stays out of it.
-  const dayStreakIds = useMemo(() => {
-    const weekly = new Set(weeklyIds);
-    return offeredIds.filter((id) => !weekly.has(id));
-  }, [offeredIds, weeklyIds]);
-  const bestStreak = useEventStore((s) =>
-    dayStreakIds.reduce((best, id) => Math.max(best, s.habitStreaks[id] ?? 0), 0),
-  );
-
   // Wait for elements, then for today's completion map before enabling toggles
   // (a toggle before day-state lands would double-tick).
   const waiting = (isLoading && elements.length === 0) || (active.length > 0 && !dayStateReady);
 
-  return { activeIds, facts, byId, configs, bestStreak, totalCount, waiting };
+  return { activeIds, facts, byId, configs, totalCount, waiting };
 }

@@ -23,8 +23,6 @@ export type TodayCounters = {
   facts: TodayCounterFacts[];
   byId: ReadonlyMap<string, ElementDefinition>;
   configs: ReadonlyMap<string, CounterConfig>;
-  /** Best run against a daily target; a counter without one has no run. */
-  bestStreak: number;
   /** Counters that exist at all, archived included. */
   totalCount: number;
   /** Today's totals have not landed yet. */
@@ -93,9 +91,6 @@ export function useTodayCounters(undoBar: UndoBar): TodayCounters {
       .filter(({ id, target }) => isSkippedToday(s, id, (s.dailyTotals[id] ?? 0) >= target))
       .map(({ id }) => id)
       .join('\n'),
-  );
-  const bestStreak = useEventStore((s) =>
-    activeIds.reduce((best, id) => Math.max(best, s.counterStreaks[id] ?? 0), 0),
   );
 
   const facts = useMemo(() => {
@@ -206,7 +201,6 @@ export function useTodayCounters(undoBar: UndoBar): TodayCounters {
     facts,
     byId,
     configs,
-    bestStreak,
     totalCount,
     waiting,
     onLog,

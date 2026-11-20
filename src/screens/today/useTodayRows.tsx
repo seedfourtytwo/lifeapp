@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { rowKindColour } from '../../kinds/rowKind';
 import type { ElementDefinition } from '../../protocol';
 import CounterCard from '../counters/CounterCard';
 import HabitCard from '../habits/HabitCard';
@@ -38,8 +39,8 @@ function reorderProps(drag: DraggableRenderContext | undefined, hint: string) {
 }
 
 /**
- * How each kind of row on Today is drawn. A habit or counter still in play is a
- * tile — a live control; a todo, and anything settled, is written on the page.
+ * How each kind of row on Today is drawn. A habit, counter or todo still in
+ * play is a tile with its control; anything settled is written on the page.
  *
  * The cards are memoised and read their own slice of the stores, so every prop
  * handed over here is stable or changes only for the row it concerns. A habit
@@ -167,7 +168,8 @@ export function useTodayRows({
       if (!todo) return null;
       return (
         <DoneRow
-          mark="todoDone"
+          mark="done"
+          kind={rowKindColour({ kind: 'todo' })}
           name={todo.title}
           onPressMark={() => onReopen(todo)}
           markLabel={tTodos('row.undoneA11y', { title: todo.title })}

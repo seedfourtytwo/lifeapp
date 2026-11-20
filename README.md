@@ -33,21 +33,23 @@ The authoritative value is `CURRENT_SCHEMA_VERSION` in [`src/db/migrations.ts`](
 ## App structure
 
 ```
-Pager (dock: icon + word)
+Pager (dock: three words)
 ├── Today — one list: Now · habits · counters · Todos · Done
-│   └── Day header — date, weather chip, calendar glyph (both peeks toggleable in More)
+│   └── Day header — date, weather chip, calendar glyph; progress line → Review
 ├── Journal — notebooks, dated feed
-├── Calendar — month browse / edit
-├── Review — Week / Month / Year, one tile per tracker
 └── More — settings page
-    ├── Manage: Trackers · Finished todos · Food · Ingredients
+    ├── Manage: Calendar · Review · Trackers · Finished todos · Food · Ingredients
     ├── Look · General · Reminders (evening check-in)
     └── Your data — backup, restore, clear
+
+Pushed screens
+├── Calendar — month browse / edit (from the calendar peek, or More)
+└── Review — Week / Month / Year, one tile per tracker (from the progress line, or More)
 ```
 
-Today opens on a day header: the date in the display face, a
-one-line status under it, and a fortnight strip showing which of the last 14
-days had anything logged. Beside the date sit two glyphs — the weather chip
+Today opens on a day header: the date in the display face, and under it one
+line — a segment per item due, the done ones filled, then the tally — which
+opens Review. Beside the date sit two glyphs — the weather chip
 (condition and temperature, nothing else) and the calendar — and each opens a
 `HeaderPeekSheet`: one small bottom panel, written once and used twice.
 
@@ -57,9 +59,10 @@ days had anything logged. Beside the date sit two glyphs — the weather chip
 
 ## Appearance
 
-Stone-grey ground, ink type and one moss green for what is done or can be done
-(`src/theme/themes.ts`). **System** follows the phone, or pick **Light** or
-**Dark**. `ThemeMode` is what was chosen and can be `system`; `ResolvedTheme` is
+The lock-screen widget's dress: a plum ground with cream type in the evening,
+warm paper with plum ink by day, one moss green for what is done or can be
+done, and one colour per kind (`src/theme/themes.ts`, `src/theme/palette.ts`).
+**System** follows the phone, or pick **Light** or **Dark**. `ThemeMode` is what was chosen and can be `system`; `ResolvedTheme` is
 what gets painted and never is. The Cartoon look was retired in 1.6.0; a phone
 or backup still set to it opens on System.
 

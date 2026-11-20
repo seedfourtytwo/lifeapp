@@ -35,7 +35,7 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
   /**
    * Every pair where the app puts words on a ground. `surfaceVariant` is in
    * here because tinted panels (the week-plants card, icon wells) put muted
-   * text on it, and that is the tightest pair in both slate themes.
+   * text on it, and that is the tightest pair in both themes.
    */
   const textPairs: [string, string, string][] = [
     ['body text on surface', c.onSurface, c.surface],
@@ -88,9 +88,9 @@ describe.each(THEMES)('$name theme', ({ theme }) => {
 
 /**
  * Colours that are not Paper roles but still paint words and marks: the
- * accent and the notebook amber. Each sits on
- * the same grounds as body text and is held to the same floor, because each of
- * them colours a label somewhere (a chip, a peek title, a notebook name).
+ * accent, the notebook amber and one colour per kind. Each sits on the same
+ * grounds as body text and is held to the same floor, because each of them
+ * colours a label somewhere (a chip, a peek title, a notebook name, a count).
  */
 describe.each(THEMES)('$name palette', ({ name, theme }) => {
   const c = theme.colors;
@@ -112,18 +112,73 @@ describe.each(THEMES)('$name palette', ({ name, theme }) => {
   );
 
   /**
-   * Review's day cells are marks, not words, so they answer to the 3:1 floor
-   * for graphics: a missed day's ring and a skipped day's dot in the quiet
-   * ink, an open day's ring in the accent — on a tile, and on the well a
-   * pressed row washes to. `palette.track` would not hold it.
+   * A tracker history's day cells are marks, not words, so they answer to the
+   * 3:1 floor for graphics: a missed day's ring and a skipped day's dot in the
+   * quiet ink, an open day's ring in the accent. `palette.track` would not
+   * hold it.
    */
   it.each([
     ['missed ring on a tile', c.onSurfaceVariant, c.surface],
-    ['missed ring on a pressed row', c.onSurfaceVariant, c.surfaceVariant],
     ['open ring on a tile', palette.accent, c.surface],
-    ['open ring on a pressed row', palette.accent, c.surfaceVariant],
   ])('%s clears the non-text floor', (_label, fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * Review's heat map: five flat shades from the empty well to the accent.
+   * Neighbours have to be told apart at a glance, the faintest has to show on
+   * the tile, and a day's number is text on its square — so each shade names
+   * the theme ink that clears the text floor on it.
+   */
+  describe('heat map', () => {
+    const { heat } = palette;
+
+    it('runs from the empty well to the accent', () => {
+      expect(heat).toHaveLength(5);
+      expect(heat[0].fill).toBe(c.surfaceVariant);
+      expect(heat[4].fill).toBe(c.primary);
+    });
+
+    it.each([0, 1, 2, 3])('level %i differs visibly from the next, which is stronger', (level) => {
+      const [here, next] = [heat[level].fill, heat[level + 1].fill];
+      expect(contrastRatio(here, next)).toBeGreaterThanOrEqual(1.15);
+      // Each step moves further from the tile, never back towards it.
+      expect(contrastRatio(next, c.surface)).toBeGreaterThan(contrastRatio(here, c.surface));
+    });
+
+    it.each(heat.map((step, level) => [level, step] as const))(
+      'a day number on level %i clears AA',
+      (_level, step) => {
+        expect(contrastRatio(c[step.onFill], step.fill)).toBeGreaterThanOrEqual(AA_TEXT);
+      },
+    );
+
+    /** Today's ring, and the number on a day that has not come: drawn on the tile itself. */
+    it.each([
+      ['today’s ring', c.onSurface, 3],
+      ['a coming day’s number', c.onSurfaceVariant, AA_TEXT],
+    ])('%s shows on a tile', (_label, fg, floor) => {
+      expect(contrastRatio(fg, c.surface)).toBeGreaterThanOrEqual(floor);
+    });
+  });
+
+  /**
+   * A kind's colour is text on a tile and on the page, a ring on a pressed
+   * row, the glyph on its own wash, and the fill under the glyph drawn on it.
+   */
+  describe.each(Object.entries(palette.kind))('%s', (_kind, { ink, wash }) => {
+    it.each([
+      ['its colour on a tile', ink, c.surface],
+      ['its colour on the page', ink, c.background],
+      ['its colour on its wash', ink, wash],
+      ['the glyph on its colour', palette.onKind, ink],
+    ])('%s clears AA', (_label, fg, bg) => {
+      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+    });
+
+    it('its colour on a pressed row clears the non-text floor', () => {
+      expect(contrastRatio(ink, c.surfaceVariant)).toBeGreaterThanOrEqual(3);
+    });
   });
 
   /** An empty track has to show on the tinted cards it sits in, not vanish into them. */

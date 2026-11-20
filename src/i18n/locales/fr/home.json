@@ -2,8 +2,6 @@
   "dock": {
     "today": "Aujourd'hui",
     "journal": "Journal",
-    "calendar": "Agenda",
-    "review": "Bilan",
     "more": "Plus"
   },
   "dayStatus": {
@@ -75,6 +73,6 @@
     "countersNone": "Rien pour l'instant",
     "streak_one": "1 jour d'affilée",
     "streak_other": "{{count}} jours d'affilée",
-    "weekA11y": "Cette semaine : quelque chose de noté {{active}} jours sur {{elapsed}}. Aujourd'hui : {{logged}} suivis sur {{total}}."
+    "openReviewHint": "Ouvre le bilan"
   }
 }

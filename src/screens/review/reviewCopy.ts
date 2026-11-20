@@ -34,39 +34,6 @@ export function reviewStatement(summary: ReviewSummary, range: ReviewRange): Rev
   };
 }
 
-/** What the footnote needs to know about the tracker it names. */
-export interface SlippedTracker {
-  name: string;
-  /** A times-a-week habit is counted in sessions, not days. */
-  unit: 'days' | 'sessions';
-}
-
-/**
- * The quiet line under the statement: the tracker that slipped most, or that
- * nothing did — left out when the range was perfect or empty, where it would
- * only repeat the statement — then the reminder that skips are not counted.
- */
-export function reviewFootnote(
-  summary: ReviewSummary,
-  trackerOf: (trackerId: string) => SlippedTracker | undefined,
-): ReviewCopy[] {
-  const leftOut: ReviewCopy = { key: 'footnote.skippedLeftOut' };
-  if (summary.current.due === 0 || summary.perfect) return [leftOut];
-
-  const { slipped } = summary;
-  const tracker = slipped ? trackerOf(slipped.trackerId) : undefined;
-  if (slipped && tracker) {
-    return [
-      {
-        key: tracker.unit === 'sessions' ? 'footnote.slippedSessions' : 'footnote.slippedDays',
-        params: { name: tracker.name, done: slipped.done, count: slipped.due },
-      },
-      leftOut,
-    ];
-  }
-  return [{ key: 'footnote.nothingSlipped' }, leftOut];
-}
-
 /** A run of a sentence, and whether it is one of its figures. */
 export interface CopyPart {
   text: string;
@@ -74,8 +41,8 @@ export interface CopyPart {
 }
 
 /**
- * Splits translated copy on its `<b>…</b>` marks, so the figures in a sentence
- * can be set a weight heavier without the translation knowing about styles.
+ * Splits translated copy on its `<b>…</b>` marks, so the figure in a sentence
+ * can be picked out without the translation knowing about styles.
  */
 export function emphasisParts(copy: string): CopyPart[] {
   return copy

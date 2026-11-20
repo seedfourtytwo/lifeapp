@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button, IconButton, Text, useTheme } from 'react-native-paper';
@@ -15,20 +15,21 @@ import { formatDayHeading, formatOccurrenceTime, formatMonthTitle } from '../cal
 import { occurrencesOnDay } from '../calendar/occurrences';
 import type { RootStackParamList } from '../navigation/types';
 import { useCalendarStore } from '../store/calendarStore';
-import PageHeader from './shared/PageHeader';
 import { notify } from '../components/sheet/confirm';
 
 const WEEKDAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 /**
- * The Calendar page of the Home pager. Everything it shows comes from the
- * calendar store, which is loaded at startup, so it has nothing to fetch when
- * it is built. Adding and editing still push the event editor on the stack.
+ * The Calendar screen, pushed from the calendar peek beside the date and from
+ * More; the stack header carries its title, the way back and the add button.
+ * Everything it shows comes from the calendar store, which is loaded at
+ * startup, so it has nothing to fetch when it is built. Adding and editing
+ * push the event editor on the stack.
  */
-function CalendarScreen() {
+export default function CalendarScreen() {
   const theme = useTheme();
   const { decorations: deco } = useAppTheme();
-  const { t } = useTranslation(['calendar', 'common', 'home']);
+  const { t } = useTranslation(['calendar', 'common']);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
@@ -76,27 +77,28 @@ function CalendarScreen() {
     cells.push(new Date(d));
   }
 
-  const addEvent = () =>
-    navigation.navigate('CalendarEventEditor', { seedDate: toDateString(selectedDay) });
+  const seedDate = toDateString(selectedDay);
+  const addEvent = () => navigation.navigate('CalendarEventEditor', { seedDate });
+
+  const addLabel = t('calendar:screen.addEvent');
+  const addColor = theme.colors.onSurfaceVariant;
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <IconButton
+          icon="plus"
+          size={24}
+          iconColor={addColor}
+          onPress={() => navigation.navigate('CalendarEventEditor', { seedDate })}
+          accessibilityLabel={addLabel}
+          style={styles.addButton}
+        />
+      ),
+    });
+  }, [navigation, seedDate, addLabel, addColor]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.pageHeader}>
-        <PageHeader
-          title={t('home:dock.calendar')}
-          actions={
-            <IconButton
-              icon="plus"
-              size={24}
-              iconColor={theme.colors.onSurfaceVariant}
-              onPress={addEvent}
-              accessibilityLabel={t('calendar:screen.addEvent')}
-              style={styles.addButton}
-            />
-          }
-        />
-      </View>
-
       <View style={styles.monthHeader}>
         <Pressable
           onPress={() => setCursor(new Date(year, monthIndex - 1, 1))}
@@ -309,15 +311,11 @@ const GRID_INSET = layout.gutter - space.xs;
 
 const styles = StyleSheet.create({
   container: {
-    // The Home pages' top edge, so the title sits where the date does.
     paddingTop: space.md,
     paddingBottom: space.xxl,
     flexGrow: 1,
   },
-  pageHeader: {
-    paddingHorizontal: layout.gutter,
-  },
-  /** Flush with the gutter: the glyph's own box supplies the breathing room. */
+  /** Flush with the header's edge: the glyph's own box supplies the breathing room. */
   addButton: {
     margin: 0,
   },
@@ -407,9 +405,3 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
 });
-
-/**
- * Memoised because it takes no props: a Home page change re-renders HomeScreen,
- * and this page has no reason to follow it.
- */
-export default memo(CalendarScreen);

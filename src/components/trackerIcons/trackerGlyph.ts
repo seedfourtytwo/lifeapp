@@ -6,9 +6,9 @@ type GlyphTrackerIconId = Exclude<TrackerIconId, CustomTrackerIconId>;
 
 /**
  * The catalogue stores the filled glyph name. These are the ids whose font
- * also has an outline twin; at rest a tracker draws the twin, so the rows read
- * as one line-drawn family and a filled glyph means "done". Ids without a twin
- * (most sport and object glyphs) are drawn as stored either way.
+ * also has an outline twin; a tracker draws the twin, so the rows read as one
+ * line-drawn family. Ids without a twin (most sport and object glyphs) are
+ * drawn as stored.
  * `__tests__/iconFamily.test.ts` fails if a twin exists and is not listed here.
  */
 export const TRACKER_OUTLINE_GLYPHS: Partial<Record<GlyphTrackerIconId, GlyphName>> = {
@@ -39,8 +39,7 @@ export const TRACKER_OUTLINE_GLYPHS: Partial<Record<GlyphTrackerIconId, GlyphNam
   'rocket-launch': 'rocket-launch-outline',
 };
 
-/** The glyph a tracker icon draws: its outline twin at rest, the stored glyph when filled. */
-export function trackerGlyphName(id: GlyphTrackerIconId, filled: boolean): GlyphName {
-  if (filled) return id as GlyphName;
+/** The glyph a tracker icon draws: its outline twin where the font has one. */
+export function trackerGlyphName(id: GlyphTrackerIconId): GlyphName {
   return TRACKER_OUTLINE_GLYPHS[id] ?? (id as GlyphName);
 }

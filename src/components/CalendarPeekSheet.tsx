@@ -10,7 +10,6 @@ import { formatDayHeading, formatOccurrenceTime } from '../calendar/format';
 import { toDateString } from '../calendar/dates';
 import { useAppTheme } from '../hooks/useAppTheme';
 import type { RootStackParamList } from '../navigation/types';
-import { useGoToHomeTab } from '../screens/home/HomePagerContext';
 import { useCalendarStore } from '../store/calendarStore';
 import { space } from '../theme/spacing';
 import HeaderPeekSheet from './HeaderPeekSheet';
@@ -27,7 +26,7 @@ interface Props {
  *
  * Attention list only — a cleared occurrence drops off rather than being
  * ticked, so silence means nothing needs you. Full history stays on the
- * Calendar page, one tap away through the footer.
+ * Calendar screen, one tap away through the footer.
  */
 export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const theme = useTheme();
@@ -35,7 +34,6 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
   const { t: tCommon } = useTranslation('common');
   const { palette } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const goToHomeTab = useGoToHomeTab();
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
   const clearedByKey = useCalendarStore((s) => s.clearedByKey);
@@ -53,8 +51,8 @@ export default function CalendarPeekSheet({ visible, onClose }: Props) {
 
   const openFullCalendar = () => {
     onClose();
-    // Defer so the sheet can dismiss before the pager moves.
-    setTimeout(() => goToHomeTab('calendar'), 0);
+    // Defer so the sheet can dismiss before the screen is pushed.
+    setTimeout(() => navigation.navigate('Calendar'), 0);
   };
 
   const openAddEvent = () => {

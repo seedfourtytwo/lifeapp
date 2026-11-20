@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ECEEEA"
+      "backgroundColor": "#F1ECE6"
     },
     "ios": {
       "supportsTablet": true,
@@ -31,15 +31,15 @@
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
-        "backgroundColor": "#ECEEEA",
+        "backgroundColor": "#F1ECE6",
         "dark": {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#0B0E0C"
+          "backgroundColor": "#1B1630"
         }
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "allowBackup": false,
+      "allowBackup": true,
       "package": "com.lifeapp.dashboard",
       "versionCode": 32,
       "permissions": [

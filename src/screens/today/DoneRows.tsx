@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { notify } from '../../components/sheet/confirm';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,16 +7,29 @@ import { useTranslation } from 'react-i18next';
 import QuietText from '../../components/QuietText';
 import { useHabitTimerControls } from '../../hooks/useHabitTimerControls';
 import type { RootStackParamList } from '../../navigation/types';
-import type { ElementDefinition, HabitConfig } from '../../protocol';
+import { rowKindColour } from '../../kinds/rowKind';
+import { ROW_TILE_SIZE, TrackerIdentityMark } from '../../kinds/TrackerIdentityMark';
+import {
+  formatHabitTimerDuration,
+  type ElementDefinition,
+  type HabitConfig,
+  type TrackerIconId,
+} from '../../protocol';
 import { useEventStore } from '../../store/eventStore';
+import type { KindColour } from '../../theme/palette';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
-import { TODO_MARK_TARGET } from '../todos/TodoRow';
 import TodayMark, { type TodayMarkKind } from './TodayMark';
 
 type RowProps = {
-  mark: Exclude<TodayMarkKind, 'todoOpen'>;
+  mark: TodayMarkKind;
+  /** Whose colour the row's small tile wears. */
+  kind: KindColour;
+  /** The tracker's own icon, where it has one. */
+  icon?: TrackerIconId | null;
   name: string;
+  /** What was logged — a timer's time. */
+  figure?: string | null;
   /** Takes it back: un-tick, un-skip, reopen. */
   onPressMark: () => void;
   markLabel: string;
@@ -25,19 +38,40 @@ type RowProps = {
 };
 
 /**
- * A settled row under Done: its mark and its name, written on the page. It is
- * finished, so it carries no tile, no streak and no controls — only the mark,
- * which takes it back.
+ * A settled row under Done, written on the page: its kind's tile made small,
+ * its name gone quiet, and the done mark at the end. It is finished, so it
+ * carries no card, no streak and no controls — only the mark, which takes it
+ * back.
  */
-export function DoneRow({ mark, name, onPressMark, markLabel, onPressName }: RowProps) {
+export function DoneRow({
+  mark,
+  kind,
+  icon = null,
+  name,
+  figure = null,
+  onPressMark,
+  markLabel,
+  onPressName,
+}: RowProps) {
   return (
     <Pressable
       onPress={onPressName}
       disabled={!onPressName}
       accessibilityRole={onPressName ? 'button' : undefined}
-      accessibilityLabel={name}
+      accessibilityLabel={figure ? `${name}, ${figure}` : name}
       style={styles.row}
     >
+      <View style={styles.tile}>
+        <TrackerIdentityMark kind={kind} icon={icon} small />
+      </View>
+      <QuietText numberOfLines={1} style={[typeScale.body, styles.name]}>
+        {name}
+      </QuietText>
+      {figure ? (
+        <QuietText numberOfLines={1} style={typeScale.timer}>
+          {figure}
+        </QuietText>
+      ) : null}
       <Pressable
         onPress={onPressMark}
         accessibilityRole="checkbox"
@@ -47,9 +81,6 @@ export function DoneRow({ mark, name, onPressMark, markLabel, onPressName }: Row
       >
         <TodayMark kind={mark} />
       </Pressable>
-      <QuietText numberOfLines={1} style={[typeScale.body, styles.name]}>
-        {name}
-      </QuietText>
     </Pressable>
   );
 }
@@ -72,6 +103,8 @@ export const DoneHabitRow = memo(function DoneHabitRow({ habit, config, onOfferU
   const { t: tCommon } = useTranslation('common');
   const { handleResetToday } = useHabitTimerControls();
   const done = useEventStore((s) => s.habitDoneToday[habit.id] ?? false);
+  const total = useEventStore((s) => s.dailyTotals[habit.id] ?? 0);
+  const timed = config.trackingMode === 'timer';
   const toggleHabit = useEventStore((s) => s.toggleHabit);
   const setSkipToday = useEventStore((s) => s.setSkipToday);
 
@@ -89,7 +122,7 @@ export const DoneHabitRow = memo(function DoneHabitRow({ habit, config, onOfferU
       );
       return;
     }
-    if (config.trackingMode === 'timer') {
+    if (timed) {
       handleResetToday(habit.id, config)
         .then((undo) => onOfferUndo(t('undo.timerReset', { name: habit.name }), undo))
         .catch(report(t('habitWidget.couldNotResetTodayTitle')));
@@ -100,8 +133,11 @@ export const DoneHabitRow = memo(function DoneHabitRow({ habit, config, onOfferU
 
   return (
     <DoneRow
-      mark={done ? 'habitDone' : 'habitSkipped'}
+      mark={done ? 'done' : 'skipped'}
+      kind={rowKindColour({ kind: 'habit', trackingMode: config.trackingMode })}
+      icon={config.icon}
       name={habit.name}
+      figure={timed && total > 0 ? formatHabitTimerDuration(total) : null}
       onPressMark={takeBack}
       markLabel={`${habit.name}, ${
         done ? t('habitWidget.completedTapToUndoA11y') : t('skip.undoSkipA11y')
@@ -111,19 +147,29 @@ export const DoneHabitRow = memo(function DoneHabitRow({ habit, config, onOfferU
   );
 });
 
+/** The mark's touch target; the drawn disc sits in the middle of it. */
+const MARK_TARGET = 48;
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: MARK_TARGET,
     gap: space.sm,
-    paddingRight: space.md,
-    marginBottom: space.xs,
+    // The same insets as a card's row, so tiles and marks stand in one line down the page.
+    paddingLeft: space.md,
+    paddingRight: space.sm,
+  },
+  /** The small tile, centred in the column a card's tile fills. */
+  tile: {
+    width: ROW_TILE_SIZE,
+    alignItems: 'center',
+    marginRight: space.xs,
   },
   // No text in it, so the target is a fixed box.
   mark: {
-    width: TODO_MARK_TARGET,
-    height: TODO_MARK_TARGET,
+    width: MARK_TARGET,
+    height: MARK_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
   },

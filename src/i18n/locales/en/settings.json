@@ -1,6 +1,8 @@
 {
   "menu": {
     "sectionTitle": "Manage",
+    "calendarTitle": "Calendar",
+    "reviewTitle": "Review",
     "trackersTitle": "Trackers",
     "finishedTodosTitle": "Finished todos",
     "foodTitle": "Food",

@@ -1,26 +1,5 @@
 import { shiftDateString, weekStartDateString } from '../protocol';
-import { completionRate, type CompletionRate } from './rates';
 import type { ReviewDay, ReviewDayState } from './dayStates';
-
-/** One Monday–Sunday week of a Year strip. */
-export interface WeeklyBar extends CompletionRate {
-  /** Monday of the week. */
-  weekStart: string;
-}
-
-/** One bar per Monday–Sunday week the days touch, oldest first; edge weeks may be partial. */
-export function weeklyBars(days: readonly ReviewDay[]): WeeklyBar[] {
-  const byWeek = new Map<string, ReviewDay[]>();
-  for (const day of days) {
-    const weekStart = weekStartDateString(day.date);
-    const week = byWeek.get(weekStart) ?? [];
-    week.push(day);
-    byWeek.set(weekStart, week);
-  }
-  return [...byWeek.keys()]
-    .sort()
-    .map((weekStart) => ({ weekStart, ...completionRate(byWeek.get(weekStart) ?? []) }));
-}
 
 export const HEATMAP_WEEKS = 53;
 

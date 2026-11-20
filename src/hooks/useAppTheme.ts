@@ -11,7 +11,7 @@ export interface AppThemeContext {
    */
   themeMode: ResolvedTheme;
   decorations: ThemeDecorations;
-  /** Theme colours that are not Paper roles — accent, amber, series, track. */
+  /** Theme colours that are not Paper roles — accent, amber, track, one per kind. */
   palette: AppPalette;
 }
 

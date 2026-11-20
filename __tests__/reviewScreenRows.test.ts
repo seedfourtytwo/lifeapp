@@ -1,202 +1,85 @@
 /**
- * What a row of the Review ledger says for a range: the figures under the
- * name, its year bars and the sentence a screen reader gets.
+ * Review's two lists: which trackers are holding and which are slipping, and
+ * what each row shows and says.
  */
-import { counterRunStats } from '../src/components/history/counterRunStats';
-import { yearReview } from '../src/components/history/yearReview';
-import { shiftDateString, trackerDayHistory, type HabitSchedule } from '../src/protocol';
-import type { ReviewTrackerData } from '../src/review';
-import { formatPerDay, reviewRow, trackerScore } from '../src/screens/review/reviewRows';
+import type { ReviewTracker, TrackerStanding } from '../src/review';
+import { standingRows } from '../src/screens/review/reviewRows';
 
-/** A Wednesday. */
-const TODAY = '2026-11-18';
-const ago = (offset: number) => shiftDateString(TODAY, -offset);
-const history = (done: number[], skipped: number[] = []) =>
-  trackerDayHistory([
-    ...done.map((o) => ({ date: ago(o), complete: true, hasSkipRow: false })),
-    ...skipped.map((o) => ({ date: ago(o), complete: false, hasSkipRow: true })),
-  ]);
-
-const habit = (schedule: HabitSchedule, done: number[], skipped: number[] = []): ReviewTrackerData => ({
-  tracker: {
-    id: 'h',
-    rules: { kind: 'habit', config: { trackingMode: 'boolean', timeSlot: 'anytime', schedule } },
-    createdOn: '2025-01-01',
+const habit = (id: string, trackingMode: 'boolean' | 'timer', timesPerWeek?: number): ReviewTracker => ({
+  id,
+  rules: {
+    kind: 'habit',
+    config: {
+      trackingMode,
+      timeSlot: 'anytime',
+      schedule: timesPerWeek ? { type: 'times_per_week', times: timesPerWeek } : { type: 'daily' },
+    },
   },
-  history: history(done, skipped),
+  createdOn: null,
 });
-const counter = (done: number[], dailyTarget?: number): ReviewTrackerData => ({
-  tracker: {
-    id: 'c',
-    rules: { kind: 'counter', config: { unit: 'reps', quickIncrements: [1], dailyTarget } },
-    createdOn: '2025-01-01',
-  },
-  history: history(done),
+const counter: ReviewTracker = {
+  id: 'water',
+  rules: { kind: 'counter', config: { unit: 'glass', quickIncrements: [1], dailyTarget: 8 } },
+  createdOn: null,
+};
+const TRACKERS = new Map(
+  [
+    { tracker: habit('smoke', 'boolean'), name: 'No Smoking' },
+    { tracker: habit('sit', 'timer'), name: 'Meditation' },
+    { tracker: habit('run', 'boolean', 3), name: 'Run' },
+    { tracker: counter, name: 'Water' },
+  ].map((entry) => [entry.tracker.id, entry]),
+);
+const standing = (trackerId: string, done: number, planned: number, skipped = 0): TrackerStanding => ({
+  trackerId,
+  done,
+  planned,
+  skipped,
+  share: done / planned,
 });
+const rows = (standings: TrackerStanding[]) => standingRows(standings, (id) => TRACKERS.get(id));
 
-describe('reviewRow — a habit', () => {
-  const data = habit({ type: 'daily' }, [1, 2, 3, 4], [5]);
-  const row = reviewRow({ data, name: 'Meditate' }, 'week', TODAY, 86);
-
-  it('tallies done over due, skipped and today-still-open left out, beside the score', () => {
-    // Seven days: today open, four done, one skipped, one missed.
-    expect(row.caption).toEqual({ kind: 'score', tally: '4/5', score: '86' });
-    expect(row.days.map((day) => day.state)).toEqual([
-      'missed',
-      'skipped',
-      'done',
-      'done',
-      'done',
-      'done',
-      'open',
+describe('standingRows', () => {
+  it('holds from half done up, and slips below, keeping the ranking', () => {
+    const { holding, slipping } = rows([
+      standing('smoke', 19, 20),
+      standing('sit', 10, 20),
+      standing('water', 9, 20),
+      standing('run', 2, 9),
     ]);
-    expect(row.bars).toBeNull();
+    expect(holding.map((row) => row.id)).toEqual(['smoke', 'sit']);
+    expect(slipping.map((row) => row.id)).toEqual(['water', 'run']);
   });
 
-  it('speaks the row as one sentence', () => {
-    expect(row.spoken).toEqual({
-      key: 'spoken.days',
-      params: { name: 'Meditate', done: 4, count: 5, missed: 1, skipped: 1 },
+  it('has no rows without standings', () => {
+    expect(rows([])).toEqual({ holding: [], slipping: [] });
+  });
+
+  it('colours a row by its kind, a habit by how it is tracked', () => {
+    const { holding } = rows([standing('smoke', 1, 1), standing('sit', 1, 1), standing('water', 1, 1)]);
+    expect(holding.map((row) => row.kind)).toEqual(['tick', 'timer', 'counter']);
+  });
+
+  it('pads every tally to the widest, across both lists, so the figures line up', () => {
+    const { holding, slipping } = rows([standing('smoke', 19, 20), standing('run', 2, 9)]);
+    expect(holding[0].figure).toBe('19 / 20');
+    expect(slipping[0].figure).toBe(' 2 /  9');
+  });
+
+  it('carries the name, the share, and a spoken tally in days or sessions', () => {
+    const { holding, slipping } = rows([standing('smoke', 19, 20, 1), standing('run', 2, 9)]);
+    expect(holding[0]).toMatchObject({
+      name: 'No Smoking',
+      share: 19 / 20,
+      spoken: { key: 'spoken.days', params: { name: 'No Smoking', done: 19, count: 20, missed: 1, skipped: 1 } },
+    });
+    expect(slipping[0].spoken).toEqual({
+      key: 'spoken.sessions',
+      params: { name: 'Run', done: 2, count: 9, missed: 7, skipped: 0 },
     });
   });
 
-  it('speaks a times-a-week habit in sessions', () => {
-    const weekly = reviewRow(
-      { data: habit({ type: 'times_per_week', times: 3 }, [8, 9, 15]), name: 'Run' },
-      'month',
-      TODAY,
-      40,
-    );
-    expect(weekly.spoken.key).toBe('spoken.sessions');
-  });
-
-  it('has no tally when nothing was scheduled, rather than 0/0', () => {
-    const fresh: ReviewTrackerData = {
-      tracker: { ...data.tracker, createdOn: TODAY },
-      history: history([]),
-    };
-    const empty = reviewRow({ data: fresh, name: 'New' }, 'week', TODAY, 0);
-    expect(empty.caption).toEqual({ kind: 'score', tally: null, score: '0' });
-    expect(empty.spoken).toEqual({ key: 'spoken.nothingDue', params: { name: 'New' } });
-  });
-
-  it('has no score when the tracker has none', () => {
-    expect(reviewRow({ data, name: 'Meditate' }, 'week', TODAY, null).caption).toEqual({
-      kind: 'score',
-      tally: '4/5',
-      score: null,
-    });
-  });
-
-  it('keeps all 30 days of a month, whatever the grid draws', () => {
-    expect(reviewRow({ data, name: 'Meditate' }, 'month', TODAY, 86).days).toHaveLength(30);
-  });
-
-  it('draws a year as one bar per week: a rate, a zero, or nothing due', () => {
-    const bars = reviewRow({ data, name: 'Meditate' }, 'year', TODAY, 86).bars ?? [];
-    expect(bars).toHaveLength(53);
-    // This week: Monday and Tuesday done, today open.
-    expect(bars[52]).toEqual({ weekStart: '2026-11-16', share: 1 });
-    // Last week: Saturday and Sunday done, Friday skipped, four missed.
-    expect(bars[51].share).toBeCloseTo(2 / 6);
-    expect(bars[40].share).toBe(0);
-  });
-});
-
-describe('reviewRow — counters', () => {
-  it('treats a counter with a target like a habit', () => {
-    const row = reviewRow({ data: counter([1, 2], 8), name: 'Water' }, 'week', TODAY, 58);
-    expect(row.caption).toEqual({ kind: 'score', tally: '2/6', score: '58' });
-  });
-
-  it('says how much a counter without a target logs on a logged day', () => {
-    const totals = new Map([
-      [ago(1), 40],
-      [ago(3), 51],
-      [ago(40), 500],
-    ]);
-    const row = reviewRow({ data: counter([1, 3, 40]), name: 'Push-ups', totals }, 'week', TODAY, null);
-    expect(row.caption).toEqual({ kind: 'perDay', value: '46' });
-    expect(row.spoken).toEqual({ key: 'spoken.logged', params: { name: 'Push-ups', count: 2 } });
-    expect(row.days.filter((day) => day.state === 'missed')).toEqual([]);
-  });
-
-  it('has no figure when nothing was logged in the range', () => {
-    const row = reviewRow({ data: counter([40]), name: 'Push-ups' }, 'week', TODAY, null);
-    expect(row.caption).toEqual({ kind: 'perDay', value: null });
-  });
-
-  it('sizes an untargeted counter’s year bars by days logged that week', () => {
-    const bars = reviewRow({ data: counter([1, 2, 9]), name: 'Push-ups' }, 'year', TODAY, null).bars ?? [];
-    expect(bars[52].share).toBeCloseTo(2 / 7);
-    expect(bars[51].share).toBeCloseTo(1 / 7);
-    expect(bars[50].share).toBeNull();
-  });
-});
-
-describe('formatPerDay', () => {
-  it('keeps one decimal only below 10', () => {
-    expect(formatPerDay(4.56)).toBe('4.6');
-    expect(formatPerDay(8)).toBe('8');
-    expect(formatPerDay(62.7)).toBe('63');
-    expect(formatPerDay(10)).toBe('10');
-  });
-
-  it('does not round up into a decimal at 10', () => {
-    expect(formatPerDay(9.96)).toBe('10');
-  });
-});
-
-describe('trackerScore', () => {
-  it('is the last point of the strength series', () => {
-    expect(trackerScore(habit({ type: 'daily' }, [0, 1, 2, 3, 4, 5]), TODAY)).toBeGreaterThan(0);
-  });
-
-  it('is null for a counter without a target', () => {
-    expect(trackerScore(counter([1, 2]), TODAY)).toBeNull();
-  });
-});
-
-describe('counterRunStats', () => {
-  it('shows the run of target days and the best run', () => {
-    expect(counterRunStats({ streak: 4, bestRun: 9 })).toEqual([
-      { id: 'streak', value: '4', captionKey: 'history.statInARow', count: 4 },
-      { id: 'best', value: '9', captionKey: 'history.statBestRun', count: 9 },
-    ]);
-  });
-
-  it('leaves out a run of zero rather than printing it', () => {
-    expect(counterRunStats({ streak: 0, bestRun: 3 }).map((stat) => stat.id)).toEqual(['best']);
-    expect(counterRunStats({ streak: 0, bestRun: 0 })).toEqual([]);
-  });
-});
-
-describe('yearReview', () => {
-  const year = yearReview(habit({ type: 'daily' }, [1, 2, 3, 4], [5]), TODAY);
-
-  it('lays the year out as 53 Monday-first weeks ending this week', () => {
-    expect(year.columns).toHaveLength(53);
-    // Mon, Tue done; Wed is today and open; the rest of the week is ahead.
-    expect(year.columns[52]).toEqual({
-      weekStart: '2026-11-16',
-      days: ['done', 'done', 'open', null, null, null, null],
-    });
-    expect(year.columns[0].days.every((state) => state === 'missed')).toBe(true);
-  });
-
-  it('counts what the grid shows, for the spoken summary', () => {
-    expect(year.done).toBe(4);
-    expect(year.skipped).toBe(1);
-    // Every drawn day but today, the four done and the skip.
-    expect(year.missed).toBe(52 * 7 + 3 - 1 - 4 - 1);
-  });
-
-  it('keeps the last 90 days of strength, ending on the score now', () => {
-    expect(year.strength).toHaveLength(90);
-    expect(year.strength[89]).toBe(trackerScore(habit({ type: 'daily' }, [1, 2, 3, 4], [5]), TODAY));
-  });
-
-  it('has no strength line for a counter without a target', () => {
-    expect(yearReview(counter([1, 2]), TODAY).strength).toEqual([]);
+  it('drops a standing whose tracker is gone', () => {
+    expect(rows([standing('archived', 1, 2)])).toEqual({ holding: [], slipping: [] });
   });
 });

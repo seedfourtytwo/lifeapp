@@ -6,49 +6,38 @@ import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { formatShortDate } from '../../utils/dates';
 import { APP_DAY_RESET_TIME_LABEL, currentAppCalendarDate } from '../../utils/dayRollover';
-import WeekStrip from './WeekStrip';
 import DayHeaderPeeks from './DayHeaderPeeks';
 import type { DayHeaderMeta } from './dayHeaderMeta';
-import type { WeekDay } from '../today/weekActivity';
 
 type Props = {
   /** Calendar "now" from `useAppCalendarNow` — advances on day rollover. */
   now: Date;
   /**
-   * What today looks like so far, written by the tab — "3 of 5 done" means
-   * something different on Habits than on Todos. A pair sets the run apart on
-   * the right: "2 of 6 done" … "13 days in a row".
+   * A status line in words, written by the page. A pair sets its second half
+   * apart on the right.
    */
   meta?: string | DayHeaderMeta | null;
-  /** This week, Monday to Sunday, for the strip; empty hides it. */
-  week?: WeekDay[];
-  weekLabel?: string;
   /**
-   * Tab-specific buttons, aligned with the date — journal notebooks, a history
-   * shortcut. The weather chip and the calendar glyph are *not* passed in here:
-   * they belong to the header on every tab, so `DayHeaderPeeks` renders them
-   * before whatever the tab adds.
+   * The page's own line under the date — Today's progress line. It sits where
+   * `meta` would and brings its own height.
+   */
+  children?: React.ReactNode;
+  /**
+   * Page-specific buttons, aligned with the date — journal notebooks, an add
+   * button. The weather chip and the calendar glyph are *not* passed in here:
+   * they belong to the header on every page, so `DayHeaderPeeks` renders them
+   * before whatever the page adds.
    */
   actions?: React.ReactNode;
 };
 
 /**
- * The top of the Today page: which day this is, how it is going, and how the week
- * has gone so far.
- *
- * This inverts what was here before. The date was `bodyMedium` at 85% opacity
- * next to a 15pt refresh glyph — the quietest thing on a screen whose whole
- * premise is *which day is this and what have I done today*, while the tracker
- * rows shouted. Now the day is set in the display face at 28pt and the rest of
- * the screen stays deliberately flat underneath it.
+ * The top of a page that shows a day. One line carries the date in the display
+ * face, small enough to leave the page to its rows, with the weather chip, the
+ * calendar glyph and the page's own buttons at its end. Under it goes whatever
+ * the page says about the day: a `meta` line in words, or its own node.
  */
-export default function DayHeader({
-  now,
-  meta = null,
-  week = [],
-  weekLabel,
-  actions,
-}: Props) {
+export default function DayHeader({ now, meta = null, children, actions }: Props) {
   const theme = useTheme();
   const { t } = useTranslation('home');
   const date = formatShortDate(currentAppCalendarDate(now));
@@ -88,9 +77,7 @@ export default function DayHeader({
         </View>
       ) : null}
 
-      {week.length > 0 && weekLabel ? (
-        <WeekStrip days={week} accessibilityLabel={weekLabel} />
-      ) : null}
+      {children}
     </View>
   );
 }

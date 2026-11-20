@@ -208,6 +208,7 @@ export {
 } from './activeTimerSession';
 export {
   completedDaysInWeekBefore,
+  daysBetween,
   isScheduleActiveOnDate,
   isScheduleDueOnDate,
   weekStartDateString,

@@ -1,7 +1,7 @@
 /**
  * How tall a Home page is.
  *
- * The five pages sit side by side inside a horizontal ScrollView, and a
+ * The three pages sit side by side inside a horizontal ScrollView, and a
  * ScrollView will not give its children a cross-axis size — so each page is
  * handed an explicit height, measured at runtime.
  *
@@ -28,8 +28,7 @@ jest.mock('@react-navigation/native', () => ({
     const { useEffect } = jest.requireActual<typeof import('react')>('react');
     useEffect(effect, [effect]);
   },
-  useNavigation: () => ({ navigate: () => {}, setParams: () => {} }),
-  useRoute: () => ({ params: undefined }),
+  useNavigation: () => ({ navigate: () => {} }),
   useIsFocused: () => true,
 }));
 
@@ -47,11 +46,6 @@ jest.mock('../src/screens/TodayScreen', () => ({
   default: () => null,
 }));
 jest.mock('../src/screens/JournalScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/CalendarScreen', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/screens/ReviewScreen', () => ({
-  __esModule: true,
-  default: () => null,
-}));
 jest.mock('../src/screens/settings/MoreScreen', () => ({
   __esModule: true,
   default: () => null,
@@ -79,7 +73,7 @@ function render(): ReactTestRenderer {
   return tree;
 }
 
-/** The horizontal pager the five pages live in. */
+/** The horizontal pager the pages live in. */
 function pagerOf(tree: ReactTestRenderer) {
   return tree.root.find(
     (node) => node.props.horizontal === true && node.props.pagingEnabled === true,
@@ -116,7 +110,7 @@ describe('the height a Home page is given', () => {
     });
 
     const heights = pageHeights(tree);
-    expect(heights).toHaveLength(5);
+    expect(heights).toHaveLength(3);
     for (const height of heights) expect(height).toBe(PAGER_HEIGHT);
 
     act(() => {

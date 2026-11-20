@@ -13,31 +13,21 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
-import {
-  useFocusEffect,
-  useNavigation,
-  useRoute,
-  type RouteProp,
-} from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '../hooks/useAppTheme';
 import { useDayRolloverRefresh } from '../hooks/useDayRolloverRefresh';
 import { useTodayNotebooks } from '../hooks/useTodayNotebooks';
-import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost } from '../notes';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWeatherStore } from '../store/weatherStore';
-import CalendarScreen from './CalendarScreen';
 import JournalScreen from './JournalScreen';
 import MoreScreen from './settings/MoreScreen';
 import { HomePagerContext, type HomePagerContextValue } from './home/HomePagerContext';
 import {
-  HOME_DOCK_ITEMS,
   HOME_PAGES_AT_START,
+  HOME_TAB_ORDER,
   homeBackTarget,
   homePagesAfterDragStart,
   homePagesAfterVisit,
@@ -46,17 +36,20 @@ import {
   type HomeTab,
 } from './home/homePager';
 import { loadHomeStartTab, saveHomeTab } from './home/homeLastTab';
-import ReviewScreen from './ReviewScreen';
 import TodayScreen from './TodayScreen';
 import { space } from '../theme/spacing';
 import { typeScale } from '../theme/typography';
 
 /**
- * How far a dock label follows the system font. One of the few capped texts:
- * five words share one row whose width is the screen's, so past this they
- * could only collide. The label shrinks to its slot and stays on one line.
+ * How far a dock word follows the system font. One of the few capped texts:
+ * the words share one row whose width is the screen's, so past this they
+ * could only collide. The word shrinks to its slot and stays on one line.
  */
 const DOCK_LABEL_MAX_FONT_SCALE = 1.3;
+
+/** The dash under the current page's word. */
+const DOCK_DASH_WIDTH = 18;
+const DOCK_DASH_HEIGHT = 3;
 
 /** Throttle GPS refresh so foregrounding doesn't spam location. */
 const GPS_REFRESH_MIN_MS = 3 * 60 * 60 * 1000;
@@ -96,7 +89,6 @@ function HomePagerPage({
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation('home');
-  const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width: pageWidth } = useWindowDimensions();
   const pagerRef = useRef<ScrollView>(null);
@@ -121,8 +113,6 @@ export default function HomeScreen() {
   const [trackerDragActive, setTrackerDragActive] = useState(false);
   /** A page's own sideways scroller has the finger — hold the pager still. */
   const [innerSwipeActive, setInnerSwipeActive] = useState(false);
-  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
   const weatherWidgetEnabled = useSettingsStore((s) => s.weatherWidgetEnabled);
   const weatherLocationMode = useSettingsStore((s) => s.weatherLocationMode);
   const refreshWeather = useWeatherStore((s) => s.refresh);
@@ -176,8 +166,6 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [weatherWidgetEnabled, weatherLocationMode, refreshWeather]);
 
-  const activeColor = palette.accent;
-  const quietColor = theme.colors.onSurfaceVariant;
   const topInset =
     insets.top > 0
       ? insets.top
@@ -234,26 +222,9 @@ export default function HomeScreen() {
     saveHomeTab(tab);
   }, [tab]);
 
-  /**
-   * A pushed screen sent the user to a page (`useGoToHomeTab`): it popped back
-   * to Home with the page in the route params. Go there, then clear the param
-   * so coming back to Home later does not go there again.
-   */
-  const requestedTab = route.params?.tab;
-  useEffect(() => {
-    if (requestedTab == null) return;
-    startTabApplied.current = true;
-    scrollToTab(requestedTab, false);
-    navigation.setParams({ tab: undefined });
-  }, [requestedTab, scrollToTab, navigation]);
-
   const pager = useMemo<HomePagerContextValue>(
-    () => ({
-      activeTab: tab,
-      goToTab: (next) => scrollToTab(next),
-      setSwipeLocked: setInnerSwipeActive,
-    }),
-    [tab, scrollToTab],
+    () => ({ setSwipeLocked: setInnerSwipeActive }),
+    [],
   );
 
   // Keep pager aligned if window width changes (rotation / fold).
@@ -262,9 +233,9 @@ export default function HomeScreen() {
   }, [pageWidth]);
 
   /**
-   * Hardware back. More swipes back to the page it was opened from; the other
-   * pages step back to Today; only Today falls through to the navigator and
-   * leaves the app. Back from a pushed screen (Trackers, Food…) still pops it:
+   * Hardware back. More swipes back to the page it was opened from; the
+   * Journal steps back to Today; only Today falls through to the navigator and
+   * leaves the app. Back from a pushed screen (Calendar, Review…) still pops it:
    * this listener is registered only while Home is the focused screen, and a
    * later listener is asked first, so returning false hands the press straight
    * back.
@@ -326,12 +297,6 @@ export default function HomeScreen() {
             <HomePagerPage active={tab === 'journal'} width={pageWidth} height={pagerHeight}>
               {mountedPages.has('journal') ? <JournalScreen active={tab === 'journal'} /> : null}
             </HomePagerPage>
-            <HomePagerPage active={tab === 'calendar'} width={pageWidth} height={pagerHeight}>
-              {mountedPages.has('calendar') ? <CalendarScreen /> : null}
-            </HomePagerPage>
-            <HomePagerPage active={tab === 'review'} width={pageWidth} height={pagerHeight}>
-              {mountedPages.has('review') ? <ReviewScreen active={tab === 'review'} /> : null}
-            </HomePagerPage>
             <HomePagerPage active={tab === 'more'} width={pageWidth} height={pagerHeight}>
               {mountedPages.has('more') ? <MoreScreen /> : null}
             </HomePagerPage>
@@ -349,10 +314,9 @@ export default function HomeScreen() {
             },
           ]}
         >
-          {HOME_DOCK_ITEMS.map(({ value, labelKey, icon, activeIcon }) => {
+          {HOME_TAB_ORDER.map((value) => {
             const active = tab === value;
-            const color = active ? activeColor : quietColor;
-            const label = t(labelKey);
+            const label = t(`dock.${value}`);
             return (
               <Pressable
                 key={value}
@@ -362,9 +326,14 @@ export default function HomeScreen() {
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={label}
               >
-                <MaterialCommunityIcons name={active ? activeIcon : icon} size={24} color={color} />
                 <Text
-                  style={[typeScale.caption, styles.dockLabel, { color }]}
+                  style={[
+                    typeScale.dockWord,
+                    styles.dockLabel,
+                    active
+                      ? [styles.dockLabelActive, { color: theme.colors.onSurface }]
+                      : { color: theme.colors.onSurfaceVariant },
+                  ]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}
@@ -372,6 +341,10 @@ export default function HomeScreen() {
                 >
                   {label}
                 </Text>
+                {/* Always laid out, so the word does not move when its page is chosen. */}
+                <View
+                  style={[styles.dockDash, active && { backgroundColor: theme.colors.primary }]}
+                />
               </Pressable>
             );
           })}
@@ -399,23 +372,28 @@ const styles = StyleSheet.create({
   dock: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: space.xs,
-    // Tight to the edges: the widest label needs every point of its slot.
     paddingHorizontal: space.xs,
   },
   dockItem: {
     flex: 1,
-    // Lets the label shrink to the slot instead of widening it.
+    // Lets the word shrink to the slot instead of widening it.
     minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: space.xxs,
-    paddingTop: space.sm,
-    paddingBottom: space.xs,
+    gap: space.xs,
     minHeight: 48,
   },
   dockLabel: {
     alignSelf: 'stretch',
     textAlign: 'center',
+  },
+  dockLabelActive: {
+    fontWeight: '500',
+  },
+  dockDash: {
+    width: DOCK_DASH_WIDTH,
+    height: DOCK_DASH_HEIGHT,
+    // Geometric: half the height is what makes it a capsule.
+    borderRadius: DOCK_DASH_HEIGHT / 2,
   },
 });

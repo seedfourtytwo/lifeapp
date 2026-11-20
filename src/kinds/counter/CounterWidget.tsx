@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { EditorSheet, FilledField } from '../../components/sheet';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import { space } from '../../theme/spacing';
 import { typeScale } from '../../theme/typography';
 import { type CounterConfig } from '../../protocol';
@@ -12,13 +13,17 @@ import { NoteIconButton } from '../../notes/NoteIconButton';
 import type { WidgetProps } from '../types';
 import TrackerCard from '../TrackerCard';
 import { trackerCardStyles as cardStyles } from '../trackerCardStyles';
+import { TrackerCardFigure } from '../TrackerCardFigure';
 import { TrackerCardTitle } from '../TrackerCardTitle';
 import { trackerCardTitleInteractions } from '../trackerCardTitleInteractions';
 import { counterCardCaption } from './counterCardLabels';
 import { skipTodayBubbles } from '../skipTodayBubble';
+import { rowKindColour } from '../rowKind';
 import { notify } from '../../components/sheet/confirm';
 
 const NOTE_ICON_SIZE = 24;
+/** The steps drawn in the row's capsule, as on the widget; any more wait in the tray. */
+const CAPSULE_STEPS = 2;
 
 export function CounterWidget({
   element,
@@ -42,6 +47,7 @@ export function CounterWidget({
   reorderHint,
 }: WidgetProps<CounterConfig>) {
   const theme = useTheme();
+  const { decorations: deco, palette } = useAppTheme();
   const { t } = useTranslation('trackers');
   const { t: tCommon } = useTranslation('common');
   const [editVisible, setEditVisible] = useState(false);
@@ -51,17 +57,13 @@ export function CounterWidget({
 
   const dailyTarget = config.dailyTarget;
   const hasTarget = dailyTarget !== undefined && dailyTarget > 0;
-  const progress = hasTarget ? todayTotal / dailyTarget : 0;
   const isComplete = hasTarget && todayTotal >= dailyTarget;
   const caption = counterCardCaption(config, { streak, score, skipped: skipped && !isComplete });
 
-  const increments = config.quickIncrements;
-  const primaryIncrement = increments[0];
-  const extraIncrements = increments.slice(1);
+  const capsuleIncrements = config.quickIncrements.slice(0, CAPSULE_STEPS);
+  const extraIncrements = config.quickIncrements.slice(CAPSULE_STEPS);
 
   const countText = hasTarget ? `${todayTotal} / ${dailyTarget}` : `${todayTotal}`;
-
-  const metaColor = isComplete ? theme.colors.primary : theme.colors.onSurfaceVariant;
 
   const closeEdit = () => {
     if (saving) return;
@@ -103,12 +105,10 @@ export function CounterWidget({
     onLog?.(increment, { source: 'quick_button', increment });
   };
 
-  // A moss tint, not a solid slab: the +1 is the row's action, not its loudest thing.
-  const primaryBg = theme.colors.primaryContainer;
-  const primaryFg = theme.colors.primary;
+  const paint = palette.kind[rowKindColour({ kind: 'counter' })];
 
-  // Setting an exact total is a tap on the count, so the tray holds the other
-  // +N buttons and, with a daily target, Skip today.
+  // Setting an exact total is a tap on the count, so the tray holds the steps
+  // past the capsule's two and, with a daily target, Skip today.
   const bubbles = [
     ...extraIncrements.map((increment) => ({
       key: `inc-${increment}`,
@@ -128,9 +128,8 @@ export function CounterWidget({
         <View style={cardStyles.oneLineRow}>
           <TrackerCardTitle
             name={element.name}
+            kind={rowKindColour({ kind: 'counter' })}
             icon={config.icon}
-            progress={hasTarget ? progress : null}
-            complete={isComplete}
             caption={caption}
             {...trackerCardTitleInteractions({
               onOpenDetails,
@@ -153,12 +152,7 @@ export function CounterWidget({
               accessibilityLabel={countText}
               accessibilityHint={onSetDailyTotal ? t('counterWidget.tapCountToSetHint') : undefined}
             >
-              <Text
-                numberOfLines={1}
-                style={[cardStyles.timerLabel, { color: metaColor }]}
-              >
-                {countText}
-              </Text>
+              <TrackerCardFigure figure={countText} />
             </Pressable>
 
             <ActionBubbleTray
@@ -166,39 +160,48 @@ export function CounterWidget({
               onDismiss={() => setBubblesOpen(false)}
               bubbles={bubbles}
             >
-              <Pressable
-                onPress={() => logIncrement(primaryIncrement)}
-                onLongPress={
-                  canShowBubbles
-                    ? () => setBubblesOpen((open) => !open)
-                    : undefined
-                }
-                delayLongPress={350}
-                style={({ pressed }) => [
-                  styles.incrementHit,
-                  { backgroundColor: primaryBg },
-                  pressed && styles.pressed,
+              <View
+                style={[
+                  styles.capsule,
+                  { backgroundColor: paint.wash, borderRadius: deco.radius.pill },
                 ]}
-                accessibilityRole="button"
-                accessibilityLabel={t('counterWidget.addIncrementA11y', {
-                  count: primaryIncrement,
-                })}
-                accessibilityHint={
-                  extraIncrements.length > 0
-                    ? t('counterWidget.expandIncrementsHint')
-                    : canShowBubbles
-                      ? t('skip.longPressHint')
-                      : undefined
-                }
               >
-                <Text style={[styles.incrementLabel, { color: primaryFg }]}>
-                  +{primaryIncrement}
-                </Text>
-              </Pressable>
+                {capsuleIncrements.map((increment, index) => (
+                  <React.Fragment key={`${index}-${increment}`}>
+                    {index > 0 ? (
+                      <View
+                        style={[
+                          styles.rule,
+                          { width: deco.borderWidth, backgroundColor: paint.ink },
+                        ]}
+                      />
+                    ) : null}
+                    <Pressable
+                      onPress={() => logIncrement(increment)}
+                      onLongPress={
+                        canShowBubbles ? () => setBubblesOpen((open) => !open) : undefined
+                      }
+                      delayLongPress={350}
+                      style={({ pressed }) => [styles.step, pressed && styles.pressed]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('counterWidget.addIncrementA11y', { count: increment })}
+                      accessibilityHint={
+                        extraIncrements.length > 0
+                          ? t('counterWidget.expandIncrementsHint')
+                          : canShowBubbles
+                            ? t('skip.longPressHint')
+                            : undefined
+                      }
+                    >
+                      <Text style={[typeScale.timer, { color: paint.ink }]}>+{increment}</Text>
+                    </Pressable>
+                  </React.Fragment>
+                ))}
+              </View>
             </ActionBubbleTray>
 
             {/* Only once there is a note; a first one is added from the history. */}
-          {onDictateNote && hasTodayNote ? (
+            {onDictateNote && hasTodayNote ? (
               <NoteIconButton
                 hasNote
                 onPress={onDictateNote}
@@ -246,18 +249,21 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: 'center',
   },
-  incrementHit: {
-    minWidth: 56,
+  /** Both steps in one pill: two targets, one shape. */
+  capsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  step: {
+    minWidth: 44,
     minHeight: 44,
-    paddingHorizontal: space.md,
-    // Geometry: half the height makes it a pill.
-    borderRadius: 22,
+    paddingHorizontal: space.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  incrementLabel: {
-    ...typeScale.data,
-    fontSize: 17,
+  /** The short rule between the two steps. */
+  rule: {
+    height: 20,
   },
   pressed: {
     transform: [{ scale: 0.94 }],

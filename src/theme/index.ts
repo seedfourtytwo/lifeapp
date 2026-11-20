@@ -1,6 +1,6 @@
 export { appLightTheme, appDarkTheme, getAppTheme } from './themes';
 export { getThemeDecorations, type ThemeDecorations } from './decorations';
-export { getAppPalette, type AppPalette } from './palette';
+export { getAppPalette, type AppPalette, type KindColour, type KindPaint } from './palette';
 export {
   THEME_MODES,
   THEME_MODE_OPTIONS,

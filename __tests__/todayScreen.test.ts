@@ -6,12 +6,13 @@
  */
 import React from 'react';
 import TestRenderer, { act, type ReactTestRenderer } from 'react-test-renderer';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 
 // Nothing here reads SQLite: the stores are seeded, and the glances that query
-// it (the strip, the note icons) are written to stay empty when it fails.
+// it (the note icons) are written to stay empty when it fails.
 jest.mock('../src/db/client', () => ({
   getDatabase: jest.fn(async () => {
     throw new Error('no database in this test');
@@ -110,7 +111,7 @@ function labels(node: Node | Node[], found: string[] = []): string[] {
   return found;
 }
 
-async function renderToday(): Promise<Node[]> {
+async function mountToday(): Promise<ReactTestRenderer> {
   let tree!: ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
@@ -138,6 +139,11 @@ async function renderToday(): Promise<Node[]> {
       ),
     );
   });
+  return tree;
+}
+
+async function renderToday(): Promise<Node[]> {
+  const tree = await mountToday();
   const json = tree.toJSON();
   const nodes = (Array.isArray(json) ? json : [json]) as Node[];
   await act(async () => {
@@ -209,7 +215,9 @@ describe('TodayScreen', () => {
     expect(at).not.toContain(-1);
     expect(at).toEqual([...at].sort((a, b) => a - b));
     // Three habits, a targeted counter, three open todos and one ticked: 2 of 8.
-    expect(shown).toContain('2 of 8 done');
+    const tally = positions(shown, ['2', ' / 8']);
+    expect(tally).not.toContain(-1);
+    expect(tally[1]).toBe(tally[0] + 1);
   });
 
   it('writes what is done on the page: a mark that takes it back, and no streak', async () => {
@@ -233,24 +241,47 @@ describe('TodayScreen', () => {
     expect(marks).toContain('Run, Undo skip');
     expect(marks).toContain('Mark Already ticked not done');
     // Under the heading there are names and nothing else — no streak caption.
-    const shown = texts(nodes);
+    // Each row's tile and mark draw an icon-font glyph, which is not a word.
+    const glyph = /^[\u{E000}-\u{F8FF}\u{F0000}-\u{FFFFD}]$/u;
+    const shown = texts(nodes).filter((text) => !glyph.test(text));
     expect(shown.slice(shown.indexOf('Done') + 1)).toEqual(['Read', 'Run', 'Already ticked']);
   });
 
-  it('sums the week up in a sentence, today read live', async () => {
+  it('draws the day as one segment per item due, and says it in a sentence', async () => {
     const read = element('habit', 'Read');
-    seedElements([read, element('habit', 'Stretch')]);
-    useEventStore.setState({ habitDoneToday: { [read.id]: true }, dailyTotals: { [read.id]: 1 } });
+    seedElements([read, element('habit', 'Stretch'), element('habit', 'Run')]);
+    useEventStore.setState({
+      habitDoneToday: { [read.id]: true },
+      dailyTotals: { [read.id]: 1 },
+      habitStreaks: { [read.id]: 12 },
+    });
 
-    const spoken = labels(await renderToday()).find((label) => label.startsWith('This week'));
+    const tree = await mountToday();
+    const line = tree.root.find(
+      (node) => typeof node.type === 'string' && node.props.accessibilityLabel === '1 of 3 done',
+    );
 
-    expect(spoken).toMatch(/Today: 1 of 2 trackers\.$/);
+    expect(line.props.accessibilityRole).toBe('button');
+    expect(line.props.accessibilityHint).toBe('Opens Review');
+    // One piece per habit due.
+    const pieces = line.findAll((node) => {
+      if (typeof node.type !== 'string' || node.type !== 'View') return false;
+      const style = StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {};
+      return style.flex === 1 && style.height != null;
+    });
+    expect(pieces.length).toBe(3);
+    // The best run is each row's to tell, not the header's.
+    const header = texts(tree.toJSON() as Node[]);
+    expect(header.slice(0, header.indexOf('Read'))).not.toContain('12 days in a row');
+    await act(async () => {
+      tree.unmount();
+    });
   });
 
-  it('draws no week without a tracker to fill it', async () => {
-    const spoken = labels(await renderToday()).filter((label) => label.startsWith('This week'));
+  it('draws no progress line when nothing is due', async () => {
+    const marks = labels(await renderToday());
 
-    expect(spoken).toEqual([]);
+    expect(marks.filter((label) => / of \d+ done$/.test(label))).toEqual([]);
   });
 
   it('pins a habit the widget is timing under Now, and says where it runs', async () => {
@@ -303,6 +334,17 @@ describe('TodayScreen', () => {
     expect(shown).toContain('No habits or counters yet. Add one to start your daily list.');
     expect(shown).toContain('Open Trackers');
     expect(shown).toContain('Renew passport');
+  });
+
+  it('writes the add-a-todo line under the open todos, so a new one lands just above it', async () => {
+    seedElements([element('habit', 'Stretch')]);
+    useTodoStore.setState({ todos: [todo('Call the plumber'), todo('Buy stamps')] });
+
+    const all = labels(await renderToday());
+    const at = (text: string) => all.findIndex((label) => label.includes(text));
+    expect(at('Call the plumber')).toBeGreaterThan(-1);
+    expect(at('Buy stamps')).toBeGreaterThan(at('Call the plumber'));
+    expect(at('Add a todo')).toBeGreaterThan(at('Buy stamps'));
   });
 
   it('says a dated todo is due on its row, since no heading does', async () => {

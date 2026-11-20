@@ -99,7 +99,7 @@ describe('text that cannot reflow caps its own scaling', () => {
     let tree!: ReactTestRenderer;
     act(() => {
       tree = TestRenderer.create(
-        React.createElement(TrackerCardTitle, { name: 'Read', caption: { text: '41 days in a row', a11y: '41 days in a row' } }),
+        React.createElement(TrackerCardTitle, { name: 'Read', kind: 'tick', caption: { text: '41 days in a row', a11y: '41 days in a row' } }),
       );
     });
     // It sits on its own line under the name, where growing is fine.

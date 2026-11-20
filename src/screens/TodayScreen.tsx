@@ -8,17 +8,15 @@ import { useTranslation } from 'react-i18next';
 import QuietText from '../components/QuietText';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAppCalendarNow } from '../hooks/useAppCalendarNow';
-import { useRecentActivity } from '../hooks/useRecentActivity';
 import { refreshAllDailyData } from '../hooks/refreshAllDailyData';
 import type { RootStackParamList } from '../navigation/types';
 import { NoteEditorHost } from '../notes';
-import { TODO_SECTIONS, weekStartDateString, type ElementDefinition } from '../protocol';
+import { TODO_SECTIONS, type ElementDefinition } from '../protocol';
 import { useElementStore } from '../store/elementStore';
-import { useEventStore } from '../store/eventStore';
 import { space } from '../theme/spacing';
 import { currentAppCalendarDate } from '../utils/dayRollover';
 import DayHeader from './shared/DayHeader';
-import { todayHeaderMeta } from './shared/dayHeaderMeta';
+import DayProgress from './shared/DayProgress';
 import { DraggableTrackerList } from './shared/DraggableTrackerList';
 import EmptyTabState from './shared/EmptyTabState';
 import HomeTabLoadingPane from './shared/HomeTabLoadingPane';
@@ -34,7 +32,6 @@ import { useTodayHabits } from './today/useTodayHabits';
 import { useTodayRows } from './today/useTodayRows';
 import { useTodayTodos } from './today/useTodayTodos';
 import { useUndoBar } from './today/useUndoBar';
-import { buildWeekActivity, weekSummary } from './today/weekActivity';
 import TodoEditorSheet from './todos/TodoEditorSheet';
 import TodoQuickAdd from './todos/TodoQuickAdd';
 
@@ -44,7 +41,7 @@ type Props = HomeTrackerTabProps;
  * Today: the whole day as one list, in the widget's order — what is running
  * now, the habits still to do, the counters, the todos, then what is done.
  *
- * The order and the header's "x of y done" come from `buildTodayModel`, which
+ * The order and the header's done-of-due come from `buildTodayModel`, which
  * mirrors the widget's `TodayRules.buildToday`. This file only lays the model
  * out; the hooks beside it own the stores, the callbacks and the rows.
  */
@@ -77,6 +74,8 @@ export default function TodayScreen({
 
   const [scrollLocked, setScrollLocked] = useState(false);
   const scrollRef = useRef<HomeTabScrollViewHandle>(null);
+  const quickAddRef = useRef<View>(null);
+  const [quickAddFocused, setQuickAddFocused] = useState(false);
 
   const { settle: settleUndo, offer: offerUndo } = undoBar;
   useEffect(() => {
@@ -98,36 +97,10 @@ export default function TodayScreen({
     [habits.facts, counters.facts, todos.open, todos.doneToday, today],
   );
 
-  // The week strip and the note icons cover every active tracker, not only the
-  // ones due today: a habit scheduled twice a week still counts towards a day.
+  // The note icons cover every active tracker, not only the ones due today.
   const trackerIds = useMemo(
     () => [...habits.activeIds, ...counters.activeIds],
     [habits.activeIds, counters.activeIds],
-  );
-  const loggedByDate = useRecentActivity(trackerIds, weekStartDateString(today));
-  // Today's column is read live, as a number: it moves on the tick that
-  // changes it and on no other.
-  const loggedToday = useEventStore((s) =>
-    trackerIds.reduce((count, id) => ((s.dailyTotals[id] ?? 0) > 0 ? count + 1 : count), 0),
-  );
-  const week = useMemo(
-    () =>
-      buildWeekActivity({
-        today,
-        trackerCount: trackerIds.length,
-        loggedByDate,
-        loggedToday,
-      }),
-    [today, trackerIds.length, loggedByDate, loggedToday],
-  );
-  const weekLabel = useMemo(
-    () =>
-      t('dayHeader.weekA11y', {
-        ...weekSummary(week),
-        logged: loggedToday,
-        total: trackerIds.length,
-      }),
-    [week, loggedToday, trackerIds.length, t],
   );
   const { notesToday, reloadNotesToday, noteEditor } = useHomeTrackerNotes({
     elementIds: trackerIds,
@@ -136,16 +109,6 @@ export default function TodayScreen({
     notesActive,
     onTrackerNotesOpenChange,
   });
-
-  /**
-   * "3 of 9 done" and "41 days in a row". The run shown is the best one going,
-   * because the header answers "how am I doing", not "how is each one doing".
-   */
-  const bestStreak = Math.max(habits.bestStreak, counters.bestStreak);
-  const headerMeta = useMemo(
-    () => todayHeaderMeta({ due: model.due, done: model.done, bestStreak }),
-    [model.due, model.done, bestStreak],
-  );
 
   // Stable callbacks for the memoised cards; the latest values ride on a ref.
   const latest = useRef({
@@ -265,6 +228,8 @@ export default function TodayScreen({
         scrollLocked={scrollLocked}
         contentContainerStyle={homeTabScreenStyles.container}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        keyboardField={quickAddFocused ? quickAddRef : null}
       >
         {elementError || todos.loadFailed ? (
           <View style={homeTabScreenStyles.errorBox}>
@@ -277,13 +242,13 @@ export default function TodayScreen({
           </View>
         ) : null}
 
-        <DayHeader
-          now={now}
-          meta={headerMeta}
-          week={week}
-          weekLabel={weekLabel}
-          actions={headerActions}
-        />
+        <DayHeader now={now} actions={headerActions}>
+          <DayProgress
+            done={model.done}
+            due={model.due}
+            onPress={() => navigation.navigate('Review')}
+          />
+        </DayHeader>
 
         {emptyMessage ? (
           <View style={styles.emptyState}>
@@ -322,30 +287,39 @@ export default function TodayScreen({
           <SectionLabel first={todosLead}>{t('today.todos')}</SectionLabel>
         ) : null}
         <View style={!model.labels.todos && !todosLead ? styles.unlabelledSection : undefined}>
-          <TodoQuickAdd
-            value={todos.draftTitle}
-            onChangeText={todos.setDraftTitle}
-            onSubmit={todos.submitDraft}
-            // The editor sits on top of this field with a mic of its own; only
-            // one take can be open at a time, so this one stands down.
-            dictationActive={!todos.editorOpen}
-          />
+          {/* One list per due-group, back to back: a drag stays inside its group,
+              and each row already says when it is due. All four are always
+              mounted, so a group's last todo can still fade out of it. */}
+          {TODO_SECTIONS.map((section) => (
+            <DraggableTrackerList
+              key={section}
+              itemIds={model.todoGroups.find((group) => group.section === section)?.ids ?? NO_IDS}
+              scrollRef={scrollRef}
+              onDragActiveChange={handleDragActiveChange}
+              // Only this group's ids move, so the write reuses their own
+              // sort_order slots and leaves every other group untouched.
+              onReorder={todos.reorder}
+              renderItem={renderOpenTodo}
+            />
+          ))}
+          {/* Under the rows: a todo filed from it lands just above, in view
+              over the keyboard. */}
+          <View
+            ref={quickAddRef}
+            // Measured against the keyboard, so it has to exist as a native view.
+            collapsable={false}
+          >
+            <TodoQuickAdd
+              value={todos.draftTitle}
+              onChangeText={todos.setDraftTitle}
+              onSubmit={todos.submitDraft}
+              // The editor sits on top of this field with a mic of its own; only
+              // one take can be open at a time, so this one stands down.
+              dictationActive={!todos.editorOpen}
+              onFocusChange={setQuickAddFocused}
+            />
+          </View>
         </View>
-        {/* One list per due-group, back to back: a drag stays inside its group,
-            and each row already says when it is due. All four are always
-            mounted, so a group's last todo can still fade out of it. */}
-        {TODO_SECTIONS.map((section) => (
-          <DraggableTrackerList
-            key={section}
-            itemIds={model.todoGroups.find((group) => group.section === section)?.ids ?? NO_IDS}
-            scrollRef={scrollRef}
-            onDragActiveChange={handleDragActiveChange}
-            // Only this group's ids move, so the write reuses their own
-            // sort_order slots and leaves every other group untouched.
-            onReorder={todos.reorder}
-            renderItem={renderOpenTodo}
-          />
-        ))}
 
         {model.labels.done ? <SectionLabel>{t('today.done')}</SectionLabel> : null}
         {model.doneHabits.map((id) => (

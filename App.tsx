@@ -31,11 +31,14 @@ import { useHabitReminderSync } from './src/hooks/useHabitReminderSync';
 import { useWidgetSync } from './src/hooks/useWidgetSync';
 import { useAppTheme } from './src/hooks/useAppTheme';
 import { useSettingsStore } from './src/store/settingsStore';
-import { getAppTheme } from './src/theme';
+import { appDarkTheme, appLightTheme, getAppTheme } from './src/theme';
 
+/** Navigation paints its own ground behind a screen in transit; it takes the app's, not Material's. */
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavigationDefaultTheme,
   reactNavigationDark: NavigationDarkTheme,
+  materialLight: appLightTheme,
+  materialDark: appDarkTheme,
 });
 
 function ThemedApp() {

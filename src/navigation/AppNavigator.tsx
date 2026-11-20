@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { useStackScreenOptions } from './useStackScreenOptions';
 import HomeScreen from '../screens/HomeScreen';
+import CalendarScreen from '../screens/CalendarScreen';
+import ReviewRoute from '../screens/ReviewRoute';
 import TrackersScreen from '../screens/TrackersScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import IngredientEditorScreen from '../screens/IngredientEditorScreen';
@@ -27,6 +29,16 @@ export default function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: t('settings:menu.calendarTitle') }}
+      />
+      <Stack.Screen
+        name="Review"
+        component={ReviewRoute}
+        options={{ title: t('settings:menu.reviewTitle') }}
       />
       <Stack.Screen
         name="Trackers"

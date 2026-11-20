@@ -9,7 +9,7 @@ export type NoteSharePalette = {
   idle: string;
 };
 
-/** Amber that meets contrast on light surfaces / dark slate. */
+/** Amber that meets contrast on the day and the evening surfaces. */
 export const NOTE_SHARE_STALE_LIGHT = '#B45309';
 export const NOTE_SHARE_STALE_DARK = '#EAB308';
 

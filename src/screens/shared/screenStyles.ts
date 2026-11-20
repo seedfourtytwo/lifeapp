@@ -6,7 +6,7 @@ export const homeTabScreenStyles = StyleSheet.create({
   container: {
     paddingHorizontal: layout.gutter,
     paddingTop: space.md,
-    paddingBottom: space.lg,
+    paddingBottom: space.xl,
     flexGrow: 1,
   },
   centered: {

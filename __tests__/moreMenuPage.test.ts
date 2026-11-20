@@ -96,9 +96,18 @@ describe('the More page', () => {
     }
   });
 
-  it('no longer lists the places the dock already reaches', () => {
+  it('leads with Calendar and Review, which have no word in the dock', () => {
+    const tree = renderMorePage();
+    const titles = tree.root.findAllByType(SettingsRow).map((row) => row.props.title);
+    expect(titles.slice(0, 2)).toEqual(['Calendar', 'Review']);
+    act(() => {
+      tree.unmount();
+    });
+  });
+
+  it('does not list the places the dock already reaches', () => {
     const found = morePageTexts();
-    for (const row of ['Insights', 'Journal', 'Calendar', 'Settings']) {
+    for (const row of ['Insights', 'Today', 'Journal', 'Settings']) {
       expect(found).not.toContain(row);
     }
   });

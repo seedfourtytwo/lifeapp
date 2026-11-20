@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * The top of a Home page that is not a day: Journal, Calendar, Review, More.
+ * The top of a Home page that is not a day: Journal, More.
  *
  * It is the day header's title row with a name in place of the date — the same
  * floor, the same edges, the display face — so swiping between pages does not

@@ -21,8 +21,8 @@ type Props = {
  * It renders the real day header, not a placeholder: the date and the header
  * buttons are known before any tracker or food data is, so showing them
  * immediately means the top of the screen is already correct and nothing
- * shifts when the rest lands. Only the meta line and the strip wait, and both
- * are optional. The pane itself reads nothing — every action it shows was
+ * shifts when the rest lands. Only the line under the date waits, and it is
+ * optional. The pane itself reads nothing — every action it shows was
  * decided by the tab.
  */
 export default function HomeTabLoadingPane({ actions }: Props) {

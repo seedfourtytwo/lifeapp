@@ -1,11 +1,11 @@
 /**
- * Review's headline: completion over the range, the comparison with the window
- * before, the tracker that slipped most, and the perfect case.
+ * Review's headline: the period each range covers, completion over it, the
+ * comparison with the period before, and the perfect case.
  */
 import { shiftDateString, trackerDayHistory, type HabitSchedule } from '../src/protocol';
 import {
   completionRate,
-  REVIEW_RANGE_DAYS,
+  reviewPeriod,
   reviewSummary,
   reviewWindowDates,
   type ReviewDayState,
@@ -32,6 +32,13 @@ const days = (from: number, to: number) => {
   for (let o = from; o <= to; o++) out.push(o);
   return out;
 };
+/** A period of `length` days ending today, with the same length before it. */
+const rolling = (length: number) => ({
+  days: reviewWindowDates(TODAY, length),
+  previous: reviewWindowDates(TODAY, length, 1),
+});
+const WEEK = rolling(7);
+const MONTH = rolling(30);
 const states = (...list: ReviewDayState[]) => list.map((state, i) => ({ date: `2026-11-${10 + i}`, state }));
 
 describe('completionRate', () => {
@@ -56,7 +63,7 @@ describe('reviewWindowDates', () => {
   });
 
   it('crosses a year boundary', () => {
-    const year = reviewWindowDates('2027-01-03', REVIEW_RANGE_DAYS.year);
+    const year = reviewWindowDates('2027-01-03', 365);
     expect(year).toHaveLength(365);
     expect(year[0]).toBe('2026-01-04');
     expect(year).toContain('2026-12-31');
@@ -64,13 +71,53 @@ describe('reviewWindowDates', () => {
   });
 });
 
+describe('reviewPeriod', () => {
+  it('is the Monday–Sunday week holding today, and the week before', () => {
+    const { days, previous } = reviewPeriod('week', TODAY);
+    expect(days).toEqual(reviewWindowDates('2026-11-22', 7));
+    expect(days[0]).toBe('2026-11-16');
+    expect(previous).toEqual(reviewWindowDates('2026-11-15', 7));
+  });
+
+  it('is the calendar month holding today, and the whole month before', () => {
+    const { days, previous } = reviewPeriod('month', TODAY);
+    expect(days).toHaveLength(30);
+    expect([days[0], days[29]]).toEqual(['2026-11-01', '2026-11-30']);
+    expect(previous).toHaveLength(31);
+    expect([previous[0], previous[30]]).toEqual(['2026-10-01', '2026-10-31']);
+  });
+
+  it('steps back over a year end and a short February', () => {
+    expect(reviewPeriod('month', '2027-01-01').previous[0]).toBe('2026-12-01');
+    const march = reviewPeriod('month', '2027-03-31');
+    expect(march.days).toHaveLength(31);
+    expect(march.previous).toHaveLength(28);
+    expect(reviewPeriod('month', '2028-02-29').days).toHaveLength(29);
+  });
+
+  it('is 52 whole weeks ending with this one, and the 52 before', () => {
+    const { days, previous } = reviewPeriod('year', TODAY);
+    expect(days).toHaveLength(364);
+    expect([days[0], days[363]]).toEqual(['2025-11-24', '2026-11-22']);
+    expect(previous).toHaveLength(364);
+    expect([previous[0], previous[363]]).toEqual(['2024-11-25', '2025-11-23']);
+  });
+
+  it('holds today whatever the weekday', () => {
+    for (const today of ['2026-11-16', '2026-11-22', '2026-11-01', '2026-11-30']) {
+      for (const range of ['week', 'month', 'year'] as const) {
+        expect(reviewPeriod(range, today).days).toContain(today);
+      }
+    }
+  });
+});
+
 describe('reviewSummary', () => {
   it('is empty for no trackers', () => {
-    expect(reviewSummary({ trackers: [], range: 'week', today: TODAY })).toEqual({
+    expect(reviewSummary({ trackers: [], period: WEEK, today: TODAY })).toEqual({
       current: { done: 0, due: 0, rate: null },
       previous: { done: 0, due: 0, rate: null },
       comparison: 'none',
-      slipped: null,
       perfect: false,
     });
   });
@@ -79,7 +126,7 @@ describe('reviewSummary', () => {
     // current week: days 1–6 past; done 1–5. Previous week: days 7–13, done 7–9.
     const summary = reviewSummary({
       trackers: [habitDoneOn('a', [1, 2, 3, 4, 5, 7, 8, 9])],
-      range: 'week',
+      period: WEEK,
       today: TODAY,
     });
     expect(summary.current).toEqual({ done: 5, due: 6, rate: 5 / 6 });
@@ -93,15 +140,15 @@ describe('reviewSummary', () => {
       tracker: { id: 'c', rules: { kind: 'counter', config: { unit: 'x', quickIncrements: [1] } }, createdOn: null },
       history: trackerDayHistory([{ date: shiftDateString(TODAY, -1), complete: true, hasSkipRow: false }]),
     };
-    const summary = reviewSummary({ trackers: [counter], range: 'week', today: TODAY });
+    const summary = reviewSummary({ trackers: [counter], period: WEEK, today: TODAY });
     expect(summary.current).toEqual({ done: 0, due: 0, rate: null });
     expect(summary.perfect).toBe(false);
   });
 
   it('is perfect when every due day was done, and not when nothing was due', () => {
-    expect(reviewSummary({ trackers: [habitDoneOn('a', [0, 1, 2, 3, 4, 5, 6])], range: 'week', today: TODAY }).perfect).toBe(true);
+    expect(reviewSummary({ trackers: [habitDoneOn('a', [0, 1, 2, 3, 4, 5, 6])], period: WEEK, today: TODAY }).perfect).toBe(true);
     const allSkipped = habitDoneOn('a', [], days(0, 13));
-    const summary = reviewSummary({ trackers: [allSkipped], range: 'week', today: TODAY });
+    const summary = reviewSummary({ trackers: [allSkipped], period: WEEK, today: TODAY });
     expect(summary.current).toEqual({ done: 0, due: 0, rate: null });
     expect(summary.perfect).toBe(false);
     expect(summary.comparison).toBe('none');
@@ -118,7 +165,7 @@ describe('reviewSummary', () => {
         const p = share(previousDone, t);
         trackers.push(habitDoneOn(`t${t}`, [...days(0, c - 1), ...days(30, 30 + p - 1)]));
       }
-      const summary = reviewSummary({ trackers, range: 'month', today: TODAY });
+      const summary = reviewSummary({ trackers, period: MONTH, today: TODAY });
       expect([summary.current.due, summary.previous.due]).toEqual([300, 300]);
       return summary;
     };
@@ -139,53 +186,35 @@ describe('reviewSummary', () => {
         ...habitDoneOn('y', days(0, 6)),
         tracker: { ...habitDoneOn('y', []).tracker, createdOn: shiftDateString(TODAY, -createdAgo) },
       });
-      const two = reviewSummary({ trackers: [young(8)], range: 'week', today: TODAY });
+      const two = reviewSummary({ trackers: [young(8)], period: WEEK, today: TODAY });
       expect(two.previous.due).toBe(2);
       expect(two.comparison).toBe('none');
-      const three = reviewSummary({ trackers: [young(9)], range: 'week', today: TODAY });
+      const three = reviewSummary({ trackers: [young(9)], period: WEEK, today: TODAY });
       expect(three.previous.due).toBe(3);
       expect(three.comparison).toBe('up');
     });
   });
+});
 
-  describe('slipped', () => {
-    it('names the lowest-rate tracker with at least three due days', () => {
-      const summary = reviewSummary({
-        trackers: [habitDoneOn('good', days(0, 6)), habitDoneOn('bad', [1]), habitDoneOn('meh', [1, 2, 3])],
-        range: 'week',
-        today: TODAY,
-      });
-      expect(summary.slipped).toEqual({ trackerId: 'bad', done: 1, due: 6 });
+describe('reviewSummary over a calendar period', () => {
+  it('counts only the days up to today, against the whole period before', () => {
+    // Wednesday: Monday and Tuesday are past, today is open, the rest has not come.
+    const summary = reviewSummary({
+      trackers: [habitDoneOn('a', [1, 3, 4, 5])],
+      period: reviewPeriod('week', TODAY),
+      today: TODAY,
     });
+    expect(summary.current).toEqual({ done: 1, due: 2, rate: 1 / 2 });
+    expect(summary.previous).toEqual({ done: 3, due: 7, rate: 3 / 7 });
+  });
 
-    it('ignores a tracker with fewer than three due days', () => {
-      const fresh: ReviewTrackerData = {
-        ...habitDoneOn('fresh', []),
-        tracker: { ...habitDoneOn('fresh', []).tracker, createdOn: shiftDateString(TODAY, -2) },
-      };
-      const summary = reviewSummary({ trackers: [fresh, habitDoneOn('ok', [1, 2, 3, 4])], range: 'week', today: TODAY });
-      expect(summary.slipped).toEqual({ trackerId: 'ok', done: 4, due: 6 });
+  it('has nothing due on the first morning of a period', () => {
+    const monday = '2026-11-16';
+    const summary = reviewSummary({
+      trackers: [habitDoneOn('a', [3, 4])],
+      period: reviewPeriod('week', monday),
+      today: monday,
     });
-
-    it('is null when every qualifying tracker is at 80% or better', () => {
-      // Month: 30 days, today done → 30 due; 24 done = exactly 80%.
-      const at80 = habitDoneOn('a', days(0, 23));
-      expect(reviewSummary({ trackers: [at80], range: 'month', today: TODAY }).slipped).toBeNull();
-      const below = habitDoneOn('b', days(0, 22));
-      expect(reviewSummary({ trackers: [at80, below], range: 'month', today: TODAY }).slipped).toEqual({
-        trackerId: 'b',
-        done: 23,
-        due: 30,
-      });
-    });
-
-    it('breaks a tie by the user order', () => {
-      const summary = reviewSummary({
-        trackers: [habitDoneOn('first', [1, 2]), habitDoneOn('second', [3, 4])],
-        range: 'week',
-        today: TODAY,
-      });
-      expect(summary.slipped?.trackerId).toBe('first');
-    });
+    expect(summary.current).toEqual({ done: 0, due: 0, rate: null });
   });
 });

@@ -1,14 +1,7 @@
-import { shiftDateString } from '../protocol';
+import { shiftDateString, weekStartDateString } from '../protocol';
 import { isMissable, reviewDayStates, type ReviewDay, type ReviewTrackerData } from './dayStates';
 
 export type ReviewRange = 'week' | 'month' | 'year';
-
-/** Days in each rolling range, ending today. */
-export const REVIEW_RANGE_DAYS: Readonly<Record<ReviewRange, number>> = {
-  week: 7,
-  month: 30,
-  year: 365,
-};
 
 /** Done over due, where due = done + missed. `rate` (0–1) is null when nothing was due. */
 export interface CompletionRate {
@@ -19,27 +12,17 @@ export interface CompletionRate {
 
 export type ReviewComparison = 'up' | 'down' | 'same' | 'none';
 
-export interface ReviewSlipped {
-  trackerId: string;
-  done: number;
-  due: number;
-}
-
 export interface ReviewSummary {
   current: CompletionRate;
-  /** The window of equal length immediately before `current`. */
+  /** The period just before `current`. */
   previous: CompletionRate;
-  /** `none` when the window before had fewer than 3 due days; `same` within 1 point. */
+  /** `none` when the period before had fewer than 3 due days; `same` within 1 point. */
   comparison: ReviewComparison;
-  /** Lowest-rate tracker with ≥ 3 due days, unless every such tracker is at ≥ 80%. */
-  slipped: ReviewSlipped | null;
   /** Something was due and all of it was done. */
   perfect: boolean;
 }
 
 const MIN_DUE_TO_COMPARE = 3;
-const MIN_DUE_TO_SLIP = 3;
-const SLIPPED_BELOW = 0.8;
 /** Rates closer than this (one percentage point) read as the same. */
 const SAME_WITHIN = 0.01;
 
@@ -68,6 +51,46 @@ export function reviewWindowDates(today: string, length: number, windowsBack = 0
   return dates;
 }
 
+/** Week columns in a Year: GitHub's 52, the last of them this week. */
+export const REVIEW_YEAR_WEEKS = 52;
+const DAYS_IN_WEEK = 7;
+
+/** The days a range covers, and the period it is compared with. */
+export interface ReviewPeriod {
+  /** Every day the range draws, oldest first — the ones after today included. */
+  days: string[];
+  /** The whole period just before, oldest first. */
+  previous: string[];
+}
+
+/** The `count` dates from `first` on. */
+function datesFrom(first: string, count: number): string[] {
+  return Array.from({ length: count }, (_, offset) => shiftDateString(first, offset));
+}
+
+/** Every date of the calendar month holding `date`. */
+function monthDates(date: string): string[] {
+  const month = date.slice(0, 7);
+  const dates: string[] = [];
+  for (let day = `${month}-01`; day.startsWith(month); day = shiftDateString(day, 1)) dates.push(day);
+  return dates;
+}
+
+/**
+ * What each range means as of `today`: the Monday–Sunday week holding it
+ * against the week before; its calendar month against the month before; and
+ * the 52 weeks ending with this one against the 52 before those.
+ */
+export function reviewPeriod(range: ReviewRange, today: string): ReviewPeriod {
+  if (range === 'month') {
+    const days = monthDates(today);
+    return { days, previous: monthDates(shiftDateString(days[0], -1)) };
+  }
+  const length = range === 'week' ? DAYS_IN_WEEK : REVIEW_YEAR_WEEKS * DAYS_IN_WEEK;
+  const first = shiftDateString(weekStartDateString(today), DAYS_IN_WEEK - length);
+  return { days: datesFrom(first, length), previous: datesFrom(shiftDateString(first, -length), length) };
+}
+
 function compare(current: CompletionRate, previous: CompletionRate): ReviewComparison {
   if (previous.due < MIN_DUE_TO_COMPARE || current.rate === null || previous.rate === null) {
     return 'none';
@@ -79,41 +102,31 @@ function compare(current: CompletionRate, previous: CompletionRate): ReviewCompa
 }
 
 /**
- * The headline over `range` ending `today`, from trackers in the user's order.
- * Only trackers that can miss a day count (habits, counters with a target).
+ * The headline over `period` as of `today`, from trackers in the user's order.
+ * Only trackers that can miss a day count (habits, counters with a target),
+ * and only days up to today: one that has not come yet is not due.
  */
 export function reviewSummary(input: {
   trackers: readonly ReviewTrackerData[];
-  range: ReviewRange;
+  period: ReviewPeriod;
   today: string;
 }): ReviewSummary {
-  const { range, today } = input;
-  const length = REVIEW_RANGE_DAYS[range];
-  const currentDates = reviewWindowDates(today, length);
-  const previousDates = reviewWindowDates(today, length, 1);
-
+  const { period, today } = input;
   let current = rateOf(0, 0);
   let previous = rateOf(0, 0);
-  let slipped: ReviewSlipped | null = null;
-  let slippedRate = SLIPPED_BELOW;
 
   for (const { tracker, history } of input.trackers) {
     if (!isMissable(tracker.rules)) continue;
-    const now = completionRate(reviewDayStates(tracker, history, currentDates, today));
-    const before = completionRate(reviewDayStates(tracker, history, previousDates, today));
+    const now = completionRate(reviewDayStates(tracker, history, period.days, today));
+    const before = completionRate(reviewDayStates(tracker, history, period.previous, today));
     current = rateOf(current.done + now.done, current.due + now.due);
     previous = rateOf(previous.done + before.done, previous.due + before.due);
-    if (now.rate !== null && now.due >= MIN_DUE_TO_SLIP && now.rate < slippedRate) {
-      slipped = { trackerId: tracker.id, done: now.done, due: now.due };
-      slippedRate = now.rate;
-    }
   }
 
   return {
     current,
     previous,
     comparison: compare(current, previous),
-    slipped,
     perfect: current.due > 0 && current.rate === 1,
   };
 }
