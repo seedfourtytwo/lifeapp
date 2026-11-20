@@ -26,8 +26,10 @@ import { getDatabase } from '../db/client';
 import * as eventRepo from '../db/repositories/eventRepository';
 import {
   loadPersistedActiveTimerSessions,
+  loadWidgetTakenTimers,
   loadWidgetTimerSessions,
   persistActiveTimerSessions,
+  withoutTimersTakenByWidget,
 } from '../db/repositories/activeTimerRepository';
 import {
   loadHabitStreakForElement,
@@ -135,6 +137,11 @@ interface EventState extends ResettableMirror {
   hydrateActiveTimerSessions: () => Promise<void>;
   /** Re-read the widget's running timers. Never throws; a failed read keeps the last copy. */
   loadWidgetTimerSessions: () => Promise<void>;
+  /**
+   * Lets go of any timer the Android widget took over while the app was away,
+   * without logging it: the widget logs it. Resolves to the habits released.
+   */
+  releaseTimersTakenByWidget: () => Promise<string[]>;
   loadCounterTotals: (elementIds: string[]) => Promise<void>;
   loadCounterStreaks: (counters: CounterStreakInput[]) => Promise<void>;
   loadHabitDayState: (habits: HabitStreakInput[], date?: string) => Promise<void>;
@@ -461,8 +468,28 @@ export const useEventStore = create<EventState>((set, get) => ({
     }
   },
 
+  releaseTimersTakenByWidget: async () => {
+    if (Object.keys(get().activeTimerSessions).length === 0) return [];
+    const taken = await loadWidgetTakenTimers(await getDatabase());
+    // Read memory again after the await: a timer may have been stopped meanwhile.
+    const { kept, released } = withoutTimersTakenByWidget(get().activeTimerSessions, taken);
+    if (released.length === 0) return released;
+    set({ activeTimerSessions: kept });
+    schedulePersistActiveTimers(kept);
+    return released;
+  },
+
   hydrateActiveTimerSessions: async () => {
-    const sessions = await loadPersistedActiveTimerSessions(await getDatabase());
+    const db = await getDatabase();
+    // A session the widget took over is the widget's: restoring it here would
+    // time, and at the next stop log, the same minutes a second time.
+    const { kept: sessions, released } = withoutTimersTakenByWidget(
+      await loadPersistedActiveTimerSessions(db),
+      await loadWidgetTakenTimers(db),
+    );
+    if (released.length > 0 && Object.keys(sessions).length === 0) {
+      schedulePersistActiveTimers(sessions);
+    }
     if (Object.keys(sessions).length === 0) return;
     // Do not clobber a timer started before hydration finished.
     if (Object.keys(get().activeTimerSessions).length > 0) return;

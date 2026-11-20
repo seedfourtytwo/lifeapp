@@ -9,6 +9,8 @@ import {
 import { useElementStore } from '../store/elementStore';
 import { getDatabase } from '../db/client';
 import { readDataVersion } from '../db/dataVersion';
+import { stopHabitSound } from '../audio/habitTimerSound';
+import { stopHabitTimerLockScreenTicker } from '../kinds/habit/habitTimerLockScreen';
 
 type DailyRefreshInputs = {
   habits: HabitStreakInput[];
@@ -99,6 +101,14 @@ async function refreshTodayOnce(force: boolean): Promise<void> {
   const unchanged =
     version !== null && lastSeenVersion?.db === db && lastSeenVersion.version === version;
   if (unchanged && !force) return;
+
+  // A timer paused here and then resumed or stopped from the widget is the
+  // widget's now: drop our copy, and whatever sound and lock-screen clock it held.
+  const released = await useEventStore.getState().releaseTimersTakenByWidget();
+  if (released.length > 0) {
+    stopHabitTimerLockScreenTicker();
+    await stopHabitSound();
+  }
 
   const { habits, counterIds, counterStreaks } = deriveInputsFromStore();
   const {

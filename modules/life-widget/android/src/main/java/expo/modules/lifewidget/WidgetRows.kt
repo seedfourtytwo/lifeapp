@@ -173,9 +173,10 @@ internal class WidgetRows(private val context: Context, private val date: String
     val shownMs = row.loggedSeconds * 1000L + sessionMs
     val target = row.targetSeconds
     val status = when {
-      row.inApp && paused -> context.getString(R.string.life_widget_paused_in_app)
-      row.inApp -> context.getString(R.string.life_widget_running_in_app)
+      // Paused is paused, wherever it was paused: the row's controls work either way,
+      // and "in the app" pushed the figure off the end of the line.
       paused -> context.getString(R.string.life_widget_paused)
+      row.inApp -> context.getString(R.string.life_widget_running_in_app)
       else -> null
     }
     // Plain text: a Chronometer does not tick inside a list item on the lock-screen

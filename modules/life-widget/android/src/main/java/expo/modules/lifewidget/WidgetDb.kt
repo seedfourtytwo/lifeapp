@@ -206,7 +206,7 @@ object WidgetDb {
       today = today,
       minuteOfDay = minuteOfDay,
       runningTimers = TodayRules.parseWidgetTimers(readSetting(db, TodayRules.WIDGET_TIMERS_KEY)),
-      appTimers = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)),
+      appTimers = readAppTimers(db, today.toString()),
       doneTodos = doneTodos,
     )
     return WidgetSnapshot.Ready(today, model, TodayRules.nextWindowBoundary(habits, minuteOfDay))
@@ -343,9 +343,13 @@ object WidgetDb {
       db.delete("app_settings", "key = ?", arrayOf(TodayRules.WIDGET_TIMERS_KEY))
       return
     }
+    writeSetting(db, TodayRules.WIDGET_TIMERS_KEY, TodayRules.widgetTimersJson(timers))
+  }
+
+  private fun writeSetting(db: SQLiteDatabase, key: String, value: String) {
     val values = ContentValues()
-    values.put("key", TodayRules.WIDGET_TIMERS_KEY)
-    values.put("value", TodayRules.widgetTimersJson(timers))
+    values.put("key", key)
+    values.put("value", value)
     db.insertWithOnConflict("app_settings", null, values, SQLiteDatabase.CONFLICT_REPLACE)
   }
 
@@ -371,6 +375,23 @@ object WidgetDb {
     }
   }
 
+  private fun readTakenTimers(db: SQLiteDatabase): Map<String, String> =
+    TodayRules.parseTakenTimers(readSetting(db, TodayRules.WIDGET_TAKEN_TIMERS_KEY))
+
+  private fun readAppTimers(db: SQLiteDatabase, today: String): Map<String, AppTimer> =
+    TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY), today, readTakenTimers(db))
+
+  /**
+   * Records which app session the widget took. Kept to the sessions still in the
+   * app's record: once the app has let one go there is nothing left to mark.
+   */
+  private fun writeTakenTimer(db: SQLiteDatabase, elementId: String, startedAt: String) {
+    val stillInApp = MiniJson.parseObjectOrNull(readSetting(db, TodayRules.APP_TIMERS_KEY)) ?: emptyMap()
+    val taken = readTakenTimers(db).filter { (id, at) -> (stillInApp[id] as? Map<*, *>)?.get("startedAt") == at } +
+      (elementId to startedAt)
+    writeSetting(db, TodayRules.WIDGET_TAKEN_TIMERS_KEY, TodayRules.takenTimersJson(taken))
+  }
+
   /**
    * Applies `action` to the habit's widget timer (TodayRules.applyTimerAction),
    * writes the session it ends, and returns what the audio player should do.
@@ -393,10 +414,22 @@ object WidgetDb {
           writeWidgetTimers(db, timers)
           return@inImmediateTransaction if (had) PlayerRequest(elementId, "", PlayerCommand.Stop) else null
         }
-        val lockedByApp = TodayRules.parseAppTimers(readSetting(db, TodayRules.APP_TIMERS_KEY)).containsKey(elementId)
+        val today = LocalDate.now().toString()
+        val appTimer = readAppTimers(db, today)[elementId]
+        // A timer the app has paused is taken over rather than refused: it becomes the
+        // widget's own, with its start and pauses kept, and the tap then acts on it.
+        val takenOver = if (timers[elementId] == null && appTimer?.pausedAtMs != null) {
+          TodayRules.takeOver(appTimer, today).also {
+            timers[elementId] = it
+            writeTakenTimer(db, elementId, appTimer.startedAt)
+          }
+        } else {
+          null
+        }
+        val lockedByApp = appTimer != null && takenOver == null
         val running = timers[elementId]
         val outcome = TodayRules.applyTimerAction(
-          rules, running, action, now, LocalDate.now().toString(), lockedByApp,
+          rules, running, action, now, today, lockedByApp,
         )
         outcome.log?.let { writeTimerLog(db, elementId, it) }
         if (outcome.session == null) timers.remove(elementId) else timers[elementId] = outcome.session

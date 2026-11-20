@@ -262,12 +262,65 @@ class TodayRulesTest {
     }"""
     assertEquals(
       mapOf(
-        "run" to AppTimer(start, null, 60_000),
-        "hold" to AppTimer(start, start + 600_000, 0),
+        "run" to AppTimer(start, null, 60_000, "2026-11-16T08:00:00.000Z"),
+        "hold" to AppTimer(start, start + 600_000, 0, "2026-11-16T08:00:00.000Z"),
       ),
-      TodayRules.parseAppTimers(json),
+      TodayRules.parseAppTimers(json, "2026-11-16"),
     )
-    assertEquals(emptyMap<String, AppTimer>(), TodayRules.parseAppTimers(null))
+    assertEquals(emptyMap<String, AppTimer>(), TodayRules.parseAppTimers(null, "2026-11-16"))
+  }
+
+  @Test
+  fun anAppTimerLeftOverFromAnotherDayIsNotTodays() {
+    // Found on the phone: a session paused nine days earlier was drawn as today's
+    // progress and locked the habit. The app closes such a session onto its own day
+    // the next time it opens; until then it is none of today's business.
+    val json = """{
+      "old":{"startedAt":"2026-11-11T20:08:27.531Z","pausedAt":"2026-11-11T20:09:28.251Z","pauseOffsetMs":0,"calendarDate":"2026-11-11"},
+      "now":{"startedAt":"2026-11-20T08:00:00.000Z","pausedAt":null,"pauseOffsetMs":0,"calendarDate":"2026-11-20"},
+      "undated":{"startedAt":"2026-11-20T08:00:00.000Z"}
+    }"""
+    assertEquals(setOf("now"), TodayRules.parseAppTimers(json, "2026-11-20").keys)
+  }
+
+  @Test
+  fun aTimerTheWidgetTookOverIsNoLongerTheApps() {
+    val json = """{
+      "s":{"startedAt":"2026-11-20T08:00:00.000Z","pausedAt":"2026-11-20T08:10:00.000Z","pauseOffsetMs":0,"calendarDate":"2026-11-20"},
+      "r":{"startedAt":"2026-11-20T09:00:00.000Z","pausedAt":null,"pauseOffsetMs":0,"calendarDate":"2026-11-20"}
+    }"""
+    val taken = mapOf("s" to "2026-11-20T08:00:00.000Z")
+    assertEquals(setOf("r"), TodayRules.parseAppTimers(json, "2026-11-20", taken).keys)
+    // Only that very session: a new one the app starts on the same habit is the app's again.
+    val earlier = mapOf("s" to "2026-11-20T07:00:00.000Z")
+    assertEquals(setOf("s", "r"), TodayRules.parseAppTimers(json, "2026-11-20", earlier).keys)
+  }
+
+  @Test
+  fun takingATimerOverKeepsItsTimeAndWritesWhichOneWasTaken() {
+    val start = Instant.parse("2026-11-20T08:00:00Z").toEpochMilli()
+    val app = AppTimer(start, start + 600_000, 120_000, "2026-11-20T08:00:00.000Z")
+    assertEquals(RunningTimer(start, "2026-11-20", start + 600_000, 120_000), TodayRules.takeOver(app, "2026-11-20"))
+
+    val record = TodayRules.takenTimersJson(mapOf("s" to "2026-11-20T08:00:00.000Z"))
+    assertEquals("""{"s":"2026-11-20T08:00:00.000Z"}""", record)
+    assertEquals(mapOf("s" to "2026-11-20T08:00:00.000Z"), TodayRules.parseTakenTimers(record))
+    assertEquals(emptyMap<String, String>(), TodayRules.parseTakenTimers(null))
+    assertEquals(emptyMap<String, String>(), TodayRules.parseTakenTimers("""{"s":7}"""))
+  }
+
+  @Test
+  fun aPausedStopwatchResumesOnToggleAndLogsOnlyOnStop() {
+    // A habit with no sound cannot be paused from the widget, but the app can pause
+    // it; once taken over, its play button has to resume it rather than end it.
+    val rules = habit("""{"trackingMode":"timer"}""")
+    val paused = RunningTimer(0, "2026-11-16", pausedAtMs = 600_000, pauseOffsetMs = 0)
+    val resumed = TodayRules.applyTimerAction(rules, paused, TimerAction.TOGGLE, 900_000, "2026-11-16", lockedByApp = false)
+    assertEquals(RunningTimer(0, "2026-11-16", null, 300_000), resumed.session)
+    assertNull(resumed.log)
+    val stopped = TodayRules.applyTimerAction(rules, paused, TimerAction.STOP, 900_000, "2026-11-16", lockedByApp = false)
+    assertNull(stopped.session)
+    assertEquals(600, stopped.log!!.seconds)
   }
 
   @Test
@@ -284,8 +337,8 @@ class TodayRulesTest {
       0,
       runningTimers = mapOf("r" to RunningTimer(5L, "2026-11-16")),
       appTimers = mapOf(
-        "r" to AppTimer(start, null, 60_000),
-        "s" to AppTimer(start, start + 600_000, 120_000),
+        "r" to AppTimer(start, null, 60_000, "x"),
+        "s" to AppTimer(start, start + 600_000, 120_000, "x"),
       ),
     )
     // Running in the app is "now"; paused in the app stays in the list, so an
