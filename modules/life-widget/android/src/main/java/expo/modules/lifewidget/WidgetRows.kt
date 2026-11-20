@@ -2,6 +2,10 @@ package expo.modules.lifewidget
 
 import android.content.Context
 import android.content.Intent
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import java.time.format.DateTimeFormatter
@@ -61,14 +65,40 @@ internal class WidgetRows(private val context: Context, private val date: String
       return
     }
     views.setViewVisibility(viewId, View.VISIBLE)
+    // The view is recycled between a timer's disc and a tick's ring: always state which.
+    views.setInt(viewId, "setBackgroundResource", R.drawable.life_widget_button_round)
     views.setImageViewResource(viewId, icon)
     views.setContentDescription(viewId, description)
     views.setOnClickFillInIntent(viewId, tap)
   }
 
-  private fun hideTextButtons(views: RemoteViews) {
-    views.setViewVisibility(R.id.row_button_1, View.GONE)
-    views.setViewVisibility(R.id.row_button_2, View.GONE)
+  /**
+   * A row still to do is 68dp tall; a settled one is a slim line, so the list is
+   * mostly what is left. The layout is shared and recycled: always state it.
+   */
+  private fun px(dp: Float): Int =
+    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.resources.displayMetrics).toInt()
+
+  private fun setHeight(views: RemoteViews, settled: Boolean) {
+    val dp = if (settled) SETTLED_ROW_DP else OPEN_ROW_DP
+    views.setInt(R.id.row_root, "setMinimumHeight", px(dp))
+    // No room above and below a settled row's 56dp control, or the control alone keeps the row tall.
+    val vertical = if (settled) 0 else px(ROW_PADDING_DP)
+    views.setViewPadding(R.id.row_root, px(ROW_START_DP), vertical, px(ROW_PADDING_DP), vertical)
+  }
+
+  /**
+   * "24:10 / 1:00:00" with what has been done in the bright colour and the goal
+   * left quiet, so the eye lands on the number that moves. The text view's own
+   * colour is the quiet one; a figure with no goal after it is left as it is.
+   */
+  private fun figureOverGoal(text: String): CharSequence {
+    val slash = text.indexOf(" / ")
+    if (slash < 0) return text
+    val start = text.lastIndexOf("· ", slash).let { if (it < 0) 0 else it + 2 }
+    return SpannableString(text).apply {
+      setSpan(ForegroundColorSpan(context.getColor(R.color.life_widget_text)), start, slash, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
   }
 
   private fun habitView(row: WidgetRow.Habit): RemoteViews {
@@ -86,33 +116,48 @@ internal class WidgetRows(private val context: Context, private val date: String
     views.setInt(R.id.row_root, "setBackgroundResource", background)
     // A timer habit shows a stopwatch, not the ring: the ring means "tap to tick".
     val disc = when {
-      running && !paused -> R.drawable.life_widget_disc_timer_running
-      row.state == HabitRowState.DONE -> R.drawable.life_widget_disc_done
-      row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_disc_skipped
-      row.timer -> R.drawable.life_widget_disc_timer
-      else -> R.drawable.life_widget_disc_open
+      running && !paused -> R.drawable.life_widget_tile_timer_running
+      row.state == HabitRowState.SKIPPED -> R.drawable.life_widget_tile_skipped
+      // A settled timer shows its tick here; a tick-off habit has it at the row's end already.
+      row.state == HabitRowState.DONE && row.timer -> R.drawable.life_widget_tile_done
+      row.state == HabitRowState.DONE -> R.drawable.life_widget_tile_daily_settled
+      row.timer -> R.drawable.life_widget_tile_timer
+      else -> R.drawable.life_widget_tile_daily
     }
     views.setImageViewResource(R.id.row_disc, disc)
     setName(views, row.name, settled)
-    hideTextButtons(views)
+    setHeight(views, settled)
+    views.setViewVisibility(R.id.row_buttons, View.GONE)
+    views.setViewVisibility(R.id.row_figure, View.GONE)
+    views.setViewVisibility(R.id.row_progress_counter, View.GONE)
+    views.setViewVisibility(R.id.row_figure_end, View.GONE)
 
     if (!row.timer) {
       views.setViewVisibility(R.id.row_meta, View.GONE)
       views.setViewVisibility(R.id.row_progress, View.GONE)
       setAction(views, R.id.row_action_1, null, null, null)
-      setAction(views, R.id.row_action_2, null, null, null)
       val wantDone = row.state != HabitRowState.DONE
-      views.setOnClickFillInIntent(
-        R.id.row_root,
-        fillIn(WidgetActions.TAP_HABIT, row.id).putExtra(WidgetActions.EXTRA_WANT_DONE, wantDone),
+      val tap = fillIn(WidgetActions.TAP_HABIT, row.id).putExtra(WidgetActions.EXTRA_WANT_DONE, wantDone)
+      val label = context.getString(
+        if (wantDone) R.string.life_widget_mark_done_a11y else R.string.life_widget_mark_not_done_a11y,
+        row.name,
       )
-      views.setContentDescription(
-        R.id.row_root,
-        context.getString(
-          if (wantDone) R.string.life_widget_mark_done_a11y else R.string.life_widget_mark_not_done_a11y,
-          row.name,
-        ),
+      // The tick sits where a timer has its play disc, so every row's control is in one
+      // column; the row itself still ticks too, as a bigger target.
+      views.setViewVisibility(R.id.row_action_2, View.VISIBLE)
+      views.setInt(
+        R.id.row_action_2,
+        "setBackgroundResource",
+        if (wantDone) R.drawable.life_widget_tick_open else R.drawable.life_widget_tick_done,
       )
+      views.setImageViewResource(
+        R.id.row_action_2,
+        if (wantDone) R.drawable.life_widget_ic_none else R.drawable.life_widget_ic_check,
+      )
+      views.setContentDescription(R.id.row_action_2, label)
+      views.setOnClickFillInIntent(R.id.row_action_2, tap)
+      views.setOnClickFillInIntent(R.id.row_root, tap)
+      views.setContentDescription(R.id.row_root, label)
       return views
     }
 
@@ -147,19 +192,28 @@ internal class WidgetRows(private val context: Context, private val date: String
       row.inApp && !paused -> status
       else -> "$status · $time"
     }
-    views.setTextViewText(R.id.row_meta, meta ?: "")
-    views.setViewVisibility(R.id.row_meta, if (meta != null) View.VISIBLE else View.GONE)
+    // A settled timer keeps one thing, its time, at the row's end where the control was.
+    val settledTime = if (settled && status == null) figure?.takeUnless { it.isGoal }?.text?.substringBefore(" / ") else null
+    if (settled && status == null) {
+      views.setViewVisibility(R.id.row_meta, View.GONE)
+      views.setTextViewText(R.id.row_figure_end, settledTime ?: "")
+      views.setViewVisibility(R.id.row_figure_end, if (settledTime != null) View.VISIBLE else View.GONE)
+    } else {
+      views.setTextViewText(R.id.row_meta, meta?.let { figureOverGoal(it) } ?: "")
+      views.setViewVisibility(R.id.row_meta, if (meta != null) View.VISIBLE else View.GONE)
+    }
     // An empty bar on every untouched row is a row of nothing: the bar appears
     // with the first logged second, and then it means something.
-    if (started && target != null && target > 0) {
+    if (!settled && started && target != null && target > 0) {
       views.setProgressBar(R.id.row_progress, target, (shownMs / 1000).coerceAtMost(target.toLong()).toInt(), false)
       views.setViewVisibility(R.id.row_progress, View.VISIBLE)
     } else {
       views.setViewVisibility(R.id.row_progress, View.GONE)
     }
 
-    // A timer the app is running is the app's to stop: two timers would log the time twice.
-    if (row.inApp || !row.canRun) {
+    // A timer running in the app is the app's to stop: its sound and its clock live
+    // there. One the app has paused can be picked up here; the widget takes it over.
+    if ((row.inApp && !paused) || !row.canRun) {
       views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_NONE))
       views.setContentDescription(R.id.row_root, row.name)
       setAction(views, R.id.row_action_1, null, null, null)
@@ -180,7 +234,8 @@ internal class WidgetRows(private val context: Context, private val date: String
         setAction(views, R.id.row_action_2, R.drawable.life_widget_ic_play, startLabel, toggle)
         views.setContentDescription(R.id.row_root, startLabel)
       }
-      row.hasAudio -> {
+      // Paused, with or without a sound: resume it or end it.
+      row.hasAudio || paused -> {
         val icon = if (paused) R.drawable.life_widget_ic_play else R.drawable.life_widget_ic_pause
         val label = if (paused) resumeLabel else pauseLabel
         setAction(views, R.id.row_action_1, icon, label, toggle)
@@ -202,9 +257,13 @@ internal class WidgetRows(private val context: Context, private val date: String
     views.setInt(R.id.row_root, "setBackgroundResource", R.drawable.life_widget_card)
     views.setImageViewResource(
       R.id.row_disc,
-      if (row.done) R.drawable.life_widget_disc_done else R.drawable.life_widget_disc_counter,
+      if (row.done) R.drawable.life_widget_tile_done else R.drawable.life_widget_tile_counter,
     )
     setName(views, row.name, settled = false)
+    setHeight(views, settled = false)
+    views.setViewVisibility(R.id.row_meta, View.GONE)
+    views.setViewVisibility(R.id.row_progress, View.GONE)
+    views.setViewVisibility(R.id.row_figure_end, View.GONE)
     // Same layout as a habit row, whose views are recycled: always state the row tap.
     views.setOnClickFillInIntent(R.id.row_root, fillIn(WidgetActions.TAP_NONE))
     views.setContentDescription(R.id.row_root, row.name)
@@ -213,16 +272,19 @@ internal class WidgetRows(private val context: Context, private val date: String
 
     val total = TodayRules.formatNumber(row.total)
     val target = row.target
-    views.setTextViewText(R.id.row_meta, if (target != null) "$total / $target" else total)
-    views.setViewVisibility(R.id.row_meta, View.VISIBLE)
+    views.setTextViewText(R.id.row_figure, figureOverGoal(if (target != null) "$total / $target" else total))
+    views.setViewVisibility(R.id.row_figure, View.VISIBLE)
     // As on a habit row: an empty bar says nothing the figure has not said.
     if (target != null && target > 0 && row.total > 0) {
-      views.setProgressBar(R.id.row_progress, target, row.total.coerceIn(0.0, target.toDouble()).toInt(), false)
-      views.setViewVisibility(R.id.row_progress, View.VISIBLE)
+      views.setProgressBar(R.id.row_progress_counter, target, row.total.coerceIn(0.0, target.toDouble()).toInt(), false)
+      views.setViewVisibility(R.id.row_progress_counter, View.VISIBLE)
     } else {
-      views.setViewVisibility(R.id.row_progress, View.GONE)
+      views.setViewVisibility(R.id.row_progress_counter, View.GONE)
     }
 
+    // One capsule for both steps; the rule between them only when there are two.
+    views.setViewVisibility(R.id.row_buttons, if (row.increments.isEmpty()) View.GONE else View.VISIBLE)
+    views.setViewVisibility(R.id.row_button_rule, if (row.increments.size > 1) View.VISIBLE else View.GONE)
     val buttons = intArrayOf(R.id.row_button_1, R.id.row_button_2)
     for ((index, buttonId) in buttons.withIndex()) {
       val increment = row.increments.getOrNull(index)
@@ -246,9 +308,14 @@ internal class WidgetRows(private val context: Context, private val date: String
     val views = RemoteViews(context.packageName, R.layout.life_widget_row_todo)
     // Like a finished habit, a ticked todo loses its card.
     views.setInt(R.id.row_root, "setBackgroundResource", if (row.done) 0 else R.drawable.life_widget_card)
+    views.setInt(
+      R.id.row_box,
+      "setBackgroundResource",
+      if (row.done) R.drawable.life_widget_todo_done else R.drawable.life_widget_todo_open,
+    )
     views.setImageViewResource(
-      R.id.row_box_icon,
-      if (row.done) R.drawable.life_widget_disc_done else R.drawable.life_widget_todo_box,
+      R.id.row_box,
+      if (row.done) R.drawable.life_widget_ic_check else R.drawable.life_widget_ic_none,
     )
     setName(views, row.title, settled = row.done)
 
@@ -278,6 +345,13 @@ internal class WidgetRows(private val context: Context, private val date: String
       fillIn(WidgetActions.TAP_TODO, row.id).putExtra(WidgetActions.EXTRA_WANT_DONE, !row.done),
     )
     return views
+  }
+
+  private companion object {
+    const val OPEN_ROW_DP = 68f
+    const val SETTLED_ROW_DP = 48f
+    const val ROW_START_DP = 12f
+    const val ROW_PADDING_DP = 8f
   }
 
   private fun labelView(section: Section): RemoteViews {

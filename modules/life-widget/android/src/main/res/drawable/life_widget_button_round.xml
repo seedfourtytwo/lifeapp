@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A timer's control: a 44dp disc in the timers' tint, drawn inside a 56dp touch target. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="6dp">
+  <shape android:shape="oval">
+    <solid android:color="@color/life_widget_timer_tint" />
+  </shape>
+</inset>

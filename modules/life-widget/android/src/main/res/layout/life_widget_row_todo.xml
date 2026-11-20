@@ -7,28 +7,19 @@
   android:background="@drawable/life_widget_card"
   android:gravity="center_vertical"
   android:orientation="horizontal"
-  android:paddingStart="14dp"
-  android:paddingEnd="14dp">
+  android:paddingStart="12dp"
+  android:paddingEnd="8dp">
 
-  <!-- The box is the touch target (60dp tall, 44dp wide so titles align with habit names). -->
-  <FrameLayout
-    android:id="@+id/row_box"
-    android:layout_width="44dp"
-    android:layout_height="wrap_content"
-    android:minHeight="60dp">
-
-    <ImageView
-      android:id="@+id/row_box_icon"
-      android:layout_width="32dp"
-      android:layout_height="32dp"
-      android:layout_gravity="start|center_vertical"
-      android:importantForAccessibility="no"
-      android:src="@drawable/life_widget_todo_box" />
-  </FrameLayout>
-
+  <ImageView
+    android:layout_width="36dp"
+    android:layout_height="36dp"
+    android:importantForAccessibility="no"
+    android:src="@drawable/life_widget_tile_todo" />
   <LinearLayout
     android:layout_width="0dp"
     android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="8dp"
     android:layout_weight="1"
     android:orientation="vertical"
     android:paddingTop="6dp"
@@ -39,6 +30,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:ellipsize="end"
+      android:fontFamily="sans-serif-medium"
       android:maxLines="2"
       android:textColor="@color/life_widget_text"
       android:textSize="17sp" />
@@ -70,8 +62,15 @@
       android:layout_height="wrap_content"
       android:fontFamily="sans-serif-medium"
       android:maxLines="1"
-      android:textColor="@color/life_widget_accent"
+      android:textColor="@color/life_widget_todo"
       android:textSize="14sp"
       android:visibility="gone" />
   </LinearLayout>
+  <!-- Only the box is the tap target: a todo is ticked on purpose, not by brushing the row. -->
+  <ImageView
+    android:id="@+id/row_box"
+    android:layout_width="56dp"
+    android:layout_height="56dp"
+    android:background="@drawable/life_widget_todo_open"
+    android:scaleType="center" />
 </LinearLayout>

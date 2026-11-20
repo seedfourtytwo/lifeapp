@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A timer habit that is not running: a stopwatch on the timers' amber tile. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="36dp"
+  android:height="36dp"
+  android:viewportWidth="100"
+  android:viewportHeight="100">
+  <group android:pivotX="50" android:pivotY="50" android:scaleX="1" android:scaleY="1">
+    <path android:fillColor="@color/life_widget_timer" android:pathData="M50,2C85,2 98,15 98,50C98,85 85,98 50,98C15,98 2,85 2,50C2,15 15,2 50,2Z" />
+    <group android:translateX="15" android:translateY="15" android:scaleX="2.5" android:scaleY="2.5">
+      <path android:fillColor="#00000000" android:strokeColor="@color/life_widget_ink" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M14,8.5 A7.5,7.5 0 1,1 14,23.5 A7.5,7.5 0 1,1 14,8.5 Z M11.8,5 L16.2,5 M14,5 L14,8.5 M14,16 L14,12" />
+    </group>
+  </group>
+</vector>

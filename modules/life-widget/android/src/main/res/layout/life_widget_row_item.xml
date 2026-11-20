@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One habit or counter: icon, name over figures and a progress bar, up to two buttons. -->
+<!--
+  One habit or counter: its tile, the name over a line of figures and a bar, and
+  at the end either the row's control or, once settled, its time.
+  Every row keeps the same three columns (tile 36dp, text, end) so tiles, names
+  and controls each stand in one line down the list.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/row_root"
   android:layout_width="match_parent"
@@ -8,23 +13,23 @@
   android:background="@drawable/life_widget_card"
   android:gravity="center_vertical"
   android:orientation="horizontal"
-  android:paddingStart="14dp"
+  android:paddingStart="12dp"
   android:paddingTop="8dp"
   android:paddingEnd="8dp"
   android:paddingBottom="8dp">
 
   <ImageView
     android:id="@+id/row_disc"
-    android:layout_width="32dp"
-    android:layout_height="32dp"
+    android:layout_width="36dp"
+    android:layout_height="36dp"
     android:importantForAccessibility="no"
-    android:src="@drawable/life_widget_disc_open" />
+    android:src="@drawable/life_widget_tile_daily" />
 
   <LinearLayout
     android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:layout_marginStart="12dp"
-    android:layout_marginEnd="6dp"
+    android:layout_marginEnd="8dp"
     android:layout_weight="1"
     android:orientation="vertical">
 
@@ -48,16 +53,32 @@
       android:textSize="17sp"
       android:visibility="gone" />
 
+    <!-- Words and a figure together ("Goal 15:00", "Paused · 01:00 / 1:30:00"): the phone's own face. -->
     <TextView
       android:id="@+id/row_meta"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
       android:fontFeatureSettings="tnum"
       android:maxLines="1"
       android:textColor="@color/life_widget_text_muted"
       android:textSize="14sp"
       android:visibility="gone" />
 
+    <!-- A quantity alone ("40 / 100"): medium weight, equal-width digits. The app's own data face cannot be used here: the lock-screen page draws the widget and cannot load another app's font files (tried on the phone, 2026-11-20). -->
+    <TextView
+      android:id="@+id/row_figure"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:fontFamily="sans-serif-medium"
+      android:fontFeatureSettings="tnum"
+      android:maxLines="1"
+      android:textColor="@color/life_widget_text_muted"
+      android:textSize="14sp"
+      android:visibility="gone" />
+
+    <!-- Two bars, one per colour: a progress drawable cannot be swapped from outside. -->
     <ProgressBar
       android:id="@+id/row_progress"
       style="?android:attr/progressBarStyleHorizontal"
@@ -65,20 +86,59 @@
       android:layout_height="6dp"
       android:layout_marginTop="6dp"
       android:importantForAccessibility="no"
-      android:progressDrawable="@drawable/life_widget_progress"
+      android:progressDrawable="@drawable/life_widget_progress_timer"
+      android:visibility="gone" />
+
+    <ProgressBar
+      android:id="@+id/row_progress_counter"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="6dp"
+      android:layout_marginTop="6dp"
+      android:importantForAccessibility="no"
+      android:progressDrawable="@drawable/life_widget_progress_counter"
       android:visibility="gone" />
   </LinearLayout>
 
+  <!-- A settled timer's time, at the row's end where the control was. -->
   <TextView
-    android:id="@+id/row_button_1"
-    style="@style/LifeWidgetButton" />
+    android:id="@+id/row_figure_end"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="8dp"
+    android:fontFamily="sans-serif-medium"
+      android:fontFeatureSettings="tnum"
+    android:maxLines="1"
+    android:textColor="@color/life_widget_text_muted"
+    android:textSize="14sp"
+    android:visibility="gone" />
 
-  <TextView
-    android:id="@+id/row_button_2"
-    style="@style/LifeWidgetButton"
-    android:layout_marginStart="2dp" />
+  <!-- A counter's steps: one capsule, a rule between the two. -->
+  <LinearLayout
+    android:id="@+id/row_buttons"
+    android:layout_width="wrap_content"
+    android:layout_height="56dp"
+    android:background="@drawable/life_widget_button_joined"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:visibility="gone">
 
-  <!-- Timer controls: play, pause, finish. Counters use the two text buttons instead. -->
+    <TextView
+      android:id="@+id/row_button_1"
+      style="@style/LifeWidgetButton" />
+
+    <FrameLayout
+      android:id="@+id/row_button_rule"
+      android:layout_width="1dp"
+      android:layout_height="20dp"
+      android:background="@color/life_widget_counter_rule" />
+
+    <TextView
+      android:id="@+id/row_button_2"
+      style="@style/LifeWidgetButton" />
+  </LinearLayout>
+
+  <!-- Timer controls: play, pause, finish. -->
   <ImageView
     android:id="@+id/row_action_1"
     style="@style/LifeWidgetIconButton"
@@ -87,6 +147,5 @@
   <ImageView
     android:id="@+id/row_action_2"
     style="@style/LifeWidgetIconButton"
-    android:layout_marginStart="2dp"
     android:visibility="gone" />
 </LinearLayout>

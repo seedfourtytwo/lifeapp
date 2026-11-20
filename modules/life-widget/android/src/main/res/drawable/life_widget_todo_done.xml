@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same box once ticked: filled in. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="8dp">
+  <shape android:shape="rectangle">
+    <solid android:color="@color/life_widget_todo" />
+    <corners android:radius="12dp" />
+  </shape>
+</inset>
