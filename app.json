@@ -2,7 +2,7 @@
   "expo": {
     "name": "Life",
     "slug": "lifeapp",
-    "version": "1.9.0",
+    "version": "1.10.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -41,7 +41,7 @@
       "predictiveBackGestureEnabled": false,
       "allowBackup": true,
       "package": "com.lifeapp.dashboard",
-      "versionCode": 32,
+      "versionCode": 33,
       "permissions": [
         "WAKE_LOCK",
         "ACCESS_COARSE_LOCATION",
